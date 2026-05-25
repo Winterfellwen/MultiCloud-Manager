@@ -1,0 +1,3 @@
+2026/05/25 17:03:11 Warning: Database not available: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it. (running in dev mode)
+2026/05/25 17:03:11 Warning: Redis not available: dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.
+2026/05/25 17:03:11 MultiCloud Manager starting on port 8080

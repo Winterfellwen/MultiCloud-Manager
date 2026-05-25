@@ -1,0 +1,144 @@
+package services
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"time"
+
+	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
+)
+
+type Database struct {
+	*sql.DB
+}
+
+func NewDatabase(dsn string) (*Database, error) {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	return &Database{db}, nil
+}
+
+func (db *Database) Migrate() error {
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			openid VARCHAR(128) UNIQUE NOT NULL,
+			nickname VARCHAR(100),
+			avatar_url TEXT,
+			team_id UUID,
+			role VARCHAR(20) DEFAULT 'member',
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS teams (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(100) NOT NULL,
+			description TEXT,
+			created_by UUID,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS cloud_accounts (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			team_id UUID NOT NULL,
+			cloud_type VARCHAR(20) NOT NULL,
+			name VARCHAR(100) NOT NULL,
+			encrypted_credentials BYTEA NOT NULL,
+			encryption_key_id VARCHAR(64),
+			is_active BOOLEAN DEFAULT true,
+			last_sync_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS ai_agent_sessions (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			team_id UUID NOT NULL,
+			session_id VARCHAR(64) UNIQUE NOT NULL,
+			title VARCHAR(200),
+			status VARCHAR(20) DEFAULT 'active',
+			last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS ai_agent_messages (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			session_id UUID NOT NULL,
+			role VARCHAR(10) NOT NULL,
+			content TEXT NOT NULL,
+			metadata JSONB,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS ai_agent_plans (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			session_id UUID NOT NULL,
+			plan_id VARCHAR(64) UNIQUE NOT NULL,
+			title VARCHAR(200) NOT NULL,
+			steps JSONB NOT NULL,
+			risk_summary JSONB,
+			missing_params JSONB,
+			estimated_cost DECIMAL(10,2),
+			status VARCHAR(20) DEFAULT 'pending',
+			confirmed_by UUID,
+			confirmed_at TIMESTAMP,
+			execution_started_at TIMESTAMP,
+			execution_completed_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS vault_audit_log (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			credential_ref VARCHAR(100) NOT NULL,
+			action VARCHAR(50) NOT NULL,
+			request_source INET,
+			user_id UUID,
+			success BOOLEAN NOT NULL,
+			error_message TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+
+	for i, query := range queries {
+		if _, err := db.Exec(query); err != nil {
+			return fmt.Errorf("migration %d failed: %v", i+1, err)
+		}
+	}
+
+	log.Println("Database migrations completed")
+	return nil
+}
+
+func (db *Database) Close() error {
+	return db.DB.Close()
+}
+
+type RedisClient struct {
+	*redis.Client
+}
+
+func NewRedisClient(url string) (*RedisClient, error) {
+	opts, err := redis.ParseURL(url)
+	if err != nil {
+		return nil, err
+	}
+
+	client := redis.NewClient(opts)
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return nil, err
+	}
+
+	return &RedisClient{client}, nil
+}
+
+func (rc *RedisClient) Close() error {
+	return rc.Client.Close()
+}

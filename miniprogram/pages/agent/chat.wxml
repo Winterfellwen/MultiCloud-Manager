@@ -1,0 +1,132 @@
+<!-- pages/agent/chat.wxml - AI Agent 对话界面 -->
+<view class="chat-container">
+  <!-- 会话头部 -->
+  <view class="chat-header">
+    <text class="header-title">AI 云助手</text>
+    <picker 
+      class="mode-picker" 
+      value="{{executionMode}}" 
+      range="{{executionModes}}" 
+      range-key="label"
+      bindchange="onModeChange">
+      <view class="mode-display">
+        {{getModeLabel(executionMode)}}
+        <text class="icon-arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 消息列表 -->
+  <scroll-view 
+    class="message-list" 
+    scroll-y 
+    scroll-into-view="{{lastMessageId}}"
+    scroll-with-animation>
+    <view class="messages">
+      <block wx:for="{{messages}}" wx:key="index">
+        <view 
+          class="message {{item.role}}" 
+          id="msg-{{index}}">
+          
+          <!-- 用户消息 -->
+          <block wx:if="{{item.role === 'user'}}">
+            <view class="message-bubble user-bubble">
+              <text>{{item.content}}</text>
+            </view>
+            <image 
+              class="avatar user-avatar" 
+              src="/assets/avatar/user.png">
+            </image>
+          </block>
+
+          <!-- AI 消息 -->
+          <block wx:if="{{item.role === 'assistant'}}">
+            <image 
+              class="avatar ai-avatar" 
+              src="/assets/avatar/ai.png">
+            </image>
+            <view class="message-bubble ai-bubble">
+              <text>{{item.content}}</text>
+              
+              <!-- 执行计划卡片 -->
+              <block wx:if="{{item.plan}}">
+                <view class="plan-card">
+                  <view class="plan-header">
+                    <text class="plan-title">{{item.plan.title}}</text>
+                    <view class="plan-risk {{item.risk_summary?.overall_risk}}">
+                      {{item.risk_summary?.overall_risk || 'low'}}风险
+                    </view>
+                  </view>
+
+                  <!-- 步骤列表 -->
+                  <view class="steps-list">
+                    <block wx:for="{{item.plan.steps}}" wx:key="id">
+                      <view class="step-item {{item.risk_level}}">
+                        <view class="step-header">
+                          <text class="step-index">步骤 {{item.id}}</text>
+                          <text class="step-action">{{item.action}} {{item.cloud}}</text>
+                        </view>
+                        <view class="step-details">
+                          <text class="step-params">{{JSON.stringify(item.params)}}</text>
+                        </view>
+                        <view class="step-risk {{item.risk_level}}">
+                          {{item.risk_level}}风险: {{item.risk_reason}}
+                        </view>
+                      </view>
+                    </block>
+                  </view>
+
+                  <!-- 执行按钮 -->
+                  <button 
+                    class="execute-btn" 
+                    type="primary" 
+                    size="mini"
+                    bindtap="executePlan">
+                    执行计划
+                  </button>
+                </view>
+              </block>
+            </view>
+          </block>
+
+          <!-- 系统消息 -->
+          <block wx:if="{{item.role === 'system'}}">
+            <view class="system-message">
+              <text class="system-icon">⚙️</text>
+              <text class="system-text">{{item.content}}</text>
+            </view>
+          </block>
+        </view>
+      </block>
+
+      <!-- 正在输入指示器 -->
+      <block wx:if="{{isTyping}}">
+        <view class="typing-indicator">
+          <view class="typing-dots">
+            <view class="dot"></view>
+            <view class="dot"></view>
+            <view class="dot"></view>
+          </view>
+          <text class="typing-text">AI 正在思考...</text>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <!-- 输入区域 -->
+  <view class="input-area">
+    <input 
+      class="message-input" 
+      placeholder="输入指令，如：帮我在 Azure 新加坡区开一台 2核4G 的 VM"
+      value="{{inputValue}}"
+      bindinput="onInputChange"
+      bindconfirm="sendMessage"
+      confirm-type="send" />
+    <button 
+      class="send-btn {{!inputValue ? 'disabled' : ''}}" 
+      bindtap="sendMessage"
+      disabled="{{!inputValue}}">
+      发送
+    </button>
+  </view>
+</view>

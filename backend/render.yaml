@@ -1,0 +1,60 @@
+# Render 部署配置
+# 使用 render.yaml 一键部署所有服务
+
+services:
+  - type: web
+    name: multicloud-backend
+    env: go
+    plan: free
+    buildCommand: go build -o app
+    startCommand: ./app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: multicloud-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: multicloud-redis
+          type: redis
+          property: connectionString
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WECHAT_APP_ID
+        sync: false
+      - key: WECHAT_APP_SECRET
+        sync: false
+      - key: VAULT_URL
+        value: "http://agent-vault:8200"
+      - key: VAULT_TOKEN
+        generateValue: true
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_API_ENDPOINT
+        value: "https://api.openai.com/v1"
+      - key: ENVIRONMENT
+        value: "production"
+
+  - type: web
+    name: agent-vault
+    env: docker
+    plan: free
+    dockerfilePath: ./vault/Dockerfile
+    envVars:
+      - key: VAULT_DEV_ROOT_TOKEN_ID
+        generateValue: true
+      - key: VAULT_DEV_LISTEN_ADDRESS
+        value: "0.0.0.0:8200"
+    # 不暴露公网端口，仅内网访问
+
+databases:
+  - name: multicloud-db
+    databaseName: multicloud
+    user: multicloud_user
+    plan: free
+
+redis:
+  - name: multicloud-redis
+    plan: free

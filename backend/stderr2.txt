@@ -1,0 +1,2 @@
+2026/05/25 11:41:27 Running without database (dev mode)
+2026/05/25 11:41:27 MultiCloud Manager starting on port 8080

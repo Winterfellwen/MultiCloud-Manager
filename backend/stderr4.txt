@@ -1,0 +1,2 @@
+2026/05/25 13:22:36 Database migrations completed
+2026/05/25 13:22:36 MultiCloud Manager starting on port 8080

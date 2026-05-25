@@ -1,0 +1,44 @@
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /                         --> multicloud-manager/internal/api.SetupRoutes.(*RouterGroup).StaticFile.func2 (4 handlers)
+[GIN-debug] HEAD   /                         --> multicloud-manager/internal/api.SetupRoutes.(*RouterGroup).StaticFile.func2 (4 handlers)
+[GIN-debug] GET    /static/*filepath         --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
+[GIN-debug] HEAD   /static/*filepath         --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (4 handlers)
+[GIN-debug] GET    /api/health               --> multicloud-manager/internal/api.SetupRoutes.func1 (5 handlers)
+[GIN-debug] POST   /api/agent/chat           --> multicloud-manager/internal/api.(*AgentHandler).Chat-fm (5 handlers)
+[GIN-debug] POST   /api/agent/execute        --> multicloud-manager/internal/api.(*AgentHandler).Execute-fm (5 handlers)
+[GIN-debug] GET    /api/agent/sessions       --> multicloud-manager/internal/api.(*AgentHandler).ListSessions-fm (5 handlers)
+[GIN-debug] GET    /api/agent/sessions/:id   --> multicloud-manager/internal/api.(*AgentHandler).SessionDetail-fm (5 handlers)
+[GIN-debug] GET    /api/accounts/            --> multicloud-manager/internal/api.(*AccountsHandler).List-fm (5 handlers)
+[GIN-debug] POST   /api/accounts/            --> multicloud-manager/internal/api.(*AccountsHandler).Add-fm (5 handlers)
+[GIN-debug] PUT    /api/accounts/:id         --> multicloud-manager/internal/api.(*AccountsHandler).Update-fm (5 handlers)
+[GIN-debug] DELETE /api/accounts/:id         --> multicloud-manager/internal/api.(*AccountsHandler).Delete-fm (5 handlers)
+[GIN-debug] POST   /api/accounts/:id/sync    --> multicloud-manager/internal/api.(*AccountsHandler).Sync-fm (5 handlers)
+[GIN-debug] GET    /api/resources/           --> multicloud-manager/internal/api.(*ResourcesHandler).List-fm (5 handlers)
+[GIN-debug] GET    /api/resources/:id        --> multicloud-manager/internal/api.(*ResourcesHandler).Detail-fm (5 handlers)
+[GIN-debug] POST   /api/resources/:id/start  --> multicloud-manager/internal/api.(*ResourcesHandler).Start-fm (5 handlers)
+[GIN-debug] POST   /api/resources/:id/stop   --> multicloud-manager/internal/api.(*ResourcesHandler).Stop-fm (5 handlers)
+[GIN-debug] POST   /api/resources/:id/restart --> multicloud-manager/internal/api.(*ResourcesHandler).Restart-fm (5 handlers)
+[GIN-debug] GET    /api/terraform/templates  --> multicloud-manager/internal/api.handleListTemplates (5 handlers)
+[GIN-debug] POST   /api/terraform/templates  --> multicloud-manager/internal/api.handleUploadTemplate (5 handlers)
+[GIN-debug] POST   /api/terraform/templates/:id/plan --> multicloud-manager/internal/api.handlePlanTemplate (5 handlers)
+[GIN-debug] POST   /api/terraform/templates/:id/apply --> multicloud-manager/internal/api.handleApplyTemplate (5 handlers)
+[GIN-debug] GET    /api/teams/               --> multicloud-manager/internal/api.handleListTeams (5 handlers)
+[GIN-debug] POST   /api/teams/               --> multicloud-manager/internal/api.handleCreateTeam (5 handlers)
+[GIN-debug] POST   /api/teams/:id/members    --> multicloud-manager/internal/api.handleAddTeamMember (5 handlers)
+[GIN-debug] POST   /api/auth/login           --> multicloud-manager/internal/api.handleWechatLogin (4 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080
+[GIN] 2026/05/25 - 16:07:29 | 200 |       840.4µs |             ::1 | GET      "/"
+[GIN] 2026/05/25 - 16:36:04 | 200 |      1.0066ms |    172.20.10.13 | GET      "/"
+[GIN] 2026/05/25 - 16:36:04 | 404 |            0s |    172.20.10.13 | GET      "/favicon.ico"
+[GIN] 2026/05/25 - 16:36:12 | 200 |       522.3µs |             ::1 | GET      "/"
+[GIN] 2026/05/25 - 16:36:15 | 404 |            0s |             ::1 | GET      "/favicon.ico"
+[GIN] 2026/05/25 - 16:37:01 | 200 |            0s |             ::1 | GET      "/"
+[GIN] 2026/05/25 - 16:37:12 | 200 |            0s |             ::1 | GET      "/"
+[GIN] 2026/05/25 - 16:57:42 | 304 |            0s |             ::1 | GET      "/"

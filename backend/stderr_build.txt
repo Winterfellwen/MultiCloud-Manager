@@ -1,0 +1,2 @@
+# multicloud-manager
+.\main.go:49:14: cfg.Port undefined (type *config.Config has no field or method Port)
