@@ -19,42 +19,252 @@ type RenderProvider struct {
 func NewRenderProvider(creds map[string]string) *RenderProvider {
 	return &RenderProvider{
 		apiKey:     creds["api_key"],
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
 func (p *RenderProvider) GetType() string { return "render" }
 
+// API response wrappers (each has a "value" array of items with cursor)
+type renderServiceItem struct {
+	Service renderService `json:"service"`
+}
+
 type renderService struct {
-	Service struct {
-		ID        string            `json:"id"`
-		Name      string            `json:"name"`
-		Slug      string            `json:"slug"`
-		Type      string            `json:"type"`
-		State     string            `json:"state"`
-		UpdatedAt string            `json:"updatedAt"`
-		CreatedAt string            `json:"createdAt"`
-		ServiceDetails struct {
-			Region string `json:"region"`
-			Plan   string `json:"plan"`
-			URL    string `json:"url"`
-		} `json:"serviceDetails"`
-	} `json:"service"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	Type           string    `json:"type"`
+	State          string    `json:"state"`
+	Suspended      string    `json:"suspended"`
+	UpdatedAt      string    `json:"updatedAt"`
+	CreatedAt      string    `json:"createdAt"`
+	ServiceDetails struct {
+		Region string `json:"region"`
+		Plan   string `json:"plan"`
+		URL    string `json:"url"`
+	} `json:"serviceDetails"`
+	DashboardUrl string `json:"dashboardUrl"`
+}
+
+type renderPGItem struct {
+	Postgres renderPG `json:"postgres"`
+}
+
+type renderPG struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Region         string `json:"region"`
+	Status         string `json:"status"`
+	Plan           string `json:"plan"`
+	Version        string `json:"version"`
+	DatabaseName   string `json:"databaseName"`
+	DatabaseUser   string `json:"databaseUser"`
+	DiskSizeGB     int    `json:"diskSizeGB"`
+	HighAvail      bool   `json:"highAvailabilityEnabled"`
+	Suspended      string `json:"suspended"`
+	DashboardUrl   string `json:"dashboardUrl"`
+	CreatedAt      string `json:"createdAt"`
+}
+
+type renderKVItem struct {
+	KeyValue renderKV `json:"keyValue"`
+}
+
+type renderKV struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Region       string `json:"region"`
+	Status       string `json:"status"`
+	Plan         string `json:"plan"`
+	Version      string `json:"version"`
+	Suspended    string `json:"suspended"`
+	DashboardUrl string `json:"dashboardUrl"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+// Generic wrapper for paginated responses
+type renderListResponse[T any] struct {
+	Value []T `json:"value"`
 }
 
 func (p *RenderProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.render.com/v1/services?limit=100", nil)
+	instances, err := p.listServices(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list services: %w", err)
+	}
+
+	pgs, err := p.listPostgres(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list postgres: %w", err)
+	}
+	instances = append(instances, pgs...)
+
+	kvs, err := p.listKeyValue(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list key-value: %w", err)
+	}
+	instances = append(instances, kvs...)
+
+	return instances, nil
+}
+
+func (p *RenderProvider) listServices(ctx context.Context) ([]types.Instance, error) {
+	body, err := p.doGet(ctx, "https://api.render.com/v1/services?limit=100")
+	if err != nil {
+		return nil, err
+	}
+
+	var resp renderListResponse[renderServiceItem]
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+
+	var instances []types.Instance
+	for _, item := range resp.Value {
+		s := item.Service
+		status := "running"
+		if s.State == "suspended" || s.State == "deactivated" || s.Suspended != "not_suspended" {
+			status = "stopped"
+		}
+
+		var created time.Time
+		if s.CreatedAt != "" {
+			created, _ = time.Parse(time.RFC3339, s.CreatedAt)
+		}
+
+		region := s.ServiceDetails.Region
+		if region == "" {
+			region = "singapore"
+		}
+
+		instances = append(instances, types.Instance{
+			ID:           s.ID,
+			Name:         s.Name,
+			CloudType:    "render",
+			Region:       region,
+			Status:       status,
+			InstanceType: s.Type,
+			Spec: map[string]interface{}{
+				"plan":          s.ServiceDetails.Plan,
+				"url":           s.ServiceDetails.URL,
+				"slug":          s.Slug,
+				"dashboard_url": s.DashboardUrl,
+			},
+			CreatedAt: created,
+		})
+	}
+	return instances, nil
+}
+
+func (p *RenderProvider) listPostgres(ctx context.Context) ([]types.Instance, error) {
+	body, err := p.doGet(ctx, "https://api.render.com/v1/postgres?limit=100")
+	if err != nil {
+		return nil, err
+	}
+
+	var resp renderListResponse[renderPGItem]
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+
+	var instances []types.Instance
+	for _, item := range resp.Value {
+		pg := item.Postgres
+		status := "running"
+		if pg.Status != "available" || pg.Suspended != "not_suspended" {
+			status = "stopped"
+		}
+
+		var created time.Time
+		if pg.CreatedAt != "" {
+			created, _ = time.Parse(time.RFC3339, pg.CreatedAt)
+		}
+
+		region := pg.Region
+		if region == "" {
+			region = "singapore"
+		}
+
+		instances = append(instances, types.Instance{
+			ID:           pg.ID,
+			Name:         pg.Name,
+			CloudType:    "render",
+			Region:       region,
+			Status:       status,
+			InstanceType: "postgres",
+			Spec: map[string]interface{}{
+				"plan":          pg.Plan,
+				"version":       pg.Version,
+				"database":      pg.DatabaseName,
+				"disk_gb":       pg.DiskSizeGB,
+				"ha_enabled":    pg.HighAvail,
+				"dashboard_url": pg.DashboardUrl,
+			},
+			CreatedAt: created,
+		})
+	}
+	return instances, nil
+}
+
+func (p *RenderProvider) listKeyValue(ctx context.Context) ([]types.Instance, error) {
+	body, err := p.doGet(ctx, "https://api.render.com/v1/key-value?limit=100")
+	if err != nil {
+		return nil, err
+	}
+
+	var resp renderListResponse[renderKVItem]
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+
+	var instances []types.Instance
+	for _, item := range resp.Value {
+		kv := item.KeyValue
+		status := "running"
+		if kv.Status != "available" {
+			status = "stopped"
+		}
+
+		var created time.Time
+		if kv.CreatedAt != "" {
+			created, _ = time.Parse(time.RFC3339, kv.CreatedAt)
+		}
+
+		region := kv.Region
+		if region == "" {
+			region = "singapore"
+		}
+
+		instances = append(instances, types.Instance{
+			ID:           kv.ID,
+			Name:         kv.Name,
+			CloudType:    "render",
+			Region:       region,
+			Status:       status,
+			InstanceType: "key_value",
+			Spec: map[string]interface{}{
+				"plan":          kv.Plan,
+				"version":       kv.Version,
+				"dashboard_url": kv.DashboardUrl,
+			},
+			CreatedAt: created,
+		})
+	}
+	return instances, nil
+}
+
+func (p *RenderProvider) doGet(ctx context.Context, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -62,46 +272,7 @@ func (p *RenderProvider) ListInstances(ctx context.Context, opts types.ListOptio
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("render API error %d: %s", resp.StatusCode, string(body))
 	}
-
-	var services []renderService
-	if err := json.Unmarshal(body, &services); err != nil {
-		return nil, err
-	}
-
-	var instances []types.Instance
-	for _, s := range services {
-		status := "running"
-		if s.Service.State == "suspended" || s.Service.State == "deactivated" {
-			status = "stopped"
-		}
-
-		var created time.Time
-		if s.Service.CreatedAt != "" {
-			created, _ = time.Parse(time.RFC3339, s.Service.CreatedAt)
-		}
-
-		region := s.Service.ServiceDetails.Region
-		if region == "" {
-			region = "oregon"
-		}
-
-		instances = append(instances, types.Instance{
-			ID:           s.Service.ID,
-			Name:         s.Service.Name,
-			CloudType:    "render",
-			Region:       region,
-			Status:       status,
-			InstanceType: s.Service.Type,
-			Spec: map[string]interface{}{
-				"plan":     s.Service.ServiceDetails.Plan,
-				"url":      s.Service.ServiceDetails.URL,
-				"slug":     s.Service.Slug,
-			},
-			CreatedAt: created,
-		})
-	}
-
-	return instances, nil
+	return body, nil
 }
 
 func (p *RenderProvider) GetInstance(ctx context.Context, id string) (*types.Instance, error) {
