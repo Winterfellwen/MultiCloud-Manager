@@ -21,12 +21,22 @@ func NewDatabase(dsn string) (*Database, error) {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		return nil, err
+	// Retry ping up to 3 times (handles Render free DB cold start)
+	var pingErr error
+	for i := 0; i < 3; i++ {
+		pingErr = db.Ping()
+		if pingErr == nil {
+			break
+		}
+		log.Printf("Database ping attempt %d failed: %v", i+1, pingErr)
+		time.Sleep(2 * time.Second)
+	}
+	if pingErr != nil {
+		return nil, pingErr
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(3)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	return &Database{db}, nil
