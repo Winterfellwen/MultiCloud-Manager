@@ -450,6 +450,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 
 <script>
 const API = '/api';
+const SESSION_ID = 'web-' + Date.now();
 const pageTitles = {
   dashboard: '仪表盘',
   chat: 'AI 云助手',
@@ -558,7 +559,7 @@ document.querySelectorAll('.nav-item, .tab-item').forEach(el => {
 /* API helper */
 async function apiFetch(url, options) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 2000);
+  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeout);
@@ -572,31 +573,32 @@ async function apiFetch(url, options) {
 /* Dashboard */
 async function loadDashboard() {
   let data = await apiFetch(API + '/stats');
-  if (!data) data = mockData.stats;
-  const grid = document.getElementById('statsGrid');
-  if (data) {
-    const labels = ['云资源', '云账号', 'Terraform', '团队成员'];
-    const keys = ['resources', 'accounts', 'terraform', 'members'];
-    const cards = grid.querySelectorAll('.stat-card');
-    cards.forEach((card, i) => {
-      card.querySelector('.stat-value').textContent = data[keys[i]] || '--';
-    });
-  }
+  if (data && data.stats) data = data.stats;
+  else data = mockData.stats;
+  if (!data) return;
+  const keys = ['resources', 'accounts', 'terraform', 'members'];
+  const cards = document.getElementById('statsGrid').querySelectorAll('.stat-card');
+  cards.forEach((card, i) => {
+    card.querySelector('.stat-value').textContent = data[keys[i]] != null ? data[keys[i]] : '--';
+  });
 }
 
 /* Chat */
-function sendChat() {
+async function sendChat() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
   appendMessage('user', text);
   document.getElementById('typingIndicator').classList.add('active');
-  setTimeout(() => {
-    document.getElementById('typingIndicator').classList.remove('active');
-    const response = getMockChatResponse(text);
-    appendMessage('agent', response);
-  }, 1200);
+  const data = await apiFetch(API + '/agent/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: text, session_id: SESSION_ID })
+  });
+  document.getElementById('typingIndicator').classList.remove('active');
+  const response = (data && data.reply) ? data.reply : getMockChatResponse(text);
+  appendMessage('agent', response);
 }
 
 function quickChat(text) {
@@ -627,15 +629,19 @@ function appendMessage(type, html) {
   container.scrollTop = container.scrollHeight;
 }
 
-function executePlan() {
+async function executePlan() {
+  await apiFetch(API + '/agent/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   appendMessage('system', '方案已提交执行');
 }
 
 /* Resources */
+let cachedResources = null;
+
 async function loadResources() {
   let data = await apiFetch(API + '/resources');
-  if (!data) data = mockData.resources;
-  renderResources(data);
+  if (data && data.resources) cachedResources = data.resources;
+  else cachedResources = mockData.resources;
+  renderResources(cachedResources);
 }
 
 function renderResources(list) {
@@ -664,7 +670,7 @@ function filterResources() {
   const cloud = document.getElementById('resCloudFilter').value;
   const status = document.getElementById('resStatusFilter').value;
   const search = document.getElementById('resSearch').value.toLowerCase();
-  let list = mockData.resources;
+  let list = cachedResources || mockData.resources;
   if (cloud) list = list.filter(r => r.cloud_type === cloud);
   if (status) list = list.filter(r => r.status === status);
   if (search) list = list.filter(r => r.name.toLowerCase().includes(search));
@@ -677,8 +683,13 @@ async function ctrlResource(id, action) {
 }
 
 /* Accounts */
-function loadAccounts() {
-  renderAccounts(mockData.accounts);
+let cachedAccounts = null;
+
+async function loadAccounts() {
+  let data = await apiFetch(API + '/accounts');
+  if (data && data.accounts) cachedAccounts = data.accounts;
+  else cachedAccounts = mockData.accounts;
+  renderAccounts(cachedAccounts);
 }
 
 function renderAccounts(list) {
@@ -695,7 +706,7 @@ function renderAccounts(list) {
         '<div class="account-icon ' + a.cloud_type + '">' + (cloudShorts[a.cloud_type] || '??') + '</div>' +
         '<div>' +
           '<div class="account-name">' + a.name + '</div>' +
-          '<div class="account-meta">' + cloudLabel + ' / ' + statusLabel + ' / 同步时间: ' + (a.last_sync || '未知') + '</div>' +
+          '<div class="account-meta">' + cloudLabel + ' / ' + statusLabel + ' / 同步时间: ' + (a.last_sync_at || a.last_sync || '未知') + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="account-actions">' +
@@ -705,9 +716,9 @@ function renderAccounts(list) {
   }).join('');
 }
 
-function deleteAccount(id) {
-  mockData.accounts = mockData.accounts.filter(a => a.id !== id);
-  renderAccounts(mockData.accounts);
+async function deleteAccount(id) {
+  await apiFetch(API + '/accounts/' + id, { method: 'DELETE' });
+  loadAccounts();
 }
 
 function toggleAccountForm() {
@@ -729,56 +740,60 @@ function selectCloud(cloud) {
   ).join('');
 }
 
-function submitAccount() {
+async function submitAccount() {
   if (!selectedCloud) { alert('请选择云平台'); return; }
   const config = cloudConfigs[selectedCloud];
-  const data = {};
-  config.forEach(f => {
-    data[f.key] = document.getElementById('field-' + f.key).value;
+  const formData = {};
+  config.forEach(f => { formData[f.key] = document.getElementById('field-' + f.key).value; });
+  await apiFetch(API + '/accounts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: selectedCloud + ' 账户',
+      cloud_type: selectedCloud,
+      credentials: JSON.stringify(formData)
+    })
   });
-  const newAccount = {
-    id: 'a' + Date.now(),
-    name: selectedCloud + ' 账户',
-    cloud_type: selectedCloud,
-    is_active: true,
-    last_sync: '刚刚'
-  };
-  mockData.accounts.push(newAccount);
-  renderAccounts(mockData.accounts);
   toggleAccountForm();
   selectedCloud = null;
   document.querySelectorAll('.cloud-option').forEach(o => o.classList.remove('selected'));
   document.getElementById('formFields').innerHTML = '';
-  alert('云账户添加成功');
+  loadAccounts();
 }
 
 /* Team */
-function loadTeam() {
-  const members = mockData.members;
+async function loadTeam() {
+  let data = await apiFetch(API + '/teams');
+  let members;
+  if (data && data.members) members = data.members;
+  else members = mockData.members;
   document.getElementById('teamCount').textContent = members.length;
   const container = document.getElementById('teamList');
   container.innerHTML = members.map(m =>
     '<div class="member-card">' +
       '<div class="member-left">' +
-        '<div class="member-avatar">' + m.avatar + '</div>' +
+        '<div class="member-avatar">' + (m.avatar || m.nickname?.[0] || 'U') + '</div>' +
         '<div>' +
-          '<div class="member-name">' + m.name + '</div>' +
-          '<div class="member-role ' + m.role + '">' + (m.role === 'admin' ? '管理员' : '成员') + '</div>' +
+          '<div class="member-name">' + (m.name || m.nickname || 'Unknown') + '</div>' +
+          '<div class="member-role ' + (m.role || 'member') + '">' + ((m.role || 'member') === 'admin' ? '管理员' : '成员') + '</div>' +
         '</div>' +
       '</div>' +
-      (m.role !== 'admin' ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')">移除</button>' : '<span style="font-size:12px;color:var(--text-secondary)">管理员</span>') +
+      ((m.role || 'member') !== 'admin' ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')">移除</button>' : '<span style="font-size:12px;color:var(--text-secondary)">管理员</span>') +
     '</div>'
   ).join('');
 }
 
-function removeMember(id) {
-  mockData.members = mockData.members.filter(m => m.id !== id);
+async function removeMember(id) {
+  await apiFetch(API + '/teams/' + id + '/members', { method: 'POST', body: '{}' });
   loadTeam();
 }
 
 /* Terraform */
-function loadTerraform() {
-  const templates = mockData.templates;
+async function loadTerraform() {
+  let data = await apiFetch(API + '/terraform/templates');
+  let templates;
+  if (data && data.templates) templates = data.templates;
+  else templates = mockData.templates;
   const container = document.getElementById('terraformList');
   if (!templates || templates.length === 0) {
     container.innerHTML = '<div class="empty-state">暂无模板</div>';
@@ -788,7 +803,7 @@ function loadTerraform() {
     '<div class="template-card">' +
       '<div class="template-info">' +
         '<div class="template-name">' + t.name + '</div>' +
-        '<div class="template-meta">v' + t.version + ' / ' + t.created_at + '</div>' +
+        '<div class="template-meta">v' + (t.version || 1) + ' / ' + (t.created_at || '') + '</div>' +
       '</div>' +
       '<div class="template-actions">' +
         '<button class="tf-action-btn" onclick="alert(\'Plan 执行中\')">Plan</button>' +
@@ -799,8 +814,8 @@ function loadTerraform() {
   ).join('');
 }
 
-function deleteTemplate(id) {
-  mockData.templates = mockData.templates.filter(t => t.id !== id);
+async function deleteTemplate(id) {
+  await apiFetch(API + '/terraform/templates/' + id, { method: 'DELETE' });
   loadTerraform();
 }
 

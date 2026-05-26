@@ -28,6 +28,10 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
+	// 统计
+	statsH := NewStatsHandler(db)
+	api.GET("/stats", statsH.GetStats)
+
 	// AI Agent 路由
 	agent := NewAgentHandler(db, redis)
 	agentGroup := api.Group("/agent")
@@ -82,11 +86,11 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 }
 
 // 占位符处理函数 (Terraform, Teams, Auth)
-func handleListTemplates(c *gin.Context)    { c.JSON(200, gin.H{"message": "list templates"}) }
+func handleListTemplates(c *gin.Context)    { c.JSON(200, gin.H{"templates": []gin.H{}}) }
 func handleUploadTemplate(c *gin.Context)   { c.JSON(200, gin.H{"message": "upload template"}) }
 func handlePlanTemplate(c *gin.Context)     { c.JSON(200, gin.H{"message": "plan template"}) }
 func handleApplyTemplate(c *gin.Context)    { c.JSON(200, gin.H{"message": "apply template"}) }
-func handleListTeams(c *gin.Context)        { c.JSON(200, gin.H{"message": "list teams"}) }
+func handleListTeams(c *gin.Context)        { c.JSON(200, gin.H{"members": []gin.H{}}) }
 func handleCreateTeam(c *gin.Context)       { c.JSON(200, gin.H{"message": "create team"}) }
 func handleAddTeamMember(c *gin.Context)    { c.JSON(200, gin.H{"message": "add team member"}) }
 func handleWechatLogin(c *gin.Context)      { c.JSON(200, gin.H{"message": "wechat login"}) }
