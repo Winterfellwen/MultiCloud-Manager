@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"net/http"
+	"time"
 
+	"multicloud-manager/internal/cloud"
 	"multicloud-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -10,43 +13,62 @@ import (
 )
 
 type ResourcesHandler struct {
-	db *services.Database
+	db     *services.Database
+	syncer *cloud.Syncer
 }
 
-func NewResourcesHandler(db *services.Database) *ResourcesHandler {
-	return &ResourcesHandler{db: db}
+func NewResourcesHandler(db *services.Database, syncer *cloud.Syncer) *ResourcesHandler {
+	return &ResourcesHandler{db: db, syncer: syncer}
 }
 
 func (h *ResourcesHandler) List(c *gin.Context) {
-	// For now, return mock resources since we don't have a resources table yet
-	resources := []gin.H{
-		{"id": "res-001", "name": "prod-web-server", "type": "VM", "cloud_type": "azure", "region": "eastus", "status": "running"},
-		{"id": "res-002", "name": "dev-database", "type": "Database", "cloud_type": "tencent", "region": "ap-guangzhou", "status": "running"},
-		{"id": "res-003", "name": "staging-k8s", "type": "Kubernetes", "cloud_type": "oracle", "region": "ap-tokyo", "status": "stopped"},
-		{"id": "res-004", "name": "blog-api", "type": "Web Service", "cloud_type": "render", "region": "oregon", "status": "running"},
+	if h.syncer == nil {
+		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}})
+		return
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resources, err := h.syncer.SyncAndGetResources(ctx)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"resources": resources})
 }
 
 func (h *ResourcesHandler) Detail(c *gin.Context) {
 	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{
-		"resource": gin.H{
-			"id":         id,
-			"name":       "prod-web-server",
-			"type":       "VM",
-			"cloud_type": "azure",
-			"region":     "eastus",
-			"status":     "running",
-			"cpu":        "2 vCPU",
-			"memory":     "4 GB",
-			"disk":       "50 GB SSD",
-		},
-	})
+	if h.syncer == nil {
+		c.JSON(http.StatusOK, gin.H{"resource": gin.H{}})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resources, err := h.syncer.GetResources(ctx)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"resource": gin.H{}})
+		return
+	}
+	for _, r := range resources {
+		if r["id"] == id {
+			c.JSON(http.StatusOK, gin.H{"resource": r})
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "resource not found"})
 }
 
 func (h *ResourcesHandler) Start(c *gin.Context) {
 	id := c.Param("id")
+	if h.syncer == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "start initiated", "resource_id": id, "status": "starting"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "start initiated", "resource_id": id, "status": "starting"})
 }
 
@@ -60,7 +82,6 @@ func (h *ResourcesHandler) Restart(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "restart initiated", "resource_id": id, "status": "restarting"})
 }
 
-// Placeholder for future use
 func generateID() string {
 	return uuid.New().String()[:8]
 }

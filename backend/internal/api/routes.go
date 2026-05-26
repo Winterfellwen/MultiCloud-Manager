@@ -2,6 +2,7 @@ package api
 
 import (
 	"multicloud-manager/config"
+	"multicloud-manager/internal/cloud"
 	"multicloud-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -54,7 +55,11 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 	}
 
 	// 资源管理
-	resourcesH := NewResourcesHandler(db)
+	syncer := &cloud.Syncer{}
+	if db != nil {
+		syncer = &cloud.Syncer{DB: db}
+	}
+	resourcesH := NewResourcesHandler(db, syncer)
 	resources := api.Group("/resources")
 	{
 		resources.GET("/", resourcesH.List)

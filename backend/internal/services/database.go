@@ -95,6 +95,29 @@ func (db *Database) Migrate() error {
 			execution_completed_at TIMESTAMP,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS resources_cache (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			account_id UUID,
+			resource_type VARCHAR(50) NOT NULL,
+			cloud_resource_id VARCHAR(255) NOT NULL,
+			cloud_region VARCHAR(50),
+			name VARCHAR(200),
+			status VARCHAR(50),
+			spec JSONB,
+			tags JSONB,
+			last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(account_id, cloud_resource_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS terraform_templates (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			team_id UUID NOT NULL,
+			name VARCHAR(100) NOT NULL,
+			description TEXT,
+			content TEXT NOT NULL,
+			variables JSONB,
+			version INTEGER DEFAULT 1,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE TABLE IF NOT EXISTS vault_audit_log (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			credential_ref VARCHAR(100) NOT NULL,
