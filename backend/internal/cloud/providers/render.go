@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -47,10 +48,6 @@ type renderService struct {
 	DashboardUrl string `json:"dashboardUrl"`
 }
 
-type renderPGItem struct {
-	Postgres renderPG `json:"postgres"`
-}
-
 type renderPG struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
@@ -65,10 +62,6 @@ type renderPG struct {
 	Suspended      string `json:"suspended"`
 	DashboardUrl   string `json:"dashboardUrl"`
 	CreatedAt      string `json:"createdAt"`
-}
-
-type renderKVItem struct {
-	KeyValue renderKV `json:"keyValue"`
 }
 
 type renderKV struct {
@@ -91,21 +84,28 @@ type renderListResponse[T any] struct {
 func (p *RenderProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
 	instances, err := p.listServices(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list services: %w", err)
+		log.Printf("render: list services error: %v", err)
+		// continue with empty list so postgres/kv can still be fetched
+		instances = nil
 	}
 
 	pgs, err := p.listPostgres(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list postgres: %w", err)
+		log.Printf("render: list postgres error: %v", err)
+	} else {
+		instances = append(instances, pgs...)
 	}
-	instances = append(instances, pgs...)
 
 	kvs, err := p.listKeyValue(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list key-value: %w", err)
+		log.Printf("render: list key-value error: %v", err)
+	} else {
+		instances = append(instances, kvs...)
 	}
-	instances = append(instances, kvs...)
 
+	if instances == nil {
+		return nil, fmt.Errorf("all Render API calls failed")
+	}
 	return instances, nil
 }
 
@@ -163,14 +163,21 @@ func (p *RenderProvider) listPostgres(ctx context.Context) ([]types.Instance, er
 		return nil, err
 	}
 
-	var items []renderPGItem
-	if err := json.Unmarshal(body, &items); err != nil {
-		return nil, err
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("postgres raw unmarshal: %w", err)
 	}
 
 	var instances []types.Instance
-	for _, item := range items {
-		pg := item.Postgres
+	for _, item := range raw {
+		pgData, ok := item["postgres"]
+		if !ok {
+			continue
+		}
+		var pg renderPG
+		if err := json.Unmarshal(pgData, &pg); err != nil {
+			continue
+		}
 		status := "running"
 		if pg.Status != "available" || pg.Suspended != "not_suspended" {
 			status = "stopped"
@@ -213,14 +220,21 @@ func (p *RenderProvider) listKeyValue(ctx context.Context) ([]types.Instance, er
 		return nil, err
 	}
 
-	var items []renderKVItem
-	if err := json.Unmarshal(body, &items); err != nil {
-		return nil, err
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("key-value raw unmarshal: %w", err)
 	}
 
 	var instances []types.Instance
-	for _, item := range items {
-		kv := item.KeyValue
+	for _, item := range raw {
+		kvData, ok := item["keyValue"]
+		if !ok {
+			continue
+		}
+		var kv renderKV
+		if err := json.Unmarshal(kvData, &kv); err != nil {
+			continue
+		}
 		status := "running"
 		if kv.Status != "available" {
 			status = "stopped"
