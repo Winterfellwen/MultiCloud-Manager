@@ -33,6 +33,27 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 	statsH := NewStatsHandler(db)
 	api.GET("/stats", statsH.GetStats)
 
+	// 调试
+	api.GET("/debug/db", func(c *gin.Context) {
+		if db == nil {
+			c.JSON(200, gin.H{"db": nil})
+			return
+		}
+		var tableCount int
+		db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&tableCount)
+		tables := []string{}
+		rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var name string
+				rows.Scan(&name)
+				tables = append(tables, name)
+			}
+		}
+		c.JSON(200, gin.H{"db": "connected", "tables": tables, "table_count": tableCount})
+	})
+
 	// AI Agent 路由
 	agent := NewAgentHandler(db, redis)
 	agentGroup := api.Group("/agent")
