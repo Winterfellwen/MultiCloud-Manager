@@ -177,6 +177,16 @@ func (db *Database) Migrate() error {
 			detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			metadata JSONB
 		)`,
+		`CREATE TABLE IF NOT EXISTS ai_config (
+			id SERIAL PRIMARY KEY,
+			api_endpoint VARCHAR(500) NOT NULL DEFAULT 'https://api.openai.com/v1',
+			model VARCHAR(100) NOT NULL DEFAULT 'gpt-4o-mini',
+			api_key VARCHAR(500) NOT NULL DEFAULT '',
+			enable_reasoning BOOLEAN NOT NULL DEFAULT false,
+			reasoning_effort VARCHAR(20) NOT NULL DEFAULT 'medium',
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`INSERT INTO ai_config (id, api_endpoint, model) VALUES (1, 'https://api.openai.com/v1', 'gpt-4o-mini') ON CONFLICT (id) DO NOTHING`,
 	}
 
 	for i, query := range queries {

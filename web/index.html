@@ -121,6 +121,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 .plan-execute-btn { background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 6px 16px; font-size: 13px; cursor: pointer; margin-top: 8px; transition: background .2s; }
 .plan-execute-btn:hover { background: var(--primary-hover); }
 
+/* AI Config Modal */
+.chat-header-actions { display: flex; align-items: center; gap: 8px; }
+.chat-settings-btn { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); transition: all .2s; line-height: 1; cursor: pointer; }
+.chat-settings-btn:hover { color: var(--primary); background: var(--surface); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-box h3 { margin: 0 0 4px; font-size: 18px; }
+.modal-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+.modal-field { margin-bottom: 16px; }
+.modal-field label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+.modal-field input, .modal-field select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text); font-size: 14px; outline: none; box-sizing: border-box; }
+.modal-field input:focus, .modal-field select:focus { border-color: var(--primary); }
+.modal-field-row { display: flex; align-items: center; gap: 12px; }
+.modal-field-row input[type="checkbox"] { width: auto; accent-color: var(--primary); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.modal-actions button { padding: 8px 20px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; border: none; transition: background .2s; }
+.modal-btn-primary { background: var(--primary); color: #fff; }
+.modal-btn-primary:hover { background: var(--primary-hover); }
+.modal-btn-cancel { background: var(--surface); color: var(--text); border: 1px solid var(--border) !important; }
+.modal-btn-cancel:hover { background: var(--border); }
+
 /* Resources */
 .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .filter-bar select, .filter-bar input { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text); font-size: 13px; outline: none; }
@@ -315,12 +337,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
     <div class="chat-container">
       <div class="chat-header">
         <h2>AI 云助手</h2>
-        <select id="chatMode">
-          <option value="plan">仅生成方案</option>
-          <option value="confirm">分步确认</option>
-          <option value="review" selected>风险审查模式</option>
-          <option value="auto">全自动执行</option>
-        </select>
+        <div class="chat-header-actions">
+          <select id="chatMode">
+            <option value="plan">仅生成方案</option>
+            <option value="confirm">分步确认</option>
+            <option value="review" selected>风险审查模式</option>
+            <option value="auto">全自动执行</option>
+          </select>
+          <button class="chat-settings-btn" onclick="openAIConfig()" title="AI 配置">⚙</button>
+        </div>
       </div>
       <div class="chat-quick-actions">
         <button class="chat-quick-btn" onclick="quickChat('查看当前所有云账户')">查看账户</button>
@@ -339,6 +364,44 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
       <div class="chat-input-bar">
         <input type="text" id="chatInput" placeholder="输入你的问题..." onkeydown="if(event.key==='Enter')sendChat()">
         <button onclick="sendChat()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Config Modal -->
+  <div class="modal-overlay" id="aiConfigModal">
+    <div class="modal-box">
+      <h3>AI 模型配置</h3>
+      <div class="modal-desc">配置 AI 云助手的语言模型，支持任何 OpenAI 兼容的 API。未配置时使用内置规则回复。</div>
+      <div class="modal-field">
+        <label>API 端点</label>
+        <input type="text" id="aiApiEndpoint" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="modal-field">
+        <label>模型</label>
+        <input type="text" id="aiModel" placeholder="gpt-4o-mini">
+      </div>
+      <div class="modal-field">
+        <label>API Key</label>
+        <input type="password" id="aiApiKey" placeholder="sk-...">
+      </div>
+      <div class="modal-field">
+        <div class="modal-field-row">
+          <input type="checkbox" id="aiEnableReasoning" onchange="toggleReasoningEffort()">
+          <label style="margin:0">启用推理（Reasoning，适用于 o1 / o3 / DeepSeek-R1 等）</label>
+        </div>
+      </div>
+      <div class="modal-field" id="aiReasoningEffortField" style="display:none">
+        <label>推理强度</label>
+        <select id="aiReasoningEffort">
+          <option value="low">低 (low)</option>
+          <option value="medium" selected>中 (medium)</option>
+          <option value="high">高 (high)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" onclick="closeAIConfig()">取消</button>
+        <button class="modal-btn-primary" onclick="saveAIConfig()">保存</button>
       </div>
     </div>
   </div>
@@ -598,7 +661,7 @@ async function sendChat() {
     body: JSON.stringify({ message: text, session_id: SESSION_ID })
   });
   document.getElementById('typingIndicator').classList.remove('active');
-  const response = (data && data.reply) ? data.reply : getMockChatResponse(text);
+  const response = (data && data.message) ? data.message : getMockChatResponse(text);
   appendMessage('agent', response);
 }
 
@@ -840,6 +903,55 @@ async function loadTerraform() {
 async function deleteTemplate(id) {
   await apiFetch(API + '/terraform/templates/' + id, { method: 'DELETE' });
   loadTerraform();
+}
+
+/* AI Config */
+var aiConfigLoaded = false;
+
+function toggleReasoningEffort() {
+  document.getElementById('aiReasoningEffortField').style.display =
+    document.getElementById('aiEnableReasoning').checked ? 'block' : 'none';
+}
+
+function openAIConfig() {
+  document.getElementById('aiConfigModal').classList.add('active');
+  if (!aiConfigLoaded) loadAIConfig();
+}
+
+function closeAIConfig() {
+  document.getElementById('aiConfigModal').classList.remove('active');
+}
+
+async function loadAIConfig() {
+  var data = await apiFetch(API + '/agent/config');
+  if (data) {
+    document.getElementById('aiApiEndpoint').value = data.api_endpoint || 'https://api.openai.com/v1';
+    document.getElementById('aiModel').value = data.model || 'gpt-4o-mini';
+    document.getElementById('aiApiKey').value = data.api_key || '';
+    document.getElementById('aiEnableReasoning').checked = !!data.enable_reasoning;
+    document.getElementById('aiReasoningEffort').value = data.reasoning_effort || 'medium';
+    toggleReasoningEffort();
+    aiConfigLoaded = true;
+  }
+}
+
+async function saveAIConfig() {
+  var body = {
+    api_endpoint: document.getElementById('aiApiEndpoint').value || 'https://api.openai.com/v1',
+    model: document.getElementById('aiModel').value || 'gpt-4o-mini',
+    api_key: document.getElementById('aiApiKey').value || '',
+    enable_reasoning: document.getElementById('aiEnableReasoning').checked,
+    reasoning_effort: document.getElementById('aiReasoningEffort').value
+  };
+  var result = await apiFetch(API + '/agent/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (result) {
+    closeAIConfig();
+    alert('配置已保存');
+  }
 }
 
 /* Init */

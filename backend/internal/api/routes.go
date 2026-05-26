@@ -65,6 +65,8 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		agentGroup.POST("/execute", agent.Execute)
 		agentGroup.GET("/sessions", agent.ListSessions)
 		agentGroup.GET("/sessions/:id", agent.SessionDetail)
+		agentGroup.GET("/config", agent.config.Get)
+		agentGroup.PUT("/config", agent.config.Update)
 	}
 
 	// 云账户管理

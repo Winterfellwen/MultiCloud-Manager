@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -16,13 +17,28 @@ import (
 )
 
 type AgentHandler struct {
-	db  *services.Database
-	rdb *services.RedisClient
+	db     *services.Database
+	rdb    *services.RedisClient
+	config *ConfigHandler
 }
 
 func NewAgentHandler(db *services.Database, rdb *services.RedisClient) *AgentHandler {
-	return &AgentHandler{db: db, rdb: rdb}
+	return &AgentHandler{
+		db:     db,
+		rdb:    rdb,
+		config: NewConfigHandler(db),
+	}
 }
+
+const systemPrompt = `你是 MultiCloud Manager 的 AI 云助手，帮助用户管理多云资源（Azure、腾讯云、Oracle Cloud、Render）。
+你可以帮助用户：
+- 查看和管理云账户
+- 查看云资源列表
+- 创建、启动、停止、重启资源
+- 执行 Terraform 模板
+- 管理团队
+
+请用中文回复，保持简洁专业。对于需要实际操作的任务（创建/删除资源等），请先生成方案供用户确认后再执行。`
 
 func (h *AgentHandler) Chat(c *gin.Context) {
 	var req struct {
@@ -81,9 +97,27 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 }
 
 func (h *AgentHandler) processMessage(msg string, sessionID string) string {
+	if h.db != nil {
+		cfg := h.config.loadConfig()
+		if cfg.APIKey != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+			defer cancel()
+			reply, err := callLLM(ctx, cfg.APIEndpoint, cfg.Model, cfg.APIKey,
+				cfg.EnableReasoning, cfg.ReasoningEffort, systemPrompt, msg)
+			if err == nil {
+				return reply
+			}
+			log.Printf("LLM call failed: %v", err)
+		}
+	}
+
+	// Fallback to rule-based
+	return h.ruleReply(msg)
+}
+
+func (h *AgentHandler) ruleReply(msg string) string {
 	msgLower := strings.ToLower(msg)
 
-	// Intent routing
 	switch {
 	case strings.Contains(msgLower, "账户") || strings.Contains(msgLower, "account"):
 		return h.handleAccountIntent(msg)
