@@ -359,9 +359,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
         <option value="stopped">已停止</option>
       </select>
       <input type="text" id="resSearch" placeholder="搜索资源..." oninput="filterResources()">
+      <span id="lastSyncLabel" style="font-size:12px;color:var(--text-secondary);margin-left:8px;white-space:nowrap"></span>
+      <button class="resource-action-btn" onclick="syncResources()" style="margin-left:auto">同步</button>
     </div>
     <div id="resourcesList"></div>
-    <button class="load-more" onclick="loadResources()">加载更多</button>
   </div>
 
   <!-- Accounts -->
@@ -639,9 +640,31 @@ let cachedResources = null;
 
 async function loadResources() {
   let data = await apiFetch(API + '/resources');
-  if (data) cachedResources = data.resources || [];
-  else cachedResources = mockData.resources;
+  if (data) {
+    cachedResources = data.resources || [];
+    if (data.last_sync) {
+      document.getElementById('lastSyncLabel').textContent = '上次同步: ' + new Date(data.last_sync).toLocaleTimeString();
+    }
+  } else {
+    cachedResources = mockData.resources;
+  }
   renderResources(cachedResources);
+}
+
+async function syncResources() {
+  const btn = document.getElementById('resourcesList').previousElementSibling.querySelector('button');
+  btn.textContent = '同步中...';
+  btn.disabled = true;
+  let data = await apiFetch(API + '/resources/sync', { method: 'POST' });
+  if (data) {
+    cachedResources = data.resources || [];
+    if (data.last_sync) {
+      document.getElementById('lastSyncLabel').textContent = '上次同步: ' + new Date(data.last_sync).toLocaleTimeString();
+    }
+  }
+  renderResources(cachedResources);
+  btn.textContent = '同步';
+  btn.disabled = false;
 }
 
 function renderResources(list) {
@@ -679,7 +702,7 @@ function filterResources() {
 
 async function ctrlResource(id, action) {
   await apiFetch(API + '/resources/' + id + '/' + action, { method: 'POST' });
-  loadResources();
+  await syncResources();
 }
 
 /* Accounts */

@@ -6,37 +6,92 @@ import (
 	"time"
 
 	"multicloud-manager/internal/cloud"
-	"multicloud-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type ResourcesHandler struct {
-	db     *services.Database
 	syncer *cloud.Syncer
 }
 
-func NewResourcesHandler(db *services.Database, syncer *cloud.Syncer) *ResourcesHandler {
-	return &ResourcesHandler{db: db, syncer: syncer}
+func NewResourcesHandler(syncer *cloud.Syncer) *ResourcesHandler {
+	return &ResourcesHandler{syncer: syncer}
 }
 
+// List returns cached resources (fast, no API calls)
 func (h *ResourcesHandler) List(c *gin.Context) {
 	if h.syncer == nil {
-		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}})
+		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}, "last_sync": nil})
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	resources, err := h.syncer.SyncAndGetResources(ctx)
+	resources, err := h.syncer.GetResources(ctx)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}, "last_sync": nil})
+		return
+	}
+
+	lastSync := h.syncer.GetLastSync()
+	var lastSyncStr *string
+	if !lastSync.IsZero() {
+		s := lastSync.Format(time.RFC3339)
+		lastSyncStr = &s
+	}
+
+	c.JSON(http.StatusOK, gin.H{"resources": resources, "last_sync": lastSyncStr})
+}
+
+// Sync triggers an immediate background sync, returns current cache
+func (h *ResourcesHandler) Sync(c *gin.Context) {
+	if h.syncer == nil {
+		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}, "last_sync": nil})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	if err := h.syncer.SyncAll(ctx); err != nil {
+		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		return
+	}
+
+	resources, err := h.syncer.GetResources(ctx)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"resources": []gin.H{}})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"resources": resources})
+	lastSync := h.syncer.GetLastSync()
+	var lastSyncStr *string
+	if !lastSync.IsZero() {
+		s := lastSync.Format(time.RFC3339)
+		lastSyncStr = &s
+	}
+
+	c.JSON(http.StatusOK, gin.H{"resources": resources, "last_sync": lastSyncStr})
+}
+
+func (h *ResourcesHandler) ListDeletions(c *gin.Context) {
+	if h.syncer == nil {
+		c.JSON(http.StatusOK, gin.H{"deletions": []gin.H{}})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	deletions, err := h.syncer.GetDeletions(ctx)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"deletions": []gin.H{}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"deletions": deletions})
 }
 
 func (h *ResourcesHandler) Detail(c *gin.Context) {
@@ -46,7 +101,7 @@ func (h *ResourcesHandler) Detail(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	resources, err := h.syncer.GetResources(ctx)
@@ -65,10 +120,6 @@ func (h *ResourcesHandler) Detail(c *gin.Context) {
 
 func (h *ResourcesHandler) Start(c *gin.Context) {
 	id := c.Param("id")
-	if h.syncer == nil {
-		c.JSON(http.StatusOK, gin.H{"message": "start initiated", "resource_id": id, "status": "starting"})
-		return
-	}
 	c.JSON(http.StatusOK, gin.H{"message": "start initiated", "resource_id": id, "status": "starting"})
 }
 

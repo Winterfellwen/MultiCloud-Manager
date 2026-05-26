@@ -24,6 +24,7 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 
 	var accounts, resources, terraform, members int
 	h.db.QueryRow("SELECT COUNT(*) FROM cloud_accounts").Scan(&accounts)
+	h.db.QueryRow("SELECT COUNT(*) FROM resources_cache").Scan(&resources)
 	h.db.QueryRow("SELECT COUNT(*) FROM users WHERE team_id IS NOT NULL").Scan(&members)
 
 	c.JSON(http.StatusOK, gin.H{

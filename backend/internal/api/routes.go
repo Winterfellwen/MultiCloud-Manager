@@ -1,8 +1,9 @@
 package api
 
-
-
 import (
+	"context"
+	"time"
+
 	"multicloud-manager/config"
 	"multicloud-manager/internal/cloud"
 	"multicloud-manager/internal/services"
@@ -81,11 +82,14 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 	syncer := &cloud.Syncer{}
 	if db != nil {
 		syncer = &cloud.Syncer{DB: db}
+		syncer.Start(context.Background(), 60*time.Second)
 	}
-	resourcesH := NewResourcesHandler(db, syncer)
+	resourcesH := NewResourcesHandler(syncer)
 	resources := api.Group("/resources")
 	{
 		resources.GET("/", resourcesH.List)
+		resources.POST("/sync", resourcesH.Sync)
+		resources.GET("/deletions", resourcesH.ListDeletions)
 		resources.GET("/:id", resourcesH.Detail)
 		resources.POST("/:id/start", resourcesH.Start)
 		resources.POST("/:id/stop", resourcesH.Stop)

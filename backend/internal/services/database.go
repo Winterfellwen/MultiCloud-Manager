@@ -163,6 +163,20 @@ func (db *Database) Migrate() error {
 			error_message TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS resource_deletions (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			resource_cache_id UUID,
+			account_id UUID NOT NULL,
+			cloud_resource_id VARCHAR(255) NOT NULL,
+			cloud_type VARCHAR(20) NOT NULL,
+			resource_name VARCHAR(200),
+			resource_type VARCHAR(50),
+			deletion_type VARCHAR(20) NOT NULL,
+			deleted_by UUID,
+			deleted_by_username VARCHAR(100),
+			detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			metadata JSONB
+		)`,
 	}
 
 	for i, query := range queries {
