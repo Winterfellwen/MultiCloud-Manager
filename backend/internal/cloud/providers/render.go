@@ -26,11 +26,6 @@ func NewRenderProvider(creds map[string]string) *RenderProvider {
 
 func (p *RenderProvider) GetType() string { return "render" }
 
-// API response wrappers (each has a "value" array of items with cursor)
-type renderServiceItem struct {
-	Service renderService `json:"service"`
-}
-
 type renderService struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
@@ -76,11 +71,6 @@ type renderKV struct {
 	CreatedAt    string `json:"createdAt"`
 }
 
-// Generic wrapper for paginated responses
-type renderListResponse[T any] struct {
-	Value []T `json:"value"`
-}
-
 func (p *RenderProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
 	instances, err := p.listServices(ctx)
 	if err != nil {
@@ -115,14 +105,21 @@ func (p *RenderProvider) listServices(ctx context.Context) ([]types.Instance, er
 		return nil, err
 	}
 
-	var resp renderListResponse[renderServiceItem]
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, err
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("services raw unmarshal: %w", err)
 	}
 
 	var instances []types.Instance
-	for _, item := range resp.Value {
-		s := item.Service
+	for _, item := range raw {
+		srvData, ok := item["service"]
+		if !ok {
+			continue
+		}
+		var s renderService
+		if err := json.Unmarshal(srvData, &s); err != nil {
+			continue
+		}
 		status := "running"
 		if s.State == "suspended" || s.State == "deactivated" || s.Suspended != "not_suspended" {
 			status = "stopped"
