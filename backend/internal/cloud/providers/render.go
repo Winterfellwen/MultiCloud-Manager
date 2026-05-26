@@ -163,13 +163,13 @@ func (p *RenderProvider) listPostgres(ctx context.Context) ([]types.Instance, er
 		return nil, err
 	}
 
-	var resp renderListResponse[renderPGItem]
-	if err := json.Unmarshal(body, &resp); err != nil {
+	var items []renderPGItem
+	if err := json.Unmarshal(body, &items); err != nil {
 		return nil, err
 	}
 
 	var instances []types.Instance
-	for _, item := range resp.Value {
+	for _, item := range items {
 		pg := item.Postgres
 		status := "running"
 		if pg.Status != "available" || pg.Suspended != "not_suspended" {
@@ -213,13 +213,13 @@ func (p *RenderProvider) listKeyValue(ctx context.Context) ([]types.Instance, er
 		return nil, err
 	}
 
-	var resp renderListResponse[renderKVItem]
-	if err := json.Unmarshal(body, &resp); err != nil {
+	var items []renderKVItem
+	if err := json.Unmarshal(body, &items); err != nil {
 		return nil, err
 	}
 
 	var instances []types.Instance
-	for _, item := range resp.Value {
+	for _, item := range items {
 		kv := item.KeyValue
 		status := "running"
 		if kv.Status != "available" {
