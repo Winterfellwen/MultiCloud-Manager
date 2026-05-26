@@ -639,7 +639,7 @@ let cachedResources = null;
 
 async function loadResources() {
   let data = await apiFetch(API + '/resources');
-  if (data && data.resources) cachedResources = data.resources;
+  if (data) cachedResources = data.resources || [];
   else cachedResources = mockData.resources;
   renderResources(cachedResources);
 }

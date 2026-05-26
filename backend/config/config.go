@@ -18,7 +18,7 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:     getEnv("DATABASE_URL", ""),
+		DatabaseURL:     getEnv("DATABASE_URL", "postgresql://multicloud_db_hwsf_user:0Yjdwn65XrxH8h5PyUaBaiN3hozLRwav@dpg-d8avf49akrks73d7d2h0-a/multicloud_db_hwsf"),
 		RedisURL:        os.Getenv("REDIS_URL"),
 		JWTSecret:       getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		EncryptionKey:   getEnv("ENCRYPTION_KEY", ""),

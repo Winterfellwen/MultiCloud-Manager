@@ -21,17 +21,19 @@ func NewDatabase(dsn string) (*Database, error) {
 		return nil, err
 	}
 
-	// Retry ping up to 3 times (handles Render free DB cold start)
+	// Retry ping up to 10 times for Render free PostgreSQL cold start
 	var pingErr error
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 10; i++ {
 		pingErr = db.Ping()
 		if pingErr == nil {
+			log.Printf("Database connected after %d attempt(s)", i+1)
 			break
 		}
-		log.Printf("Database ping attempt %d failed: %v", i+1, pingErr)
-		time.Sleep(2 * time.Second)
+		log.Printf("Database ping attempt %d/10 failed: %v", i+1, pingErr)
+		time.Sleep(3 * time.Second)
 	}
 	if pingErr != nil {
+		db.Close()
 		return nil, pingErr
 	}
 
@@ -39,7 +41,30 @@ func NewDatabase(dsn string) (*Database, error) {
 	db.SetMaxIdleConns(3)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
+	// Run migrations
+	if err := (&Database{db}).Migrate(); err != nil {
+		log.Printf("WARNING: Migration failed (tables may already exist): %v", err)
+	}
+
 	return &Database{db}, nil
+}
+
+// NewDatabaseWithFallback tries multiple DSNs in sequence
+func NewDatabaseWithFallback(dsns ...string) (*Database, error) {
+	var lastErr error
+	for i, dsn := range dsns {
+		if dsn == "" {
+			continue
+		}
+		log.Printf("Trying database connection %d/%d...", i+1, len(dsns))
+		db, err := NewDatabase(dsn)
+		if err == nil {
+			return db, nil
+		}
+		lastErr = err
+		log.Printf("Connection %d failed: %v", i+1, err)
+	}
+	return nil, fmt.Errorf("all connection attempts failed: %w", lastErr)
 }
 
 func (db *Database) Migrate() error {

@@ -22,12 +22,13 @@ func main() {
 		db, err = services.NewDatabase(cfg.DatabaseURL)
 		if err != nil {
 			log.Printf("WARNING: Database connection failed: %v", err)
-			log.Println("Starting in dev mode (no database)")
+			db = nil
 		} else {
 			defer db.Close()
 			log.Println("Database connected")
 		}
-	} else {
+	}
+	if db == nil {
 		log.Println("Starting in dev mode (no database)")
 	}
 
