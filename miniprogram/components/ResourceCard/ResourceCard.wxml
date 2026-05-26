@@ -1,0 +1,20 @@
+<view class="resource-card">
+  <view class="card-header">
+    <text class="resource-name">{{resourceName}}</text>
+    <view class="platform-tag platform-{{platform}}">{{platform}}</view>
+  </view>
+  <view class="card-body">
+    <view class="info-row">
+      <text class="info-label">状态</text>
+      <text class="info-value status-{{status}}">{{status}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">区域</text>
+      <text class="info-value">{{region}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">规格</text>
+      <text class="info-value">{{spec}}</text>
+    </view>
+  </view>
+</view>

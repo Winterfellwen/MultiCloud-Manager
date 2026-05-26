@@ -1,0 +1,1 @@
+<button class="operation-btn type-{{type}}" disabled="{{disabled}}" bindtap="onTap">{{text}}</button>

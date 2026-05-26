@@ -1,0 +1,23 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">团队成员</text>
+    <button class="btn-invite">+ 邀请成员</button>
+  </view>
+
+  <view class="member-list">
+    <view class="member-card" wx:for="{{members}}" wx:key="id" wx:for-empty="empty">
+      <view class="member-avatar">{{item.name ? item.name[0] : '?'}}</view>
+      <view class="member-info">
+        <text class="member-name">{{item.name}}</text>
+        <text class="member-role">{{item.role}}</text>
+      </view>
+      <status-badge status="{{item.status === 'active' ? 'success' : 'normal'}}" text="{{item.status === 'active' ? '在线' : '离线'}}"></status-badge>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{members.length === 0}}">
+    <text class="empty-icon">👥</text>
+    <text class="empty-text">暂无团队成员</text>
+    <text class="empty-hint">邀请成员加入您的团队协作管理云资源</text>
+  </view>
+</view>

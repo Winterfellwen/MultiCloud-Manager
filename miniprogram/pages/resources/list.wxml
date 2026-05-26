@@ -1,0 +1,42 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">云资源</text>
+  </view>
+
+  <view class="filter-bar">
+    <picker class="filter-picker" value="{{cloudIndex}}" range="{{cloudTypes}}" bindchange="onCloudFilter">
+      <view class="filter-display">{{cloudTypes[cloudIndex]}} ▼</view>
+    </picker>
+    <picker class="filter-picker" value="{{statusIndex}}" range="{{statusTypes}}" bindchange="onStatusFilter">
+      <view class="filter-display">{{statusTypes[statusIndex]}} ▼</view>
+    </picker>
+  </view>
+
+  <view class="resource-list">
+    <view class="resource-card" wx:for="{{filteredResources}}" wx:key="id" wx:for-empty="empty">
+      <view class="card-top">
+        <view class="resource-info">
+          <text class="resource-name">{{item.name}}</text>
+          <view class="resource-tags">
+            <text class="tag tag-{{item.provider}}">{{item.providerLabel}}</text>
+            <status-badge status="{{item.status === 'running' ? 'success' : 'warning'}}" text="{{item.status}}"></status-badge>
+          </view>
+        </view>
+        <view class="resource-actions">
+          <button class="btn-action btn-start" wx:if="{{item.status === 'stopped'}}" bindtap="onStart" data-id="{{item.id}}">启动</button>
+          <button class="btn-action btn-stop" wx:if="{{item.status === 'running'}}" bindtap="onStop" data-id="{{item.id}}">停止</button>
+        </view>
+      </view>
+      <view class="card-meta">
+        <text class="meta-item">区域: {{item.region}}</text>
+        <text class="meta-item">规格: {{item.spec}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{filteredResources.length === 0}}">
+    <text class="empty-icon">☁️</text>
+    <text class="empty-text">暂无云资源</text>
+    <text class="empty-hint">请先添加云账号并创建资源</text>
+  </view>
+</view>

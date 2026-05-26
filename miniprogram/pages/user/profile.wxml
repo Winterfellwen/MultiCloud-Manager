@@ -1,0 +1,42 @@
+<view class="container">
+  <view class="profile-header">
+    <view class="avatar">{{userInfo ? userInfo.name[0] : 'U'}}</view>
+    <text class="user-name">{{userInfo ? userInfo.name : '未登录'}}</text>
+    <text class="user-email">{{userInfo ? userInfo.email : '请登录后使用'}}</text>
+  </view>
+
+  <view class="settings-card">
+    <view class="setting-item">
+      <text class="setting-label">🌙 深色模式</text>
+      <switch checked="{{theme === 'dark'}}" bindchange="onThemeToggle" color="#6366f1"/>
+    </view>
+    <view class="setting-item">
+      <text class="setting-label">🔔 消息通知</text>
+      <switch checked="{{notifyEnabled}}" bindchange="onNotifyToggle" color="#6366f1"/>
+    </view>
+  </view>
+
+  <view class="settings-card">
+    <navigator url="/pages/accounts/list" class="setting-item nav-item">
+      <text class="setting-label">🔑 云账号管理</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+    <navigator url="/pages/team/members" class="setting-item nav-item">
+      <text class="setting-label">👥 团队管理</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+    <navigator url="/pages/terraform/list" class="setting-item nav-item">
+      <text class="setting-label">📦 Terraform 配置</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+  </view>
+
+  <view class="about-card">
+    <view class="setting-item">
+      <text class="setting-label">版本</text>
+      <text class="setting-value">1.0.0</text>
+    </view>
+  </view>
+
+  <button class="btn-logout" bindtap="onLogout">退出登录</button>
+</view>

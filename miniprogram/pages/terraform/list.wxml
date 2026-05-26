@@ -1,0 +1,25 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">Terraform</text>
+    <navigator url="/pages/terraform/upload" class="btn-upload">+ 上传配置</navigator>
+  </view>
+
+  <view class="tf-list">
+    <view class="tf-card" wx:for="{{configs}}" wx:key="id" wx:for-empty="empty">
+      <view class="tf-info">
+        <text class="tf-name">{{item.name}}</text>
+        <text class="tf-provider">{{item.provider}}</text>
+      </view>
+      <view class="tf-meta">
+        <text class="tf-date">{{item.updatedAt}}</text>
+        <button class="btn-apply" bindtap="onApply" data-id="{{item.id}}">部署</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{configs.length === 0}}">
+    <text class="empty-icon">📦</text>
+    <text class="empty-text">暂无 Terraform 配置</text>
+    <text class="empty-hint">上传 Terraform 配置文件来管理基础设施</text>
+  </view>
+</view>

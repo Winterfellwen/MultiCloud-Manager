@@ -1,0 +1,46 @@
+<!--pages/index/index.wxml-->
+<view class="container">
+  <view class="header">
+    <text class="title">多云管理平台</text>
+    <text class="subtitle">统一管理您的云资源</text>
+  </view>
+
+  <view class="stats-section">
+    <view class="stat-card" wx:for="{{stats}}" wx:key="title">
+      <text class="stat-value">{{item.value}}</text>
+      <text class="stat-label">{{item.title}}</text>
+    </view>
+  </view>
+
+  <view class="quick-actions">
+    <text class="section-title">快捷操作</text>
+    <view class="action-grid">
+      <navigator url="/pages/resources/list" class="action-item">
+        <text class="action-icon">☁️</text>
+        <text class="action-text">资源列表</text>
+      </navigator>
+      <navigator url="/pages/accounts/list" class="action-item">
+        <text class="action-icon">👤</text>
+        <text class="action-text">账号管理</text>
+      </navigator>
+      <navigator url="/pages/terraform/list" class="action-item">
+        <text class="action-icon">📦</text>
+        <text class="action-text">Terraform</text>
+      </navigator>
+      <navigator url="/pages/team/members" class="action-item">
+        <text class="action-icon">👥</text>
+        <text class="action-text">团队成员</text>
+      </navigator>
+    </view>
+  </view>
+
+  <view class="recent-section" wx:if="{{recentResources.length > 0}}">
+    <text class="section-title">最近资源</text>
+    <view class="resource-list">
+      <view class="resource-item" wx:for="{{recentResources}}" wx:key="id">
+        <text class="resource-name">{{item.name}}</text>
+        <text class="resource-provider">{{item.provider}}</text>
+      </view>
+    </view>
+  </view>
+</view>

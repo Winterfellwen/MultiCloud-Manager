@@ -1,0 +1,33 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">云账号</text>
+    <navigator url="/pages/accounts/add" class="btn-add">+ 添加云账户</navigator>
+  </view>
+
+  <view class="account-list">
+    <view class="account-card" wx:for="{{accounts}}" wx:key="id" wx:for-empty="empty">
+      <view class="account-info">
+        <view class="account-icon {{'cloud-' + item.provider}}">
+          <text wx:if="{{item.provider === 'azure'}}">☁️</text>
+          <text wx:elif="{{item.provider === 'tencent'}}">🌐</text>
+          <text wx:elif="{{item.provider === 'oracle'}}">🔶</text>
+          <text wx:elif="{{item.provider === 'render'}}">⚡</text>
+        </view>
+        <view class="account-detail">
+          <text class="account-name">{{item.name}}</text>
+          <text class="account-provider">{{item.providerLabel}}</text>
+        </view>
+      </view>
+      <view class="account-actions">
+        <status-badge status="{{item.status === 'active' ? 'success' : 'error'}}" text="{{item.status === 'active' ? '已连接' : '异常'}}"></status-badge>
+        <button class="btn-delete" bindtap="onDelete" data-id="{{item.id}}">删除</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{accounts.length === 0}}">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无云账号</text>
+    <text class="empty-hint">点击上方按钮添加您的第一个云账号</text>
+  </view>
+</view>

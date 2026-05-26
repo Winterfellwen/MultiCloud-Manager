@@ -3,24 +3,24 @@
     "pages/index/index",
     "pages/agent/chat",
     "pages/resources/list",
+    "pages/user/profile",
     "pages/resources/detail",
     "pages/accounts/list",
     "pages/accounts/add",
-    "pages/terraform/list",
-    "pages/terraform/upload",
     "pages/team/members",
-    "pages/user/profile"
+    "pages/terraform/list",
+    "pages/terraform/upload"
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#1890ff",
+    "navigationBarBackgroundColor": "#1a1d27",
     "navigationBarTitleText": "多云管理",
     "navigationBarTextStyle": "white"
   },
   "tabBar": {
-    "color": "#999",
-    "selectedColor": "#1890ff",
-    "backgroundColor": "#fff",
+    "color": "#8b8fa3",
+    "selectedColor": "#6366f1",
+    "backgroundColor": "#1a1d27",
     "borderStyle": "black",
     "list": [
       {
@@ -55,14 +55,6 @@
     "status-badge": "/components/StatusBadge/StatusBadge",
     "operation-button": "/components/OperationButton/OperationButton"
   },
-  "permission": {
-    "scope.userLocation": {
-      "desc": "用于显示云资源地理位置"
-    }
-  },
-  "requiredPrivateInfos": [
-    "getLocation"
-  ],
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

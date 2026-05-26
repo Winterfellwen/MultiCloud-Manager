@@ -1,4 +1,0 @@
-2026/05/25 17:17:13 WARNING: Database connection failed: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
-2026/05/25 17:17:14 Starting in dev mode (no database)
-2026/05/25 17:17:14 WARNING: Redis connection failed: dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.
-2026/05/25 17:17:14 Server starting on :8080

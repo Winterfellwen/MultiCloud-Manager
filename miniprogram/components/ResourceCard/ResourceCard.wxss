@@ -1,0 +1,59 @@
+.resource-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.resource-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.platform-tag {
+  font-size: 22rpx;
+  color: #ffffff;
+  padding: 4rpx 16rpx;
+  border-radius: var(--radius-sm);
+}
+
+.platform-azure { background-color: var(--azure); }
+.platform-tencent { background-color: var(--tencent); }
+.platform-oracle { background-color: var(--oracle); }
+.platform-render { background-color: var(--render); }
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+.info-value {
+  font-size: 26rpx;
+  color: var(--text);
+}
+
+.status-running { color: var(--success); }
+.status-stopped { color: var(--danger); }

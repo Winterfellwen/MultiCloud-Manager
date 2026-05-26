@@ -1,0 +1,14 @@
+.container { padding: 30rpx; background: var(--bg); min-height: 100vh; }
+.page-header { display: flex; align-items: center; gap: 20rpx; margin-bottom: 30rpx; }
+.btn-back { font-size: 28rpx; color: var(--primary); padding: 8rpx 0; }
+.page-title { font-size: 40rpx; font-weight: bold; color: var(--text); flex: 1; }
+.detail-card { background: var(--surface); border-radius: var(--radius); padding: 30rpx; margin-bottom: 30rpx; box-shadow: var(--shadow); }
+.detail-row { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-size: 28rpx; color: var(--text-secondary); }
+.detail-value { font-size: 28rpx; color: var(--text); font-weight: 500; }
+.action-bar { display: flex; flex-direction: column; gap: 16rpx; }
+.btn-action { width: 100%; padding: 22rpx; border-radius: var(--radius-sm); font-size: 28rpx; font-weight: 500; border: none; }
+.btn-start { background: var(--success); color: #fff; }
+.btn-stop { background: var(--warning); color: #fff; }
+.btn-delete { background: var(--danger); color: #fff; }

@@ -1,0 +1,34 @@
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">添加云账户</text>
+  </view>
+
+  <view class="form-card">
+    <view class="form-group">
+      <text class="form-label">云平台</text>
+      <cloud-selector bind:select="onCloudSelect"></cloud-selector>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">账户名称</text>
+      <input class="form-input" placeholder="请输入账户名称" value="{{accountName}}" bindinput="onNameInput"/>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">Access Key ID</text>
+      <input class="form-input" placeholder="请输入 Access Key" value="{{accessKey}}" bindinput="onAccessKeyInput"/>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">Secret Access Key</text>
+      <input class="form-input" type="password" placeholder="请输入 Secret Key" value="{{secretKey}}" bindinput="onSecretKeyInput"/>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">区域</text>
+      <input class="form-input" placeholder="例如: eastus" value="{{region}}" bindinput="onRegionInput"/>
+    </view>
+  </view>
+
+  <button class="btn-submit" bindtap="onSubmit" disabled="{{!canSubmit}}">保存账户</button>
+</view>

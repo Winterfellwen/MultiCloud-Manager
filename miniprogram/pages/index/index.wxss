@@ -1,0 +1,130 @@
+/* pages/index/index.wxss */
+.container {
+  padding: 30rpx;
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.header {
+  text-align: center;
+  padding: 40rpx 0;
+}
+
+.title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: bold;
+  color: var(--primary);
+  margin-bottom: 16rpx;
+}
+
+.subtitle {
+  display: block;
+  font-size: 28rpx;
+  color: var(--text-secondary);
+}
+
+.stats-section {
+  display: flex;
+  justify-content: space-between;
+  margin: 40rpx 0;
+}
+
+.stat-card {
+  flex: 1;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 30rpx 20rpx;
+  margin: 0 10rpx;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.stat-value {
+  display: block;
+  font-size: 48rpx;
+  font-weight: bold;
+  color: var(--primary);
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+.section-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--text);
+  margin-bottom: 24rpx;
+}
+
+.quick-actions {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  box-shadow: var(--shadow);
+}
+
+.action-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.action-item {
+  width: 25%;
+  text-align: center;
+  padding: 20rpx 0;
+}
+
+.action-icon {
+  display: block;
+  font-size: 56rpx;
+  margin-bottom: 12rpx;
+}
+
+.action-text {
+  display: block;
+  font-size: 24rpx;
+  color: var(--text);
+}
+
+.recent-section {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 30rpx;
+  box-shadow: var(--shadow);
+}
+
+.resource-list {
+  margin-top: 20rpx;
+}
+
+.resource-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.resource-item:last-child {
+  border-bottom: none;
+}
+
+.resource-name {
+  font-size: 28rpx;
+  color: var(--text);
+}
+
+.resource-provider {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}

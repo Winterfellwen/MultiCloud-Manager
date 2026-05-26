@@ -1,0 +1,39 @@
+<view class="container">
+  <view class="page-header">
+    <navigator url="/pages/resources/list" class="btn-back">← 返回</navigator>
+    <text class="page-title">资源详情</text>
+  </view>
+
+  <view class="detail-card">
+    <view class="detail-row">
+      <text class="detail-label">资源名称</text>
+      <text class="detail-value">{{resource.name || '—'}}</text>
+    </view>
+    <view class="detail-row">
+      <text class="detail-label">云平台</text>
+      <text class="detail-value">{{resource.providerLabel || '—'}}</text>
+    </view>
+    <view class="detail-row">
+      <text class="detail-label">状态</text>
+      <status-badge status="{{resource.status === 'running' ? 'success' : 'warning'}}" text="{{resource.status}}"></status-badge>
+    </view>
+    <view class="detail-row">
+      <text class="detail-label">区域</text>
+      <text class="detail-value">{{resource.region || '—'}}</text>
+    </view>
+    <view class="detail-row">
+      <text class="detail-label">规格</text>
+      <text class="detail-value">{{resource.spec || '—'}}</text>
+    </view>
+    <view class="detail-row">
+      <text class="detail-label">创建时间</text>
+      <text class="detail-value">{{resource.createdAt || '—'}}</text>
+    </view>
+  </view>
+
+  <view class="action-bar">
+    <button class="btn-action btn-start" wx:if="{{resource.status === 'stopped'}}" bindtap="onStart">启动资源</button>
+    <button class="btn-action btn-stop" wx:if="{{resource.status === 'running'}}" bindtap="onStop">停止资源</button>
+    <button class="btn-action btn-delete" bindtap="onDelete">删除资源</button>
+  </view>
+</view>

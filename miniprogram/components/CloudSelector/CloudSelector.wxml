@@ -1,0 +1,15 @@
+<view class="cloud-selector">
+  <view class="selector-title">选择云平台</view>
+  <view class="cloud-list">
+    <view 
+      wx:for="{{cloudList}}" 
+      wx:key="id"
+      class="cloud-item {{currentIndex === index ? 'active' : ''}}"
+      data-index="{{index}}"
+      bindtap="onSelect"
+    >
+      <view class="cloud-icon">{{item.icon}}</view>
+      <view class="cloud-name">{{item.name}}</view>
+    </view>
+  </view>
+</view>

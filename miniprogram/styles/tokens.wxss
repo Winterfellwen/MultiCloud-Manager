@@ -1,0 +1,33 @@
+/* Design tokens matching web SPA */
+page {
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface-hover: #22263a;
+  --border: #2a2d3a;
+  --text: #e1e4ed;
+  --text-secondary: #8b8fa3;
+  --radius-sm: 8rpx;
+  --radius: 12rpx;
+  --radius-lg: 16rpx;
+  --azure: #0078d4;
+  --tencent: #00a4ff;
+  --oracle: #f80000;
+  --render: #46e3b7;
+  --shadow: 0 4rpx 12rpx rgba(0,0,0,0.3);
+}
+
+page.light {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-hover: #f0f2f5;
+  --border: #e4e7ed;
+  --text: #1a1a2e;
+  --text-secondary: #666666;
+  --shadow: 0 4rpx 12rpx rgba(0,0,0,0.08);
+}

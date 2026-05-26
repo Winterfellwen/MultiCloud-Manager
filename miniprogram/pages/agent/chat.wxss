@@ -3,12 +3,11 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--bg);
 }
 
-/* 头部 */
 .chat-header {
-  background: #1890ff;
+  background: var(--primary);
   color: white;
   padding: 20rpx 30rpx;
   display: flex;
@@ -41,7 +40,6 @@
   opacity: 0.8;
 }
 
-/* 消息列表 */
 .message-list {
   flex: 1;
   padding: 20rpx;
@@ -54,7 +52,6 @@
   gap: 30rpx;
 }
 
-/* 消息气泡 */
 .message {
   display: flex;
   align-items: flex-start;
@@ -94,27 +91,26 @@
 }
 
 .user-bubble {
-  background: #1890ff;
+  background: var(--primary);
   color: white;
   border-bottom-right-radius: 4rpx;
   order: 1;
 }
 
 .ai-bubble {
-  background: white;
-  color: #333;
+  background: var(--surface);
+  color: var(--text);
   border-bottom-left-radius: 4rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
   order: 2;
 }
 
-/* 计划卡片 */
 .plan-card {
   margin-top: 20rpx;
-  border: 1rpx solid #e8e8e8;
-  border-radius: 16rpx;
+  border: 1rpx solid var(--border);
+  border-radius: var(--radius-lg);
   padding: 20rpx;
-  background: #fafafa;
+  background: var(--surface-hover);
 }
 
 .plan-header {
@@ -123,13 +119,13 @@
   align-items: center;
   margin-bottom: 20rpx;
   padding-bottom: 10rpx;
-  border-bottom: 1rpx solid #eee;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .plan-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   flex: 1;
 }
 
@@ -141,21 +137,20 @@
 }
 
 .plan-risk.high {
-  background: #ff4d4f;
+  background: var(--danger);
   color: white;
 }
 
 .plan-risk.medium {
-  background: #faad14;
+  background: var(--warning);
   color: white;
 }
 
 .plan-risk.low {
-  background: #52c41a;
+  background: var(--success);
   color: white;
 }
 
-/* 步骤列表 */
 .steps-list {
   display: flex;
   flex-direction: column;
@@ -164,22 +159,22 @@
 }
 
 .step-item {
-  background: white;
-  border-radius: 12rpx;
+  background: var(--surface);
+  border-radius: var(--radius);
   padding: 16rpx;
-  border-left: 8rpx solid #d9d9d9;
+  border-left: 8rpx solid var(--border);
 }
 
 .step-item.high {
-  border-left-color: #ff4d4f;
+  border-left-color: var(--danger);
 }
 
 .step-item.medium {
-  border-left-color: #faad14;
+  border-left-color: var(--warning);
 }
 
 .step-item.low {
-  border-left-color: #52c41a;
+  border-left-color: var(--success);
 }
 
 .step-header {
@@ -191,18 +186,18 @@
 
 .step-index {
   font-size: 24rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .step-action {
   font-size: 26rpx;
   font-weight: 500;
-  color: #333;
+  color: var(--text);
 }
 
 .step-details {
   font-size: 22rpx;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 8rpx;
   word-break: break-all;
 }
@@ -215,21 +210,21 @@
 }
 
 .step-risk.high {
-  background: #fff2f0;
-  color: #ff4d4f;
-  border: 1rpx solid #ffccc7;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1rpx solid rgba(239, 68, 68, 0.3);
 }
 
 .step-risk.medium {
-  background: #fffbe6;
-  color: #faad14;
-  border: 1rpx solid #ffe58f;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1rpx solid rgba(245, 158, 11, 0.3);
 }
 
 .step-risk.low {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1rpx solid #b7eb8f;
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--success);
+  border: 1rpx solid rgba(34, 197, 94, 0.3);
 }
 
 .execute-btn {
@@ -237,19 +232,18 @@
   width: 100%;
 }
 
-/* 系统消息 */
 .system-message {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10rpx;
-  background: #f0f0f0;
+  background: var(--surface-hover);
   border-radius: 20rpx;
   padding: 12rpx 24rpx;
   margin: 0 auto;
   max-width: 80%;
   font-size: 24rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .system-icon {
@@ -260,16 +254,15 @@
   flex: 1;
 }
 
-/* 正在输入指示器 */
 .typing-indicator {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  background: white;
+  background: var(--surface);
   border-radius: 20rpx;
   padding: 20rpx;
   margin: 20rpx 0;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow);
 }
 
 .typing-dots {
@@ -280,7 +273,7 @@
 .dot {
   width: 12rpx;
   height: 12rpx;
-  background: #1890ff;
+  background: var(--primary);
   border-radius: 50%;
   animation: typing 1.4s infinite ease-in-out;
 }
@@ -295,14 +288,13 @@
 
 .typing-text {
   font-size: 24rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
-/* 输入区域 */
 .input-area {
-  background: white;
+  background: var(--surface);
   padding: 20rpx 30rpx;
-  border-top: 1rpx solid #e8e8e8;
+  border-top: 1rpx solid var(--border);
   display: flex;
   align-items: center;
   gap: 20rpx;
@@ -310,15 +302,16 @@
 
 .message-input {
   flex: 1;
-  background: #f5f5f5;
+  background: var(--bg);
   border-radius: 30rpx;
   padding: 20rpx 30rpx;
   font-size: 28rpx;
   min-height: 60rpx;
+  color: var(--text);
 }
 
 .send-btn {
-  background: #1890ff;
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: 30rpx;
@@ -329,8 +322,8 @@
 }
 
 .send-btn.disabled {
-  background: #d9d9d9;
-  color: #999;
+  background: var(--border);
+  color: var(--text-secondary);
 }
 
 .send-btn:not(.disabled):active {

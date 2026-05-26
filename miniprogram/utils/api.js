@@ -1,8 +1,10 @@
 // utils/api.js - 统一 API 请求工具
-const app = getApp()
 
 const API = {
-  baseURL: app.globalData.apiBaseURL,
+  get baseURL() {
+    const app = getApp();
+    return app ? app.globalData.apiBaseURL : 'https://multicloud-backend.onrender.com/api';
+  },
 
   // 获取请求头
   getHeaders() {

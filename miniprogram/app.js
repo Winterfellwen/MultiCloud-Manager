@@ -3,14 +3,29 @@ const API = require('/utils/api')
 
 App({
   onLaunch() {
-    // 微信登录
-    this.login()
+    const theme = wx.getStorageSync('theme') || 'dark'
+    this.globalData.theme = theme
+    wx.setNavigationBarColor({
+      frontColor: '#ffffff',
+      backgroundColor: '#1a1d27'
+    })
+    setTimeout(() => {
+      this.login().catch(() => {})
+    }, 100)
   },
 
   login() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
+      let settled = false
+      const timer = setTimeout(() => {
+        if (!settled) { settled = true; resolve(null) }
+      }, 3000)
+
       wx.login({
         success: (res) => {
+          if (settled) return
+          clearTimeout(timer)
+          settled = true
           if (res.code) {
             API.post('/auth/login', { code: res.code })
               .then(data => {
@@ -19,12 +34,17 @@ App({
                 wx.setStorageSync('token', data.token)
                 resolve(data)
               })
-              .catch(reject)
+              .catch(() => {
+                console.warn('Backend unavailable, using local mode')
+                resolve(null)
+              })
           } else {
-            reject(new Error('wx.login failed'))
+            resolve(null)
           }
         },
-        fail: reject
+        fail: () => {
+          if (!settled) { clearTimeout(timer); settled = true; resolve(null) }
+        }
       })
     })
   },
@@ -33,6 +53,12 @@ App({
     token: '',
     userInfo: null,
     currentTeam: null,
+    theme: 'dark',
     apiBaseURL: 'https://multicloud-backend.onrender.com/api'
+  },
+
+  setTheme(theme) {
+    this.globalData.theme = theme
+    wx.setStorageSync('theme', theme)
   }
 })
