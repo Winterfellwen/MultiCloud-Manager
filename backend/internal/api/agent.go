@@ -10,25 +10,42 @@ import (
 	"strings"
 	"time"
 
+	"multicloud-manager/config"
+	"multicloud-manager/internal/agent"
 	"multicloud-manager/internal/i18n"
 	"multicloud-manager/internal/services"
+	"multicloud-manager/internal/vault"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type AgentHandler struct {
-	db     *services.Database
-	rdb    *services.RedisClient
-	config *ConfigHandler
+	db           *services.Database
+	rdb          *services.RedisClient
+	config       *ConfigHandler
+	vault        *vault.Client
+	orchestrator *agent.Orchestrator
 }
 
-func NewAgentHandler(db *services.Database, rdb *services.RedisClient) *AgentHandler {
-	return &AgentHandler{
+func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *config.Config) *AgentHandler {
+	h := &AgentHandler{
 		db:     db,
 		rdb:    rdb,
 		config: NewConfigHandler(db),
 	}
+
+	// 初始化 vault 客户端
+	if cfg.VaultURL != "" && cfg.VaultToken != "" {
+		h.vault = vault.NewClient(cfg.VaultURL, cfg.VaultToken)
+		log.Println("Vault client initialized")
+	}
+
+	// 初始化 orchestrator
+	llmClient := &orchestratorLLMClient{db: db, config: h.config}
+	h.orchestrator = agent.NewOrchestrator(llmClient)
+
+	return h
 }
 
 func (h *AgentHandler) Chat(c *gin.Context) {
@@ -307,4 +324,36 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return string(runes[:maxLen]) + "..."
+}
+
+// orchestratorLLMClient 适配 agent.LLMClient 接口
+type orchestratorLLMClient struct {
+	db     *services.Database
+	config *ConfigHandler
+}
+
+func (c *orchestratorLLMClient) Chat(ctx context.Context, messages []agent.Message) (*agent.ChatResponse, error) {
+	if c.db == nil {
+		return nil, fmt.Errorf("database not available")
+	}
+
+	cfg := c.config.loadConfig()
+	if cfg.APIKey == "" {
+		return nil, fmt.Errorf("LLM API key not configured")
+	}
+
+	// 转换消息格式
+	var msgs []string
+	for _, m := range messages {
+		msgs = append(msgs, m.Role+": "+m.Content)
+	}
+
+	prompt := strings.Join(msgs, "\n")
+	reply, err := callLLM(ctx, cfg.APIEndpoint, cfg.Model, cfg.APIKey,
+		cfg.EnableReasoning, cfg.ReasoningEffort, "", prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &agent.ChatResponse{Content: reply}, nil
 }

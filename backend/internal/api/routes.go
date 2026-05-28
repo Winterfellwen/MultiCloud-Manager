@@ -50,26 +50,26 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		protected.PUT("/auth/password", profileH.UpdatePassword)
 
 		// Agent routes
-		agent := NewAgentHandler(db, redis)
+		agentH := NewAgentHandler(db, redis, cfg)
 		agentGroup := protected.Group("/agent")
 		{
-			agentGroup.POST("/chat", agent.Chat)
-			agentGroup.GET("/sessions", agent.ListSessions)
-			agentGroup.GET("/sessions/:id", agent.SessionDetail)
+			agentGroup.POST("/chat", agentH.Chat)
+			agentGroup.GET("/sessions", agentH.ListSessions)
+			agentGroup.GET("/sessions/:id", agentH.SessionDetail)
 
 			// Operator+
 			agentOp := agentGroup.Group("/")
 			agentOp.Use(RBACMiddleware("admin", "operator"))
 			{
-				agentOp.POST("/execute", agent.Execute)
+				agentOp.POST("/execute", agentH.Execute)
 			}
 
 			// Admin only
 			agentAdmin := agentGroup.Group("/")
 			agentAdmin.Use(RBACMiddleware("admin"))
 			{
-				agentAdmin.GET("/config", agent.config.Get)
-				agentAdmin.PUT("/config", agent.config.Update)
+				agentAdmin.GET("/config", agentH.config.Get)
+				agentAdmin.PUT("/config", agentH.config.Update)
 			}
 		}
 
