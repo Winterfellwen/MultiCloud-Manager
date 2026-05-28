@@ -12,8 +12,9 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.RedisClient, cfg *config.Config) {
-	router.StaticFile("/", "static/index.html")
-	router.Static("/static", "static")
+	router.StaticFile("/", "web/index.html")
+	router.StaticFile("/login.html", "web/login.html")
+	router.Static("/web", "web")
 
 	api := router.Group("/api")
 	api.Use(func(c *gin.Context) {
@@ -129,10 +130,11 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 			teamsAdmin := teams.Group("/")
 			teamsAdmin.Use(RBACMiddleware("admin"))
 			{
-				teamsAdmin.POST("/", teamsH.CreateTeam)
-				teamsAdmin.PUT("/:id", teamsH.UpdateTeam)
-				teamsAdmin.DELETE("/:id", teamsH.DeleteTeam)
-				teamsAdmin.POST("/:id/members", teamsH.AddTeamMember)
+			teamsAdmin.POST("/", teamsH.CreateTeam)
+			teamsAdmin.PUT("/:id", teamsH.UpdateTeam)
+			teamsAdmin.DELETE("/:id", teamsH.DeleteTeam)
+			teamsAdmin.POST("/:id/members", teamsH.AddTeamMember)
+			teamsAdmin.DELETE("/:id/members/:userId", teamsH.RemoveTeamMember)
 			}
 		}
 

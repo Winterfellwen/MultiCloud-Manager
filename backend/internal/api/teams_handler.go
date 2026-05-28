@@ -146,6 +146,26 @@ func (h *TeamsHandler) AddTeamMember(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "member added"})
 }
 
+// DELETE /api/teams/:id/members/:userId (admin only)
+func (h *TeamsHandler) RemoveTeamMember(c *gin.Context) {
+	teamID := c.Param("id")
+	userID := c.Param("userId")
+
+	if h.db == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "member removed"})
+		return
+	}
+
+	// Remove user from team
+	_, err := h.db.Exec(`UPDATE users SET team_id = NULL WHERE id = $1 AND team_id = $2`, userID, teamID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "save_failed")})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "member removed"})
+}
+
 // GET /api/teams/:id
 func (h *TeamsHandler) GetTeam(c *gin.Context) {
 	teamID := c.Param("id")

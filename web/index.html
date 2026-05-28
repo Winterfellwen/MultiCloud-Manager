@@ -368,7 +368,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
       </div>
       <div class="chat-input-bar">
         <input type="text" id="chatInput" data-i18n="chat.placeholder" placeholder="输入你的问题..." onkeydown="if(event.key==='Enter')sendChat()">
-        <button data-i18n="chat.send">发送</button>
+        <button onclick="sendChat()" data-i18n="chat.send">发送</button>
       </div>
     </div>
   </div>
@@ -640,6 +640,47 @@ const cloudConfigs = {
 
 let selectedCloud = null;
 let accountFormVisible = false;
+let currentUser = null;
+
+/* Auth Check */
+(function checkAuth() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/login.html';
+    return;
+  }
+  // Load user profile
+  fetch(API + '/auth/profile', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('Unauthorized');
+    return res.json();
+  })
+  .then(data => {
+    currentUser = data;
+    localStorage.setItem('userInfo', JSON.stringify(data));
+    updateUserProfile(data);
+  })
+  .catch(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userInfo');
+    window.location.href = '/login.html';
+  });
+})();
+
+function updateUserProfile(user) {
+  if (!user) return;
+  const avatar = document.querySelector('.profile-avatar');
+  const name = document.querySelector('.profile-name');
+  const email = document.querySelector('.profile-email');
+  const topbarAvatar = document.querySelector('.topbar-right .avatar');
+  
+  if (avatar) avatar.textContent = (user.nickname || user.username || 'U').charAt(0).toUpperCase();
+  if (name) name.textContent = user.nickname || user.username || '管理员';
+  if (email) email.textContent = user.username ? user.username + '@multicloud.local' : 'admin@multicloud.local';
+  if (topbarAvatar) topbarAvatar.textContent = (user.nickname || user.username || 'U').charAt(0).toUpperCase();
+}
 
 /* Theme */
 function toggleTheme() {
@@ -891,7 +932,10 @@ function selectCloud(cloud) {
   const fields = document.getElementById('formFields');
   const config = cloudConfigs[cloud];
   if (!config) { fields.innerHTML = ''; return; }
-  fields.innerHTML = config.map(f =>
+  fields.innerHTML = 
+    '<label for="field-name">' + (t('account.name') || '账户名称') + '</label>' +
+    '<input type="text" id="field-name" placeholder="' + (t('account.name_placeholder') || '请输入账户名称') + '">' +
+    config.map(f =>
     '<label for="field-' + f.key + '">' + f.label + '</label>' +
     (f.type === 'textarea'
       ? '<textarea rows="3" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit" id="field-' + f.key + '"></textarea>'
@@ -904,11 +948,12 @@ async function submitAccount() {
   const config = cloudConfigs[selectedCloud];
   const formData = {};
   config.forEach(f => { formData[f.key] = document.getElementById('field-' + f.key).value; });
+  const accountName = document.getElementById('field-name').value.trim() || selectedCloud + ' 账户';
   await apiFetch(API + '/accounts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: selectedCloud + ' 账户',
+      name: accountName,
       cloud_type: selectedCloud,
       credentials: JSON.stringify(formData)
     })
@@ -943,7 +988,13 @@ async function loadTeam() {
 }
 
 async function removeMember(id) {
-  await apiFetch(API + '/teams/' + id + '/members', { method: 'POST', body: '{}' });
+  if (!confirm(t('team.confirm_remove') || '确定要移除该成员吗？')) return;
+  // 获取团队ID（假设只有一个团队）
+  const data = await apiFetch(API + '/teams');
+  const teamId = data && data.teams && data.teams[0] ? data.teams[0].id : null;
+  if (teamId) {
+    await apiFetch(API + '/teams/' + teamId + '/members/' + id, { method: 'DELETE' });
+  }
   loadTeam();
 }
 
@@ -958,19 +1009,40 @@ async function loadTerraform() {
     container.innerHTML = '<div class="empty-state">' + t('terraform.empty') + '</div>';
     return;
   }
-  container.innerHTML = templates.map(t =>
+  container.innerHTML = templates.map(tmpl =>
     '<div class="template-card">' +
       '<div class="template-info">' +
-        '<div class="template-name">' + t.name + '</div>' +
-        '<div class="template-meta">v' + (t.version || 1) + ' / ' + (t.created_at || '') + '</div>' +
+        '<div class="template-name">' + tmpl.name + '</div>' +
+        '<div class="template-meta">v' + (tmpl.version || 1) + ' / ' + (tmpl.created_at || '') + '</div>' +
       '</div>' +
       '<div class="template-actions">' +
-        '<button class="tf-action-btn" onclick="alert(\'' + t('terraform.plan') + '\')">Plan</button>' +
-        '<button class="tf-action-btn" onclick="alert(\'' + t('terraform.apply') + '\')">Apply</button>' +
-        '<button class="tf-action-btn danger" onclick="deleteTemplate(\'' + t.id + '\')">' + t('terraform.delete') + '</button>' +
+        '<button class="tf-action-btn" onclick="planTemplate(\'' + tmpl.id + '\')">Plan</button>' +
+        '<button class="tf-action-btn" onclick="applyTemplate(\'' + tmpl.id + '\')">Apply</button>' +
+        '<button class="tf-action-btn danger" onclick="deleteTemplate(\'' + tmpl.id + '\')">' + t('terraform.delete') + '</button>' +
       '</div>' +
     '</div>'
   ).join('');
+}
+
+async function planTemplate(id) {
+  showToast(t('terraform.plan_running') || 'Plan 执行中...');
+  const result = await apiFetch(API + '/terraform/templates/' + id + '/plan', { method: 'POST' });
+  if (result && result.error) {
+    showToast(result.error);
+  } else {
+    showToast(t('terraform.plan_success') || 'Plan 完成');
+  }
+}
+
+async function applyTemplate(id) {
+  if (!confirm(t('terraform.confirm_apply') || '确定要执行 Apply 吗？')) return;
+  showToast(t('terraform.apply_running') || 'Apply 执行中...');
+  const result = await apiFetch(API + '/terraform/templates/' + id + '/apply', { method: 'POST' });
+  if (result && result.error) {
+    showToast(result.error);
+  } else {
+    showToast(t('terraform.apply_success') || 'Apply 完成');
+  }
 }
 
 async function deleteTemplate(id) {
@@ -1124,8 +1196,16 @@ var __ = {
     'terraform.upload_dev': '上传功能开发中',
     'terraform.empty': '暂无模板',
     'terraform.plan': 'Plan 执行中',
+    'terraform.plan_running': 'Plan 执行中...',
+    'terraform.plan_success': 'Plan 完成',
     'terraform.apply': 'Apply 执行中',
+    'terraform.apply_running': 'Apply 执行中...',
+    'terraform.apply_success': 'Apply 完成',
+    'terraform.confirm_apply': '确定要执行 Apply 吗？',
     'terraform.delete': '删除',
+    'team.confirm_remove': '确定要移除该成员吗？',
+    'account.name': '账户名称',
+    'account.name_placeholder': '请输入账户名称',
     'profile.name': '管理员',
     'profile.dark_mode': '深色模式',
     'profile.notifications': '通知设置',
@@ -1243,8 +1323,16 @@ var __ = {
     'terraform.upload_dev': 'Upload feature in development',
     'terraform.empty': 'No templates',
     'terraform.plan': 'Planning...',
+    'terraform.plan_running': 'Running Plan...',
+    'terraform.plan_success': 'Plan completed',
     'terraform.apply': 'Applying...',
+    'terraform.apply_running': 'Running Apply...',
+    'terraform.apply_success': 'Apply completed',
+    'terraform.confirm_apply': 'Are you sure you want to run Apply?',
     'terraform.delete': 'Delete',
+    'team.confirm_remove': 'Are you sure you want to remove this member?',
+    'account.name': 'Account Name',
+    'account.name_placeholder': 'Enter account name',
     'profile.name': 'Admin',
     'profile.dark_mode': 'Dark Mode',
     'profile.notifications': 'Notifications',
