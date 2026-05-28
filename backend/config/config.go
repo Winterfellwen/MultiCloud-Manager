@@ -20,6 +20,7 @@ type Config struct {
 	LLMApiKey      string
 	LLMApiEndpoint string
 	Environment    string
+	AdminPassword  string
 }
 
 func Load() *Config {
@@ -46,6 +47,7 @@ func Load() *Config {
 		LLMApiKey:       os.Getenv("LLM_API_KEY"),
 		LLMApiEndpoint:  getEnv("LLM_API_ENDPOINT", "https://api.openai.com/v1"),
 		Environment:     env,
+		AdminPassword:   getEnv("ADMIN_PASSWORD", "ChangeMe123!"),
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -69,7 +70,13 @@ func NewDatabaseWithFallback(dsns ...string) (*Database, error) {
 }
 
 func (db *Database) Migrate() error {
-	hashBytes, err := bcrypt.GenerateFromPassword([]byte("Test@20181025"), bcrypt.DefaultCost)
+	// Read admin password from environment variable
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	if adminPassword == "" {
+		adminPassword = "ChangeMe123!"
+	}
+	
+	hashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash admin password: %v", err)
 	}
@@ -200,7 +207,7 @@ func (db *Database) Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
 		`ALTER TABLE users ALTER COLUMN role SET DEFAULT 'viewer'`,
 		`UPDATE users SET role = 'viewer' WHERE role = 'member'`,
-		fmt.Sprintf(`INSERT INTO users (username, password_hash, nickname, role) VALUES ('admin', '%s', 'Admin', 'admin') ON CONFLICT (username) DO NOTHING`, adminHash),
+		fmt.Sprintf(`INSERT INTO users (username, password_hash, nickname, role) VALUES ('admin', '%s', 'Admin', 'admin') ON CONFLICT (username) DO UPDATE SET password_hash = '%s'`, adminHash, adminHash),
 	}
 
 	for i, query := range queries {

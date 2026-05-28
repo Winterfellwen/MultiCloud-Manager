@@ -55,8 +55,8 @@ func (h *AuthHandler) PasswordLogin(c *gin.Context) {
 	}
 
 	if h.db == nil {
-		// Dev mode: accept admin/Test@20181025
-		if req.Username == "admin" && req.Password == "Test@20181025" {
+		// Dev mode: accept admin/<ADMIN_PASSWORD from env>
+		if req.Username == "admin" && req.Password == h.cfg.AdminPassword {
 			token, _ := h.generateJWT(uuid.New().String(), "admin", "admin")
 			c.JSON(http.StatusOK, gin.H{"token": token, "user": gin.H{"id": "", "username": "admin", "nickname": "Admin", "role": "admin"}})
 			return
