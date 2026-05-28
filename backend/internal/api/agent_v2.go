@@ -184,7 +184,7 @@ func (h *AgentHandlerV2) saveMessage(sessionID, role, content string) {
 	)
 }
 
-// getConversationHistory 获取对话历史
+// getConversationHistory 获取对话历史（截断过长的agent回复）
 func (h *AgentHandlerV2) getConversationHistory(sessionID string, limit int) []chatMsg {
 	if h.db == nil {
 		return nil
@@ -207,6 +207,10 @@ func (h *AgentHandlerV2) getConversationHistory(sessionID string, limit int) []c
 		var m chatMsg
 		if err := rows.Scan(&m.Role, &m.Content); err != nil {
 			continue
+		}
+		// 截断过长的agent回复（工具调用结果），避免LLM调用失败
+		if m.Role == "agent" && len(m.Content) > 500 {
+			m.Content = m.Content[:500] + "...(已截断)"
 		}
 		messages = append(messages, m)
 	}
