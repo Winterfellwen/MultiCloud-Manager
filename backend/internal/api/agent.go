@@ -111,16 +111,25 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		)
 	}
 
-	// 判断是否为明确的操作请求（create/delete/start/stop/list），否则走直接LLM对话
-	actionWords := map[string]bool{"create": true, "delete": true, "start": true, "stop": true, "restart": true, "list": true, "sync": true}
+	// 判断是否为明确的操作请求（创建/删除/启动/停止等），否则走直接LLM对话
+	actionWords := []string{"create", "delete", "start", "stop", "restart", "list", "sync", "创建", "删除", "启动", "停止", "重启", "列出"}
+	questionWords := []string{"推荐", "建议", "什么", "如何", "怎么", "哪个", "推荐一下", "介绍一下", "是什么"}
 	msgLower := strings.ToLower(req.Message)
 
-	// Simple check: 包含操作关键词且非疑问句式
 	isOperation := false
-	for word := range actionWords {
-		if strings.Contains(msgLower, word) && !strings.Contains(msgLower, "推荐") && !strings.Contains(msgLower, "建议") && !strings.Contains(msgLower, "什么") && !strings.Contains(msgLower, "如何") && !strings.Contains(msgLower, "怎么") && !strings.Contains(msgLower, "哪个") {
+	for _, word := range actionWords {
+		if strings.Contains(msgLower, word) {
 			isOperation = true
 			break
+		}
+	}
+	// 如果是疑问句/咨询句，即使含操作词也不算操作请求
+	if isOperation {
+		for _, q := range questionWords {
+			if strings.Contains(msgLower, q) {
+				isOperation = false
+				break
+			}
 		}
 	}
 
