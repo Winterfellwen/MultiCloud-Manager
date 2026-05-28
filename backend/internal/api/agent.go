@@ -111,21 +111,34 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		)
 	}
 
-	// Process message - 使用 orchestrator 生成执行计划
-	ctx := c.Request.Context()
-	plan, err := h.orchestrator.ProcessUserInput(ctx, req.Message)
-	
+	// 判断是否为明确的操作请求（create/delete/start/stop/list），否则走直接LLM对话
+	actionWords := map[string]bool{"create": true, "delete": true, "start": true, "stop": true, "restart": true, "list": true, "sync": true}
+	msgLower := strings.ToLower(req.Message)
+
+	// Simple check: 包含操作关键词且非疑问句式
+	isOperation := false
+	for word := range actionWords {
+		if strings.Contains(msgLower, word) && !strings.Contains(msgLower, "推荐") && !strings.Contains(msgLower, "建议") && !strings.Contains(msgLower, "什么") && !strings.Contains(msgLower, "如何") && !strings.Contains(msgLower, "怎么") && !strings.Contains(msgLower, "哪个") {
+			isOperation = true
+			break
+		}
+	}
+
 	var reply string
 	var planData *agent.ExecutionPlan
-	
-	if err != nil {
-		// orchestrator 失败时回退到直接LLM回复
-		log.Printf("Orchestrator failed, falling back to direct LLM: %v", err)
-		reply = h.processMessage(c, req.Message, sessionID)
+
+	if isOperation {
+		ctx := c.Request.Context()
+		plan, err := h.orchestrator.ProcessUserInput(ctx, req.Message)
+		if err != nil {
+			log.Printf("Orchestrator failed, falling back to direct LLM: %v", err)
+			reply = h.processMessage(c, req.Message, sessionID)
+		} else {
+			planData = plan
+			reply = h.formatPlanResponse(plan)
+		}
 	} else {
-		// 成功生成执行计划
-		planData = plan
-		reply = h.formatPlanResponse(plan)
+		reply = h.processMessage(c, req.Message, sessionID)
 	}
 
 	// Save agent response
