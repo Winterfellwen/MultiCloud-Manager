@@ -137,33 +137,23 @@ func (p *AzureProvider) doAPIRequest(ctx context.Context, url string) ([]byte, e
 }
 
 func (p *AzureProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
-	// Step 1: Get VM list
+	// 使用通用资源API查询所有资源类型
 	url := fmt.Sprintf(
-		"https://management.azure.com/subscriptions/%s/providers/Microsoft.Compute/virtualMachines?api-version=2023-03-01",
+		"https://management.azure.com/subscriptions/%s/resources?api-version=2021-04-01",
 		p.subscriptionID,
 	)
 	body, err := p.doAPIRequest(ctx, url)
 	if err != nil {
-		return nil, fmt.Errorf("list VMs: %w", err)
+		return nil, fmt.Errorf("list resources: %w", err)
 	}
 
 	var result struct {
 		Value []struct {
 			ID       string            `json:"id"`
 			Name     string            `json:"name"`
+			Type     string            `json:"type"`
 			Location string            `json:"location"`
 			Tags     map[string]string `json:"tags"`
-			Properties struct {
-				HardwareProfile struct {
-					VMSize string `json:"vmSize"`
-				} `json:"hardwareProfile"`
-				StorageProfile struct {
-					ImageReference struct {
-						Offer string `json:"offer"`
-					} `json:"imageReference"`
-				} `json:"storageProfile"`
-				TimeCreated string `json:"timeCreated"`
-			} `json:"properties"`
 		} `json:"value"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -171,31 +161,52 @@ func (p *AzureProvider) ListInstances(ctx context.Context, opts types.ListOption
 	}
 
 	var instances []types.Instance
-	for _, vm := range result.Value {
-		// Step 2: Get instance view for actual power state
-		status := p.getVMStatus(ctx, vm.ID)
-
-		var created time.Time
-		if vm.Properties.TimeCreated != "" {
-			created, _ = time.Parse(time.RFC3339, vm.Properties.TimeCreated)
+	for _, res := range result.Value {
+		// 从资源类型中提取简短名称，如 Microsoft.Compute/virtualMachines -> virtualMachines
+		parts := splitResourceType(res.Type)
+		resourceType := parts[len(parts)-1]
+		
+		// 确定状态
+		status := "active"
+		if res.Type == "Microsoft.Compute/virtualMachines" {
+			status = p.getVMStatus(ctx, res.ID)
 		}
 
 		instances = append(instances, types.Instance{
-			ID:           vm.ID,
-			Name:         vm.Name,
+			ID:           res.ID,
+			Name:         res.Name,
 			CloudType:    "azure",
-			Region:       vm.Location,
+			Region:       res.Location,
 			Status:       status,
-			InstanceType: vm.Properties.HardwareProfile.VMSize,
+			InstanceType: resourceType,
 			Spec: map[string]interface{}{
-				"vmSize": vm.Properties.HardwareProfile.VMSize,
+				"type": res.Type,
 			},
-			Tags:      vm.Tags,
-			CreatedAt: created,
+			Tags:      res.Tags,
+			CreatedAt: time.Time{},
 		})
 	}
 
 	return instances, nil
+}
+
+func splitResourceType(resourceType string) []string {
+	var parts []string
+	current := ""
+	for _, c := range resourceType {
+		if c == '/' {
+			if current != "" {
+				parts = append(parts, current)
+			}
+			current = ""
+		} else {
+			current += string(c)
+		}
+	}
+	if current != "" {
+		parts = append(parts, current)
+	}
+	return parts
 }
 
 func (p *AzureProvider) getVMStatus(ctx context.Context, resourceID string) string {
