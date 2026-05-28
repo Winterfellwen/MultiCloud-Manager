@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"bytes"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"

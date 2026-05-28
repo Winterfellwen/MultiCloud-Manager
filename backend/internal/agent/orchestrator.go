@@ -274,11 +274,6 @@ func (re *RulesEngine) Validate(plan *ExecutionPlan) error {
 	return nil
 }
 
-// ExecutePlan 执行计划（返回执行结果通道）
-type PlanExecutor struct {
-	steps []ExecutionStep
-}
-
 // ExecutionResult 单步执行结果
 type ExecutionResult struct {
 	StepID    int                    `json:"step_id"`
