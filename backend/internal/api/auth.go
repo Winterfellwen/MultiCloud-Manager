@@ -126,8 +126,8 @@ func (h *AuthHandler) WechatLogin(c *gin.Context) {
 	}
 
 	// Find or create user
-	var userID, nickname, avatarURL, role string
-	var dbUsername *string
+	var userID, nickname, role string
+	var dbUsername, avatarURL *string
 	err = h.db.QueryRow(
 		`SELECT id, username, nickname, avatar_url, role FROM users WHERE openid = $1`,
 		openid,
@@ -153,8 +153,17 @@ func (h *AuthHandler) WechatLogin(c *gin.Context) {
 
 	token, err := h.generateJWT(userID, "", role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "create_failed")})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "create token failed"})
 		return
+	}
+
+	nicknameStr := ""
+	if nickname != "" {
+		nicknameStr = nickname
+	}
+	avatarStr := ""
+	if avatarURL != nil {
+		avatarStr = *avatarURL
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -162,8 +171,8 @@ func (h *AuthHandler) WechatLogin(c *gin.Context) {
 		"user": gin.H{
 			"id":         userID,
 			"openid":     openid,
-			"nickname":   nickname,
-			"avatar_url": avatarURL,
+			"nickname":   nicknameStr,
+			"avatar_url": avatarStr,
 			"role":       role,
 		},
 	})
