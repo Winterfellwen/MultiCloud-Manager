@@ -14,6 +14,7 @@ import (
 	"multicloud-manager/config"
 	"multicloud-manager/internal/agent"
 	"multicloud-manager/internal/i18n"
+	"multicloud-manager/internal/knowledge"
 	"multicloud-manager/internal/services"
 	"multicloud-manager/internal/vault"
 
@@ -27,6 +28,7 @@ type AgentHandler struct {
 	config       *ConfigHandler
 	vault        *vault.Client
 	orchestrator *agent.Orchestrator
+	knowledge    *knowledge.KnowledgeService
 }
 
 func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *config.Config) *AgentHandler {
@@ -61,6 +63,9 @@ func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *conf
 	// 初始化 orchestrator
 	llmClient := &orchestratorLLMClient{db: db, config: h.config}
 	h.orchestrator = agent.NewOrchestrator(llmClient)
+
+	// 初始化云平台知识库服务
+	h.knowledge = knowledge.New()
 
 	return h
 }
@@ -238,6 +243,14 @@ func (h *AgentHandler) processMessage(c *gin.Context, msg string, sessionID stri
 			ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 			defer cancel()
 			prompt := i18n.SystemPrompt[loc]
+
+			// 注入云平台知识（定价、免费层等）
+			if ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 10*time.Second); true {
+				if knowledge := h.knowledge.GetCloudKnowledge(ctxWithTimeout); knowledge != "" {
+					prompt += "\n\n" + knowledge
+				}
+				cancel()
+			}
 			reply, err := callLLM(ctx, cfg.APIEndpoint, cfg.Model, cfg.APIKey,
 				cfg.EnableReasoning, cfg.ReasoningEffort, prompt, msg)
 			if err == nil {
