@@ -56,28 +56,29 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 			syncer.Start(context.Background(), 60*time.Second)
 		}
 
-		// Agent routes
-		agentH := NewAgentHandler(db, redis, cfg)
-		agentH.SetSyncer(syncer)
+		// Agent routes (V2 - Tool-based)
+		agentV2H := NewAgentHandlerV2(db, redis, cfg)
+		agentV2H.SetSyncer(syncer)
 		agentGroup := protected.Group("/agent")
 		{
-			agentGroup.POST("/chat", agentH.Chat)
-			agentGroup.GET("/sessions", agentH.ListSessions)
-			agentGroup.GET("/sessions/:id", agentH.SessionDetail)
+			agentGroup.POST("/chat", agentV2H.Chat)
+			agentGroup.GET("/sessions", agentV2H.ListSessions)
+			agentGroup.GET("/sessions/:id", agentV2H.SessionDetail)
+			agentGroup.GET("/tools", agentV2H.GetTools)
 
 			// Operator+
 			agentOp := agentGroup.Group("/")
 			agentOp.Use(RBACMiddleware("admin", "operator"))
 			{
-				agentOp.POST("/execute", agentH.Execute)
+				agentOp.POST("/execute", agentV2H.Execute)
 			}
 
 			// Admin only
 			agentAdmin := agentGroup.Group("/")
 			agentAdmin.Use(RBACMiddleware("admin"))
 			{
-				agentAdmin.GET("/config", agentH.config.Get)
-				agentAdmin.PUT("/config", agentH.config.Update)
+				agentAdmin.GET("/config", agentV2H.config.Get)
+				agentAdmin.PUT("/config", agentV2H.config.Update)
 			}
 		}
 
