@@ -625,7 +625,7 @@ document.querySelectorAll('.nav-item, .tab-item').forEach(el => {
 /* API helper */
 async function apiFetch(url, options) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
   try {
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeout);
