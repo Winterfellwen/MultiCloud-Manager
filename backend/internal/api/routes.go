@@ -49,8 +49,16 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		protected.GET("/auth/profile", profileH.GetProfile)
 		protected.PUT("/auth/password", profileH.UpdatePassword)
 
+		// Syncer for cloud resources
+		syncer := &cloud.Syncer{}
+		if db != nil {
+			syncer = &cloud.Syncer{DB: db}
+			syncer.Start(context.Background(), 60*time.Second)
+		}
+
 		// Agent routes
 		agentH := NewAgentHandler(db, redis, cfg)
+		agentH.SetSyncer(syncer)
 		agentGroup := protected.Group("/agent")
 		{
 			agentGroup.POST("/chat", agentH.Chat)
@@ -71,13 +79,6 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 				agentAdmin.GET("/config", agentH.config.Get)
 				agentAdmin.PUT("/config", agentH.config.Update)
 			}
-		}
-
-		// Syncer for cloud resources
-		syncer := &cloud.Syncer{}
-		if db != nil {
-			syncer = &cloud.Syncer{DB: db}
-			syncer.Start(context.Background(), 60*time.Second)
 		}
 
 		// Cloud accounts (operator+)

@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"multicloud-manager/config"
-	"multicloud-manager/internal/agent"
+	"multicloud-manager/internal/cloud"
+	"multicloud-manager/internal/cloud/providers"
+	"multicloud-manager/internal/cloud/types"
 	"multicloud-manager/internal/i18n"
 	"multicloud-manager/internal/knowledge"
 	"multicloud-manager/internal/services"
@@ -23,12 +25,12 @@ import (
 )
 
 type AgentHandler struct {
-	db           *services.Database
-	rdb          *services.RedisClient
-	config       *ConfigHandler
-	vault        *vault.Client
-	orchestrator *agent.Orchestrator
-	knowledge    *knowledge.KnowledgeService
+	db        *services.Database
+	rdb       *services.RedisClient
+	config    *ConfigHandler
+	vault     *vault.Client
+	syncer    *cloud.Syncer
+	knowledge *knowledge.KnowledgeService
 }
 
 func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *config.Config) *AgentHandler {
@@ -38,21 +40,17 @@ func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *conf
 		config: NewConfigHandler(db),
 	}
 
-	// 初始化 vault 客户端 - 优先使用环境变量，否则尝试本地连接
+	// 初始化 vault 客户端
 	vaultURL := cfg.VaultURL
 	vaultToken := cfg.VaultToken
-	
-	// 如果没有配置vault，尝试从本地docker vault获取token
 	if vaultURL == "" {
 		vaultURL = "http://localhost:8200"
 	}
 	if vaultToken == "" {
-		// 尝试从vault容器获取token
 		if token, err := getLocalVaultToken(); err == nil {
 			vaultToken = token
 		}
 	}
-
 	if vaultURL != "" && vaultToken != "" {
 		h.vault = vault.NewClient(vaultURL, vaultToken)
 		log.Printf("Vault client initialized: %s", vaultURL)
@@ -60,26 +58,28 @@ func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *conf
 		log.Println("Vault client disabled (no token available)")
 	}
 
-	// 初始化 orchestrator
-	llmClient := &orchestratorLLMClient{db: db, config: h.config}
-	h.orchestrator = agent.NewOrchestrator(llmClient)
-
 	// 初始化云平台知识库服务
 	h.knowledge = knowledge.New()
 
 	return h
 }
 
-// getLocalVaultToken 尝试从本地vault容器获取token
+// SetSyncer 注入同步器（由 main 启动时调用）
+func (h *AgentHandler) SetSyncer(syncer *cloud.Syncer) {
+	h.syncer = syncer
+}
+
 func getLocalVaultToken() (string, error) {
-	// 从环境变量读取
 	if token := os.Getenv("VAULT_TOKEN"); token != "" {
 		return token, nil
 	}
-	// 尝试从docker-compose vault容器读取
-	// 这里可以扩展为读取vault容器的输出
 	return "", fmt.Errorf("no vault token available")
 }
+
+// ============================================================
+// Chat Handler - 核心入口
+// 新架构：规则优先 → 真实数据查询 → LLM兜底
+// ============================================================
 
 func (h *AgentHandler) Chat(c *gin.Context) {
 	var req struct {
@@ -96,74 +96,14 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		sessionID = "session-" + uuid.New().String()[:8]
 	}
 
-	// Save message to database
-	if h.db != nil {
-		userID := "00000000-0000-0000-0000-000000000000"
-		teamID := "00000000-0000-0000-0000-000000000000"
+	// 保存用户消息
+	h.saveMessage(sessionID, "user", req.Message)
 
-		h.db.Exec(
-			`INSERT INTO ai_agent_sessions (id, user_id, team_id, session_id, title, status, last_message_at)
-			 VALUES ($1, $2, $3, $4, $5, 'active', CURRENT_TIMESTAMP)
-			 ON CONFLICT (session_id) DO UPDATE SET last_message_at = CURRENT_TIMESTAMP`,
-			uuid.New(), userID, teamID, sessionID, truncate(req.Message, 50),
-		)
+	// 核心路由：规则优先，LLM兜底
+	reply, planData := h.routeMessage(c, req.Message, sessionID)
 
-		meta, _ := json.Marshal(map[string]string{"source": "web"})
-		h.db.Exec(
-			`INSERT INTO ai_agent_messages (id, session_id, role, content, metadata)
-			 VALUES ($1, (SELECT id FROM ai_agent_sessions WHERE session_id=$2), $3, $4, $5)`,
-			uuid.New(), sessionID, "user", req.Message, meta,
-		)
-	}
-
-	// 判断是否为明确的操作请求（创建/删除/启动/停止等），否则走直接LLM对话
-	actionWords := []string{"create", "delete", "start", "stop", "restart", "创建", "删除", "启动", "停止", "重启"}
-	questionWords := []string{"推荐", "建议", "什么", "如何", "怎么", "哪个", "推荐一下", "介绍一下", "是什么"}
-	msgLower := strings.ToLower(req.Message)
-
-	isOperation := false
-	for _, word := range actionWords {
-		if strings.Contains(msgLower, word) {
-			isOperation = true
-			break
-		}
-	}
-	// 如果是疑问句/咨询句，即使含操作词也不算操作请求
-	if isOperation {
-		for _, q := range questionWords {
-			if strings.Contains(msgLower, q) {
-				isOperation = false
-				break
-			}
-		}
-	}
-
-	var reply string
-	var planData *agent.ExecutionPlan
-
-	if isOperation {
-		ctx := c.Request.Context()
-		plan, err := h.orchestrator.ProcessUserInput(ctx, req.Message)
-		if err != nil {
-			log.Printf("Orchestrator failed, falling back to direct LLM: %v", err)
-			reply = h.processMessage(c, req.Message, sessionID)
-		} else {
-			planData = plan
-			reply = h.formatPlanResponse(plan)
-		}
-	} else {
-		reply = h.processMessage(c, req.Message, sessionID)
-	}
-
-	// Save agent response
-	if h.db != nil {
-		meta, _ := json.Marshal(map[string]string{"source": "agent"})
-		h.db.Exec(
-			`INSERT INTO ai_agent_messages (id, session_id, role, content, metadata)
-			 VALUES ($1, (SELECT id FROM ai_agent_sessions WHERE session_id=$2), $3, $4, $5)`,
-			uuid.New(), sessionID, "agent", reply, meta,
-		)
-	}
+	// 保存AI回复
+	h.saveMessage(sessionID, "agent", reply)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    reply,
@@ -172,183 +112,572 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	})
 }
 
-func (h *AgentHandler) formatPlanResponse(plan *agent.ExecutionPlan) string {
+// routeMessage 核心路由逻辑
+func (h *AgentHandler) routeMessage(c *gin.Context, msg string, sessionID string) (string, *cloudSyncResult) {
+	msgLower := strings.ToLower(strings.TrimSpace(msg))
+
+	// ========== 第一层：精确规则匹配（不需要LLM） ==========
+
+	// 资源查询
+	if match(msgLower, "资源", "resource", "查看资源", "list resource") {
+		return h.handleListResources(c, msg), nil
+	}
+	if match(msgLower, "账户", "account", "云账户") {
+		return h.handleListAccounts(c, msg), nil
+	}
+
+	// VM操作 - 启动
+	if match(msgLower, "启动", "start", "开机") && match(msgLower, "vm", "虚拟机", "服务器") {
+		return h.handleVMAction(c, msg, "start"), nil
+	}
+	// VM操作 - 停止/关机
+	if match(msgLower, "停止", "关机", "stop", "shutdown", "deallocate") && match(msgLower, "vm", "虚拟机", "服务器") {
+		return h.handleVMAction(c, msg, "stop"), nil
+	}
+	// VM操作 - 重启
+	if match(msgLower, "重启", "restart", "reboot") && match(msgLower, "vm", "虚拟机", "服务器") {
+		return h.handleVMAction(c, msg, "restart"), nil
+	}
+
+	// 创建资源
+	if match(msgLower, "创建", "新建", "create", "开一个") {
+		return h.handleCreateResource(c, msg), nil
+	}
+
+	// 问候
+	if match(msgLower, "你好", "hello", "hi", "嗨") {
+		return h.getWelcome(c), nil
+	}
+	// 帮助
+	if match(msgLower, "帮助", "help") {
+		return h.getHelp(c), nil
+	}
+
+	// ========== 第二层：LLM兜底（复杂问题、推荐、咨询） ==========
+	reply := h.processWithLLM(c, msg, sessionID)
+	return reply, nil
+}
+
+// match 辅助函数：检查消息是否包含任一关键词
+func match(msgLower string, keywords ...string) bool {
+	for _, kw := range keywords {
+		if strings.Contains(msgLower, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+// ============================================================
+// 规则处理器 - 直接查询数据库/调用云API，不经过LLM
+// ============================================================
+
+// handleListResources 真实数据：查询所有同步的资源
+func (h *AgentHandler) handleListResources(c *gin.Context, msg string) string {
+	if h.syncer == nil {
+		return "⚠️ 同步服务未初始化，无法查询资源。"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	resources, err := h.syncer.GetResources(ctx)
+	if err != nil {
+		return fmt.Sprintf("⚠️ 查询资源失败: %v", err)
+	}
+
+	if len(resources) == 0 {
+		return "📭 当前没有已同步的资源。请先在「云账户」页面添加账户并同步。"
+	}
+
+	// 按云平台分组
+	byCloud := make(map[string][]map[string]interface{})
+	for _, r := range resources {
+		cloud := r["cloud_type"].(string)
+		byCloud[cloud] = append(byCloud[cloud], r)
+	}
+
+	cloudNames := map[string]string{
+		"azure":   "Azure",
+		"tencent": "腾讯云",
+		"oracle":  "Oracle Cloud",
+		"render":  "Render",
+	}
+
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("**%s**\n\n", plan.Title))
+	b.WriteString(fmt.Sprintf("📦 **共 %d 个资源**\n\n", len(resources)))
 
-	if plan.Description != "" {
-		b.WriteString(fmt.Sprintf("%s\n\n", plan.Description))
-	}
-
-	if plan.RiskSummary != nil {
-		b.WriteString(fmt.Sprintf("⚠️ 风险等级: **%s**\n", plan.RiskSummary.OverallRisk))
-		if len(plan.RiskSummary.Warnings) > 0 {
-			b.WriteString("警告:\n")
-			for _, w := range plan.RiskSummary.Warnings {
-				b.WriteString(fmt.Sprintf("- %s\n", w))
+	cloudOrder := []string{"azure", "tencent", "oracle", "render"}
+	for _, ct := range cloudOrder {
+		res, ok := byCloud[ct]
+		if !ok || len(res) == 0 {
+			continue
+		}
+		name := cloudNames[ct]
+		if name == "" {
+			name = ct
+		}
+		b.WriteString(fmt.Sprintf("### %s (%d个)\n", name, len(res)))
+		for _, r := range res {
+			status := "🟢"
+			if s, ok := r["status"].(string); ok && (s == "stopped" || s == "deallocated") {
+				status = "⚪"
 			}
+			b.WriteString(fmt.Sprintf("%s **%s** - %s (%s)\n",
+				status,
+				r["name"],
+				r["region"],
+				r["type"],
+			))
 		}
 		b.WriteString("\n")
 	}
 
-	b.WriteString(fmt.Sprintf("**执行方案 (%d 步)**\n", len(plan.Steps)))
-	for i, step := range plan.Steps {
-		b.WriteString(fmt.Sprintf("\n**步骤 %d:** %s\n", i+1, step.Action))
-		b.WriteString(fmt.Sprintf("- 云平台: %s\n", step.Cloud))
-		if step.Params != nil {
-			if specs, ok := step.Params["specs"]; ok {
-				b.WriteString(fmt.Sprintf("- 规格: %v\n", specs))
-			}
-			if region, ok := step.Params["region"]; ok {
-				b.WriteString(fmt.Sprintf("- 区域: %v\n", region))
-			}
-			if osName, ok := step.Params["os"]; ok {
-				b.WriteString(fmt.Sprintf("- 系统: %v\n", osName))
-			}
-		}
-		if desc, ok := step.Params["description"]; ok {
-			b.WriteString(fmt.Sprintf("- 说明: %v\n", desc))
-		}
-		if step.RiskLevel != "" {
-			b.WriteString(fmt.Sprintf("- 风险: **%s**", step.RiskLevel))
-			if step.RiskReason != "" {
-				b.WriteString(fmt.Sprintf(" (%s)", step.RiskReason))
-			}
-		}
-		b.WriteString("\n")
-	}
-
-	if plan.EstimatedCost > 0 {
-		b.WriteString(fmt.Sprintf("\n💰 预估月费: **$%.2f**\n", plan.EstimatedCost))
-	}
-
-	if len(plan.MissingParams) > 0 {
-		b.WriteString(fmt.Sprintf("\n⚠️ 缺少参数:\n"))
-		for _, p := range plan.MissingParams {
-			b.WriteString(fmt.Sprintf("- %s\n", p))
-		}
-	}
-	if plan.Status == "awaiting_confirmation" {
-		b.WriteString("\n> 以上方案需要您确认后才可执行。是否按此方案执行？")
-	}
 	return b.String()
 }
 
-func (h *AgentHandler) processMessage(c *gin.Context, msg string, sessionID string) string {
-	loc := i18n.DetectLocale(c)
-
-	if h.db != nil {
-		cfg := h.config.loadConfig()
-		if cfg.APIKey != "" {
-			ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-			defer cancel()
-			prompt := i18n.SystemPrompt[loc]
-
-			// 注入云平台知识（定价、免费层等）
-			if ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 10*time.Second); true {
-				if knowledge := h.knowledge.GetCloudKnowledge(ctxWithTimeout); knowledge != "" {
-					prompt += "\n\n" + knowledge
-				}
-				cancel()
-			}
-			reply, err := callLLM(ctx, cfg.APIEndpoint, cfg.Model, cfg.APIKey,
-				cfg.EnableReasoning, cfg.ReasoningEffort, prompt, msg)
-			if err == nil {
-				return reply
-			}
-			log.Printf("LLM call failed: %v", err)
-		}
-	}
-
-	return h.ruleReply(loc, msg)
-}
-
-func (h *AgentHandler) ruleReply(loc i18n.Locale, msg string) string {
-	msgLower := strings.ToLower(msg)
-
-	switch {
-	case strings.Contains(msgLower, "账户") || strings.Contains(msgLower, "account"):
-		return h.handleAccountIntent(loc, msg)
-
-	case strings.Contains(msgLower, "资源") || strings.Contains(msgLower, "resource"):
-		return h.handleResourceIntent(loc, msg)
-
-	case strings.Contains(msgLower, "创建") || strings.Contains(msgLower, "新建") || strings.Contains(msgLower, "vm") || strings.Contains(msgLower, "虚拟机"):
-		return h.handleCreateIntent(loc, msg)
-
-	case strings.Contains(msgLower, "你好") || strings.Contains(msgLower, "hello") || strings.Contains(msgLower, "hi"):
-		return i18n.TL(loc, "welcome")
-
-	case strings.Contains(msgLower, "帮助") || strings.Contains(msgLower, "help"):
-		return i18n.TL(loc, "help")
-
-	default:
-		return i18n.TL(loc, "default_reply", msg)
-	}
-}
-
-func (h *AgentHandler) handleAccountIntent(loc i18n.Locale, msg string) string {
+// handleListAccounts 真实数据：查询所有云账户
+func (h *AgentHandler) handleListAccounts(c *gin.Context, msg string) string {
 	if h.db == nil {
-		return i18n.TL(loc, "dev_no_accounts")
+		return "⚠️ 数据库不可用"
 	}
 
-	rows, err := h.db.Query(`SELECT name, cloud_type, is_active FROM cloud_accounts ORDER BY created_at DESC LIMIT 10`)
+	rows, err := h.db.Query(`SELECT id, name, cloud_type, is_active, last_sync_at FROM cloud_accounts ORDER BY created_at DESC`)
 	if err != nil {
-		return i18n.TL(loc, "query_accounts_error")
+		return fmt.Sprintf("⚠️ 查询账户失败: %v", err)
 	}
 	defer rows.Close()
 
 	var accounts []string
 	for rows.Next() {
-		var name, cloud string
+		var id, name, cloud string
 		var active bool
-		if err := rows.Scan(&name, &cloud, &active); err != nil {
+		var lastSync *time.Time
+		if err := rows.Scan(&id, &name, &cloud, &active, &lastSync); err != nil {
 			continue
 		}
 		status := "🟢"
 		if !active {
 			status = "⚪"
 		}
-		accounts = append(accounts, fmt.Sprintf("%s **%s** (%s)", status, name, cloud))
+		syncInfo := "未同步"
+		if lastSync != nil {
+			syncInfo = fmt.Sprintf("上次同步: %s", lastSync.Format("01-02 15:04"))
+		}
+		accounts = append(accounts, fmt.Sprintf("%s **%s** (%s) - %s", status, name, cloud, syncInfo))
 	}
 
 	if len(accounts) == 0 {
-		return i18n.TL(loc, "no_accounts")
+		return "📭 当前没有云账户。请先在「云账户」页面添加。"
 	}
 
-	return i18n.TL(loc, "account_list_header") + "\n\n" + strings.Join(accounts, "\n") +
-		i18n.TL(loc, "account_list_footer")
+	return fmt.Sprintf("☁️ **云账户列表** (%d个)\n\n%s", len(accounts), strings.Join(accounts, "\n"))
 }
 
-func (h *AgentHandler) handleResourceIntent(loc i18n.Locale, msg string) string {
-	running := i18n.TL(loc, "resource_running")
-	stopped := i18n.TL(loc, "resource_stopped")
-	return i18n.TL(loc, "resource_list") + "\n\n" +
-		"🟢 **prod-web-server** (Azure VM) - eastus - " + running + "\n" +
-		"🟢 **dev-database** (Tencent Cloud DB) - ap-guangzhou - " + running + "\n" +
-		"⚪ **staging-k8s** (Oracle K8s) - ap-tokyo - " + stopped + "\n" +
-		"🟢 **blog-api** (Render Web) - oregon - " + running + "\n\n" +
-		i18n.TL(loc, "resource_list_footer")
-}
-
-func (h *AgentHandler) handleCreateIntent(loc i18n.Locale, msg string) string {
-	hasVM := strings.Contains(strings.ToLower(msg), "vm") || strings.Contains(msg, "虚拟机")
-	hasDB := strings.Contains(strings.ToLower(msg), "数据库") || strings.Contains(strings.ToLower(msg), "database")
-
-	plan := i18n.TL(loc, "plan_header") + "\n\n"
-
-	if hasVM {
-		plan += i18n.TL(loc, "plan_create_vm") + "\n\n"
-	} else if hasDB {
-		plan += i18n.TL(loc, "plan_create_db") + "\n\n"
-	} else {
-		plan += i18n.TL(loc, "plan_create_generic") + "\n\n"
+// handleVMAction 真实操作：启动/停止/重启Azure VM
+func (h *AgentHandler) handleVMAction(c *gin.Context, msg, action string) string {
+	if h.db == nil {
+		return "⚠️ 数据库不可用"
 	}
 
-	plan += i18n.TL(loc, "plan_confirm")
+	// 从消息中提取VM名称（简化：取所有资源中最匹配的）
+	vmName := extractVMName(msg)
+	if vmName == "" {
+		// 没有指定VM名，列出所有VM让用户选择
+		return h.listVMsForAction(action)
+	}
+
+	// 查找匹配的VM
+	resourceID, cloudType, accountID, err := h.findVM(vmName)
+	if err != nil {
+		return fmt.Sprintf("⚠️ 未找到名为「%s」的VM: %v", vmName, err)
+	}
+
+	// 执行操作
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	actionNames := map[string]string{"start": "启动", "stop": "停止", "restart": "重启"}
+
+	provider, err := h.getProvider(accountID, cloudType)
+	if err != nil {
+		return fmt.Sprintf("⚠️ 获取云平台连接失败: %v", err)
+	}
+
+	switch action {
+	case "start":
+		err = provider.StartInstance(ctx, resourceID)
+	case "stop":
+		err = provider.StopInstance(ctx, resourceID)
+	case "restart":
+		err = provider.RestartInstance(ctx, resourceID)
+	}
+
+	if err != nil {
+		return fmt.Sprintf("⚠️ %s VM 失败: %v", actionNames[action], err)
+	}
+
+	return fmt.Sprintf("✅ 已%s VM **%s**，请稍等几秒钟生效。", actionNames[action], vmName)
+}
+
+// handleCreateResource 创建资源（生成方案供确认）
+func (h *AgentHandler) handleCreateResource(c *gin.Context, msg string) string {
+	msgLower := strings.ToLower(msg)
+
+	// 检测资源类型
+	if strings.Contains(msgLower, "vm") || strings.Contains(msgLower, "虚拟机") {
+		return h.generateVMPlan(c, msg)
+	}
+	if strings.Contains(msgLower, "数据库") || strings.Contains(msgLower, "database") {
+		return "📋 **创建数据库方案**\n\n" +
+			"数据库创建需要指定以下参数：\n" +
+			"- 数据库类型 (MySQL/PostgreSQL/MongoDB)\n" +
+			"- 云平台 (Azure/Tencent/Oracle)\n" +
+			"- 规格 (CPU/内存/存储)\n\n" +
+			"请告诉我具体需求，例如：「在Azure创建一个PostgreSQL数据库，2核4G」"
+	}
+
+	return "📋 **创建资源**\n\n" +
+		"支持创建的资源类型：\n" +
+		"- **VM（虚拟机）** - 例如：「创建一个Azure VM」\n" +
+		"- **数据库** - 例如：「创建一个PostgreSQL数据库」\n\n" +
+		"请告诉我您想创建什么资源？"
+}
+
+// generateVMPlan 生成VM创建方案
+func (h *AgentHandler) generateVMPlan(c *gin.Context, msg string) string {
+	msgLower := strings.ToLower(msg)
+
+	// 默认配置
+	cloud := "azure"
+	region := "eastus"
+	vmSize := "Standard_B1s"
+	os := "Ubuntu 22.04"
+
+	// 根据消息调整
+	if strings.Contains(msgLower, "腾讯") {
+		cloud = "tencent"
+		region = "ap-guangzhou"
+	} else if strings.Contains(msgLower, "oracle") || strings.Contains(msgLower, "甲骨文") {
+		cloud = "oracle"
+		region = "us-ashburn-1"
+	}
+
+	// 从知识库获取定价
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	knowledge := h.knowledge.GetCloudKnowledge(ctx)
+
+	plan := fmt.Sprintf("📋 **创建 VM 方案**\n\n"+
+		"**云平台:** %s\n"+
+		"**区域:** %s\n"+
+		"**规格:** %s\n"+
+		"**系统:** %s\n\n"+
+		"**费用预估:**\n"+
+		"%s\n\n"+
+		"请确认以上方案，我将为您执行创建操作。",
+		cloud, region, vmSize, os, knowledge)
 
 	return plan
 }
+
+// listVMsForAction 列出所有VM供用户选择
+func (h *AgentHandler) listVMsForAction(action string) string {
+	if h.syncer == nil {
+		return "⚠️ 同步服务未初始化"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resources, err := h.syncer.GetResources(ctx)
+	if err != nil {
+		return fmt.Sprintf("⚠️ 查询资源失败: %v", err)
+	}
+
+	actionNames := map[string]string{"start": "启动", "stop": "停止", "restart": "重启"}
+
+	var vms []string
+	for _, r := range resources {
+		if r["type"] == "virtualMachines" {
+			status := "🟢运行中"
+			if s, ok := r["status"].(string); ok && (s == "stopped" || s == "deallocated") {
+				status = "⚪已停止"
+			}
+			vms = append(vms, fmt.Sprintf("- **%s** (%s) - %s %s",
+				r["name"], r["cloud_type"], r["region"], status))
+		}
+	}
+
+	if len(vms) == 0 {
+		return "📭 当前没有虚拟机资源。"
+	}
+
+	return fmt.Sprintf("💻 **可操作的 VM 列表**\n\n"+
+		"请告诉我您要%s哪个VM？\n\n"+
+		"%s\n\n"+
+		"例如：「%s prod-web-server」",
+		actionNames[action], strings.Join(vms, "\n"), actionNames[action])
+}
+
+// getWelcome 欢迎语
+func (h *AgentHandler) getWelcome(c *gin.Context) string {
+	loc := i18n.DetectLocale(c)
+	return i18n.TL(loc, "welcome")
+}
+
+// getHelp 帮助信息
+func (h *AgentHandler) getHelp(c *gin.Context) string {
+	return "🤖 **MultiCloud Manager AI 助手**\n\n" +
+		"我可以帮您：\n\n" +
+		"📦 **查看资源** - 例如：「查看资源」「列出所有资源」\n" +
+		"☁️ **查看账户** - 例如：「查看账户」「云账户」\n" +
+		"🚀 **启动VM** - 例如：「启动 prod-web-server」\n" +
+		"⏹️ **停止VM** - 例如：「停止 prod-web-server」\n" +
+		"🔄 **重启VM** - 例如：「重启 prod-web-server」\n" +
+		"➕ **创建资源** - 例如：「创建一个Azure VM」\n\n" +
+		"💬 **咨询问题** - 例如：「推荐一个免费的云平台」「Azure的定价是多少」\n\n" +
+		"直接告诉我您想做什么，我会尽力帮助您！"
+}
+
+// ============================================================
+// LLM处理 - 复杂问题、推荐、咨询
+// ============================================================
+
+func (h *AgentHandler) processWithLLM(c *gin.Context, msg string, sessionID string) string {
+	loc := i18n.DetectLocale(c)
+
+	if h.db == nil {
+		return h.ruleReply(loc, msg)
+	}
+
+	cfg := h.config.loadConfig()
+	if cfg.APIKey == "" {
+		return h.ruleReply(loc, msg)
+	}
+
+	// 构建增强的系统提示
+	systemPrompt := i18n.SystemPrompt[loc]
+
+	// 注入云平台知识
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if knowledge := h.knowledge.GetCloudKnowledge(ctx); knowledge != "" {
+		systemPrompt += "\n\n" + knowledge
+	}
+	cancel()
+
+	// 注入当前资源摘要（让LLM知道用户有什么资源）
+	if h.syncer != nil {
+		resCtx, resCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if resources, err := h.syncer.GetResources(resCtx); err == nil && len(resources) > 0 {
+			systemPrompt += "\n\n当前已同步的资源：\n"
+			byCloud := make(map[string]int)
+			for _, r := range resources {
+				byCloud[r["cloud_type"].(string)]++
+			}
+			for ct, count := range byCloud {
+				systemPrompt += fmt.Sprintf("- %s: %d个资源\n", ct, count)
+			}
+		}
+		resCancel()
+	}
+
+	// 获取对话历史
+	history := h.getConversationHistory(sessionID, 10)
+
+	// 构建消息列表
+	var messages []string
+	messages = append(messages, "System: "+systemPrompt)
+
+	// 添加历史对话
+	for _, m := range history {
+		role := "User"
+		if m.Role == "agent" {
+			role = "Assistant"
+		}
+		messages = append(messages, role+": "+m.Content)
+	}
+
+	// 添加当前消息
+	messages = append(messages, "User: "+msg)
+
+	prompt := strings.Join(messages, "\n")
+
+	// 调用LLM
+	llmCtx, llmCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer llmCancel()
+
+	reply, err := callLLM(llmCtx, cfg.APIEndpoint, cfg.Model, cfg.APIKey,
+		cfg.EnableReasoning, cfg.ReasoningEffort, "", prompt)
+
+	if err != nil {
+		log.Printf("LLM call failed: %v", err)
+		return h.ruleReply(loc, msg)
+	}
+
+	return reply
+}
+
+// ============================================================
+// 辅助函数
+// ============================================================
+
+func (h *AgentHandler) saveMessage(sessionID, role, content string) {
+	if h.db == nil {
+		return
+	}
+
+	userID := "00000000-0000-0000-0000-000000000000"
+	teamID := "00000000-0000-0000-0000-000000000000"
+
+	h.db.Exec(
+		`INSERT INTO ai_agent_sessions (id, user_id, team_id, session_id, title, status, last_message_at)
+		 VALUES ($1, $2, $3, $4, $5, 'active', CURRENT_TIMESTAMP)
+		 ON CONFLICT (session_id) DO UPDATE SET last_message_at = CURRENT_TIMESTAMP`,
+		uuid.New(), userID, teamID, sessionID, truncate(content, 50),
+	)
+
+	meta, _ := json.Marshal(map[string]string{"source": "web"})
+	h.db.Exec(
+		`INSERT INTO ai_agent_messages (id, session_id, role, content, metadata)
+		 VALUES ($1, (SELECT id FROM ai_agent_sessions WHERE session_id=$2), $3, $4, $5)`,
+		uuid.New(), sessionID, role, content, meta,
+	)
+}
+
+type chatMsg struct {
+	Role    string
+	Content string
+}
+
+func (h *AgentHandler) getConversationHistory(sessionID string, limit int) []chatMsg {
+	if h.db == nil {
+		return nil
+	}
+
+	rows, err := h.db.Query(
+		`SELECT role, content FROM ai_agent_messages m
+		 JOIN ai_agent_sessions s ON m.session_id = s.id
+		 WHERE s.session_id = $1
+		 ORDER BY m.created_at DESC LIMIT $2`,
+		sessionID, limit,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var messages []chatMsg
+	for rows.Next() {
+		var m chatMsg
+		if err := rows.Scan(&m.Role, &m.Content); err != nil {
+			continue
+		}
+		messages = append(messages, m)
+	}
+
+	// 反转为正序
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	return messages
+}
+
+func (h *AgentHandler) findVM(name string) (resourceID, cloudType, accountID string, err error) {
+	if h.db == nil {
+		return "", "", "", fmt.Errorf("database not available")
+	}
+
+	err = h.db.QueryRow(`
+		SELECT rc.cloud_resource_id, ca.cloud_type, rc.account_id
+		FROM resources_cache rc
+		JOIN cloud_accounts ca ON rc.account_id = ca.id
+		WHERE rc.resource_type = 'virtualMachines'
+		AND LOWER(rc.name) LIKE '%' || LOWER($1) || '%'
+		LIMIT 1
+	`, name).Scan(&resourceID, &cloudType, &accountID)
+
+	if err != nil {
+		return "", "", "", fmt.Errorf("VM not found: %w", err)
+	}
+	return resourceID, cloudType, accountID, nil
+}
+
+func (h *AgentHandler) getProvider(accountID, cloudType string) (types.Provider, error) {
+	if h.db == nil {
+		return nil, fmt.Errorf("database not available")
+	}
+
+	var credJSON string
+	err := h.db.QueryRow(`SELECT encrypted_credentials FROM cloud_accounts WHERE id = $1`, accountID).Scan(&credJSON)
+	if err != nil {
+		return nil, fmt.Errorf("account not found: %w", err)
+	}
+
+	var creds map[string]string
+	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+		return nil, fmt.Errorf("parse credentials: %w", err)
+	}
+
+	switch cloudType {
+	case "azure":
+		return providers.NewAzureProvider(creds), nil
+	case "tencent":
+		return providers.NewTencentProvider(creds), nil
+	case "oracle":
+		return providers.NewOracleProvider(creds), nil
+	case "render":
+		return providers.NewRenderProvider(creds), nil
+	default:
+		return nil, fmt.Errorf("unsupported cloud: %s", cloudType)
+	}
+}
+
+func extractVMName(msg string) string {
+	// 简单提取：去掉常见动词，剩下的可能是VM名
+	msg = strings.TrimSpace(msg)
+	for _, prefix := range []string{"启动", "停止", "重启", "start", "stop", "restart", "vm", "虚拟机", "服务器", "的"} {
+		msg = strings.ReplaceAll(strings.ToLower(msg), prefix, "")
+	}
+	msg = strings.TrimSpace(msg)
+	if msg == "" {
+		return ""
+	}
+	return msg
+}
+
+// ruleReply 规则回复（LLM不可用时的后备）
+func (h *AgentHandler) ruleReply(loc i18n.Locale, msg string) string {
+	msgLower := strings.ToLower(msg)
+
+	switch {
+	case strings.Contains(msgLower, "账户") || strings.Contains(msgLower, "account"):
+		return h.handleListAccounts(nil, msg)
+	case strings.Contains(msgLower, "资源") || strings.Contains(msgLower, "resource"):
+		return h.handleListResources(nil, msg)
+	case strings.Contains(msgLower, "创建") || strings.Contains(msgLower, "新建") || strings.Contains(msgLower, "vm") || strings.Contains(msgLower, "虚拟机"):
+		return h.handleCreateResource(nil, msg)
+	case strings.Contains(msgLower, "你好") || strings.Contains(msgLower, "hello") || strings.Contains(msgLower, "hi"):
+		return h.getWelcome(nil)
+	case strings.Contains(msgLower, "帮助") || strings.Contains(msgLower, "help"):
+		return h.getHelp(nil)
+	default:
+		return i18n.TL(loc, "default_reply", msg)
+	}
+}
+
+func truncate(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen]) + "..."
+}
+
+// ============================================================
+// 其他端点
+// ============================================================
 
 func (h *AgentHandler) Execute(c *gin.Context) {
 	var req struct {
@@ -361,13 +690,13 @@ func (h *AgentHandler) Execute(c *gin.Context) {
 	}
 
 	if !req.Confirmed {
-		c.JSON(http.StatusOK, gin.H{"message": i18n.T(c, "exec_cancelled")})
+		c.JSON(http.StatusOK, gin.H{"message": "执行已取消"})
 		return
 	}
 
 	log.Printf("Executing plan: %s", req.PlanID)
 	c.JSON(http.StatusOK, gin.H{
-		"message": i18n.T(c, "exec_started"),
+		"message":  "方案已开始执行",
 		"plan_id": req.PlanID,
 		"status":  "executing",
 	})
@@ -384,7 +713,7 @@ func (h *AgentHandler) ListSessions(c *gin.Context) {
 		 FROM ai_agent_sessions ORDER BY last_message_at DESC LIMIT 20`,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "query_failed")})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
 		return
 	}
 	defer rows.Close()
@@ -428,7 +757,7 @@ func (h *AgentHandler) SessionDetail(c *gin.Context) {
 		sessionID,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "query_failed")})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
 		return
 	}
 	defer rows.Close()
@@ -458,42 +787,12 @@ func (h *AgentHandler) SessionDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
 
-func truncate(s string, maxLen int) string {
-	runes := []rune(s)
-	if len(runes) <= maxLen {
-		return s
-	}
-	return string(runes[:maxLen]) + "..."
-}
+// ============================================================
+// 兼容旧接口（orchestrator相关，暂时保留）
+// ============================================================
 
-// orchestratorLLMClient 适配 agent.LLMClient 接口
-type orchestratorLLMClient struct {
-	db     *services.Database
-	config *ConfigHandler
-}
+type cloudSyncResult struct{}
 
-func (c *orchestratorLLMClient) Chat(ctx context.Context, messages []agent.Message) (*agent.ChatResponse, error) {
-	if c.db == nil {
-		return nil, fmt.Errorf("database not available")
-	}
-
-	cfg := c.config.loadConfig()
-	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("LLM API key not configured")
-	}
-
-	// 转换消息格式
-	var msgs []string
-	for _, m := range messages {
-		msgs = append(msgs, m.Role+": "+m.Content)
-	}
-
-	prompt := strings.Join(msgs, "\n")
-	reply, err := callLLM(ctx, cfg.APIEndpoint, cfg.Model, cfg.APIKey,
-		cfg.EnableReasoning, cfg.ReasoningEffort, "", prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &agent.ChatResponse{Content: reply}, nil
+func (h *AgentHandler) formatPlanResponse(plan interface{}) string {
+	return "方案已生成"
 }
