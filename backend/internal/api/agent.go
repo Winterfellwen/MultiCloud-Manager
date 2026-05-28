@@ -112,7 +112,7 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	}
 
 	// 判断是否为明确的操作请求（创建/删除/启动/停止等），否则走直接LLM对话
-	actionWords := []string{"create", "delete", "start", "stop", "restart", "list", "sync", "创建", "删除", "启动", "停止", "重启", "列出"}
+	actionWords := []string{"create", "delete", "start", "stop", "restart", "创建", "删除", "启动", "停止", "重启"}
 	questionWords := []string{"推荐", "建议", "什么", "如何", "怎么", "哪个", "推荐一下", "介绍一下", "是什么"}
 	msgLower := strings.ToLower(req.Message)
 

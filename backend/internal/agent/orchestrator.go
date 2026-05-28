@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,15 +74,22 @@ func (o *Orchestrator) ProcessUserInput(ctx context.Context, input string) (*Exe
 
 // parseIntent 意图解析
 func (o *Orchestrator) parseIntent(ctx context.Context, input string) (*Intent, error) {
-	systemPrompt := `You are a cloud operations intent parser. 
-Extract the following from user input:
-- action: create/delete/start/stop/restart/list/query
-- cloud: azure/oracle/tencent/render
-- resource_type: vm/database/storage/network
-- region: (if specified)
-- params: all numeric and string parameters
+	systemPrompt := `You are a cloud operations intent parser for MultiCloud Manager.
 
-Return JSON only, no explanation.`
+Parse the user's request and extract structured intent.
+Supported clouds: azure, oracle, tencent, render
+Supported actions: create, delete, start, stop, restart
+Supported resource types: vm, database, storage, network, kubernetes, function
+
+Rules:
+1. If the user's input is NOT a cloud operation request (e.g. it's a question, recommendation, or general chat), set action to "query"
+2. Translate Chinese cloud names: 微软云/Azure/Azure云 → azure, 腾讯云/tencent → tencent, 甲骨文/Oracle → oracle
+3. Translate Chinese resource names: 虚拟机/VM/服务器 → vm, 数据库 → database, 存储/磁盘 → storage, 网络 → network
+4. Extract all numeric parameters (cpu count, memory GB, disk size GB, etc.) into params
+5. Extract region if specified: 日本/东京/tokyo/ap-northeast-1, 美国/美西/us-west, etc.
+
+Return JSON only, no explanation. Example:
+{"action":"create","cloud":"oracle","resource_type":"vm","region":"us-ashburn-1","params":{"cpu":4,"memory_gb":24,"disk_gb":50}}`
 
 	messages := []Message{
 		{Role: "system", Content: systemPrompt},
@@ -95,7 +103,17 @@ Return JSON only, no explanation.`
 
 	var intent Intent
 	if err := json.Unmarshal([]byte(resp.Content), &intent); err != nil {
-		return nil, fmt.Errorf("failed to parse LLM intent: %v", err)
+		// Try to extract JSON from the response if it contains extra text
+		content := resp.Content
+		if idx := strings.Index(content, "{"); idx >= 0 {
+			content = content[idx:]
+		}
+		if idx := strings.LastIndex(content, "}"); idx >= 0 {
+			content = content[:idx+1]
+		}
+		if err2 := json.Unmarshal([]byte(content), &intent); err2 != nil {
+			return nil, fmt.Errorf("failed to parse LLM intent: %v (raw: %s)", err, resp.Content)
+		}
 	}
 
 	return &intent, nil
