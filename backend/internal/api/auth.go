@@ -143,11 +143,11 @@ func (h *AuthHandler) WechatLogin(c *gin.Context) {
 			userID, openid, nickname, role,
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "create_failed")})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "create user failed: " + err.Error()})
 			return
 		}
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "query_failed")})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query user failed: " + err.Error()})
 		return
 	}
 
