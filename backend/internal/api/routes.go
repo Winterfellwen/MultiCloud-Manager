@@ -18,6 +18,10 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 	api := router.Group("/api")
 	api.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+		c.Writer.Header().Set("X-Frame-Options", "DENY")
+		c.Writer.Header().Set("X-XSS-Protection", "1; mode=block")
+		c.Writer.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Next()
 	})
 
@@ -38,26 +42,6 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 	{
 		statsH := NewStatsHandler(db)
 		protected.GET("/stats", statsH.GetStats)
-
-		protected.GET("/debug/db", func(c *gin.Context) {
-			if db == nil {
-				c.JSON(200, gin.H{"db": nil})
-				return
-			}
-			var tableCount int
-			db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'").Scan(&tableCount)
-			tables := []string{}
-			rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
-			if err == nil {
-				defer rows.Close()
-				for rows.Next() {
-					var name string
-					rows.Scan(&name)
-					tables = append(tables, name)
-				}
-			}
-			c.JSON(200, gin.H{"db": "connected", "tables": tables, "table_count": tableCount})
-		})
 
 		// Auth profile (viewer+)
 		profileH := NewUsersHandler(db)

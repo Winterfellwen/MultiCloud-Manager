@@ -47,8 +47,8 @@ func (h *UsersHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	var userID, nickname, avatarURL, role string
-	var username, openid *string
+	var userID, nickname, role string
+	var username, openid, avatarURL *string
 	var createdAt string
 	err := h.db.QueryRow(
 		`SELECT id, username, openid, nickname, avatar_url, role, created_at FROM users WHERE id = $1`,
@@ -60,16 +60,25 @@ func (h *UsersHandler) GetProfile(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "query_failed")})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
 		return
+	}
+
+	nicknameStr := ""
+	if nickname != "" {
+		nicknameStr = nickname
+	}
+	avatarStr := ""
+	if avatarURL != nil {
+		avatarStr = *avatarURL
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":         userID,
 		"username":   username,
 		"openid":     openid,
-		"nickname":   nickname,
-		"avatar_url": avatarURL,
+		"nickname":   nicknameStr,
+		"avatar_url": avatarStr,
 		"role":       role,
 		"created_at": createdAt,
 	})
@@ -102,14 +111,19 @@ func (h *UsersHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	var passwordHash string
+	var passwordHash sql.NullString
 	err := h.db.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, claims.UserID).Scan(&passwordHash)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "query_failed")})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.OldPassword)); err != nil {
+	if !passwordHash.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no password set, use wechat login"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(req.OldPassword)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid old password"})
 		return
 	}
