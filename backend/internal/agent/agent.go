@@ -63,8 +63,10 @@ func (a *Agent) Chat(ctx context.Context, messages []Message, sessionID string) 
 	// 迭代执行（支持多轮tool calling）
 	for i := 0; i < a.config.MaxIterations; i++ {
 		// 调用LLM
+		log.Printf("Agent iteration %d, messages=%d", i, len(allMessages))
 		resp, err := a.llmClient.Chat(ctx, allMessages)
 		if err != nil {
+			log.Printf("LLM call failed at iteration %d: %v", i, err)
 			return nil, fmt.Errorf("LLM call failed: %v", err)
 		}
 
