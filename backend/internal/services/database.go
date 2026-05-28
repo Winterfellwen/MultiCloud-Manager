@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Database struct {
@@ -68,6 +69,12 @@ func NewDatabaseWithFallback(dsns ...string) (*Database, error) {
 }
 
 func (db *Database) Migrate() error {
+	hashBytes, err := bcrypt.GenerateFromPassword([]byte("Test@20181025"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash admin password: %v", err)
+	}
+	adminHash := string(hashBytes)
+
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -187,6 +194,13 @@ func (db *Database) Migrate() error {
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`INSERT INTO ai_config (id, api_endpoint, model) VALUES (1, 'https://api.openai.com/v1', 'gpt-4o-mini') ON CONFLICT (id) DO NOTHING`,
+		`ALTER TABLE users ALTER COLUMN openid DROP NOT NULL`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`,
+		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
+		`ALTER TABLE users ALTER COLUMN role SET DEFAULT 'viewer'`,
+		`UPDATE users SET role = 'viewer' WHERE role = 'member'`,
+		fmt.Sprintf(`INSERT INTO users (username, password_hash, nickname, role) VALUES ('admin', '%s', 'Admin', 'admin') ON CONFLICT (username) DO NOTHING`, adminHash),
 	}
 
 	for i, query := range queries {

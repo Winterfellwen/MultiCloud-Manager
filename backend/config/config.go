@@ -1,12 +1,16 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	DatabaseURL    string
 	RedisURL       string
-	JWTSecret      string
-	EncryptionKey  string
+	JWTSecret       string
+	JWTExpiryHours  int
+	EncryptionKey   string
 	WechatAppID    string
 	WechatAppSecret string
 	VaultURL       string
@@ -18,9 +22,10 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:     getEnv("DATABASE_URL", "postgresql://multicloud_db_hwsf_user:0Yjdwn65XrxH8h5PyUaBaiN3hozLRwav@dpg-d8avf49akrks73d7d2h0-a/multicloud_db_hwsf"),
+		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		RedisURL:        os.Getenv("REDIS_URL"),
 		JWTSecret:       getEnv("JWT_SECRET", "dev-secret-change-in-production"),
+		JWTExpiryHours:  getEnvInt("JWT_EXPIRY_HOURS", 72),
 		EncryptionKey:   getEnv("ENCRYPTION_KEY", ""),
 		WechatAppID:     os.Getenv("WECHAT_APP_ID"),
 		WechatAppSecret: os.Getenv("WECHAT_APP_SECRET"),
@@ -35,6 +40,15 @@ func Load() *Config {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
+		}
 	}
 	return fallback
 }
