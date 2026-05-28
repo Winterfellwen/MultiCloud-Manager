@@ -137,7 +137,7 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	})
 
 	// 调用Agent
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	resp, err := h.agent.Chat(ctx, messages, sessionID)
@@ -268,7 +268,7 @@ func (c *apiLLMClient) Chat(ctx context.Context, messages []agent.Message) (*age
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http: %w", err)
