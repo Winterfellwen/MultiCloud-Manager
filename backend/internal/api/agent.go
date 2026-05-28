@@ -111,8 +111,22 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 		)
 	}
 
-	// Process message and generate response
-	reply := h.processMessage(c, req.Message, sessionID)
+	// Process message - 使用 orchestrator 生成执行计划
+	ctx := c.Request.Context()
+	plan, err := h.orchestrator.ProcessUserInput(ctx, req.Message)
+	
+	var reply string
+	var planData *agent.ExecutionPlan
+	
+	if err != nil {
+		// orchestrator 失败时回退到直接LLM回复
+		log.Printf("Orchestrator failed, falling back to direct LLM: %v", err)
+		reply = h.processMessage(c, req.Message, sessionID)
+	} else {
+		// 成功生成执行计划
+		planData = plan
+		reply = h.formatPlanResponse(plan)
+	}
 
 	// Save agent response
 	if h.db != nil {
@@ -127,7 +141,43 @@ func (h *AgentHandler) Chat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":    reply,
 		"session_id": sessionID,
+		"plan":       planData,
 	})
+}
+
+func (h *AgentHandler) formatPlanResponse(plan *agent.ExecutionPlan) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("**%s**\n\n", plan.Title))
+
+	if plan.RiskSummary != nil {
+		b.WriteString(fmt.Sprintf("⚠️ 风险等级: **%s**\n", plan.RiskSummary.OverallRisk))
+		if len(plan.RiskSummary.Warnings) > 0 {
+			b.WriteString("警告:\n")
+			for _, w := range plan.RiskSummary.Warnings {
+				b.WriteString(fmt.Sprintf("- %s\n", w))
+			}
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString(fmt.Sprintf("**执行方案 (%d 步)**\n", len(plan.Steps)))
+	for i, step := range plan.Steps {
+		b.WriteString(fmt.Sprintf("\n**步骤 %d:** %s\n", i+1, step.Action))
+		b.WriteString(fmt.Sprintf("- 云平台: %s\n", step.Cloud))
+		b.WriteString(fmt.Sprintf("- 风险: **%s**", step.RiskLevel))
+		if step.RiskReason != "" {
+			b.WriteString(fmt.Sprintf(" (%s)", step.RiskReason))
+		}
+		b.WriteString("\n")
+	}
+
+	if len(plan.MissingParams) > 0 {
+		b.WriteString(fmt.Sprintf("\n⚠️ 缺少参数: %v\n", plan.MissingParams))
+	}
+	if plan.Status == "awaiting_confirmation" {
+		b.WriteString("\n> 以上方案需要您确认后才可执行。是否按此方案执行？")
+	}
+	return b.String()
 }
 
 func (h *AgentHandler) processMessage(c *gin.Context, msg string, sessionID string) string {

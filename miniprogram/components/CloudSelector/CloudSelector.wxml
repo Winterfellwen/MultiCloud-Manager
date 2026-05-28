@@ -1,5 +1,5 @@
 <view class="cloud-selector">
-  <view class="selector-title">选择云平台</view>
+  <view class="selector-title">{{title}}</view>
   <view class="cloud-list">
     <view 
       wx:for="{{cloudList}}" 

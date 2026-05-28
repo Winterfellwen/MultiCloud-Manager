@@ -5,15 +5,15 @@
   </view>
   <view class="card-body">
     <view class="info-row">
-      <text class="info-label">状态</text>
+      <text class="info-label">{{lang.resource_card_status}}</text>
       <text class="info-value status-{{status}}">{{status}}</text>
     </view>
     <view class="info-row">
-      <text class="info-label">区域</text>
+      <text class="info-label">{{lang.resource_card_region}}</text>
       <text class="info-value">{{region}}</text>
     </view>
     <view class="info-row">
-      <text class="info-label">规格</text>
+      <text class="info-label">{{lang.resource_card_spec}}</text>
       <text class="info-value">{{spec}}</text>
     </view>
   </view>

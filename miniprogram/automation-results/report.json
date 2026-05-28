@@ -1,0 +1,611 @@
+{
+  "pages": {
+    "index_index": {
+      "path": "pages/index/index",
+      "label": "index_index",
+      "elements": {
+        "buttons": [],
+        "inputs": [],
+        "images": [],
+        "textBlocks": [
+          "多云管理平台",
+          "统一管理您的云资源",
+          "--"
+        ]
+      },
+      "interactions": [],
+      "data": {
+        "stats": [
+          {
+            "title": "云资源",
+            "value": "--"
+          },
+          {
+            "title": "云账号",
+            "value": "--"
+          },
+          {
+            "title": "Terraform",
+            "value": "--"
+          },
+          {
+            "title": "团队成员",
+            "value": "--"
+          }
+        ],
+        "recentResources": [],
+        "activities": [],
+        "theme": "dark",
+        "lang": {
+          "home_title": "多云管理平台",
+          "home_subtitle": "统一管理您的云资源",
+          "home_quick_actions": "快捷操作",
+          "home_resources": "资源列表",
+          "home_accounts": "账号管理",
+          "home_terraform": "Terraform",
+          "home_team": "团队成员",
+          "home_recent": "最近资源",
+          "home_stat_resources": "云资源",
+          "home_stat_accounts": "云账号",
+          "home_stat_terraform": "Terraform",
+          "home_stat_members": "团队成员",
+          "home_activity": "最近活动",
+          "home_activity_empty": "暂无活动记录"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAAKfCAIAAADl0/h8AAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"header\"><text class=\"title\"></text><text class=\"subtitle\"></text></view><view class=\"stats-section\"><view class=\"stat-card\"><text class=\"stat-value\"></text><text class=\"stat-label\"></text></view><view class=\"stat-card\"><text class=\"stat-value\"></text><text class=\"stat-label\"></text></view><view class=\"stat-card\"><text class=\"stat-value\"></text><text class=\"stat-label\"></text></view><view class=\"stat-card\"><text class=\"stat-value\"></text><text class=\"stat-label\"></text></view></view><view class=\"quick-actions\"><text class=\"section-title\"></text><view class=\"action-grid\"><navigator class=\"action-item\" url=\"/pages/resources/list\" role=\"link\"><text class=\"action-icon\"></text><text class=\"action-text\"></text></navigator><navigator class=\"action-item\" url=\"/pages/accounts/list\" role=\"link\"><text class=\"action-icon\"></text><text class=\"action-text\"></text></navigator><navigator class=\"action-item\" url=\"/pages/terraform/list\" role=\"link\"><text class=\"action-icon\"></text><text class=\"action-text\"></text></navigator><navigator class=\"action-item\" url=\"/pages/team/members\" role=\"link\"><text class=\"action-icon\"></text><text class=\"action-text\"></text></navigator></view></view><view class=\"activity-section\"><text class=\"section-title\"></text><view class=\"activity-empty\"><text class=\"empty-text\"></text></view></view></view></page>",
+      "error": null
+    },
+    "agent_chat": {
+      "path": "pages/agent/chat",
+      "label": "agent_chat",
+      "elements": {
+        "buttons": [
+          {
+            "text": "发送",
+            "class": "send-btn",
+            "disabled": false
+          }
+        ],
+        "inputs": [
+          {
+            "placeholder": "输入指令",
+            "value": ""
+          }
+        ],
+        "images": [],
+        "textBlocks": []
+      },
+      "interactions": [],
+      "data": {
+        "messages": [],
+        "inputValue": "",
+        "sessionId": "sess_1779871065547",
+        "isTyping": false,
+        "currentPlan": null,
+        "executionMode": "risk_review",
+        "executionModes": [
+          {
+            "label": "仅生成方案",
+            "value": "plan_only"
+          },
+          {
+            "label": "分步确认",
+            "value": "step_confirm"
+          },
+          {
+            "label": "风险审查模式",
+            "value": "risk_review"
+          },
+          {
+            "label": "全自动执行",
+            "value": "auto_execute"
+          }
+        ],
+        "theme": "dark",
+        "showConfig": false,
+        "showQuickActions": false,
+        "aiProvider": "",
+        "aiModel": "",
+        "aiApiKey": "",
+        "aiTemperature": "0.7",
+        "lang": {
+          "chat_title": "AI 云助手",
+          "chat_thinking": "AI 正在思考...",
+          "chat_placeholder": "输入指令",
+          "chat_send": "发送",
+          "chat_exec_plan": "执行计划",
+          "chat_confirm_title": "确认执行",
+          "chat_request_failed": "请求失败",
+          "chat_exec_failed": "执行失败",
+          "chat_confirm_content": "将执行计划: {title}\n执行模式: {mode}",
+          "chat_exec_step": "开始执行步骤 {step}: {msg}",
+          "chat_step_progress": "步骤 {step} 进度: {percent}% - {msg}",
+          "chat_step_done": "步骤 {step} 完成: {result}",
+          "chat_exec_complete": "执行完成: {summary}",
+          "chat_config_title": "AI 配置",
+          "chat_config_provider": "模型提供商",
+          "chat_config_model": "模型名称",
+          "chat_config_temperature": "温度",
+          "chat_config_api_key": "API Key",
+          "chat_config_placeholder_provider": "例如: openai",
+          "chat_config_placeholder_model": "例如: gpt-4o",
+          "chat_config_save": "保存配置",
+          "chat_config_saved": "配置已保存",
+          "chat_quick_actions": "快捷操作",
+          "chat_new_session": "新建会话",
+          "chat_clear": "清除对话"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAAKfCAIAAADl0/h8AAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"chat-container theme-dark\"><view class=\"chat-header\"><text class=\"header-title\"></text><view class=\"header-actions\"><text class=\"header-btn\"></text><picker class=\"mode-picker\" range=\"[{&quot;label&quot;:&quot;仅生成方案&quot;,&quot;value&quot;:&quot;plan_only&quot;},{&quot;label&quot;:&quot;分步确认&quot;,&quot;value&quot;:&quot;step_confirm&quot;},{&quot;label&quot;:&quot;风险审查模式&quot;,&quot;value&quot;:&quot;risk_review&quot;},{&quot;label&quot;:&quot;全自动执行&quot;,&quot;value&quot;:&quot;auto_execute&quot;}]\" range-key=\"label\" value=\"risk_review\" aria-haspopup=\"true\"><view class=\"mode-display\">                    <text class=\"icon-arrow\"></text></view></picker></view></view><scroll-view scroll-with-animation=\"\" scroll-y=\"\" class=\"message-list\"><view class=\"messages\"></view></scroll-view><view class=\"input-area\"><input class=\"message-input\" placeholder=\"输入指令\" value=\"\">输入指令</input><button class=\"send-btn\" role=\"button\" aria-disabled=\"false\">发送</button></view></view></page>",
+      "error": null
+    },
+    "resources_list": {
+      "path": "pages/resources/list",
+      "label": "resources_list",
+      "elements": {
+        "buttons": [
+          {
+            "text": "同步",
+            "class": "sync-btn",
+            "disabled": false
+          },
+          {
+            "text": "停止",
+            "class": "btn-action btn-stop",
+            "disabled": false
+          }
+        ],
+        "inputs": [],
+        "images": [],
+        "textBlocks": []
+      },
+      "interactions": [],
+      "data": {
+        "resources": [
+          {
+            "account": "render 账户",
+            "cloud_type": "render",
+            "dashboard_url": "https://dashboard.render.com/r/red-d8avf4i8qa3s73ddudn0",
+            "id": "c447dc2b-946d-428c-889f-534a2061e9dc",
+            "name": "multicloud-redis",
+            "plan": "free",
+            "region": "singapore",
+            "status": "running",
+            "type": "key_value",
+            "version": "8.1.4"
+          },
+          {
+            "account": "render 账户",
+            "cloud_type": "render",
+            "dashboard_url": "https://dashboard.render.com/d/dpg-d8avf49akrks73d7d2h0-a",
+            "database": "multicloud_db_hwsf",
+            "disk_gb": 0,
+            "ha_enabled": false,
+            "id": "d215b2bc-a4df-4a2f-a193-145203057816",
+            "name": "multicloud-db",
+            "plan": "free",
+            "region": "singapore",
+            "status": "running",
+            "type": "postgres",
+            "version": "16"
+          },
+          {
+            "account": "render 账户",
+            "cloud_type": "render",
+            "dashboard_url": "https://dashboard.render.com/web/srv-d8ag615ckfvc7381riu0",
+            "id": "ed28cbb9-f6a2-4e64-aedf-379afeb2f880",
+            "name": "multicloud-backend",
+            "plan": "free",
+            "region": "singapore",
+            "slug": "multicloud-backend-qw9d",
+            "status": "running",
+            "type": "web_service",
+            "url": "https://multicloud-backend-qw9d.onrender.com"
+          }
+        ],
+        "filteredResources": [
+          {
+            "account": "render 账户",
+            "cloud_type": "render",
+            "dashboard_url": "https://dashboard.render.com/r/red-d8avf4i8qa3s73ddudn0",
+            "id": "c447dc2b-946d-428c-889f-534a2061e9dc",
+            "name": "multicloud-redis",
+            "plan": "free",
+            "region": "singapore",
+            "status": "running",
+            "type": "key_value",
+            "version": "8.1.4"
+          },
+          {
+            "account": "render 账户",
+            "cloud_type": "render",
+            "dashboard_url": "https://dashboard.render.com/d/dpg-d8avf49akrks73d7d2h0-a",
+            "database": "multicloud_db_hwsf",
+            "disk_gb": 0,
+            "ha_enabled": false,
+            "id": "d215b2bc-a4df-4a2f-a193-145203057816",
+            "name": "multicloud-db",
+            "plan": "free",
+            "region": "singapore",
+            "status": "running",
+            "type": "postgres",
+            "version": "16"
+          },
+          {
+            "account": "render 账户",
+            "cloud_type": "render",
+            "dashboard_url": "https://dashboard.render.com/web/srv-d8ag615ckfvc7381riu0",
+            "id": "ed28cbb9-f6a2-4e64-aedf-379afeb2f880",
+            "name": "multicloud-backend",
+            "plan": "free",
+            "region": "singapore",
+            "slug": "multicloud-backend-qw9d",
+            "status": "running",
+            "type": "web_service",
+            "url": "https://multicloud-backend-qw9d.onrender.com"
+          }
+        ],
+        "cloudTypes": [
+          "全部云",
+          "Azure",
+          "腾讯云",
+          "Oracle",
+          "Render"
+        ],
+        "statusTypes": [
+          "全部状态",
+          "运行中",
+          "已停止"
+        ],
+        "cloudIndex": 0,
+        "statusIndex": 0,
+        "theme": "dark",
+        "searchText": "",
+        "isSyncing": false,
+        "lastSyncTime": "",
+        "lastSyncLabel": "",
+        "lang": {
+          "res_list_title": "云资源",
+          "res_filter_all_cloud": "全部云",
+          "res_filter_all_status": "全部状态",
+          "res_running": "运行中",
+          "res_stopped": "已停止",
+          "res_start": "启动",
+          "res_stop": "停止",
+          "res_region": "区域:",
+          "res_spec": "规格:",
+          "res_empty": "暂无云资源",
+          "res_empty_hint": "请先添加云账号并创建资源",
+          "res_filter_azure": "Azure",
+          "res_filter_tencent": "腾讯云",
+          "res_filter_oracle": "Oracle",
+          "res_filter_render": "Render",
+          "res_search": "搜索",
+          "res_search_placeholder": "输入名称搜索资源",
+          "res_sync": "同步",
+          "res_syncing": "同步中...",
+          "res_synced": "已同步",
+          "res_last_sync": "上次同步: {time}",
+          "res_sync_now": "立即同步",
+          "res_start_success": "资源已启动",
+          "res_stop_success": "资源已停止",
+          "res_search_no_result": "未找到匹配的资源"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAAKfCAIAAADl0/h8AAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><text class=\"page-title\"></text></view><view class=\"search-sync-bar\"><input class=\"search-input\" placeholder=\"输入名称搜索资源\" value=\"\">输入名称搜索资源</input><button class=\"sync-btn\" role=\"button\" aria-disabled=\"false\">同步</button></view><view class=\"filter-bar\"><picker class=\"filter-picker\" range=\"[&quot;全部云&quot;,&quot;Azure&quot;,&quot;腾讯云&quot;,&quot;Oracle&quot;,&quot;Render&quot;]\" value=\"0\" aria-haspopup=\"true\"><view class=\"filter-display\">全部云 ▼</view></picker><picker class=\"filter-picker\" range=\"[&quot;全部状态&quot;,&quot;运行中&quot;,&quot;已停止&quot;]\" value=\"0\" aria-haspopup=\"true\"><view class=\"filter-display\">全部状态 ▼</view></picker></view><view class=\"resource-list\"><view class=\"resource-card\"><navigator class=\"card-top\" url=\"/pages/resources/detail?id=c447dc2b-946d-428c-889f-534a2061e9dc\" role=\"link\"><view class=\"resource-info\"><text class=\"resource-name\"></text><view class=\"resource-tags\"><text class=\"tag tag-\"></text><status-badge is=\"components/StatusBadge/StatusBadge\"><view class=\"StatusBadge--status-badge StatusBadge--status-success\">运行中</view></status-badge></view></view></navigator><view class=\"card-meta\"><text class=\"meta-item\"></text><text class=\"meta-item\"></text></view><view class=\"resource-actions\"><button class=\"btn-action btn-stop\" data-id=\"c447dc2b-946d-428c-889f-534a2061e9dc\" role=\"button\" aria-disabled=\"false\">停止</button></view></view><view class=\"resource-card\"><navigator class=\"card-top\" url=\"/pages/resources/detail?id=d215b2bc-a4df-4a2f-a193-145203057816\" role=\"link\"><view class=\"resource-info\"><text class=\"resource-name\"></text><view class=\"resource-tags\"><text class=\"tag tag-\"></text><status-badge is=\"components/StatusBadge/StatusBadge\"><view class=\"StatusBadge--status-badge StatusBadge--status-success\">运行中</view></status-badge></view></view></navigator><view class=\"card-meta\"><text class=\"meta-item\"></text><text class=\"meta-item\"></text></view><view class=\"resource-actions\"><button class=\"btn-action btn-stop\" data-id=\"d215b2bc-a4df-4a2f-a193-145203057816\" role=\"button\" aria-disabled=\"false\">停止</button></view></view><view class=\"resource-card\"><navigator class=\"card-top\" url=\"/pages/resources/detail?id=ed28cbb9-f6a2-4e64-aedf-379afeb2f880\" role=\"link\"><view class=\"resource-info\"><text class=\"resource-name\"></text><view class=\"resource-tags\"><text class=\"tag tag-\"></text><status-badge is=\"components/StatusBadge/StatusBadge\"><view class=\"StatusBadge--status-badge StatusBadge--status-success\">运行中</view></status-badge></view></view></navigator><view class=\"card-meta\"><text class=\"meta-item\"></text><text class=\"meta-item\"></text></view><view class=\"resource-actions\"><button class=\"btn-action btn-stop\" data-id=\"ed28cbb9-f6a2-4e64-aedf-379afeb2f880\" role=\"button\" aria-disabled=\"false\">停止</button></view></view></view></view></page>",
+      "error": null
+    },
+    "user_profile": {
+      "path": "pages/user/profile",
+      "label": "user_profile",
+      "elements": {
+        "buttons": [
+          {
+            "text": "退出登录",
+            "class": "btn-logout",
+            "disabled": false
+          }
+        ],
+        "inputs": [],
+        "images": [],
+        "textBlocks": [
+          "未登录",
+          "请登录后使用",
+          "🌙 深色模式",
+          "🔔 消息通知",
+          "语言",
+          "🔑 云账号管理",
+          "›",
+          "👥 团队管理",
+          "›",
+          "📦 Terraform 配置"
+        ]
+      },
+      "interactions": [],
+      "data": {
+        "userInfo": null,
+        "theme": "dark",
+        "notifyEnabled": true,
+        "currentLang": "zh",
+        "langOptions": [
+          "中文",
+          "English"
+        ],
+        "lang": {
+          "user_not_logged_in": "未登录",
+          "user_login_hint": "请登录后使用",
+          "user_dark_mode": "🌙 深色模式",
+          "user_notifications": "🔔 消息通知",
+          "user_accounts": "🔑 云账号管理",
+          "user_team_management": "👥 团队管理",
+          "user_terraform_config": "📦 Terraform 配置",
+          "user_version": "版本",
+          "user_version_value": "1.0.0",
+          "user_logout": "退出登录",
+          "user_confirm_logout_title": "确认退出",
+          "user_confirm_logout_content": "确定要退出登录吗？",
+          "user_logged_out": "已退出",
+          "user_language": "语言",
+          "user_zh": "中文",
+          "user_en": "English",
+          "user_change_password": "修改密码",
+          "user_usage": "使用统计",
+          "user_system_logs": "系统日志"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAAKfCAIAAADl0/h8AAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"profile-header\"><view class=\"avatar\">U</view><text class=\"user-name\"></text><text class=\"user-email\"></text></view><view class=\"settings-card\"><view class=\"setting-item\"><text class=\"setting-label\"></text><switch checked=\"\" aria-checked=\"true\" color=\"#6366f1\" role=\"checkbox\" aria-disabled=\"false\"></switch></view><view class=\"setting-item\"><text class=\"setting-label\"></text><switch checked=\"\" aria-checked=\"true\" color=\"#6366f1\" role=\"checkbox\" aria-disabled=\"false\"></switch></view><view class=\"setting-item\"><text class=\"setting-label\"></text><picker range=\"[&quot;中文&quot;,&quot;English&quot;]\" value=\"0\" aria-haspopup=\"true\"><view class=\"setting-value\">中文</view></picker></view></view><view class=\"settings-card\"><navigator class=\"setting-item nav-item\" url=\"/pages/accounts/list\" role=\"link\"><text class=\"setting-label\"></text><text class=\"setting-arrow\"></text></navigator><navigator class=\"setting-item nav-item\" url=\"/pages/team/members\" role=\"link\"><text class=\"setting-label\"></text><text class=\"setting-arrow\"></text></navigator><navigator class=\"setting-item nav-item\" url=\"/pages/terraform/list\" role=\"link\"><text class=\"setting-label\"></text><text class=\"setting-arrow\"></text></navigator><navigator class=\"setting-item nav-item\" url=\"javascript:void(0)\" role=\"link\"><text class=\"setting-label\"></text><text class=\"setting-arrow\"></text></navigator><navigator class=\"setting-item nav-item\" url=\"javascript:void(0)\" role=\"link\"><text class=\"setting-label\"></text><text class=\"setting-arrow\"></text></navigator><navigator class=\"setting-item nav-item\" url=\"javascript:void(0)\" role=\"link\"><text class=\"setting-label\"></text><text class=\"setting-arrow\"></text></navigator></view><view class=\"about-card\"><view class=\"setting-item\"><text class=\"setting-label\"></text><text class=\"setting-value\"></text></view></view><button class=\"btn-logout\" role=\"button\" aria-disabled=\"false\">退出登录</button></view></page>",
+      "error": null
+    },
+    "resources_detail": {
+      "path": "pages/resources/detail",
+      "label": "resources_detail",
+      "elements": {
+        "buttons": [
+          {
+            "text": "删除资源",
+            "class": "btn-action btn-delete",
+            "disabled": false
+          }
+        ],
+        "inputs": [],
+        "images": [],
+        "textBlocks": [
+          "资源详情",
+          "资源名称",
+          "—",
+          "云平台",
+          "—",
+          "状态",
+          "区域",
+          "—",
+          "规格",
+          "—",
+          "创建时间",
+          "—"
+        ]
+      },
+      "interactions": [],
+      "data": {
+        "resource": {},
+        "theme": "dark",
+        "lang": {
+          "res_detail_title": "资源详情",
+          "res_back": "← 返回",
+          "res_name": "资源名称",
+          "res_cloud": "云平台",
+          "res_status": "状态",
+          "res_region_label": "区域",
+          "res_spec_label": "规格",
+          "res_created_at": "创建时间",
+          "res_start_resource": "启动资源",
+          "res_stop_resource": "停止资源",
+          "res_delete_resource": "删除资源",
+          "res_starting": "启动中...",
+          "res_stopping": "停止中...",
+          "res_confirm_delete": "确认删除",
+          "res_confirm_delete_content": "确定要删除此资源吗？",
+          "res_deleted": "已删除"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAALxCAIAAADXLZZWAAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><navigator class=\"btn-back\" url=\"/pages/resources/list\" role=\"link\">← 返回</navigator><text class=\"page-title\"></text></view><view class=\"detail-card\"><view class=\"detail-row\"><text class=\"detail-label\"></text><text class=\"detail-value\"></text></view><view class=\"detail-row\"><text class=\"detail-label\"></text><text class=\"detail-value\"></text></view><view class=\"detail-row\"><text class=\"detail-label\"></text><status-badge is=\"components/StatusBadge/StatusBadge\"><view class=\"StatusBadge--status-badge StatusBadge--status-warning\">warning</view></status-badge></view><view class=\"detail-row\"><text class=\"detail-label\"></text><text class=\"detail-value\"></text></view><view class=\"detail-row\"><text class=\"detail-label\"></text><text class=\"detail-value\"></text></view><view class=\"detail-row\"><text class=\"detail-label\"></text><text class=\"detail-value\"></text></view></view><view class=\"action-bar\"><button class=\"btn-action btn-delete\" role=\"button\" aria-disabled=\"false\">删除资源</button></view></view></page>",
+      "error": null
+    },
+    "accounts_list": {
+      "path": "pages/accounts/list",
+      "label": "accounts_list",
+      "elements": {
+        "buttons": [],
+        "inputs": [],
+        "images": [],
+        "textBlocks": [
+          "云账号"
+        ]
+      },
+      "interactions": [],
+      "data": {
+        "accounts": [],
+        "theme": "dark",
+        "lang": {
+          "acc_list_title": "云账号",
+          "acc_add": "+ 添加云账户",
+          "acc_connected": "已连接",
+          "acc_error": "异常",
+          "acc_delete": "删除",
+          "acc_empty": "暂无云账号",
+          "acc_empty_hint": "点击上方按钮添加您的第一个云账号",
+          "acc_delete_title": "确认删除",
+          "acc_delete_content": "确定要删除此云账号吗？",
+          "acc_deleted": "已删除"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAALxCAIAAADXLZZWAAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><text class=\"page-title\"></text><navigator class=\"btn-add\" url=\"/pages/accounts/add\" role=\"link\">+ 添加云账户</navigator></view><view class=\"account-list\"></view><view class=\"empty-state\"><text class=\"empty-icon\"></text><text class=\"empty-text\"></text><text class=\"empty-hint\"></text></view></view></page>",
+      "error": null
+    },
+    "accounts_add": {
+      "path": "pages/accounts/add",
+      "label": "accounts_add",
+      "elements": {
+        "buttons": [],
+        "inputs": [],
+        "images": [],
+        "textBlocks": []
+      },
+      "interactions": [],
+      "data": {
+        "selectedProvider": "",
+        "selectedProviderName": "",
+        "accountName": "",
+        "accessKey": "",
+        "secretKey": "",
+        "region": "",
+        "canSubmit": false,
+        "theme": "dark",
+        "lang": {
+          "acc_add_title": "添加云账户",
+          "acc_cloud_label": "云平台",
+          "acc_name_label": "账户名称",
+          "acc_name_placeholder": "请输入账户名称",
+          "acc_access_key": "Access Key ID",
+          "acc_access_placeholder": "请输入 Access Key",
+          "acc_secret_key": "Secret Access Key",
+          "acc_secret_placeholder": "请输入 Secret Key",
+          "acc_region_label": "区域",
+          "acc_region_placeholder": "例如: eastus",
+          "acc_save": "保存账户",
+          "acc_saved": "保存成功"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAALxCAIAAADXLZZWAAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><text class=\"page-title\"></text></view><view class=\"form-card\"><view class=\"form-group\"><text class=\"form-label\"></text><cloud-selector is=\"components/CloudSelector/CloudSelector\"><view class=\"CloudSelector--cloud-selector\"><view class=\"CloudSelector--selector-title\">选择云平台</view><view class=\"CloudSelector--cloud-list\"><view class=\"CloudSelector--cloud-item CloudSelector--active\" data-index=\"0\"><view class=\"CloudSelector--cloud-icon\">☁️</view><view class=\"CloudSelector--cloud-name\">Azure</view></view><view class=\"CloudSelector--cloud-item\" data-index=\"1\"><view class=\"CloudSelector--cloud-icon\">🌐</view><view class=\"CloudSelector--cloud-name\">腾讯云</view></view><view class=\"CloudSelector--cloud-item\" data-index=\"2\"><view class=\"CloudSelector--cloud-icon\">🔶</view><view class=\"CloudSelector--cloud-name\">Oracle Cloud</view></view><view class=\"CloudSelector--cloud-item\" data-index=\"3\"><view class=\"CloudSelector--cloud-icon\">⚡</view><view class=\"CloudSelector--cloud-name\">Render</view></view></view></view></cloud-selector></view><view class=\"form-group\"><text class=\"form-label\"></text><input class=\"form-input\" placeholder=\"请输入账户名称\" value=\"\">请输入账户名称</input></view><view class=\"form-group\"><text class=\"form-label\"></text><input class=\"form-input\" placeholder=\"请输入 Access Key\" value=\"\">请输入 Access Key</input></view><view class=\"form-group\"><text class=\"form-label\"></text><input class=\"form-input\" placeholder=\"请输入 Secret Key\" type=\"password\" value=\"\">请输入 Secret Key</input></view><view class=\"form-group\"><text class=\"form-label\"></text><input class=\"form-input\" placeholder=\"例如: eastus\" value=\"\">例如: eastus</input></view></view><button class=\"btn-submit\" disabled=\"\" aria-disabled=\"true\" role=\"button\">保存账户</button></view></page>",
+      "error": null
+    },
+    "team_members": {
+      "path": "pages/team/members",
+      "label": "team_members",
+      "elements": {
+        "buttons": [
+          {
+            "text": "+ 邀请成员",
+            "class": "btn-invite",
+            "disabled": false
+          }
+        ],
+        "inputs": [],
+        "images": [],
+        "textBlocks": [
+          "团队成员",
+          "👥",
+          "暂无团队成员",
+          "邀请成员加入您的团队协作管理云资源"
+        ]
+      },
+      "interactions": [],
+      "data": {
+        "members": [],
+        "theme": "dark",
+        "lang": {
+          "team_title": "团队成员",
+          "team_invite": "+ 邀请成员",
+          "team_online": "在线",
+          "team_offline": "离线",
+          "team_empty": "暂无团队成员",
+          "team_empty_hint": "邀请成员加入您的团队协作管理云资源"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAALxCAIAAADXLZZWAAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><text class=\"page-title\"></text><button class=\"btn-invite\" role=\"button\" aria-disabled=\"false\">+ 邀请成员</button></view><view class=\"member-list\"></view><view class=\"empty-state\"><text class=\"empty-icon\"></text><text class=\"empty-text\"></text><text class=\"empty-hint\"></text></view></view></page>",
+      "error": null
+    },
+    "terraform_list": {
+      "path": "pages/terraform/list",
+      "label": "terraform_list",
+      "elements": {
+        "buttons": [
+          {
+            "text": "[nav] + 上传配置",
+            "class": "navigator"
+          }
+        ],
+        "inputs": [],
+        "images": [],
+        "textBlocks": [
+          "Terraform",
+          "📦",
+          "暂无 Terraform 配置",
+          "上传 Terraform 配置文件来管理基础设施"
+        ]
+      },
+      "interactions": [],
+      "data": {
+        "configs": [],
+        "theme": "dark",
+        "lang": {
+          "tf_list_title": "Terraform",
+          "tf_upload": "+ 上传配置",
+          "tf_deploy": "部署",
+          "tf_empty": "暂无 Terraform 配置",
+          "tf_empty_hint": "上传 Terraform 配置文件来管理基础设施",
+          "tf_confirm_deploy_title": "确认部署",
+          "tf_confirm_deploy_content": "确定要部署此 Terraform 配置吗？",
+          "tf_deploy_triggered": "部署已触发"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAALxCAIAAADXLZZWAAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><text class=\"page-title\"></text><navigator class=\"btn-upload\" url=\"/pages/terraform/upload\" role=\"link\">+ 上传配置</navigator></view><view class=\"tf-list\"></view><view class=\"empty-state\"><text class=\"empty-icon\"></text><text class=\"empty-text\"></text><text class=\"empty-hint\"></text></view></view></page>",
+      "error": null
+    },
+    "terraform_upload": {
+      "path": "pages/terraform/upload",
+      "label": "terraform_upload",
+      "elements": {
+        "buttons": [],
+        "inputs": [],
+        "images": [],
+        "textBlocks": []
+      },
+      "interactions": [],
+      "data": {
+        "fileName": "",
+        "configName": "",
+        "providerIndex": 0,
+        "providers": [
+          "Azure",
+          "腾讯云",
+          "Oracle",
+          "Render"
+        ],
+        "theme": "dark",
+        "lang": {
+          "tf_upload_title": "上传配置",
+          "tf_back": "← 返回",
+          "tf_select_file": "点击选择 .tf 文件",
+          "tf_file_hint": "支持 .tf 和 .tfvars 格式",
+          "tf_name_label": "配置名称",
+          "tf_name_placeholder": "请输入配置名称",
+          "tf_cloud_label": "云平台",
+          "tf_submit": "上传配置",
+          "tf_file_picker_dev": "文件选择功能开发中",
+          "tf_uploaded": "上传成功"
+        }
+      },
+      "screenshot": "iVBORw0KGgoAAAANSUhEUgAAAYYAAALxCAIAAADXLZZWAAAAAXNSR0IArs4c...",
+      "wxml": "<page><view class=\"container theme-dark\"><view class=\"page-header\"><navigator class=\"btn-back\" url=\"/pages/terraform/list\" role=\"link\">← 返回</navigator><text class=\"page-title\"></text></view><view class=\"upload-card\"><view class=\"upload-area\"><text class=\"upload-icon\"></text><text class=\"upload-text\"></text><text class=\"upload-hint\"></text></view></view></view></page>",
+      "error": null
+    }
+  },
+  "summary": {
+    "total": 10,
+    "success": 10,
+    "failed": 0,
+    "soft_fail": 0,
+    "errors": []
+  },
+  "console": []
+}

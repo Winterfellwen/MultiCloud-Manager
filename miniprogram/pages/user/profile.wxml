@@ -1,42 +1,67 @@
-<view class="container">
+<view class="container theme-{{theme}}">
   <view class="profile-header">
-    <view class="avatar">{{userInfo ? userInfo.name[0] : 'U'}}</view>
-    <text class="user-name">{{userInfo ? userInfo.name : '未登录'}}</text>
-    <text class="user-email">{{userInfo ? userInfo.email : '请登录后使用'}}</text>
+    <view class="avatar">{{userInfo && userInfo.nickname ? userInfo.nickname[0] : 'U'}}</view>
+    <view class="user-name-row">
+      <text class="user-name">{{userInfo ? userInfo.nickname : lang.user_not_logged_in}}</text>
+      <text class="user-role-tag role-{{userInfo.role}}" wx:if="{{userInfo && userInfo.role}}">{{roleLabels[userInfo.role]}}</text>
+    </view>
+    <text class="user-email">{{userInfo ? (userInfo.username || userInfo.openid || '') : lang.user_login_hint}}</text>
   </view>
 
   <view class="settings-card">
     <view class="setting-item">
-      <text class="setting-label">🌙 深色模式</text>
+      <text class="setting-label">{{lang.user_dark_mode}}</text>
       <switch checked="{{theme === 'dark'}}" bindchange="onThemeToggle" color="#6366f1"/>
     </view>
     <view class="setting-item">
-      <text class="setting-label">🔔 消息通知</text>
+      <text class="setting-label">{{lang.user_notifications}}</text>
       <switch checked="{{notifyEnabled}}" bindchange="onNotifyToggle" color="#6366f1"/>
+    </view>
+    <view class="setting-item">
+      <text class="setting-label">{{lang.user_language}}</text>
+      <picker value="{{currentLang === 'zh' ? 0 : 1}}" range="{{langOptions}}" bindchange="onLangChange">
+        <view class="setting-value">{{currentLang === 'zh' ? lang.user_zh : lang.user_en}}</view>
+      </picker>
     </view>
   </view>
 
   <view class="settings-card">
     <navigator url="/pages/accounts/list" class="setting-item nav-item">
-      <text class="setting-label">🔑 云账号管理</text>
+      <text class="setting-label">{{lang.user_accounts}}</text>
       <text class="setting-arrow">›</text>
     </navigator>
     <navigator url="/pages/team/members" class="setting-item nav-item">
-      <text class="setting-label">👥 团队管理</text>
+      <text class="setting-label">{{lang.user_team_management}}</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+    <navigator url="/pages/admin/users/users" class="setting-item nav-item" wx:if="{{userInfo && userInfo.role === 'admin'}}">
+      <text class="setting-label">{{lang.user_user_management}}</text>
       <text class="setting-arrow">›</text>
     </navigator>
     <navigator url="/pages/terraform/list" class="setting-item nav-item">
-      <text class="setting-label">📦 Terraform 配置</text>
+      <text class="setting-label">{{lang.user_terraform_config}}</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+    <navigator url="javascript:void(0)" class="setting-item nav-item">
+      <text class="setting-label">{{lang.user_change_password}}</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+    <navigator url="javascript:void(0)" class="setting-item nav-item">
+      <text class="setting-label">{{lang.user_usage}}</text>
+      <text class="setting-arrow">›</text>
+    </navigator>
+    <navigator url="javascript:void(0)" class="setting-item nav-item">
+      <text class="setting-label">{{lang.user_system_logs}}</text>
       <text class="setting-arrow">›</text>
     </navigator>
   </view>
 
   <view class="about-card">
     <view class="setting-item">
-      <text class="setting-label">版本</text>
-      <text class="setting-value">1.0.0</text>
+      <text class="setting-label">{{lang.user_version}}</text>
+      <text class="setting-value">{{lang.user_version_value}}</text>
     </view>
   </view>
 
-  <button class="btn-logout" bindtap="onLogout">退出登录</button>
+  <button class="btn-logout" bindtap="onLogout">{{lang.user_logout}}</button>
 </view>

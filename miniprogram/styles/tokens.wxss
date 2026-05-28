@@ -31,3 +31,13 @@ page.light {
   --text-secondary: #666666;
   --shadow: 0 4rpx 12rpx rgba(0,0,0,0.08);
 }
+
+.theme-light {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-hover: #f0f2f5;
+  --border: #e4e7ed;
+  --text: #1a1a2e;
+  --text-secondary: #666666;
+  --shadow: 0 4rpx 12rpx rgba(0,0,0,0.08);
+}
