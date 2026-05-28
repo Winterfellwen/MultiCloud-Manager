@@ -120,8 +120,8 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	// 保存用户消息
 	h.saveMessage(sessionID, "user", req.Message)
 
-	// 获取对话历史
-	history := h.getConversationHistory(sessionID, 10)
+	// 获取对话历史（仅保留最近2条，避免token超限）
+	history := h.getConversationHistory(sessionID, 2)
 
 	// 构建消息列表
 	var messages []agent.Message
@@ -142,7 +142,7 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 
 	resp, err := h.agent.Chat(ctx, messages, sessionID)
 	if err != nil {
-		log.Printf("Agent chat failed: %v", err)
+		log.Printf("Agent chat failed: %v | sessionID=%s | msgLen=%d | historyLen=%d", err, sessionID, len(req.Message), len(messages))
 		h.saveMessage(sessionID, "agent", "抱歉，处理您的请求时遇到了错误。")
 		c.JSON(http.StatusOK, gin.H{
 			"message":    "抱歉，处理您的请求时遇到了错误。",
