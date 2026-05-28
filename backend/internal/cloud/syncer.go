@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,12 +14,13 @@ import (
 )
 
 type Syncer struct {
-	DB         Database
-	lastSyncAt time.Time
-	mu         sync.RWMutex
-	bgCtx      context.Context
-	bgCancel   context.CancelFunc
-	started    bool
+	DB             Database
+	lastSyncAt     time.Time
+	lastSyncErrors []string
+	mu             sync.RWMutex
+	bgCtx          context.Context
+	bgCancel       context.CancelFunc
+	started        bool
 }
 
 type Database interface {
@@ -80,6 +82,7 @@ func (s *Syncer) syncOnce(ctx context.Context) error {
 	}
 	defer rows.Close()
 
+	var syncErrors []string
 	for rows.Next() {
 		var id, cloudType string
 		var credBytes []byte
@@ -89,12 +92,18 @@ func (s *Syncer) syncOnce(ctx context.Context) error {
 		}
 		if err := s.syncAccount(ctx, id, cloudType, string(credBytes)); err != nil {
 			log.Printf("syncer: sync account %s (%s): %v", id, cloudType, err)
+			syncErrors = append(syncErrors, fmt.Sprintf("%s: %v", cloudType, err))
 		}
 	}
 
 	s.mu.Lock()
 	s.lastSyncAt = time.Now()
+	s.lastSyncErrors = syncErrors
 	s.mu.Unlock()
+
+	if len(syncErrors) > 0 {
+		return fmt.Errorf("sync errors: %s", strings.Join(syncErrors, "; "))
+	}
 	return nil
 }
 
@@ -236,9 +245,6 @@ func (s *Syncer) LogDeletion(ctx context.Context, resourceID, userID, username s
 	if err != nil {
 		return fmt.Errorf("query deleted resource: %w", err)
 	}
-	if err != nil {
-		return fmt.Errorf("query deleted resource: %w", err)
-	}
 
 	meta, _ := json.Marshal(map[string]string{
 		"deleted_by":   userID,
@@ -326,6 +332,11 @@ func (s *Syncer) GetDeletions(ctx context.Context) ([]map[string]interface{}, er
 		})
 	}
 	return deletions, nil
+}
+
+// SyncAccount syncs a single account
+func (s *Syncer) SyncAccount(ctx context.Context, accountID, cloudType, credJSON string) error {
+	return s.syncAccount(ctx, accountID, cloudType, credJSON)
 }
 
 func createProvider(cloudType string, creds map[string]string) Provider {

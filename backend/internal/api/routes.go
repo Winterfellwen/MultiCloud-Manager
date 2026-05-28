@@ -73,8 +73,15 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 			}
 		}
 
+		// Syncer for cloud resources
+		syncer := &cloud.Syncer{}
+		if db != nil {
+			syncer = &cloud.Syncer{DB: db}
+			syncer.Start(context.Background(), 60*time.Second)
+		}
+
 		// Cloud accounts (operator+)
-		accountsH := NewAccountsHandler(db)
+		accountsH := NewAccountsHandler(db, syncer)
 		accounts := protected.Group("/accounts")
 		accounts.Use(RBACMiddleware("admin", "operator"))
 		{
@@ -86,11 +93,6 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		}
 
 		// Resources
-		syncer := &cloud.Syncer{}
-		if db != nil {
-			syncer = &cloud.Syncer{DB: db}
-			syncer.Start(context.Background(), 60*time.Second)
-		}
 		resourcesH := NewResourcesHandler(syncer)
 		resources := protected.Group("/resources")
 		{

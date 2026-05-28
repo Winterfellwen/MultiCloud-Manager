@@ -1,9 +1,12 @@
 package api
 
 import (
-	"database/sql"
+	"context"
 	"net/http"
+	"time"
 
+	"multicloud-manager/internal/cloud"
+	"multicloud-manager/internal/i18n"
 	"multicloud-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -11,11 +14,12 @@ import (
 )
 
 type AccountsHandler struct {
-	db *services.Database
+	db      *services.Database
+	syncer  *cloud.Syncer
 }
 
-func NewAccountsHandler(db *services.Database) *AccountsHandler {
-	return &AccountsHandler{db: db}
+func NewAccountsHandler(db *services.Database, syncer *cloud.Syncer) *AccountsHandler {
+	return &AccountsHandler{db: db, syncer: syncer}
 }
 
 func (h *AccountsHandler) List(c *gin.Context) {
@@ -26,7 +30,7 @@ func (h *AccountsHandler) List(c *gin.Context) {
 
 	rows, err := h.db.Query(`SELECT id, team_id, cloud_type, name, is_active, last_sync_at, created_at FROM cloud_accounts ORDER BY created_at DESC`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询账户失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "query_failed")})
 		return
 	}
 	defer rows.Close()
@@ -65,7 +69,7 @@ func (h *AccountsHandler) Add(c *gin.Context) {
 		TeamID      string `json:"team_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少必要参数"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.T(c, "missing_params")})
 		return
 	}
 
@@ -97,7 +101,7 @@ func (h *AccountsHandler) Add(c *gin.Context) {
 		id, teamID, req.CloudType, req.Name, encryptedCreds,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建账户失败: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "create_failed") + ": " + err.Error()})
 		return
 	}
 
@@ -123,7 +127,7 @@ func (h *AccountsHandler) Update(c *gin.Context) {
 		Active *bool  `json:"is_active"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.T(c, "invalid_params")})
 		return
 	}
 
@@ -146,7 +150,7 @@ func (h *AccountsHandler) Delete(c *gin.Context) {
 
 	_, err := h.db.Exec(`DELETE FROM cloud_accounts WHERE id=$1`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "delete_failed")})
 		return
 	}
 
@@ -160,6 +164,29 @@ func (h *AccountsHandler) Sync(c *gin.Context) {
 		return
 	}
 
+	// Get account info
+	var cloudType, credJSON string
+	err := h.db.QueryRow(`SELECT cloud_type, encrypted_credentials FROM cloud_accounts WHERE id=$1`, id).Scan(&cloudType, &credJSON)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		return
+	}
+
+	// Try to sync this specific account
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+
+	if h.syncer != nil {
+		err = h.syncer.SyncAccount(ctx, id, cloudType, credJSON)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "sync completed with errors",
+				"error": err.Error(),
+			})
+			return
+		}
+	}
+
 	h.db.Exec(`UPDATE cloud_accounts SET last_sync_at=CURRENT_TIMESTAMP WHERE id=$1`, id)
-	c.JSON(http.StatusOK, gin.H{"message": "synced", "synced_at": sql.NullString{}})
+	c.JSON(http.StatusOK, gin.H{"message": "synced"})
 }
