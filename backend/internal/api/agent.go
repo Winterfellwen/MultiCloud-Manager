@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -35,10 +36,26 @@ func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *conf
 		config: NewConfigHandler(db),
 	}
 
-	// 初始化 vault 客户端
-	if cfg.VaultURL != "" && cfg.VaultToken != "" {
-		h.vault = vault.NewClient(cfg.VaultURL, cfg.VaultToken)
-		log.Println("Vault client initialized")
+	// 初始化 vault 客户端 - 优先使用环境变量，否则尝试本地连接
+	vaultURL := cfg.VaultURL
+	vaultToken := cfg.VaultToken
+	
+	// 如果没有配置vault，尝试从本地docker vault获取token
+	if vaultURL == "" {
+		vaultURL = "http://localhost:8200"
+	}
+	if vaultToken == "" {
+		// 尝试从vault容器获取token
+		if token, err := getLocalVaultToken(); err == nil {
+			vaultToken = token
+		}
+	}
+
+	if vaultURL != "" && vaultToken != "" {
+		h.vault = vault.NewClient(vaultURL, vaultToken)
+		log.Printf("Vault client initialized: %s", vaultURL)
+	} else {
+		log.Println("Vault client disabled (no token available)")
 	}
 
 	// 初始化 orchestrator
@@ -46,6 +63,17 @@ func NewAgentHandler(db *services.Database, rdb *services.RedisClient, cfg *conf
 	h.orchestrator = agent.NewOrchestrator(llmClient)
 
 	return h
+}
+
+// getLocalVaultToken 尝试从本地vault容器获取token
+func getLocalVaultToken() (string, error) {
+	// 从环境变量读取
+	if token := os.Getenv("VAULT_TOKEN"); token != "" {
+		return token, nil
+	}
+	// 尝试从docker-compose vault容器读取
+	// 这里可以扩展为读取vault容器的输出
+	return "", fmt.Errorf("no vault token available")
 }
 
 func (h *AgentHandler) Chat(c *gin.Context) {
