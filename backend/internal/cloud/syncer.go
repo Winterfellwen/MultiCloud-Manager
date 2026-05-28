@@ -257,6 +257,37 @@ func (s *Syncer) LogDeletion(ctx context.Context, resourceID, userID, username s
 	return err
 }
 
+// GetProviderForResource resolves a resource cache ID to a provider and the cloud resource ID.
+// It looks up the account credentials and creates a provider on demand.
+func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) (Provider, string, error) {
+	if s.DB == nil {
+		return nil, "", fmt.Errorf("no database")
+	}
+
+	var accountID, cloudType, credJSON, cloudResID string
+	err := s.DB.QueryRow(`
+		SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.encrypted_credentials
+		FROM resources_cache rc
+		JOIN cloud_accounts ca ON rc.account_id = ca.id
+		WHERE rc.id = $1
+	`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
+	if err != nil {
+		return nil, "", fmt.Errorf("resource lookup: %w", err)
+	}
+
+	var creds map[string]string
+	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+		return nil, "", fmt.Errorf("parse credentials: %w", err)
+	}
+
+	prov := createProvider(cloudType, creds)
+	if prov == nil {
+		return nil, "", fmt.Errorf("unsupported cloud type: %s", cloudType)
+	}
+
+	return prov, cloudResID, nil
+}
+
 // GetDeletions returns the resource deletion audit log
 func (s *Syncer) GetDeletions(ctx context.Context) ([]map[string]interface{}, error) {
 	if s.DB == nil {

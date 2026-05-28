@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -120,16 +121,73 @@ func (h *ResourcesHandler) Detail(c *gin.Context) {
 
 func (h *ResourcesHandler) Start(c *gin.Context) {
 	id := c.Param("id")
+	if h.syncer == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "syncer not available"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	prov, cloudResID, err := h.syncer.GetProviderForResource(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("resource not found: %v", err)})
+		return
+	}
+
+	if err := prov.StartInstance(ctx, cloudResID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("start failed: %v", err)})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "start initiated", "resource_id": id, "status": "starting"})
 }
 
 func (h *ResourcesHandler) Stop(c *gin.Context) {
 	id := c.Param("id")
+	if h.syncer == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "syncer not available"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	prov, cloudResID, err := h.syncer.GetProviderForResource(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("resource not found: %v", err)})
+		return
+	}
+
+	if err := prov.StopInstance(ctx, cloudResID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("stop failed: %v", err)})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "stop initiated", "resource_id": id, "status": "stopping"})
 }
 
 func (h *ResourcesHandler) Restart(c *gin.Context) {
 	id := c.Param("id")
+	if h.syncer == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "syncer not available"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	prov, cloudResID, err := h.syncer.GetProviderForResource(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("resource not found: %v", err)})
+		return
+	}
+
+	if err := prov.RestartInstance(ctx, cloudResID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("restart failed: %v", err)})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "restart initiated", "resource_id": id, "status": "restarting"})
 }
 

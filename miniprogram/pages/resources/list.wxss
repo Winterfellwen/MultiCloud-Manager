@@ -20,6 +20,12 @@
 .btn-stop { background: var(--warning); color: #fff; border: none; }
 .card-meta { display: flex; gap: 24rpx; padding-top: 16rpx; border-top: 1rpx solid var(--border); }
 .meta-item { font-size: 24rpx; color: var(--text-secondary); }
+.search-sync-bar { display: flex; gap: 16rpx; margin-bottom: 12rpx; }
+.search-input { flex: 1; height: 72rpx; line-height: 72rpx; padding: 0 20rpx; background: var(--surface); border: 1rpx solid var(--border); border-radius: var(--radius-sm); font-size: 26rpx; color: var(--text); box-sizing: border-box; }
+.sync-btn { background: var(--primary); color: #fff; font-size: 24rpx; padding: 0 24rpx; border-radius: var(--radius-sm); border: none; white-space: nowrap; line-height: 72rpx; }
+.sync-btn.syncing { opacity: 0.7; }
+.sync-status { margin-bottom: 12rpx; }
+.sync-label { font-size: 22rpx; color: var(--text-secondary); }
 .empty-state { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0; }
 .empty-icon { font-size: 80rpx; margin-bottom: 24rpx; }
 .empty-text { font-size: 30rpx; color: var(--text); margin-bottom: 12rpx; }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"multicloud-manager/internal/i18n"
 	"multicloud-manager/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -60,7 +61,7 @@ func (h *ConfigHandler) Get(c *gin.Context) {
 
 func (h *ConfigHandler) Update(c *gin.Context) {
 	if h.db == nil {
-		c.JSON(http.StatusOK, gin.H{"message": "已保存"})
+		c.JSON(http.StatusOK, gin.H{"message": i18n.T(c, "save_ok")})
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *ConfigHandler) Update(c *gin.Context) {
 		ReasoningEffort *string `json:"reasoning_effort"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.T(c, "invalid_params")})
 		return
 	}
 
@@ -115,12 +116,12 @@ func (h *ConfigHandler) Update(c *gin.Context) {
 		q := fmt.Sprintf("UPDATE ai_config SET %s WHERE id = 1", strings.Join(sets, ", "))
 		if _, err := h.db.Exec(q, args...); err != nil {
 			log.Printf("ai config update: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": i18n.T(c, "save_failed")})
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "已保存"})
+	c.JSON(http.StatusOK, gin.H{"message": i18n.T(c, "save_ok")})
 }
 
 func (h *ConfigHandler) loadConfig() struct {

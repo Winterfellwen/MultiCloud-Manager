@@ -3,7 +3,7 @@
 const API = {
   get baseURL() {
     const app = getApp();
-    return app ? app.globalData.apiBaseURL : 'https://multicloud-backend.onrender.com/api';
+    return app ? app.globalData.apiBaseURL : 'https://multicloud-backend-qw9d.onrender.com/api';
   },
 
   // 获取请求头
@@ -24,10 +24,28 @@ const API = {
         data,
         header: this.getHeaders(),
         success: (res) => {
+          if (res.statusCode === 401) {
+            wx.removeStorageSync('token')
+            const app = getApp()
+            if (app && app.globalData) {
+              app.globalData.token = ''
+              app.globalData.userInfo = null
+            }
+            // 自动化测试模式：不重定向，避免页面被销毁
+            if (!wx.getStorageSync('__automation__')) {
+              const pages = getCurrentPages()
+              const currentPage = pages.length > 0 ? pages[pages.length - 1].route : ''
+              if (currentPage !== 'pages/login/login') {
+                wx.redirectTo({ url: '/pages/login/login' })
+              }
+            }
+            reject(new Error('Session expired'))
+            return
+          }
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(res.data)
           } else {
-            reject(new Error(`API Error ${res.statusCode}: ${res.data?.message || 'Unknown error'}`))
+            reject(new Error('API Error ' + res.statusCode + ': ' + ((res.data && res.data.message) || 'Unknown error')))
           }
         },
         fail: (err) => {
@@ -54,40 +72,31 @@ const API = {
     return this.request('DELETE', endpoint, data)
   },
 
-  // SSE 流式响应（用于 AI Agent 实时反馈）
-  sse(endpoint, data, onMessage, onError) {
-    return new Promise((resolve, reject) => {
-      const task = wx.connectSocket({
-        url: `${this.baseURL}${endpoint}`,
-        header: this.getHeaders(),
-        method: 'POST'
-      })
-
-      task.onOpen(() => {
-        task.send({
-          data: JSON.stringify(data)
+  // 轮询（替代 SSE，微信小程序不支持 HTTP 流式）
+  poll(endpoint, interval = 2000, onData, onError) {
+    var stopped = false
+    var pollFn = function() {
+      if (stopped) return
+      this.get(endpoint)
+        .then(function(data) {
+          onData(data)
+          if (data.status !== 'completed' && data.status !== 'failed') {
+            setTimeout(pollFn, interval)
+          }
         })
-      })
-
-      task.onMessage((res) => {
-        try {
-          const data = JSON.parse(res.data)
-          onMessage(data)
-        } catch (err) {
-          console.error('SSE parse error:', err)
-        }
-      })
-
-      task.onError((err) => {
-        onError?.(err)
-        reject(err)
-      })
-
-      task.onClose(() => {
-        resolve()
-      })
-    })
+        .catch(function(err) {
+          onError?.(err)
+          stopped = true
+        })
+    }.bind(this)
+    setTimeout(pollFn, interval)
+    return function() { stopped = true }
   }
+}
+
+API.getProviderLabel = function(provider) {
+  var map = { azure: 'Azure', tencent: '\u817e\u8baf\u4e91', oracle: 'Oracle Cloud', render: 'Render' }
+  return map[provider] || provider
 }
 
 module.exports = API

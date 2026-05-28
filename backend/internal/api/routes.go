@@ -109,24 +109,30 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		}
 
 		// Terraform (operator+)
+		terraformH := NewTerraformHandler(db)
 		terraform := protected.Group("/terraform")
 		terraform.Use(RBACMiddleware("admin", "operator"))
 		{
-			terraform.GET("/templates", handleListTemplates)
-			terraform.POST("/templates", handleUploadTemplate)
-			terraform.POST("/templates/:id/plan", handlePlanTemplate)
-			terraform.POST("/templates/:id/apply", handleApplyTemplate)
+			terraform.GET("/templates", terraformH.ListTemplates)
+			terraform.POST("/templates", terraformH.UploadTemplate)
+			terraform.POST("/templates/:id/plan", terraformH.PlanTemplate)
+			terraform.POST("/templates/:id/apply", terraformH.ApplyTemplate)
+			terraform.DELETE("/templates/:id", terraformH.DeleteTemplate)
 		}
 
 		// Teams (viewer+ for GET, admin for write)
+		teamsH := NewTeamsHandler(db)
 		teams := protected.Group("/teams")
 		{
-			teams.GET("/", handleListTeams)
+			teams.GET("/", teamsH.ListTeams)
+			teams.GET("/:id", teamsH.GetTeam)
 			teamsAdmin := teams.Group("/")
 			teamsAdmin.Use(RBACMiddleware("admin"))
 			{
-				teamsAdmin.POST("/", handleCreateTeam)
-				teamsAdmin.POST("/:id/members", handleAddTeamMember)
+				teamsAdmin.POST("/", teamsH.CreateTeam)
+				teamsAdmin.PUT("/:id", teamsH.UpdateTeam)
+				teamsAdmin.DELETE("/:id", teamsH.DeleteTeam)
+				teamsAdmin.POST("/:id/members", teamsH.AddTeamMember)
 			}
 		}
 
@@ -143,10 +149,3 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 	}
 }
 
-func handleListTemplates(c *gin.Context)    { c.JSON(200, gin.H{"templates": []gin.H{}}) }
-func handleUploadTemplate(c *gin.Context)   { c.JSON(200, gin.H{"message": "upload template"}) }
-func handlePlanTemplate(c *gin.Context)     { c.JSON(200, gin.H{"message": "plan template"}) }
-func handleApplyTemplate(c *gin.Context)    { c.JSON(200, gin.H{"message": "apply template"}) }
-func handleListTeams(c *gin.Context)        { c.JSON(200, gin.H{"members": []gin.H{}}) }
-func handleCreateTeam(c *gin.Context)       { c.JSON(200, gin.H{"message": "create team"}) }
-func handleAddTeamMember(c *gin.Context)    { c.JSON(200, gin.H{"message": "add team member"}) }
