@@ -171,6 +171,10 @@ func (h *AgentHandler) formatPlanResponse(plan *agent.ExecutionPlan) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("**%s**\n\n", plan.Title))
 
+	if plan.Description != "" {
+		b.WriteString(fmt.Sprintf("%s\n\n", plan.Description))
+	}
+
 	if plan.RiskSummary != nil {
 		b.WriteString(fmt.Sprintf("⚠️ 风险等级: **%s**\n", plan.RiskSummary.OverallRisk))
 		if len(plan.RiskSummary.Warnings) > 0 {
@@ -186,15 +190,38 @@ func (h *AgentHandler) formatPlanResponse(plan *agent.ExecutionPlan) string {
 	for i, step := range plan.Steps {
 		b.WriteString(fmt.Sprintf("\n**步骤 %d:** %s\n", i+1, step.Action))
 		b.WriteString(fmt.Sprintf("- 云平台: %s\n", step.Cloud))
-		b.WriteString(fmt.Sprintf("- 风险: **%s**", step.RiskLevel))
-		if step.RiskReason != "" {
-			b.WriteString(fmt.Sprintf(" (%s)", step.RiskReason))
+		if step.Params != nil {
+			if specs, ok := step.Params["specs"]; ok {
+				b.WriteString(fmt.Sprintf("- 规格: %v\n", specs))
+			}
+			if region, ok := step.Params["region"]; ok {
+				b.WriteString(fmt.Sprintf("- 区域: %v\n", region))
+			}
+			if osName, ok := step.Params["os"]; ok {
+				b.WriteString(fmt.Sprintf("- 系统: %v\n", osName))
+			}
+		}
+		if desc, ok := step.Params["description"]; ok {
+			b.WriteString(fmt.Sprintf("- 说明: %v\n", desc))
+		}
+		if step.RiskLevel != "" {
+			b.WriteString(fmt.Sprintf("- 风险: **%s**", step.RiskLevel))
+			if step.RiskReason != "" {
+				b.WriteString(fmt.Sprintf(" (%s)", step.RiskReason))
+			}
 		}
 		b.WriteString("\n")
 	}
 
+	if plan.EstimatedCost > 0 {
+		b.WriteString(fmt.Sprintf("\n💰 预估月费: **$%.2f**\n", plan.EstimatedCost))
+	}
+
 	if len(plan.MissingParams) > 0 {
-		b.WriteString(fmt.Sprintf("\n⚠️ 缺少参数: %v\n", plan.MissingParams))
+		b.WriteString(fmt.Sprintf("\n⚠️ 缺少参数:\n"))
+		for _, p := range plan.MissingParams {
+			b.WriteString(fmt.Sprintf("- %s\n", p))
+		}
 	}
 	if plan.Status == "awaiting_confirmation" {
 		b.WriteString("\n> 以上方案需要您确认后才可执行。是否按此方案执行？")

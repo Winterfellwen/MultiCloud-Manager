@@ -119,12 +119,91 @@ Return JSON only, no explanation. Example:
 	return &intent, nil
 }
 
-// generatePlan 方案生成
+// generatePlan 方案生成（LLM驱动，生成详细的执行方案）
 func (o *Orchestrator) generatePlan(ctx context.Context, intent *Intent) (*ExecutionPlan, error) {
+	systemPrompt := `You are a cloud operations plan generator for MultiCloud Manager.
+Given the user's intent, generate a detailed execution plan.
+
+Available clouds and their typical regions:
+- azure: eastus, southeastasia, japaneast, westeurope
+- oracle: us-ashburn-1, us-phoenix-1, ap-tokyo-1, ap-seoul-1
+- tencent: ap-guangzhou, ap-shanghai, ap-beijing, ap-tokyo
+- render: ohio, frankfurt, singapore, oregon
+
+Return a JSON object with the following fields:
+{
+  "title": "concise plan title in Chinese",
+  "description": "detailed plan explanation covering what will be done, why, and any important notes",
+  "steps": [
+    {
+      "id": 1,
+      "action": "the action to perform",
+      "cloud": "target cloud",
+      "description": "detailed step description in Chinese with specific parameters",
+      "params": {
+        "resource_type": "vm|database|storage|network",
+        "region": "selected region",
+        "specs": "instance size or spec like Standard_B1s / VM.Standard.A1.Flex",
+        "os": "operating system if applicable",
+        "name": "suggested resource name"
+      },
+      "credential_ref": "cloud-default"
+    }
+  ],
+  "missing_params": ["list any missing required information the user needs to provide"],
+  "estimated_cost": 0.0
+}
+
+Rules:
+- description must be in Chinese, at least 3 sentences, explaining the plan clearly
+- Each step description must include specific recommended configurations
+- If region/specs are not specified by user, pick reasonable defaults
+- estimated_cost should be a reasonable monthly USD estimate
+- If user didn't specify key parameters, list them in missing_params`
+
+	intentJSON, _ := json.Marshal(intent)
+	messages := []Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: fmt.Sprintf("Generate a plan for this intent: %s", string(intentJSON))},
+	}
+
+	resp, err := o.llmClient.Chat(ctx, messages)
+	if err != nil {
+		// 回退到模板方案
+		return o.fallbackPlan(intent), nil
+	}
+
+	// 解析LLM返回的JSON
+	content := resp.Content
+	if idx := strings.Index(content, "{"); idx >= 0 {
+		content = content[idx:]
+	}
+	if idx := strings.LastIndex(content, "}"); idx >= 0 {
+		content = content[:idx+1]
+	}
+
+	var plan ExecutionPlan
+	plan.Status = "awaiting_confirmation"
+	if err := json.Unmarshal([]byte(content), &plan); err != nil {
+		// 回退到模板方案
+		return o.fallbackPlan(intent), nil
+	}
+
+	plan.ID = "plan_" + uuid.New().String()[:12]
+	plan.CreatedAt = time.Now()
+	if plan.Title == "" {
+		plan.Title = fmt.Sprintf("%s %s on %s", intent.Action, intent.ResourceType, intent.Cloud)
+	}
+
+	return &plan, nil
+}
+
+// fallbackPlan 模板方案（LLM调用失败时的后备）
+func (o *Orchestrator) fallbackPlan(intent *Intent) *ExecutionPlan {
 	plan := &ExecutionPlan{
 		Title:   fmt.Sprintf("%s %s on %s", intent.Action, intent.ResourceType, intent.Cloud),
 		Steps:   make([]ExecutionStep, 0),
-		Status:  "pending",
+		Status:  "awaiting_confirmation",
 	}
 
 	step := ExecutionStep{
@@ -137,15 +216,12 @@ func (o *Orchestrator) generatePlan(ctx context.Context, intent *Intent) (*Execu
 		},
 		CredentialRef: fmt.Sprintf("%s-%s", intent.Cloud, "default"),
 	}
-
-	// 合并用户提供的参数
 	for k, v := range intent.Params {
 		step.Params[k] = v
 	}
-
 	plan.Steps = append(plan.Steps, step)
 
-	return plan, nil
+	return plan
 }
 
 // Intent 意图结构
@@ -161,6 +237,7 @@ type Intent struct {
 type ExecutionPlan struct {
 	ID              string          `json:"id"`
 	Title           string          `json:"title"`
+	Description     string          `json:"description,omitempty"`
 	Steps           []ExecutionStep `json:"steps"`
 	RiskSummary     *RiskSummary    `json:"risk_summary,omitempty"`
 	MissingParams   []string        `json:"missing_params,omitempty"`
