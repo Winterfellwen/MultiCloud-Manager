@@ -1,5 +1,7 @@
 {
   "pages": [
+    "pages/login/login",
+    "pages/admin/users/users",
     "pages/index/index",
     "pages/agent/chat",
     "pages/resources/list",

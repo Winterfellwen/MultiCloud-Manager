@@ -1,5 +1,5 @@
-// pages/agent/chat.js - AI Agent 对话页面
 const API = require('../../utils/api')
+const i18n = require('../../utils/i18n')
 
 Page({
   data: {
@@ -8,145 +8,217 @@ Page({
     sessionId: '',
     isTyping: false,
     currentPlan: null,
-    executionMode: 'risk_review', // plan_only/step_confirm/risk_review/auto_execute
-    executionModes: [
-      { label: '仅生成方案', value: 'plan_only' },
-      { label: '分步确认', value: 'step_confirm' },
-      { label: '风险审查模式', value: 'risk_review' },
-      { label: '全自动执行', value: 'auto_execute' }
-    ]
+    executionMode: 'risk_review',
+    executionModeLabel: '',
+    executionModes: [],
+    theme: 'dark',
+    showConfig: false,
+    showQuickActions: false,
+    aiProvider: '',
+    aiModel: '',
+    aiApiKey: '',
+    aiTemperature: '0.7'
   },
 
   onLoad() {
+    this.setLang()
+    this.setData({ theme: getApp().globalData.theme || 'dark' })
+    wx.setNavigationBarTitle({ title: i18n.t('chat.title') })
     this.createNewSession()
   },
 
-  // 创建新会话
-  createNewSession() {
-    const sessionId = 'sess_' + Date.now()
-    this.setData({ sessionId, messages: [] })
+  onShow() {
+    this.setData({ theme: getApp().globalData.theme || 'dark' })
   },
 
-  // 发送消息
-  sendMessage() {
-    const content = this.data.inputValue.trim()
-    if (!content) return
-
-    // 添加用户消息
-    const userMsg = { role: 'user', content }
-    const messages = [...this.data.messages, userMsg]
-    this.setData({ 
-      messages, 
-      inputValue: '',
-      isTyping: true 
+  setLang() {
+    this.setData({ lang: i18n.getLangData([
+      'chat.title', 'chat.thinking', 'chat.placeholder', 'chat.send',
+      'chat.exec_plan', 'chat.confirm_title', 'chat.request_failed',
+      'chat.exec_failed', 'chat.confirm_content',
+      'chat.exec_step', 'chat.step_progress', 'chat.step_done', 'chat.exec_complete',
+      'chat.config_title', 'chat.config_provider', 'chat.config_model',
+      'chat.config_temperature', 'chat.config_api_key',
+      'chat.config_placeholder_provider', 'chat.config_placeholder_model',
+      'chat.config_save', 'chat.config_saved',
+      'chat.quick_actions', 'chat.new_session', 'chat.clear'
+    ])})
+    var modes = [
+      { label: i18n.t('chat.mode_plan'), value: 'plan_only' },
+      { label: i18n.t('chat.mode_confirm'), value: 'step_confirm' },
+      { label: i18n.t('chat.mode_review'), value: 'risk_review' },
+      { label: i18n.t('chat.mode_auto'), value: 'auto_execute' }
+    ]
+    var currentMode = this.data.executionMode || 'risk_review'
+    var found = modes.find(function(m) { return m.value === currentMode })
+    this.setData({
+      executionModes: modes,
+      executionModeLabel: found ? found.label : currentMode
     })
+  },
 
-    // 发送到 AI Agent
+  createNewSession() {
+    var self = this
+    var sessionId = 'sess_' + Date.now()
+    this.setData({ sessionId: sessionId, messages: [] })
+    API.post('/agent/sessions', {}).then(function(data) {
+      self.setData({ sessionId: data.session_id || data.id || sessionId })
+    }).catch(function(err) { console.error('Session creation failed:', err) })
+  },
+
+  sendMessage() {
+    var content = this.data.inputValue.trim()
+    if (!content) return
+    var userMsg = { role: 'user', content: content }
+    var messages = [].concat(this.data.messages).concat([userMsg])
+    this.setData({ messages: messages, inputValue: '', isTyping: true })
     API.post('/agent/chat', {
       session_id: this.data.sessionId,
       message: content
     })
-      .then(response => {
-        const assistantMsg = { 
-          role: 'assistant', 
+      .then(function(response) {
+        var assistantMsg = {
+          role: 'assistant',
           content: response.message,
           plan: response.plan,
           risk_summary: response.risk_summary
         }
-        
-        const updatedMessages = [...messages, assistantMsg]
-        this.setData({ 
+        var updatedMessages = [].concat(messages).concat([assistantMsg])
+        this.setData({
           messages: updatedMessages,
           isTyping: false,
           currentPlan: response.plan
         })
-      })
-      .catch(err => {
+      }.bind(this))
+      .catch(function(err) {
         console.error('Agent chat error:', err)
         this.setData({ isTyping: false })
-        wx.showToast({ title: '请求失败', icon: 'error' })
-      })
+        wx.showToast({ title: i18n.t('chat.request_failed'), icon: 'none' })
+      }.bind(this))
   },
 
-  // 执行计划
   executePlan() {
     if (!this.data.currentPlan) return
-
+    var content = i18n.t('chat.confirm_content', {
+      title: this.data.currentPlan.title,
+      mode: this.getModeLabel(this.data.executionMode)
+    })
     wx.showModal({
-      title: '确认执行',
-      content: `将执行计划: ${this.data.currentPlan.title}\n执行模式: ${this.getModeLabel(this.data.executionMode)}`,
-      success: (res) => {
-        if (res.confirm) {
-          this.startExecution()
-        }
-      }
+      title: i18n.t('chat.confirm_title'),
+      content: content,
+      success: function(res) {
+        if (res.confirm) this.startExecution()
+      }.bind(this)
     })
   },
 
-  // 开始执行
   startExecution() {
     API.post('/agent/execute', {
       session_id: this.data.sessionId,
       plan_id: this.data.currentPlan.id,
       mode: this.data.executionMode
     })
-      .then(response => {
-        // 开始 SSE 流式监听
+      .then(function(response) {
+        this.addSystemMessage('执行已触发 (ID: ' + response.execution_id + ')')
         this.listenToExecution(response.execution_id)
-      })
-      .catch(err => {
-        wx.showToast({ title: '执行失败', icon: 'error' })
+      }.bind(this))
+      .catch(function(err) {
+        wx.showToast({ title: i18n.t('chat.exec_failed'), icon: 'none' })
       })
   },
 
-  // 监听执行进度
   listenToExecution(executionId) {
-    API.sse(`/agent/executions/${executionId}/stream`, {}, 
-      (data) => {
-        // 处理实时进度更新
-        this.handleExecutionUpdate(data)
-      },
-      (err) => {
-        console.error('SSE error:', err)
-      }
+    this._stopPoll = API.poll('/agent/executions/' + executionId, 2000,
+      function(data) { this.handleExecutionUpdate(data) }.bind(this),
+      function(err) { console.error('Poll error:', err) }
     )
   },
 
-  // 处理执行更新
   handleExecutionUpdate(data) {
-    const { event, step, percent, message, result } = data
-    
+    var event = data.event, step = data.step, percent = data.percent, message = data.message, result = data.result
+    var content
     if (event === 'step_start') {
-      this.addSystemMessage(`开始执行步骤 ${step}: ${message}`)
+      content = i18n.t('chat.exec_step', { step: step, msg: message })
     } else if (event === 'step_progress') {
-      this.addSystemMessage(`步骤 ${step} 进度: ${percent}% - ${message}`)
+      content = i18n.t('chat.step_progress', { step: step, percent: percent, msg: message })
     } else if (event === 'step_complete') {
-      this.addSystemMessage(`步骤 ${step} 完成: ${result}`)
+      content = i18n.t('chat.step_done', { step: step, result: result })
     } else if (event === 'done') {
-      this.addSystemMessage(`执行完成: ${data.summary}`)
+      content = i18n.t('chat.exec_complete', { summary: data.summary })
+    } else {
+      content = '[' + (event || data.status) + '] ' + (data.message || '')
     }
+    if (content) this.addSystemMessage(content)
   },
 
-  // 添加系统消息
+  onUnload() {
+    if (this._stopPoll) this._stopPoll()
+  },
+
   addSystemMessage(content) {
-    const systemMsg = { role: 'system', content }
-    const messages = [...this.data.messages, systemMsg]
-    this.setData({ messages })
+    var systemMsg = { role: 'system', content: content }
+    var messages = [].concat(this.data.messages).concat([systemMsg])
+    this.setData({ messages: messages })
   },
 
-  // 获取模式标签
-  getModeLabel(mode) {
-    const found = this.data.executionModes.find(m => m.value === mode)
-    return found ? found.label : mode
-  },
+  noop() {},
 
-  // 输入框变化
   onInputChange(e) {
     this.setData({ inputValue: e.detail.value })
   },
 
-  // 切换执行模式
   onModeChange(e) {
-    this.setData({ executionMode: e.detail.value })
+    var mode = e.detail.value
+    var found = this.data.executionModes.find(function(m) { return m.value === mode })
+    this.setData({ 
+      executionMode: mode,
+      executionModeLabel: found ? found.label : mode
+    })
+  },
+
+  toggleQuickActions() {
+    this.setData({ showQuickActions: !this.data.showQuickActions })
+  },
+
+  openConfig() {
+    var saved = wx.getStorageSync('ai_config') || {}
+    this.setData({
+      showConfig: true,
+      aiProvider: saved.provider || '',
+      aiModel: saved.model || '',
+      aiApiKey: saved.api_key || '',
+      aiTemperature: String(saved.temperature || '0.7')
+    })
+  },
+
+  closeConfig() {
+    this.setData({ showConfig: false })
+  },
+
+  onConfigInput(e) {
+    var field = e.currentTarget.dataset.field
+    var obj = {}
+    obj[field] = e.detail.value
+    this.setData(obj)
+  },
+
+  saveConfig() {
+    wx.setStorageSync('ai_config', {
+      provider: this.data.aiProvider,
+      model: this.data.aiModel,
+      api_key: this.data.aiApiKey,
+      temperature: parseFloat(this.data.aiTemperature) || 0.7
+    })
+    this.setData({ showConfig: false })
+    wx.showToast({ title: i18n.t('chat.config_saved'), icon: 'success' })
+  },
+
+  clearChat() {
+    this.setData({ messages: [] })
+  },
+
+  newSession() {
+    this.setData({ messages: [], sessionId: '' })
+    this.createNewSession()
   }
 })

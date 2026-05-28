@@ -1,0 +1,65 @@
+<view class="container theme-{{theme}}">
+
+  <view class="page-header">
+    <text class="page-title">{{lang.admin_users_title}}</text>
+    <button class="btn-add" bindtap="onShowCreate">{{lang.admin_add_user}}</button>
+  </view>
+
+  <!-- User list -->
+  <view class="user-card" wx:for="{{users}}" wx:key="id">
+    <view class="user-info">
+      <view class="user-avatar">{{item.nickname ? item.nickname[0] : 'U'}}</view>
+      <view class="user-details">
+        <text class="user-nickname">{{item.nickname}}</text>
+        <text class="user-username" wx:if="{{item.username}}">@{{item.username}}</text>
+      </view>
+    </view>
+    <view class="user-role-tag role-{{item.role}}">{{roleLabels[item.role]}}</view>
+    <view class="user-actions">
+      <picker mode="selector" range="{{roleOptions}}" value="{{roleIndexMap[item.role] || 0}}" bindchange="onRoleChange" data-user-id="{{item.id}}">
+        <button class="btn-edit" size="mini">{{lang.admin_update}}</button>
+      </picker>
+      <button class="btn-delete" size="mini" bindtap="onDelete" data-user-id="{{item.id}}" data-nickname="{{item.nickname}}">{{lang.admin_delete}}</button>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{users.length === 0}}">
+    <text>{{lang.admin_users_title}}</text>
+  </view>
+
+  <!-- Create user modal -->
+  <view class="modal-overlay" wx:if="{{showCreate}}" bindtap="onHideCreate">
+    <view class="modal-content" catchtap="">
+      <text class="modal-title">{{lang.admin_add_user}}</text>
+
+      <view class="input-group">
+        <text class="input-label">{{lang.admin_username}}</text>
+        <input class="input-field" value="{{formUsername}}" bindinput="onFormUsername" placeholder="{{lang.admin_username}}" />
+      </view>
+
+      <view class="input-group">
+        <text class="input-label">{{lang.admin_password}}</text>
+        <input class="input-field" type="password" value="{{formPassword}}" bindinput="onFormPassword" placeholder="{{lang.admin_password}}" />
+      </view>
+
+      <view class="input-group">
+        <text class="input-label">{{lang.admin_nickname}}</text>
+        <input class="input-field" value="{{formNickname}}" bindinput="onFormNickname" placeholder="{{lang.admin_nickname}}" />
+      </view>
+
+      <view class="input-group">
+        <text class="input-label">{{lang.admin_role}}</text>
+        <picker mode="selector" range="{{roleOptions}}" value="{{formRoleIndex}}" bindchange="onFormRoleChange">
+          <view class="picker-value">{{roleOptions[formRoleIndex]}}</view>
+        </picker>
+      </view>
+
+      <view class="error-msg" wx:if="{{formError}}">{{formError}}</view>
+
+      <view class="modal-actions">
+        <button class="btn-cancel" bindtap="onHideCreate">{{lang.admin_cancel}}</button>
+        <button class="btn-confirm" bindtap="onCreateUser" loading="{{formLoading}}">{{lang.admin_create}}</button>
+      </view>
+    </view>
+  </view>
+</view>

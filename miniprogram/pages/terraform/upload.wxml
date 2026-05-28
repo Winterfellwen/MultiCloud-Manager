@@ -1,29 +1,29 @@
-<view class="container">
+<view class="container theme-{{theme}}">
   <view class="page-header">
-    <navigator url="/pages/terraform/list" class="btn-back">← 返回</navigator>
-    <text class="page-title">上传配置</text>
+    <navigator url="/pages/terraform/list" class="btn-back">{{lang.tf_back}}</navigator>
+    <text class="page-title">{{lang.tf_upload_title}}</text>
   </view>
 
   <view class="upload-card">
     <view class="upload-area" bindtap="onPickFile">
       <text class="upload-icon">📁</text>
-      <text class="upload-text">{{fileName || '点击选择 .tf 文件'}}</text>
-      <text class="upload-hint">支持 .tf 和 .tfvars 格式</text>
+      <text class="upload-text">{{fileName || lang.tf_select_file}}</text>
+      <text class="upload-hint">{{lang.tf_file_hint}}</text>
     </view>
   </view>
 
   <view class="form-card" wx:if="{{fileName}}">
     <view class="form-group">
-      <text class="form-label">配置名称</text>
-      <input class="form-input" placeholder="请输入配置名称" value="{{configName}}" bindinput="onNameInput"/>
+      <text class="form-label">{{lang.tf_name_label}}</text>
+      <input class="form-input" placeholder="{{lang.tf_name_placeholder}}" value="{{configName}}" bindinput="onNameInput"/>
     </view>
     <view class="form-group">
-      <text class="form-label">云平台</text>
+      <text class="form-label">{{lang.tf_cloud_label}}</text>
       <picker class="form-picker" value="{{providerIndex}}" range="{{providers}}" bindchange="onProviderChange">
         <view class="picker-display">{{providers[providerIndex]}} ▼</view>
       </picker>
     </view>
   </view>
 
-  <button class="btn-submit" wx:if="{{fileName}}" bindtap="onUpload">上传配置</button>
+  <button class="btn-submit" wx:if="{{fileName}}" bindtap="onUpload">{{lang.tf_submit}}</button>
 </view>

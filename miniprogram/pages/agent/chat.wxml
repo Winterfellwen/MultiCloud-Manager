@@ -1,13 +1,20 @@
-<!-- pages/agent/chat.wxml -->
-<view class="chat-container">
+<view class="chat-container theme-{{theme}}">
   <view class="chat-header">
-    <text class="header-title">AI 云助手</text>
-    <picker class="mode-picker" value="{{executionMode}}" range="{{executionModes}}" range-key="label" bindchange="onModeChange">
-      <view class="mode-display">
-        {{getModeLabel(executionMode)}}
-        <text class="icon-arrow">▼</text>
-      </view>
-    </picker>
+    <text class="header-title">{{lang.chat_title}}</text>
+    <view class="header-actions">
+      <text class="header-btn" bindtap="toggleQuickActions">⚡</text>
+      <picker class="mode-picker" value="{{executionMode}}" range="{{executionModes}}" range-key="label" bindchange="onModeChange">
+        <view class="mode-display">
+          {{executionModeLabel}}
+          <text class="icon-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+  <view class="quick-actions-bar theme-{{theme}}" wx:if="{{showQuickActions}}">
+    <button class="qa-btn" bindtap="newSession">{{lang.chat_new_session}}</button>
+    <button class="qa-btn" bindtap="clearChat">{{lang.chat_clear}}</button>
+    <button class="qa-btn" bindtap="openConfig">{{lang.chat_config_title}}</button>
   </view>
   <scroll-view class="message-list" scroll-y scroll-with-animation>
     <view class="messages">
@@ -28,12 +35,16 @@
                   </view>
                   <view class="steps-list">
                     <block wx:for="{{item.plan.steps}}" wx:key="id" wx:for-item="step" wx:for-index="si">
-                      <view class="step-item">
-                        <text>步骤 {{step.id}}: {{step.action}} {{step.cloud}}</text>
+                      <view class="step-item {{step.risk || ''}}">
+                        <view class="step-header">
+                          <text class="step-index">{{si + 1}}</text>
+                          <text class="step-action">{{step.action}}</text>
+                        </view>
+                        <text wx:if="{{step.details}}" class="step-details">{{step.details}}</text>
                       </view>
                     </block>
                   </view>
-                  <button class="execute-btn" type="primary" size="mini" bindtap="executePlan">执行计划</button>
+                  <button class="execute-btn" type="primary" size="mini" bindtap="executePlan">{{lang.chat_exec_plan}}</button>
                 </view>
               </block>
             </view>
@@ -47,13 +58,43 @@
       </block>
       <block wx:if="{{isTyping}}">
         <view class="typing-indicator">
-          <text class="typing-text">AI 正在思考...</text>
+          <text class="typing-text">{{lang.chat_thinking}}</text>
         </view>
       </block>
     </view>
   </scroll-view>
   <view class="input-area">
-    <input class="message-input" placeholder="输入指令" value="{{inputValue}}" bindinput="onInputChange" bindconfirm="sendMessage" confirm-type="send"/>
-    <button class="send-btn" bindtap="sendMessage">发送</button>
+    <input class="message-input" placeholder="{{lang.chat_placeholder}}" value="{{inputValue}}" bindinput="onInputChange" bindconfirm="sendMessage" confirm-type="send"/>
+    <button class="send-btn" bindtap="sendMessage">{{lang.chat_send}}</button>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showConfig}}" bindtap="closeConfig">
+    <view class="modal-content" catchtap="noop">
+      <view class="modal-header">
+        <text class="modal-title">{{lang.chat_config_title}}</text>
+        <text class="modal-close" bindtap="closeConfig">✕</text>
+      </view>
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">{{lang.chat_config_provider}}</text>
+          <input class="form-input" placeholder="{{lang.chat_config_placeholder_provider}}" value="{{aiProvider}}" data-field="aiProvider" bindinput="onConfigInput"/>
+        </view>
+        <view class="form-group">
+          <text class="form-label">{{lang.chat_config_model}}</text>
+          <input class="form-input" placeholder="{{lang.chat_config_placeholder_model}}" value="{{aiModel}}" data-field="aiModel" bindinput="onConfigInput"/>
+        </view>
+        <view class="form-group">
+          <text class="form-label">{{lang.chat_config_api_key}}</text>
+          <input class="form-input" password="{{true}}" value="{{aiApiKey}}" data-field="aiApiKey" bindinput="onConfigInput"/>
+        </view>
+        <view class="form-group">
+          <text class="form-label">{{lang.chat_config_temperature}} ({{aiTemperature}})</text>
+          <slider value="{{aiTemperature}}" min="0" max="2" step="0.1" data-field="aiTemperature" bindchange="onConfigInput"/>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="config-save-btn" bindtap="saveConfig">{{lang.chat_config_save}}</button>
+      </view>
+    </view>
   </view>
 </view>

@@ -1,0 +1,292 @@
+{
+  "timestamp": "2026-05-28T01:33:52.313Z",
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "warnings": 0
+  },
+  "pages": [
+    {
+      "name": "首页(index)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "load_stats",
+          "count": 4
+        },
+        {
+          "action": "page_texts",
+          "texts": [
+            "多云管理平台",
+            "统一管理您的云资源",
+            "3",
+            "云资源",
+            "1"
+          ]
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "AI助手(chat)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "type_message"
+        },
+        {
+          "action": "send_message"
+        },
+        {
+          "action": "toggle_quick_actions"
+        },
+        {
+          "action": "open_config"
+        },
+        {
+          "action": "fill_config"
+        },
+        {
+          "action": "save_config"
+        },
+        {
+          "action": "change_mode"
+        },
+        {
+          "action": "swipe_scroll"
+        }
+      ],
+      "screenshotCount": 6
+    },
+    {
+      "name": "资源列表(resources/list)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "search_azure"
+        },
+        {
+          "action": "cloud_filter"
+        },
+        {
+          "action": "sync"
+        },
+        {
+          "action": "check_detail_nav",
+          "count": 3
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "资源详情(resources/detail)",
+      "status": "ok",
+      "error": null,
+      "interactions": [],
+      "screenshotCount": 2
+    },
+    {
+      "name": "个人中心(user/profile)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "load_switches",
+          "count": 2
+        },
+        {
+          "action": "toggle_switch_0"
+        },
+        {
+          "action": "toggle_switch_1"
+        },
+        {
+          "action": "language_picker"
+        },
+        {
+          "action": "nav_setting[0]",
+          "dest": "pages/accounts/list"
+        },
+        {
+          "action": "nav_setting[1]",
+          "dest": "pages/team/members"
+        },
+        {
+          "action": "swipe_settings"
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "登录页(login)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "fill_login"
+        },
+        {
+          "action": "wechat_login_btn"
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "账号列表(accounts/list)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "delete_account"
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "添加账号(accounts/add)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "cloud_selector"
+        },
+        {
+          "action": "fill_account_form"
+        },
+        {
+          "action": "submit_account"
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "团队成员(team/members)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "invite"
+        },
+        {
+          "action": "swipe_members"
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "Terraform配置(terraform/list)",
+      "status": "ok",
+      "error": null,
+      "interactions": [],
+      "screenshotCount": 2
+    },
+    {
+      "name": "Terraform上传(terraform/upload)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "pick_file"
+        },
+        {
+          "action": "fill_name"
+        },
+        {
+          "action": "change_provider"
+        }
+      ],
+      "screenshotCount": 2
+    },
+    {
+      "name": "用户管理(admin/users)",
+      "status": "ok",
+      "error": null,
+      "interactions": [
+        {
+          "action": "open_create_form"
+        },
+        {
+          "action": "fill_create_form"
+        }
+      ],
+      "screenshotCount": 3
+    }
+  ],
+  "errors": [],
+  "consoleLogs": [
+    {
+      "type": "error",
+      "time": 1779931786769,
+      "text": "Session creation failed: [object Object]"
+    },
+    {
+      "type": "warn",
+      "time": 1779931809873,
+      "text": "Setting data field \"currentPlan\" to undefined is invalid."
+    },
+    {
+      "type": "warn",
+      "time": 1779931878055,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931878082,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931886294,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931886316,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931890442,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931890463,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931898817,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931898843,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931903310,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931903333,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931910837,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    },
+    {
+      "type": "warn",
+      "time": 1779931910863,
+      "text": "[Component] property \"text\" of \"components/StatusBadge/StatusBadge\" received type-uncompatible value: expected <String> but get null value. Use empty string instead."
+    }
+  ]
+}

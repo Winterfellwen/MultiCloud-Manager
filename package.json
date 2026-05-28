@@ -1,0 +1,32 @@
+{
+  "name": "multicloud",
+  "version": "1.0.0",
+  "description": "统一管理 Azure、腾讯云、Oracle Cloud、Render 资源的 Web + 微信小程序双端平台，具备 AI 云助手、后台定时同步、资源删除审计等能力。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Winterfellwen/MultiCloud-Manager.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Winterfellwen/MultiCloud-Manager/issues"
+  },
+  "homepage": "https://github.com/Winterfellwen/MultiCloud-Manager#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "miniprogram-automator": "^0.12.1"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "pg": "^8.21.0"
+  }
+}
