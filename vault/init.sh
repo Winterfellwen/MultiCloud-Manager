@@ -79,6 +79,3 @@ else
         fi
     }
 fi
-
-echo "Starting Vault server..."
-exec vault server -config=/vault/config/vault.hcl

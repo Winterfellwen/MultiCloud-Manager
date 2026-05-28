@@ -13,11 +13,6 @@ listener "tcp" {
 # 禁用 UI（仅 API）
 ui = false
 
-# 启用 KV v2 引擎
-seal "transit" {
-  address = "http://127.0.0.1:8200"
-}
-
 # 启用审计日志
 audit "file" {
   type = "file"
@@ -36,5 +31,5 @@ telemetry {
 default_lease_ttl = "1h"
 max_lease_ttl     = "24h"
 
-# 启用 KV 引擎
+# API 地址
 api_addr = "http://0.0.0.0:8200"
