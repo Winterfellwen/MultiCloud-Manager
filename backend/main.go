@@ -26,7 +26,7 @@ func main() {
 		defer redisClient.Close()
 	}
 
-	api.InitAIConfig(database.DB)
+	api.InitAIConfig(database.DB, database.IsPostgres())
 
 	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB, database.IsPostgres())
 	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, database.IsPostgres())
