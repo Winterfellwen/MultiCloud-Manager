@@ -4,8 +4,7 @@ services:
     env: go
     plan: free
     rootDir: backend
-    buildCommand: go build -o server ./cmd/server/
-    startCommand: ./server
+    buildCommand: go build -o app .
     envVars:
       - key: DATABASE_URL
         fromDatabase:
