@@ -190,8 +190,8 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 
 	// 保存AI回复（清理tool call格式，避免污染历史）
 	cleanReply := resp.Content
-	// 清理OpenCode XML格式
-	if idx := strings.Index(cleanReply, ""); idx >= 0 {
+	// 清理tool call XML格式
+	if idx := strings.Index(cleanReply, "<tool>"); idx >= 0 {
 		cleanReply = cleanReply[:idx]
 	}
 	// 清理旧格式
