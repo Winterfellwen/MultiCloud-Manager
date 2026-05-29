@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script src="/embedded.js"></script>
 <title>MultiCloud Manager - 登录</title>
 <style>
 :root {
@@ -50,6 +51,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 .login-error.show { display: block; }
 
 .login-footer { text-align: center; margin-top: 24px; font-size: 13px; color: var(--text-secondary); }
+
+html.embedded {
+  --primary: #007aff;
+  --primary-hover: #0056b3;
+  --bg: #0c0c0e;
+  --surface: #161618;
+  --border: #38383a;
+  --text: #ffffff;
+  --text-secondary: #c7c7cc;
+  --radius-sm: 4px;
+  --radius: 8px;
+}
+html.embedded body { align-items: flex-start; padding-top: 12vh; font-family: "Berkeley Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+html.embedded .login-container { max-width: 100%; }
+html.embedded .login-card { border-radius: var(--radius-sm); padding: 32px 24px; }
+html.embedded .login-logo h1 { font-size: 22px; letter-spacing: .5px; }
 </style>
 </head>
 <body>
@@ -94,7 +111,7 @@ const API_BASE = '/api';
       headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(res => {
-      if (res.ok) window.location.href = '/';
+      if (res.ok) window.location.href = embeddedHref('/');
     })
     .catch(() => {});
   }
@@ -142,7 +159,7 @@ async function handleLogin(e) {
     localStorage.setItem('userInfo', JSON.stringify(data.user));
     
     // 跳转到首页
-    window.location.href = '/';
+    window.location.href = embeddedHref('/');
     
   } catch (err) {
     errorMsg.textContent = err.message || '登录失败，请检查用户名和密码';
