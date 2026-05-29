@@ -5,33 +5,78 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 )
 
-// Agent AI Agent核心
+type AgentMode string
+
+const (
+	ModeBuild AgentMode = "build"
+	ModePlan  AgentMode = "plan"
+)
+
+var modeConfigs = map[AgentMode]ModeConfig{
+	ModeBuild: {
+		Mode:      ModeBuild,
+		MaxRounds: 10,
+		SystemPrompt: `你是 MultiCloud Manager 的 AI 云助手（Build模式），帮助用户管理多云资源。
+
+你可以查询、创建、管理云资源。
+对于创建类任务，先执行操作再告知结果。
+始终使用中文回复。
+
+工具调用格式：
+<tool>工具名称</tool>
+<parameters>{"参数名":"参数值"}</parameters></tool_call>
+
+可以同时调用多个工具。`,
+	},
+	ModePlan: {
+		Mode:      ModePlan,
+		MaxRounds: 5,
+		DenyTools: []string{"start_vm", "stop_vm", "restart_vm", "create_vm", "create_database", "create_aks", "log_deletion"},
+		SystemPrompt: `你是 MultiCloud Manager 的 AI 云助手（Plan模式），专注于分析和规划。
+
+你可以查询云账户、资源信息、云平台定价和免费层信息、检查配额。
+你不可以直接执行操作（启动/停止/创建资源），只能提供方案供用户确认。
+
+工具调用格式：
+<tool>工具名称</tool>
+<parameters>{"参数名":"参数值"}</parameters></tool_call>
+
+可以同时调用多个工具。始终使用中文回复。`,
+	},
+}
+
+type ModeConfig struct {
+	Mode         AgentMode
+	MaxRounds    int
+	DenyTools    []string
+	Tools        []string
+	SystemPrompt string
+}
+
 type Agent struct {
-	llmClient   LLMClient
+	llmClient    LLMClient
 	toolRegistry *ToolRegistry
-	config      *AgentConfig
+	config       *AgentConfig
 }
 
-// AgentConfig Agent配置
 type AgentConfig struct {
-	MaxIterations int
-	MaxTokens     int
-	SystemPrompt  string
+	MaxIterations    int
+	MaxTokens        int
+	CompactThreshold int
 }
 
-// NewAgent 创建Agent
 func NewAgent(llmClient LLMClient, config *AgentConfig) *Agent {
 	if config == nil {
 		config = &AgentConfig{
-			MaxIterations: 5,
-			MaxTokens:     4096,
-			SystemPrompt:  getDefaultSystemPrompt(),
+			MaxIterations:    10,
+			MaxTokens:        8192,
+			CompactThreshold: 6000,
 		}
 	}
-
 	return &Agent{
 		llmClient:    llmClient,
 		toolRegistry: NewToolRegistry(),
@@ -39,74 +84,115 @@ func NewAgent(llmClient LLMClient, config *AgentConfig) *Agent {
 	}
 }
 
-// RegisterTool 注册工具
 func (a *Agent) RegisterTool(tool Tool) {
 	a.toolRegistry.Register(tool)
 }
 
-// GetTools 获取所有工具信息
 func (a *Agent) GetTools() []ToolInfo {
 	return a.toolRegistry.List()
 }
 
-// Chat 聊天接口
-func (a *Agent) Chat(ctx context.Context, messages []Message, sessionID string) (*AgentChatResponse, error) {
-	// 构建系统提示
-	systemPrompt := a.buildSystemPrompt()
+type ChatRequest struct {
+	Messages  []Message
+	Mode      AgentMode
+	SessionID string
+}
 
-	// 构建消息列表
+type ChatResponse struct {
+	Content string
+	Mode    AgentMode
+	Compact bool
+	Summary string
+}
+
+func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
+	mode := req.Mode
+	if mode == "" {
+		mode = ModeBuild
+	}
+
+	modeCfg, ok := modeConfigs[mode]
+	if !ok {
+		modeCfg = modeConfigs[ModeBuild]
+	}
+
+	systemPrompt := a.buildSystemPrompt(mode, modeCfg)
+
 	allMessages := []Message{
 		{Role: "system", Content: systemPrompt},
 	}
-	allMessages = append(allMessages, messages...)
+	allMessages = append(allMessages, req.Messages...)
 
-	log.Printf("Agent.Chat: sessionID=%s totalMessages=%d", sessionID, len(allMessages))
-	for i, m := range allMessages {
-		content := m.Content
-		if len(content) > 100 {
-			content = content[:100] + "..."
-		}
-		log.Printf("  msg[%d] role=%s content=%s", i, m.Role, content)
+	totalChars := 0
+	for _, m := range allMessages {
+		totalChars += len(m.Content)
 	}
 
-	// 迭代执行（支持多轮tool calling）
-	for i := 0; i < a.config.MaxIterations; i++ {
-		// 调用LLM
-		log.Printf("Agent iteration %d, messages=%d", i, len(allMessages))
+	estimatedTokens := totalChars / 2
+	if estimatedTokens > a.config.CompactThreshold {
+		summary, err := a.compact(ctx, allMessages)
+		if err == nil && summary != "" {
+			userMsgs := []Message{}
+			for _, m := range req.Messages {
+				if m.Role == "user" {
+					userMsgs = append(userMsgs, m)
+				}
+			}
+			if len(userMsgs) > 2 {
+				userMsgs = userMsgs[len(userMsgs)-2:]
+			}
+			allMessages = []Message{
+				{Role: "system", Content: systemPrompt},
+				{Role: "system", Content: "对话历史摘要:\n" + summary},
+			}
+			allMessages = append(allMessages, userMsgs...)
+
+			return &ChatResponse{
+				Content: "",
+				Mode:    mode,
+				Compact: true,
+				Summary: summary,
+			}, nil
+		}
+	}
+
+	for i := 0; i < modeCfg.MaxRounds; i++ {
 		resp, err := a.llmClient.Chat(ctx, allMessages)
 		if err != nil {
-			log.Printf("LLM call failed at iteration %d: %v", i, err)
 			return nil, fmt.Errorf("LLM call failed: %v", err)
 		}
 
 		content := resp.Content
 
-		// 检查是否需要调用工具
-		if !strings.Contains(content, "```tool") {
-			// 不需要调用工具，直接返回
-			return &AgentChatResponse{
-				Content: content,
-			}, nil
-		}
-
-		// 解析tool call
 		toolCalls := a.parseToolCalls(content)
 		if len(toolCalls) == 0 {
-			// 解析失败，直接返回
-			return &AgentChatResponse{
+			return &ChatResponse{
 				Content: content,
+				Mode:    mode,
 			}, nil
 		}
 
-		// 执行工具调用
-		var toolResults []string
+		var validCalls []ToolCall
 		for _, tc := range toolCalls {
+			if a.isToolAllowed(tc.Name, modeCfg) {
+				validCalls = append(validCalls, tc)
+			}
+		}
+
+		if len(validCalls) == 0 {
+			return &ChatResponse{
+				Content: content,
+				Mode:    mode,
+			}, nil
+		}
+
+		var toolResults []string
+		for _, tc := range validCalls {
 			tool, ok := a.toolRegistry.Get(tc.Name)
 			if !ok {
 				toolResults = append(toolResults, fmt.Sprintf("工具「%s」不存在", tc.Name))
 				continue
 			}
-
 			result, err := tool.Execute(ctx, tc.Params)
 			if err != nil {
 				toolResults = append(toolResults, fmt.Sprintf("工具「%s」执行失败: %v", tc.Name, err))
@@ -115,123 +201,117 @@ func (a *Agent) Chat(ctx context.Context, messages []Message, sessionID string) 
 			}
 		}
 
-		// 将工具结果添加到消息列表
 		toolResultMsg := fmt.Sprintf("工具执行结果:\n%s", strings.Join(toolResults, "\n\n"))
 		allMessages = append(allMessages, Message{Role: "assistant", Content: content})
 		allMessages = append(allMessages, Message{Role: "user", Content: toolResultMsg})
 	}
 
-	// 超过最大迭代次数
-	return &AgentChatResponse{
+	return &ChatResponse{
 		Content: "抱歉，处理您的请求时遇到了困难。请尝试简化您的问题。",
+		Mode:    mode,
 	}, nil
 }
 
-// buildSystemPrompt 构建系统提示
-func (a *Agent) buildSystemPrompt() string {
-	var b strings.Builder
-	b.WriteString(a.config.SystemPrompt)
+var toolCallRegex = regexp.MustCompile(`<tool>(.*?)</tool>\s*<parameters>(.*?)</parameters></tool_call>`)
 
-	// 添加工具描述
-	b.WriteString("\n\n可用工具:\n")
-	for _, tool := range a.toolRegistry.List() {
-		b.WriteString(fmt.Sprintf("- %s: %s\n", tool.Name, tool.Description))
-	}
-
-	// 添加工具调用格式说明
-	b.WriteString(`
-工具调用格式:
-` + "```tool" + `
-{
-  "name": "工具名称",
-  "params": {
-    "参数名": "参数值"
-  }
-}
-` + "```" + `
-
-可以同时调用多个工具，每个工具调用用空行分隔。
-
-重要规则:
-1. 对于简单查询（查看资源、查看账户等），直接返回结果
-2. 对于操作类任务（启动/停止VM等），先调用工具获取信息，再执行操作
-3. 对于创建类任务，先调用工具生成方案，等用户确认后再执行
-4. 对于复杂任务，分解成多个步骤，逐步执行
-5. 始终使用中文回复`)
-
-	return b.String()
-}
-
-// parseToolCalls 解析工具调用
 func (a *Agent) parseToolCalls(content string) []ToolCall {
 	var toolCalls []ToolCall
 
-	// 查找所有tool call块
-	start := 0
-	for {
-		idx := strings.Index(content[start:], "```tool")
-		if idx == -1 {
-			break
-		}
-
-		start += idx + 7 // 跳过```tool
-		endIdx := strings.Index(content[start:], "```")
-		if endIdx == -1 {
-			break
-		}
-
-		toolJSON := strings.TrimSpace(content[start : start+endIdx])
-		start += endIdx + 3
-
-		var tc ToolCall
-		if err := json.Unmarshal([]byte(toolJSON), &tc); err != nil {
-			log.Printf("parse tool call: %v", err)
+	matches := toolCallRegex.FindAllStringSubmatch(content, -1)
+	for _, match := range matches {
+		if len(match) < 3 {
 			continue
 		}
+		name := strings.TrimSpace(match[1])
+		paramsJSON := strings.TrimSpace(match[2])
 
-		toolCalls = append(toolCalls, tc)
+		var params map[string]interface{}
+		if err := json.Unmarshal([]byte(paramsJSON), &params); err != nil {
+			log.Printf("parse tool params: %v", err)
+			continue
+		}
+		toolCalls = append(toolCalls, ToolCall{Name: name, Params: params})
+	}
+
+	if len(toolCalls) == 0 {
+		oldRegex := regexp.MustCompile("```tool\n(.*?)\n```")
+		oldMatches := oldRegex.FindAllStringSubmatch(content, -1)
+		for _, match := range oldMatches {
+			if len(match) < 2 {
+				continue
+			}
+			var tc ToolCall
+			if err := json.Unmarshal([]byte(match[1]), &tc); err != nil {
+				continue
+			}
+			toolCalls = append(toolCalls, tc)
+		}
 	}
 
 	return toolCalls
 }
 
-// ToolCall 工具调用
+func (a *Agent) isToolAllowed(name string, cfg ModeConfig) bool {
+	for _, denied := range cfg.DenyTools {
+		if denied == name {
+			return false
+		}
+	}
+	if len(cfg.Tools) == 0 {
+		return true
+	}
+	for _, allowed := range cfg.Tools {
+		if allowed == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Agent) buildSystemPrompt(mode AgentMode, cfg ModeConfig) string {
+	var b strings.Builder
+	b.WriteString(cfg.SystemPrompt)
+
+	b.WriteString("\n\n可用工具:\n")
+	for _, tool := range a.toolRegistry.List() {
+		if a.isToolAllowed(tool.Name, cfg) {
+			b.WriteString(fmt.Sprintf("- %s: %s\n", tool.Name, tool.Description))
+		}
+	}
+
+	return b.String()
+}
+
+func (a *Agent) compact(ctx context.Context, messages []Message) (string, error) {
+	prompt := "请将以下对话历史压缩为结构化摘要，使用markdown格式，包含：已完成工作、进行中、关键决策、下一步、关键上下文。\n\n"
+
+	for _, m := range messages {
+		if m.Role == "system" {
+			continue
+		}
+		content := m.Content
+		if len(content) > 500 {
+			content = content[:500] + "..."
+		}
+		prompt += fmt.Sprintf("[%s]: %s\n", m.Role, content)
+	}
+
+	resp, err := a.llmClient.Chat(ctx, []Message{
+		{Role: "system", Content: "你是一个对话历史摘要助手。请压缩对话历史为结构化摘要。"},
+		{Role: "user", Content: prompt},
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Content, nil
+}
+
 type ToolCall struct {
 	Name   string                 `json:"name"`
 	Params map[string]interface{} `json:"params"`
 }
 
-// getDefaultSystemPrompt 获取默认系统提示
-func getDefaultSystemPrompt() string {
-	return `你是 MultiCloud Manager 的 AI 云助手，帮助用户管理多云资源（Azure、腾讯云、Oracle Cloud、Render）。
-
-你的能力:
-- 查询云账户和资源
-- 启动、停止、重启虚拟机
-- 创建新的云资源（VM、数据库、AKS集群等）
-- 获取云平台定价和免费层信息
-- 检查云平台配额
-- 搜索云平台知识库
-
-工作方式:
-1. 理解用户意图
-2. 决定需要调用哪些工具
-3. 执行工具调用
-4. 基于结果生成回复
-5. 对于创建类任务，先生成方案，等用户确认后再执行
-
-重要规则:
-- 简单查询直接执行，不需要确认
-- 操作类任务直接执行
-- 创建类任务先生成方案供用户确认
-- 复杂任务分解成多个步骤
-- 始终使用中文回复
-- 不确定时询问用户`
-}
-
-// AgentChatResponse Agent聊天响应
-type AgentChatResponse struct {
-	Content    string                 `json:"content"`
-	ToolCalls  []ToolCall             `json:"tool_calls,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+type Message struct {
+	Role    string
+	Content string
 }
