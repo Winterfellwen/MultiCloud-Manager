@@ -325,6 +325,8 @@ func (d *Database) migratePostgres(adminHash string) error {
 			last_sync_at TIMESTAMP,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`ALTER TABLE cloud_accounts ADD COLUMN IF NOT EXISTS credentials TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encrypted_credentials`,
 		`CREATE TABLE IF NOT EXISTS resources_cache (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			account_id UUID NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
