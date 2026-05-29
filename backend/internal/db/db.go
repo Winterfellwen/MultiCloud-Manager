@@ -344,7 +344,7 @@ func (d *Database) migratePostgres(adminHash string) error {
 			UNIQUE(account_id, cloud_resource_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
-		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO UPDATE SET password_hash = '%s'`, adminHash, adminHash),
+		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO NOTHING`, adminHash),
 	}
 
 	for i, q := range queries {
