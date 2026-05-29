@@ -7,7 +7,10 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:render": "npx playwright test --project=chromium",
+    "test:local": "BASE_URL=http://localhost:8099 npx playwright test"
   },
   "repository": {
     "type": "git",
