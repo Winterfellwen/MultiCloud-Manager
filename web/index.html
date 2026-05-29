@@ -44,10 +44,12 @@ html.light {
   --shadow-lg: 0 4px 16px rgba(0,0,0,.12);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
+*:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--radius-sm); }
 body { font-family: var(--font-mono); background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; overflow-x: hidden; font-size: 14px; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 #app { display: flex; min-height: 100vh; }
 
@@ -67,6 +69,8 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 .theme-btn { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; transition: all .15s; font-family: inherit; }
 .theme-btn:hover { background: var(--surface-hover); color: var(--text); }
+.sidebar-theme-btn { width: auto; padding: 0 10px; gap: 4px; }
+.topbar-theme-btn { width: 28px; height: 28px; }
 .avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); }
 
 /* Content */
@@ -225,6 +229,9 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
 .status-dot { width: 6px; height: 6px; border-radius: 50%; }
 .status-dot.running, .status-dot.active { background: var(--success); }
 .status-dot.stopped { background: var(--text-muted); }
+.status-dot.pending { background: var(--warning); animation: blink 1s infinite; }
+.status-dot.error { background: var(--danger); }
+.status-dot.terminated { background: var(--text-muted); opacity: .4; }
 .resource-action-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: var(--font-mono); }
 .resource-action-btn:hover { border-color: var(--primary); color: var(--primary); }
 .resource-action-btn.danger { color: var(--danger); }
@@ -232,6 +239,9 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
 .empty-state { text-align: center; padding: 36px 24px; color: var(--text-muted); font-size: 13px; }
 .load-more { display: block; width: 100%; padding: 8px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 12px; cursor: pointer; text-align: center; transition: all .15s; margin-top: 4px; font-family: var(--font-mono); }
 .load-more:hover { border-color: var(--primary); color: var(--primary); }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: var(--text-muted); font-size: 13px; }
 
 /* Accounts */
 .account-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
@@ -449,9 +459,9 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
   </div>
 
   <!-- AI Config Modal -->
-  <div class="modal-overlay" id="aiConfigModal">
+  <div class="modal-overlay" id="aiConfigModal" role="dialog" aria-modal="true" aria-labelledby="aiConfigTitle" onclick="if(event.target===this)closeAIConfig()">
     <div class="modal-box">
-      <h3 data-i18n="config.title">AI 模型配置</h3>
+      <h3 id="aiConfigTitle" data-i18n="config.title">AI 模型配置</h3>
       <div class="modal-desc" data-i18n="config.desc">配置 AI 云助手的语言模型，支持任何 OpenAI 兼容的 API。未配置时使用内置规则回复。</div>
       <div class="modal-field">
         <label data-i18n="config.endpoint">API 端点</label>
@@ -489,21 +499,21 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
   </div>
 
   <!-- Password Modal -->
-  <div class="modal-overlay" id="passwordModal">
+  <div class="modal-overlay" id="passwordModal" role="dialog" aria-modal="true" onclick="if(event.target===this)closePasswordModal()">
     <div class="modal-box">
       <h3 data-i18n="profile.password">修改密码</h3>
-      <div class="modal-desc">请输入旧密码和新密码</div>
+      <div class="modal-desc" data-i18n="profile.password_desc">请输入旧密码和新密码</div>
       <div class="modal-field">
-        <label>旧密码</label>
-        <input type="password" id="oldPassword" placeholder="请输入旧密码">
+        <label for="oldPassword">旧密码</label>
+        <input type="password" id="oldPassword" autocomplete="current-password" placeholder="请输入旧密码">
       </div>
       <div class="modal-field">
-        <label>新密码</label>
-        <input type="password" id="newPassword" placeholder="请输入新密码">
+        <label for="newPassword">新密码</label>
+        <input type="password" id="newPassword" autocomplete="new-password" placeholder="请输入新密码">
       </div>
       <div class="modal-field">
-        <label>确认新密码</label>
-        <input type="password" id="confirmPassword" placeholder="请再次输入新密码">
+        <label for="confirmPassword">确认新密码</label>
+        <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="请再次输入新密码">
       </div>
       <div class="modal-actions">
         <button class="modal-btn-cancel" onclick="closePasswordModal()" data-i18n="config.cancel">取消</button>
@@ -513,7 +523,7 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
   </div>
 
   <!-- Invite Modal -->
-  <div class="modal-overlay" id="inviteModal">
+  <div class="modal-overlay" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
     <div class="modal-box">
       <h3>邀请团队成员</h3>
       <div class="modal-desc">输入成员邮箱或用户名进行邀请</div>
@@ -529,7 +539,7 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
   </div>
 
   <!-- Upload Template Modal -->
-  <div class="modal-overlay" id="uploadModal">
+  <div class="modal-overlay" id="uploadModal" onclick="if(event.target===this)closeUploadModal()">
     <div class="modal-box">
       <h3>上传 Terraform 模板</h3>
       <div class="modal-desc">输入模板名称和 Terraform 配置内容</div>
@@ -815,9 +825,14 @@ async function apiFetch(url, options) {
   try {
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeout);
-    return await res.json();
-  } catch {
+    var data = await res.json();
+    if (!res.ok && data && data.error) {
+      showToast(data.error);
+    }
+    return data;
+  } catch (e) {
     clearTimeout(timeout);
+    showToast('网络错误: ' + (e.message || '连接失败'));
     return null;
   }
 }
@@ -908,6 +923,12 @@ async function startStream(body) {
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 
+  var streamTimeout = setTimeout(function() {
+    CONFIRM_PENDING = false;
+    document.getElementById('chatSendBtn').disabled = false;
+    document.getElementById('typingIndicator').classList.remove('active');
+  }, 120000);
+
   try {
     const res = await fetch(API + '/agent/chat/stream', {
       method: 'POST',
@@ -924,6 +945,12 @@ async function startStream(body) {
     while (true) {
       const {done, value} = await reader.read();
       if (done) break;
+      clearTimeout(streamTimeout);
+      streamTimeout = setTimeout(function() {
+        CONFIRM_PENDING = false;
+        document.getElementById('chatSendBtn').disabled = false;
+        document.getElementById('typingIndicator').classList.remove('active');
+      }, 120000);
       buffer += decoder.decode(value, {stream: true});
       const parts = buffer.split('\n');
       buffer = parts.pop() || '';
@@ -941,7 +968,9 @@ async function startStream(body) {
     }
   } catch(e) {
     console.error('Stream error:', e);
-    appendMessage('agent', (LOCALE === 'zh' ? '错误：连接失败 - ' : 'Error: connection failed - ') + escHtml(e.message));
+    appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'));
+  } finally {
+    clearTimeout(streamTimeout);
   }
 
   document.getElementById('typingIndicator').classList.remove('active');
@@ -1098,6 +1127,7 @@ async function newSession() {
 }
 
 async function deleteSession(sid) {
+  if (!confirm('确定要删除此对话吗？')) return;
   await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
   if (CURRENT_SESSION === sid) {
     CURRENT_SESSION = null;
@@ -1166,7 +1196,7 @@ function renderMarkdown(text) {
     .replace(/^[\s]*[-*] (.+)$/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
     .replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return url.match(/^https?:\/\//i) ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : text; })
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
 
@@ -1339,6 +1369,7 @@ function renderAccounts(list) {
 }
 
 async function deleteAccount(id) {
+  if (!confirm('确定要删除此云账户吗？此操作不可撤销。')) return;
   await apiFetch(API + '/accounts/' + id, { method: 'DELETE' });
   loadAccounts();
 }
@@ -1369,7 +1400,13 @@ async function submitAccount() {
   if (!selectedCloud) { alert(t('account.select_cloud')); return; }
   const config = cloudConfigs[selectedCloud];
   const formData = {};
-  config.forEach(f => { formData[f.key] = document.getElementById('field-' + f.key).value; });
+  var allFilled = true;
+  config.forEach(f => {
+    var val = document.getElementById('field-' + f.key).value;
+    formData[f.key] = val;
+    if (!val) allFilled = false;
+  });
+  if (!allFilled && !confirm('某些凭证字段为空，确定要提交吗？')) return;
   const accountName = document.getElementById('field-name').value.trim() || selectedCloud + ' 账户';
   await apiFetch(API + '/accounts', {
     method: 'POST',
@@ -1468,6 +1505,7 @@ async function applyTemplate(id) {
 }
 
 async function deleteTemplate(id) {
+  if (!confirm('确定要删除此模板吗？此操作不可撤销。')) return;
   await apiFetch(API + '/terraform/templates/' + id, { method: 'DELETE' });
   loadTerraform();
 }
@@ -1602,8 +1640,14 @@ var __ = {
     'config.high': '高 (high)',
     'config.cancel': '取消',
     'config.save': '保存',
+    'config.test': '测试连接',
+    'config.saved': '配置已保存',
+    'profile.password_desc': '请输入旧密码和新密码',
     'resource.filter_all': '全部',
     'resource.filter_tencent': '腾讯云',
+    'resource.filter_azure': 'Azure',
+    'resource.filter_oracle': 'Oracle',
+    'resource.filter_render': 'Render',
     'resource.status_running': '运行中',
     'resource.status_stopped': '已停止',
     'resource.search': '搜索资源...',
@@ -1725,8 +1769,14 @@ var __ = {
     'config.high': 'High',
     'config.cancel': 'Cancel',
     'config.save': 'Save',
+    'config.test': 'Test Connection',
+    'config.saved': 'Configuration saved',
+    'profile.password_desc': 'Enter your old password and new password',
     'resource.filter_all': 'All',
     'resource.filter_tencent': 'Tencent Cloud',
+    'resource.filter_azure': 'Azure',
+    'resource.filter_oracle': 'Oracle',
+    'resource.filter_render': 'Render',
     'resource.status_running': 'Running',
     'resource.status_stopped': 'Stopped',
     'resource.search': 'Search resources...',
@@ -1827,6 +1877,7 @@ function applyLang() {
 function switchLang(locale) {
   LOCALE = locale;
   localStorage.setItem('lang', locale);
+  document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
   applyLang();
   var langBtn = document.getElementById('langToggleBtn');
   if (langBtn) langBtn.textContent = locale === 'zh' ? 'EN' : '中文';
@@ -1945,6 +1996,19 @@ async function submitUpload() {
     loadTerraform();
   }
 }
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(function(m) {
+      var id = m.id;
+      if (id === 'aiConfigModal') closeAIConfig();
+      else if (id === 'passwordModal') closePasswordModal();
+      else if (id === 'inviteModal') closeInviteModal();
+      else if (id === 'uploadModal') closeUploadModal();
+    });
+  }
+});
 
 /* Init */
 initTheme();

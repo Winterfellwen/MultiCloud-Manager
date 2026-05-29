@@ -1,12 +1,47 @@
-﻿*.exe
+﻿# OS
+Thumbs.db
+Desktop.ini
 *.exe~
-*.log
-.env
-.DS_Store
+*.exe
+*.dll
+*.so
 
-node_modules/
-backend/ai_config.json
-backend/multicloud.db
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build
+backend/app
 backend/server
 backend/server.exe
+app.exe
+server.exe
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Config
+ai_config.json
+.env
+.env.local
+
+# Node
+node_modules/
+
+# Test results
+test-results/
+playwright-report/
+
+# Playwright
+playwright/.cache/
+
+# Old code
 backend-old/
+
+# Logs
+*.log
