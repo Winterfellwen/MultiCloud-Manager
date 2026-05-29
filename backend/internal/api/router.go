@@ -36,6 +36,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 	accountsHandler := NewAccountsHandler(db, isPostgres)
 	resourcesHandler := NewResourcesHandler(syncer, db, isPostgres)
 	teamsHandler := NewTeamsHandler(db, isPostgres)
+	sessionsHandler := NewSessionsHandler(db, isPostgres)
 
 	syncer.Start(context.Background(), 5*time.Minute)
 
@@ -48,6 +49,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 		auth.PUT("/agent/config", UpdateAIConfig)
 		auth.POST("/agent/config/test", TestAIConfig)
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.GET("/agent/sessions", sessionsHandler.List)
+		auth.POST("/agent/sessions", sessionsHandler.Create)
+		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
+		auth.DELETE("/agent/sessions/:sid", sessionsHandler.Delete)
 		auth.GET("/accounts", accountsHandler.List)
 		auth.POST("/accounts", accountsHandler.Create)
 		auth.PUT("/accounts/:id", accountsHandler.Update)
@@ -59,10 +64,13 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 		// 团队管理端点
 		auth.GET("/teams", teamsHandler.GetTeams)
 		auth.GET("/teams/:teamId/members", teamsHandler.GetTeamMembers)
+		auth.POST("/teams/:teamId/members", teamsHandler.AddTeamMember)
 		auth.DELETE("/teams/:teamId/members/:id", teamsHandler.RemoveTeamMember)
 		// Terraform模板端点
 		auth.GET("/terraform/templates", GetTerraformTemplatesHandler)
+		auth.POST("/terraform/templates", CreateTerraformTemplateHandler)
 		auth.GET("/terraform/templates/:id", GetTerraformTemplateHandler)
+		auth.POST("/terraform/templates/:id/plan", PlanTerraformTemplateHandler)
 		auth.POST("/terraform/templates/:id/apply", ApplyTerraformTemplateHandler)
 		auth.DELETE("/terraform/templates/:id", DestroyTerraformTemplateHandler)
 		auth.POST("/terraform/templates/:id/destroy", DestroyTerraformTemplateHandler)

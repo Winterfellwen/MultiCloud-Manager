@@ -825,6 +825,16 @@ async function apiFetch(url, options) {
   try {
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeout);
+    
+    // Check if response is JSON
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      if (!res.ok) {
+        showToast(`请求失败: ${res.status}`);
+      }
+      return null;
+    }
+    
     var data = await res.json();
     if (!res.ok && data && data.error) {
       showToast(data.error);
@@ -1954,7 +1964,7 @@ async function submitInvite() {
   var email = document.getElementById('inviteEmail').value.trim();
   if (!email) { showToast('请输入邮箱或用户名'); return; }
   var teamData = await apiFetch(API + '/teams');
-  var teamId = teamData && teamData.id ? teamData.id : null;
+  var teamId = teamData && teamData.teams && teamData.teams.length > 0 ? teamData.teams[0].id : null;
   if (!teamId) { showToast('无法获取团队信息'); closeInviteModal(); return; }
   var result = await apiFetch(API + '/teams/' + teamId + '/members', {
     method: 'POST',
