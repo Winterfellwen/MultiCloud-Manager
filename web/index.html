@@ -915,7 +915,7 @@ async function startStream(body) {
   try {
     const res = await fetch(API + '/agent/chat/stream', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({}, getAuthHeaders(), { 'Content-Type': 'application/json' }),
       body: JSON.stringify(body)
     });
 
@@ -945,6 +945,7 @@ async function startStream(body) {
     }
   } catch(e) {
     console.error('Stream error:', e);
+    appendMessage('agent', (LOCALE === 'zh' ? '错误：连接失败 - ' : 'Error: connection failed - ') + escHtml(e.message));
   }
 
   document.getElementById('typingIndicator').classList.remove('active');
