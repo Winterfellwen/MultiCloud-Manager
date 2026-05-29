@@ -1036,56 +1036,6 @@ function doReject(toolName) {
   confirmChat('reject', toolName, null);
 }
 
-async function confirmChat(action, toolName, toolParams) {
-  CONFIRM_PENDING = false;
-  document.getElementById('chatSendBtn').disabled = false;
-  startStream({
-    session_id: CURRENT_SESSION,
-    mode: CURRENT_MODE,
-    confirm_action: action,
-    tool_name: toolName,
-    tool_params: toolParams
-  });
-}
-      break;
-    }
-    case 'confirm_required': {
-      CONFIRM_PENDING = true;
-      // Remove streaming cursor and finalize
-      if (lastMsg) lastMsg.classList.remove('streaming-cursor');
-      const streamingDiv = document.querySelector('.msg.streaming');
-      if (streamingDiv) streamingDiv.classList.remove('streaming');
-
-      // Render confirm buttons
-      const container = document.getElementById('chatMessages');
-      const confirmDiv = document.createElement('div');
-      confirmDiv.className = 'msg agent';
-      let html = '<div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
-      (data.tool_calls || []).forEach(function(tc, idx) {
-        html += '<div class="tool-call"><span class="tool-name">' + escHtml(tc.name) + '</span> <span class="tool-params">' + escHtml(JSON.stringify(tc.params)) + '</span></div>';
-        html += '<div class="confirm-bar">';
-        html += '<button class="confirm-btn" onclick="confirmChat(\'confirm\',\'' + escHtml(tc.name) + '\',' + escHtml(JSON.stringify(tc.params)) + ')">' + (LOCALE === 'zh' ? '确认' : 'Confirm') + '</button>';
-        html += '<button class="reject-btn" onclick="confirmChat(\'reject\',\'' + escHtml(tc.name) + '\',null)">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
-        html += '</div>';
-      });
-      html += '</div>';
-      confirmDiv.innerHTML = html;
-      container.appendChild(confirmDiv);
-      container.scrollTop = container.scrollHeight;
-      break;
-    }
-    case 'done': {
-      CONFIRM_PENDING = false;
-      break;
-    }
-    case 'error': {
-      console.error('SSE error:', data.message);
-      CONFIRM_PENDING = false;
-      break;
-    }
-  }
-}
-
 /* Session Management */
 async function loadSessions() {
   const data = await apiFetch(API + '/agent/sessions');
