@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -10,14 +11,14 @@ import (
 )
 
 type AuthHandler struct {
-	jwtSecret     string
-	adminPassword string
+	jwtSecret string
+	db        *sql.DB
 }
 
-func NewAuthHandler(jwtSecret, adminPassword string) *AuthHandler {
+func NewAuthHandler(jwtSecret string, db *sql.DB) *AuthHandler {
 	return &AuthHandler{
-		jwtSecret:     jwtSecret,
-		adminPassword: adminPassword,
+		jwtSecret: jwtSecret,
+		db:        db,
 	}
 }
 
@@ -33,15 +34,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	if req.Username != "admin" {
+	var passwordHash string
+	err := h.db.QueryRow(`SELECT password_hash FROM users WHERE username = ?`, req.Username).Scan(&passwordHash)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword(
-		[]byte(hashPassword(h.adminPassword)),
-		[]byte(req.Password),
-	); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -63,9 +63,4 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Profile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	c.JSON(http.StatusOK, gin.H{"user": userID})
-}
-
-func hashPassword(password string) string {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash)
 }
