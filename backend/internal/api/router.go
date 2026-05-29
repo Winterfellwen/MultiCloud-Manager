@@ -77,6 +77,9 @@ func serveFile(c *gin.Context, filePath string) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 		return
 	}
+	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
 	c.Data(http.StatusOK, "text/html; charset=utf-8", data)
 }
 
