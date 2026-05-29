@@ -973,7 +973,7 @@ function handleSSEEvent(data) {
     case 'token': {
       STREAMING_MSG.content += data.content;
       if (lastMsg) {
-        lastMsg.textContent = STREAMING_MSG.content;
+        lastMsg.innerHTML = renderMarkdown(STREAMING_MSG.content);
         lastMsg.classList.add('streaming-cursor');
         lastMsg.parentElement.parentElement.scrollTop = lastMsg.parentElement.parentElement.scrollHeight;
       }
