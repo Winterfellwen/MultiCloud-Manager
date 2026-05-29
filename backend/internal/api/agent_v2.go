@@ -120,8 +120,8 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	// 保存用户消息
 	h.saveMessage(sessionID, "user", req.Message)
 
-	// 获取对话历史（保留最近4条，agent回复截断到200字符）
-	history := h.getConversationHistory(sessionID, 4)
+	// 获取对话历史（仅保留最近1条，避免token超限）
+	history := h.getConversationHistory(sessionID, 1)
 
 	// 构建消息列表
 	var messages []agent.Message
