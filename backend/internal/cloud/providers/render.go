@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"multicloud/internal/cloud/types"
@@ -269,48 +270,35 @@ func (p *RenderProvider) GetInstance(ctx context.Context, id string) (*types.Ins
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (p *RenderProvider) StartInstance(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, "POST",
-		fmt.Sprintf("https://api.render.com/v1/services/%s/resume", id), nil)
+func (p *RenderProvider) renderAction(ctx context.Context, actionURL string) error {
+	req, err := http.NewRequestWithContext(ctx, "POST", actionURL, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
+	if strings.Contains(actionURL, "/deploys") {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("render API error %d on %s", resp.StatusCode, actionURL)
+	}
 	return nil
+}
+
+func (p *RenderProvider) StartInstance(ctx context.Context, id string) error {
+	return p.renderAction(ctx, fmt.Sprintf("https://api.render.com/v1/services/%s/resume", id))
 }
 
 func (p *RenderProvider) StopInstance(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, "POST",
-		fmt.Sprintf("https://api.render.com/v1/services/%s/suspend", id), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
+	return p.renderAction(ctx, fmt.Sprintf("https://api.render.com/v1/services/%s/suspend", id))
 }
 
 func (p *RenderProvider) RestartInstance(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, "POST",
-		fmt.Sprintf("https://api.render.com/v1/services/%s/deploys", id), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
+	return p.renderAction(ctx, fmt.Sprintf("https://api.render.com/v1/services/%s/deploys", id))
 }

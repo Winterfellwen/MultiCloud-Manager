@@ -86,6 +86,10 @@ func (p *OracleProvider) ListInstances(ctx context.Context, opts types.ListOptio
 			status = "running"
 		case "STOPPED":
 			status = "stopped"
+		case "PROVISIONING", "STARTING":
+			status = "pending"
+		case "TERMINATED", "TERMINATING":
+			status = "terminated"
 		default:
 			status = "stopped"
 		}

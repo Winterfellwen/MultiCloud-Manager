@@ -36,8 +36,22 @@ func InitAIConfig(db *sql.DB, isPostgres bool) {
 
 func GetAIConfig(c *gin.Context) {
 	aiConfigMu.RLock()
-	defer aiConfigMu.RUnlock()
-	c.JSON(http.StatusOK, aiConfigCache)
+	cfg := aiConfigCache
+	aiConfigMu.RUnlock()
+	// Mask API key for security
+	masked := cfg.APIKey
+	if len(masked) > 8 {
+		masked = masked[:4] + "****" + masked[len(masked)-4:]
+	} else if masked != "" {
+		masked = "****"
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"api_endpoint":     cfg.APIEndpoint,
+		"model":            cfg.Model,
+		"api_key":          masked,
+		"enable_reasoning": cfg.EnableReasoning,
+		"reasoning_effort": cfg.ReasoningEffort,
+	})
 }
 
 func UpdateAIConfig(c *gin.Context) {
@@ -50,6 +64,12 @@ func UpdateAIConfig(c *gin.Context) {
 	if aiConfigDB == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database not available"})
 		return
+	}
+
+	// Preserve existing API key if client sent masked value (from GET)
+	if strings.Contains(newConfig.APIKey, "****") {
+		existing := GetAIConfigValue()
+		newConfig.APIKey = existing.APIKey
 	}
 
 	var query string
