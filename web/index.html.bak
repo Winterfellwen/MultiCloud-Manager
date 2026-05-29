@@ -8,19 +8,15 @@
 :root {
   --primary: #6366f1;
   --primary-hover: #818cf8;
-  --primary-subtle: rgba(99,102,241,.1);
   --danger: #ef4444;
   --success: #22c55e;
   --warning: #f59e0b;
   --info: #3b82f6;
   --bg: #0f1117;
   --surface: #1a1d27;
-  --surface-hover: #222636;
   --border: #2a2d3a;
-  --border-light: #1e2130;
   --text: #e1e4ed;
   --text-secondary: #8b8fa3;
-  --text-muted: #5c6178;
   --azure: #0078d4;
   --tencent: #00a4ff;
   --oracle: #f80000;
@@ -30,17 +26,13 @@
   --radius-lg: 16px;
   --shadow: 0 2px 8px rgba(0,0,0,.3);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.5);
-  --font-mono: "JetBrainsMono Nerd Font Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
 }
 html.light {
   --bg: #f5f7fa;
   --surface: #ffffff;
-  --surface-hover: #f0f2f5;
   --border: #e4e7ed;
-  --border-light: #ebeef5;
   --text: #1a1a2e;
   --text-secondary: #666666;
-  --text-muted: #999999;
   --shadow: 0 2px 8px rgba(0,0,0,.08);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
 }
@@ -97,67 +89,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 /* Activity */
 .activity-placeholder { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; text-align: center; color: var(--text-secondary); font-size: 14px; }
 
-/* Chat - OpenCode style */
+/* Chat */
 .chat-container { display: flex; flex-direction: column; height: calc(100vh - 56px - 48px); }
-.chat-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 0px; padding-top: 0px; border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 48px; }
-.chat-header-actions { display: flex; align-items: center; gap: 8px; }
-
-/* Mode toggle */
-.mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
-.mode-btn { padding: 4px 16px; font-size: 12px; font-weight: 500; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 999px; transition: all .2s; }
-.mode-btn:hover { color: var(--text); }
-.mode-btn.active { background: var(--primary); color: #fff; }
-
-.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 16px 0; scroll-behavior: smooth; }
-.msg { max-width: 85%; font-size: 14px; line-height: 1.65; }
-.msg.user { align-self: flex-end; }
-.msg.user .msg-content { background: var(--primary); color: #fff; padding: 8px 14px; border-radius: 16px; border-bottom-right-radius: 4px; display: inline-block; max-width: 100%; }
-.msg.agent { align-self: flex-start; width: 100%; max-width: 100%; }
-.msg.agent .msg-content { color: var(--text); line-height: 1.65; }
-.msg.agent .msg-content p { margin: 4px 0; }
-.msg.agent .msg-content p:first-child { margin-top: 0; }
-.msg.agent .msg-content p:last-child { margin-bottom: 0; }
-.msg.agent .msg-content pre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; margin: 6px 0; }
-.msg.agent .msg-content code { background: var(--primary-subtle); border-radius: 4px; padding: 1px 4px; font-family: var(--font-mono); font-size: 13px; color: var(--primary); }
-.msg.agent .msg-content pre code { background: none; padding: 0; border-radius: 0; color: inherit; }
-.msg.agent .msg-content table { border-collapse: collapse; margin: 6px 0; font-size: 13px; width: 100%; }
-.msg.agent .msg-content th, .msg.agent .msg-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
-.msg.agent .msg-content th { background: var(--surface); font-weight: 600; }
-.msg.agent .msg-content ul, .msg.agent .msg-content ol { margin: 4px 0; padding-left: 20px; }
-.msg.agent .msg-content li { margin: 1px 0; }
-.msg.agent .msg-content h1, .msg.agent .msg-content h2, .msg.agent .msg-content h3, .msg.agent .msg-content h4 { margin: 8px 0 4px; font-weight: 600; }
-.msg.agent .msg-content h1 { font-size: 16px; }
-.msg.agent .msg-content h2 { font-size: 15px; }
-.msg.agent .msg-content h3 { font-size: 14px; }
-.msg.agent .msg-content blockquote { border-left: 3px solid var(--primary); padding-left: 10px; margin: 4px 0; color: var(--text-secondary); }
-.msg.agent .msg-content a { color: var(--primary); text-decoration: none; }
-.msg.agent .msg-content a:hover { text-decoration: underline; }
-.msg.system { align-self: center; font-size: 12px; color: var(--text-muted); padding: 2px 0; }
-
-/* Tool call display */
-.tool-call { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 6px 10px; margin: 4px 0; font-family: var(--font-mono); font-size: 13px; }
-.tool-call .tool-name { color: var(--primary); font-weight: 500; }
-.tool-call .tool-params { color: var(--text-secondary); }
-.tool-result { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 8px 10px; margin: 4px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
-
-.typing-indicator { display: none; align-items: center; gap: 6px; align-self: flex-start; font-size: 13px; color: var(--text-secondary); padding: 4px 0; }
+.chat-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.chat-header h2 { font-size: 18px; }
+.chat-header select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.chat-quick-actions { display: flex; gap: 8px; padding: 12px 0; flex-shrink: 0; }
+.chat-quick-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: all .2s; }
+.chat-quick-btn:hover { border-color: var(--primary); color: var(--primary); }
+.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 0; }
+.msg { max-width: 80%; padding: 10px 14px; border-radius: var(--radius); font-size: 14px; line-height: 1.6; }
+.msg.user { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.msg.agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.msg.system { align-self: center; font-size: 12px; color: var(--text-secondary); }
+.typing-indicator { display: none; align-items: center; gap: 6px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); border-bottom-left-radius: 4px; align-self: flex-start; font-size: 13px; color: var(--text-secondary); }
 .typing-indicator.active { display: flex; }
-.typing-dot { width: 5px; height: 5px; background: var(--text-muted); border-radius: 50%; animation: typingBounce 1.2s infinite; }
+.typing-dot { width: 6px; height: 6px; background: var(--text-secondary); border-radius: 50%; animation: typingBounce 1.2s infinite; }
 .typing-dot:nth-child(2) { animation-delay: .2s; }
 .typing-dot:nth-child(3) { animation-delay: .4s; }
 @keyframes typingBounce { 0%,60%,100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
-
-/* Input bar - OpenCode style */
-.chat-input-area { padding: 12px 0; border-top: 1px solid var(--border); flex-shrink: 0; }
-.chat-input-bar { display: flex; align-items: flex-end; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; transition: border-color .2s; }
-.chat-input-bar:focus-within { border-color: var(--primary); }
-.chat-input-bar textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 14px; line-height: 1.5; outline: none; padding: 8px 8px 8px 12px; resize: none; font-family: inherit; max-height: 160px; }
-.chat-input-bar textarea::placeholder { color: var(--text-muted); }
-.chat-input-bar button { background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s; flex-shrink: 0; }
+.chat-input-bar { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.chat-input-bar input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; }
+.chat-input-bar input:focus { border-color: var(--primary); }
+.chat-input-bar button { background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 10px 20px; font-size: 14px; cursor: pointer; transition: background .2s; }
 .chat-input-bar button:hover { background: var(--primary-hover); }
-.chat-input-bar button:disabled { opacity: .4; cursor: not-allowed; }
-.chat-input-bar button svg { width: 16px; height: 16px; }
-.chat-hint { font-size: 11px; color: var(--text-muted); padding: 4px 0 0 4px; }
+
+/* Plan card in chat */
+.plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 8px; }
+.plan-step { display: flex; gap: 10px; padding: 8px 0; border-left: 3px solid var(--primary); padding-left: 12px; margin-bottom: 6px; font-size: 13px; }
+.plan-step .step-num { color: var(--primary); font-weight: 600; flex-shrink: 0; }
+.plan-execute-btn { background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 6px 16px; font-size: 13px; cursor: pointer; margin-top: 8px; transition: background .2s; }
+.plan-execute-btn:hover { background: var(--primary-hover); }
 
 /* AI Config Modal */
 .chat-header-actions { display: flex; align-items: center; gap: 8px; }
@@ -375,34 +337,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
     <div class="activity-placeholder" data-i18n="activity.empty">暂无活动记录</div>
   </div>
 
-  <!-- Chat - OpenCode style -->
+  <!-- Chat -->
   <div id="page-chat" class="page">
     <div class="chat-container">
       <div class="chat-header">
-        <div class="mode-toggle">
-          <button class="mode-btn" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
-          <button class="mode-btn active" data-mode="build" onclick="setChatMode('build')">Build</button>
-        </div>
+        <h2 data-i18n="chat.title">AI 云助手</h2>
         <div class="chat-header-actions">
-          <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
+          <select id="chatMode">
+            <option value="build" data-i18n="chat.mode_build">执行模式</option>
+            <option value="plan" selected data-i18n="chat.mode_plan">仅生成方案</option>
+          </select>
+          <button class="chat-settings-btn" onclick="openAIConfig()" title="AI 配置" data-i18n="chat.settings_title">⚙</button>
         </div>
+      </div>
+      <div class="chat-quick-actions">
+        <button class="chat-quick-btn" onclick="quickChat(t('chat.quick_accounts'))" data-i18n="chat.quick_accounts">查看账户</button>
+        <button class="chat-quick-btn" onclick="quickChat(t('chat.quick_resources'))" data-i18n="chat.quick_resources">查看资源</button>
+        <button class="chat-quick-btn" onclick="quickChat(t('chat.quick_create'))" data-i18n="chat.quick_create">新建VM</button>
       </div>
       <div class="chat-messages" id="chatMessages">
-        <div class="msg agent"><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. How can I help you manage your cloud resources?</p></div></div>
+        <div class="msg agent" data-i18n="chat.welcome">你好！我是 AI 云助手，可以帮助你管理多云资源。有什么需要帮忙的吗？</div>
       </div>
       <div class="typing-indicator" id="typingIndicator">
+        <span data-i18n="chat.thinking">AI 正在思考</span>
         <span class="typing-dot"></span>
         <span class="typing-dot"></span>
         <span class="typing-dot"></span>
       </div>
-      <div class="chat-input-area">
-        <div class="chat-input-bar">
-          <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
-          <button onclick="sendChat()" id="chatSendBtn" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-          </button>
-        </div>
-        <div class="chat-hint">MultiCloud AI Agent &middot; Build mode can execute operations</div>
+      <div class="chat-input-bar">
+        <input type="text" id="chatInput" data-i18n="chat.placeholder" placeholder="输入你的问题..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button onclick="sendChat()" data-i18n="chat.send">发送</button>
       </div>
     </div>
   </div>
@@ -792,168 +756,62 @@ async function loadDashboard() {
 }
 
 /* Chat */
-let CURRENT_MODE = 'build';
-
-function setChatMode(mode) {
-  CURRENT_MODE = mode;
-  document.querySelectorAll('.mode-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === mode);
-  });
-  const hint = document.querySelector('.chat-hint');
-  if (hint) {
-    hint.textContent = mode === 'plan'
-      ? 'MultiCloud AI Agent · Plan mode is read-only'
-      : 'MultiCloud AI Agent · Build mode can execute operations';
-  }
-}
-
-function handleChatKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendChat();
-  }
-}
-
-function autoResizeTextarea(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
-  document.getElementById('chatSendBtn').disabled = el.value.trim().length === 0;
-}
-
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
-  autoResizeTextarea(input);
-  appendMessage('user', escHtml(text));
+  appendMessage('user', text);
   document.getElementById('typingIndicator').classList.add('active');
-  const msgContainer = document.getElementById('chatMessages');
-  try {
-    const data = await apiFetch(API + '/agent/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: text,
-        session_id: SESSION_ID,
-        mode: CURRENT_MODE
-      })
-    });
-    document.getElementById('typingIndicator').classList.remove('active');
-    const response = (data && data.message) ? data.message : getMockChatResponse(text);
-    appendMessage('agent', renderMarkdown(response));
-  } catch (e) {
-    document.getElementById('typingIndicator').classList.remove('active');
-    appendMessage('agent', renderMarkdown(getMockChatResponse(text)));
+  const data = await apiFetch(API + '/agent/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: text,
+      session_id: SESSION_ID,
+      mode: document.getElementById('chatMode').value
+    })
+  });
+  document.getElementById('typingIndicator').classList.remove('active');
+  const response = (data && data.message) ? data.message : getMockChatResponse(text);
+  appendMessage('agent', response);
+}
+
+function quickChat(text) {
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+function getMockChatResponse(text) {
+  var loc = LOCALE || 'zh';
+  if (loc === 'zh') {
+    if (text.includes('查看') || text.includes('账户')) { return t('mock.account_list'); }
+    if (text.includes('资源')) { return t('mock.resource_list'); }
+    if (text.includes('新建') || text.includes('VM') || text.includes('虚拟机')) {
+      return t('mock.plan_prefix') + '<div class="plan-card"><div class="plan-step"><span class="step-num">1</span><span>' + t('mock.plan_step1') + '</span></div><div class="plan-step"><span class="step-num">2</span><span>' + t('mock.plan_step2') + '</span></div><div class="plan-step"><span class="step-num">3</span><span>' + t('mock.plan_step3') + '</span></div><div class="plan-step"><span class="step-num">4</span><span>' + t('mock.plan_step4') + '</span></div><button class="plan-execute-btn" onclick="executePlan()">' + t('mock.plan_execute') + '</button></div>';
+    }
+    return t('mock.fallback').replace('%s', text);
   }
+  if (text.toLowerCase().includes('account') || text.toLowerCase().includes('view')) { return t('mock.account_list'); }
+  if (text.toLowerCase().includes('resource')) { return t('mock.resource_list'); }
+  if (text.toLowerCase().includes('create') || text.toLowerCase().includes('new') || text.toLowerCase().includes('vm')) {
+    return t('mock.plan_prefix') + '<div class="plan-card"><div class="plan-step"><span class="step-num">1</span><span>' + t('mock.plan_step1') + '</span></div><div class="plan-step"><span class="step-num">2</span><span>' + t('mock.plan_step2') + '</span></div><div class="plan-step"><span class="step-num">3</span><span>' + t('mock.plan_step3') + '</span></div><div class="plan-step"><span class="step-num">4</span><span>' + t('mock.plan_step4') + '</span></div><button class="plan-execute-btn" onclick="executePlan()">' + t('mock.plan_execute') + '</button></div>';
+  }
+  return t('mock.fallback').replace('%s', text);
 }
 
 function appendMessage(type, html) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg ' + type;
-  const content = document.createElement('div');
-  content.className = 'msg-content';
-  content.innerHTML = html;
-  div.appendChild(content);
+  div.innerHTML = html;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
-function renderMarkdown(text) {
-  // escape then process markdown
-  var html = text
-    // code blocks first
-    .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    // inline code
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // tables
-    .replace(/\|(.+)\|/g, function(m) {
-      if (m.includes('---')) return '';
-      var cells = m.slice(1,-1).split('|').map(function(c) { return c.trim(); });
-      return '<tr><td>' + cells.join('</td><td>') + '</td></tr>';
-    })
-    .replace(/<tr>.*?<\/tr>\n?<tr><td>.*?<\/td><\/tr>/g, function(m) {
-      var lines = m.trim().split('\n').filter(Boolean);
-      if (lines.length < 2) return m;
-      var headers = lines[0].match(/<td>(.*?)<\/td>/g);
-      if (!headers) return m;
-      var headerTexts = headers.map(function(h) { return h.replace(/<\/?td>/g,''); });
-      var rows = lines.slice(1);
-      var tbl = '<table><thead><tr>';
-      headerTexts.forEach(function(h) { tbl += '<th>' + h + '</th>'; });
-      tbl += '</tr></thead><tbody>';
-      rows.forEach(function(r) {
-        var cells = r.match(/<td>(.*?)<\/td>/g);
-        if (cells) {
-          tbl += '<tr>';
-          cells.forEach(function(c) { tbl += '<td>' + c.replace(/<\/?td>/g,'') + '</td>'; });
-          tbl += '</tr>';
-        }
-      });
-      tbl += '</tbody></table>';
-      return tbl;
-    })
-    // headers
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // blockquote
-    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-    // bold/italic
-    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // unordered list
-    .replace(/^[\s]*[-*] (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    // ordered list
-    .replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>')
-    // links
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-    // line breaks
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>');
-
-  // wrap non-block content in <p>
-  if (!html.startsWith('<h') && !html.startsWith('<pre') && !html.startsWith('<table') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<blockquote')) {
-    html = '<p>' + html + '</p>';
-  }
-  return html;
-}
-
-function escHtml(s) {
-  var el = document.createElement('div');
-  el.textContent = s;
-  return el.innerHTML;
-}
-
-function getMockChatResponse(text) {
-  var loc = LOCALE || 'zh';
-  var tFunc = function(key) { return t(key); };
-  if (loc === 'zh') {
-    if (text.includes('查看') || text.includes('账户')) {
-      return '- Azure 订阅 (Pay-As-You-Go)\n- Tencent Cloud 账号\n- Oracle Cloud 账号 (Always Free)\n- Render 账号';
-    }
-    if (text.includes('资源')) {
-      return '以下是您的云资源：\n\n| 资源 | 类型 | 地区 | 状态 |\n|------|------|------|------|\n| WebApp-Prod | App Service | East US | 运行中 |\n| DB-Primary | PostgreSQL | East US | 运行中 |\n| VM-Backend | Virtual Machine | Southeast Asia | 停止 |\n| AKS-Cluster | Kubernetes | West Europe | 运行中 |\n| Storage-Backup | Storage Account | East US | 运行中 |\n| Frontend-App | Static Web App | Global | 运行中 |';
-    }
-    if (text.includes('新建') || text.includes('VM') || text.includes('虚拟机')) {
-      return '## 创建虚拟机方案\n\n我将为您在 Azure 创建一台虚拟机：\n\n1. **选择规格**: Standard_B2s (2vCPU, 4GB RAM)\n2. **配置网络**: 新建 VNet + 公网 IP\n3. **选择镜像**: Ubuntu 22.04 LTS\n4. **设置认证**: SSH 密钥\n\n> 是否确定执行此方案？';
-    }
-    return '您好！我是 MultiCloud AI 助手。我可以：\n\n- 查看云资源列表\n- 查看云账户信息\n- 创建虚拟机、数据库\n- 管理 Kubernetes 集群\n\n请问有什么可以帮您？';
-  }
-  var tl = text.toLowerCase();
-  if (tl.includes('account') || tl.includes('view')) {
-    return '- Azure Subscription (Pay-As-You-Go)\n- Tencent Cloud Account\n- Oracle Cloud Account (Always Free)\n- Render Account';
-  }
-  if (tl.includes('resource')) {
-    return 'Here are your cloud resources:\n\n| Resource | Type | Region | Status |\n|----------|------|--------|--------|\n| WebApp-Prod | App Service | East US | Running |\n| DB-Primary | PostgreSQL | East US | Running |\n| VM-Backend | Virtual Machine | Southeast Asia | Stopped |\n| AKS-Cluster | Kubernetes | West Europe | Running |\n| Storage-Backup | Storage Account | East US | Running |\n| Frontend-App | Static Web App | Global | Running |';
-  }
-  if (tl.includes('create') || tl.includes('new') || tl.includes('vm')) {
-    return '## Virtual Machine Creation Plan\n\nI will create a VM on Azure:\n\n1. **Spec**: Standard_B2s (2vCPU, 4GB RAM)\n2. **Network**: New VNet + Public IP\n3. **Image**: Ubuntu 22.04 LTS\n4. **Auth**: SSH Key\n\n> Proceed with this plan?';
-  }
-  return 'Hello! I am MultiCloud AI Assistant. I can help you:\n\n- View cloud resources\n- Check cloud accounts\n- Create VMs, databases\n- Manage Kubernetes clusters\n\nHow can I help you today?';
+async function executePlan() {
+  await apiFetch(API + '/agent/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  appendMessage('system', t('exec.submitted'));
 }
 
 /* Resources */
