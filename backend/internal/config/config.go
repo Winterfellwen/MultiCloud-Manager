@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+)
 
 type Config struct {
 	Port          string
@@ -13,15 +16,27 @@ type Config struct {
 }
 
 func Load() *Config {
-	return &Config{
+	env := getEnv("ENVIRONMENT", "development")
+	cfg := &Config{
 		Port:          getEnv("PORT", "8099"),
 		DBPath:        getEnv("DB_PATH", "multicloud.db"),
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		RedisURL:      getEnv("REDIS_URL", ""),
 		JWTSecret:     getEnv("JWT_SECRET", "dev-secret-change-in-production"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "test123"),
-		Environment:   getEnv("ENVIRONMENT", "development"),
+		Environment:   env,
 	}
+
+	if env == "production" {
+		if cfg.JWTSecret == "dev-secret-change-in-production" {
+			log.Fatal("FATAL: JWT_SECRET must be set in production")
+		}
+		if cfg.AdminPassword == "test123" {
+			log.Fatal("FATAL: ADMIN_PASSWORD must be set in production")
+		}
+	}
+
+	return cfg
 }
 
 func getEnv(key, fallback string) string {

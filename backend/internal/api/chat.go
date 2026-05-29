@@ -91,7 +91,8 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	httpClient := &http.Client{}
+	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		sendSSEError(c, "connection failed: "+err.Error())
 		return
