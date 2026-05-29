@@ -73,7 +73,13 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 		return nil
 	}
 
-	rows, err := s.db.QueryContext(ctx, `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = 1`)
+	var query string
+	if s.isPostgres {
+		query = `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = true`
+	} else {
+		query = `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = 1`
+	}
+	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("syncer: query accounts: %w", err)
 	}
