@@ -80,7 +80,7 @@ func (h *AccountsHandler) Create(c *gin.Context) {
 
 	id := uuid.New().String()
 	if h.isPostgres {
-		_, err := h.db.Exec(`INSERT INTO cloud_accounts (id, name, cloud_type, credentials, is_active) VALUES ($1, $2, $3, $4, 1)`,
+		_, err := h.db.Exec(`INSERT INTO cloud_accounts (id, name, cloud_type, credentials, is_active) VALUES ($1, $2, $3, $4, true)`,
 			id, req.Name, req.CloudType, req.Credentials)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
