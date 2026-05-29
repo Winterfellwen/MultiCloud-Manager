@@ -212,7 +212,7 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 	}, nil
 }
 
-var toolCallRegex = regexp.MustCompile(`<tool>(.*?)</tool>\s*<parameters>(.*?)</parameters></tool_call>`)
+var toolCallRegex = regexp.MustCompile(`<tool>(.*?)</tool>\s*<parameters>(.*?)</parameters>\s*</tool_call>`)
 
 func (a *Agent) parseToolCalls(content string) []ToolCall {
 	var toolCalls []ToolCall
