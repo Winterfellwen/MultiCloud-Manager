@@ -79,6 +79,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 	webDir := getWebDir()
 	r.Static("/static", webDir)
 
+	r.GET("/embedded.js", func(c *gin.Context) {
+		serveFileWithType(c, filepath.Join(webDir, "embedded.js"), "application/javascript; charset=utf-8")
+	})
 	r.GET("/login.html", func(c *gin.Context) {
 		serveFile(c, filepath.Join(webDir, "login.html"))
 	})
@@ -93,6 +96,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 }
 
 func serveFile(c *gin.Context, filePath string) {
+	serveFileWithType(c, filePath, "text/html; charset=utf-8")
+}
+
+func serveFileWithType(c *gin.Context, filePath string, contentType string) {
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
@@ -101,7 +108,7 @@ func serveFile(c *gin.Context, filePath string) {
 	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "0")
-	c.Data(http.StatusOK, "text/html; charset=utf-8", data)
+	c.Data(http.StatusOK, contentType, data)
 }
 
 func getWebDir() string {

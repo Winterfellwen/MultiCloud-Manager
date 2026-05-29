@@ -1,61 +1,13 @@
 {
   "pages": [
-    "pages/login/login",
-    "pages/admin/users/users",
-    "pages/index/index",
-    "pages/agent/chat",
-    "pages/resources/list",
-    "pages/user/profile",
-    "pages/resources/detail",
-    "pages/accounts/list",
-    "pages/accounts/add",
-    "pages/team/members",
-    "pages/terraform/list",
-    "pages/terraform/upload"
+    "pages/web/web"
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#1a1d27",
-    "navigationBarTitleText": "多云管理",
-    "navigationBarTextStyle": "white"
-  },
-  "tabBar": {
-    "color": "#8b8fa3",
-    "selectedColor": "#6366f1",
-    "backgroundColor": "#1a1d27",
-    "borderStyle": "black",
-    "list": [
-      {
-        "pagePath": "pages/index/index",
-        "text": "首页",
-        "iconPath": "assets/tab/home.png",
-        "selectedIconPath": "assets/tab/home-active.png"
-      },
-      {
-        "pagePath": "pages/agent/chat",
-        "text": "AI助手",
-        "iconPath": "assets/tab/ai.png",
-        "selectedIconPath": "assets/tab/ai-active.png"
-      },
-      {
-        "pagePath": "pages/resources/list",
-        "text": "资源",
-        "iconPath": "assets/tab/resources.png",
-        "selectedIconPath": "assets/tab/resources-active.png"
-      },
-      {
-        "pagePath": "pages/user/profile",
-        "text": "我的",
-        "iconPath": "assets/tab/user.png",
-        "selectedIconPath": "assets/tab/user-active.png"
-      }
-    ]
-  },
-  "usingComponents": {
-    "resource-card": "/components/ResourceCard/ResourceCard",
-    "cloud-selector": "/components/CloudSelector/CloudSelector",
-    "status-badge": "/components/StatusBadge/StatusBadge",
-    "operation-button": "/components/OperationButton/OperationButton"
+    "navigationStyle": "custom",
+    "backgroundColor": "#0c0c0e",
+    "backgroundColorTop": "#0c0c0e",
+    "backgroundColorBottom": "#0c0c0e"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

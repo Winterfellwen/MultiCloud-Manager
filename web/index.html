@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script src="/embedded.js"></script>
 <title>MultiCloud Manager</title>
 <style>
 :root {
@@ -196,6 +197,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-header-actions { display: flex; align-items: center; gap: 8px; }
 .chat-settings-btn { background: none; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 2px; transition: all .15s; line-height: 1; font-family: inherit; }
 .chat-settings-btn:hover { color: var(--primary); background: var(--surface-hover); }
+.chat-sessions-btn { display: none; background: none; border: 1px solid var(--border); border-radius: 2px; color: var(--text-muted); font-size: 14px; cursor: pointer; width: 28px; height: 28px; align-items: center; justify-content: center; font-family: inherit; flex-shrink: 0; }
+.chat-sessions-btn:hover { color: var(--primary); border-color: var(--primary); }
+.chat-sessions-backdrop { display: none; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 1000; display: none; align-items: center; justify-content: center; }
 .modal-overlay.active { display: flex; }
 .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; width: 90%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
@@ -337,25 +341,36 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tab-item .tab-icon { font-size: 16px; }
 .tab-item.active { color: var(--primary); }
 
-/* Responsive */
-@media (max-width: 767px) {
-  .sidebar { display: none; }
-  .content { margin-left: 0; margin-top: 44px; padding: 12px; padding-bottom: 64px; }
-  .topbar { left: 0; }
-  .mobile-tabs { display: flex; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .quick-grid { grid-template-columns: repeat(2, 1fr); }
-  .stat-card .stat-value { font-size: 20px; }
-  .profile-header { padding: 20px 0; }
-  .profile-avatar { width: 56px; height: 56px; font-size: 22px; }
-}
+/* Mobile / 小程序统一布局（由 embedded.js 设置 html.mobile-layout） */
+html.mobile-layout .sidebar { display: none; }
+html.mobile-layout .content { margin-left: 0; margin-top: calc(44px + env(safe-area-inset-top, 0px)); padding: 12px; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+html.mobile-layout .topbar { left: 0; padding-top: env(safe-area-inset-top, 0px); height: calc(44px + env(safe-area-inset-top, 0px)); }
+html.mobile-layout .mobile-tabs { display: flex; height: calc(48px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html.mobile-layout .tab-item { font-size: 9px; min-width: 0; padding: 0 2px; }
+html.mobile-layout .tab-item .tab-icon { font-size: 14px; }
+html.mobile-layout .stats-grid { grid-template-columns: repeat(2, 1fr); }
+html.mobile-layout .quick-grid { grid-template-columns: repeat(2, 1fr); }
+html.mobile-layout .stat-card .stat-value { font-size: 20px; }
+html.mobile-layout .profile-header { padding: 20px 0; }
+html.mobile-layout .profile-avatar { width: 56px; height: 56px; font-size: 22px; }
+html.mobile-layout .filter-bar { flex-direction: column; }
+html.mobile-layout .filter-bar input { min-width: auto; }
+html.mobile-layout .resource-card, html.mobile-layout .account-card { flex-direction: column; align-items: flex-start; }
+html.mobile-layout .resource-actions, html.mobile-layout .account-actions { align-self: flex-end; }
+html.mobile-layout .chat-header { flex-wrap: wrap; gap: 6px; }
+html.mobile-layout .cloud-selector { grid-template-columns: 1fr 1fr; }
+html.mobile-layout .chat-layout { height: calc(100vh - 44px - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+html.mobile-layout .chat-sessions-btn { display: flex; }
+html.mobile-layout .chat-sidebar { display: none; position: fixed; top: calc(44px + env(safe-area-inset-top, 0px)); left: 0; bottom: calc(48px + env(safe-area-inset-bottom, 0px)); width: min(280px, 85vw); z-index: 200; background: var(--surface); border-right: 1px solid var(--border); flex-direction: column; box-shadow: var(--shadow-lg); }
+html.mobile-layout .chat-layout.sessions-open .chat-sidebar { display: flex; }
+html.mobile-layout .chat-sessions-backdrop { display: none; position: fixed; left: 0; right: 0; top: calc(44px + env(safe-area-inset-top, 0px)); bottom: calc(48px + env(safe-area-inset-bottom, 0px)); background: rgba(0,0,0,.45); z-index: 150; }
+html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display: block; }
 
 @media (max-width: 480px) {
   .filter-bar { flex-direction: column; }
   .filter-bar input { min-width: auto; }
   .resource-card, .account-card { flex-direction: column; align-items: flex-start; }
   .resource-actions, .account-actions { align-self: flex-end; }
-  .chat-header { flex-direction: column; align-items: flex-start; gap: 6px; }
   .cloud-selector { grid-template-columns: 1fr 1fr; }
 }
 </style>
@@ -417,6 +432,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   <!-- Chat - OpenCode style -->
   <div id="page-chat" class="page">
     <div class="chat-layout">
+      <div class="chat-sessions-backdrop" onclick="closeChatSessions()"></div>
       <!-- Session Sidebar -->
       <div class="chat-sidebar">
         <div class="chat-sidebar-header">
@@ -430,6 +446,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
       <!-- Chat Main -->
       <div class="chat-main">
         <div class="chat-header">
+          <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
           <div class="mode-toggle">
             <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
             <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
@@ -733,7 +750,7 @@ let currentUser = null;
 (function checkAuth() {
   const token = localStorage.getItem('token');
   if (!token) {
-    window.location.href = '/login.html';
+    window.location.href = embeddedHref('/login.html');
     return;
   }
   // Load user profile
@@ -752,7 +769,7 @@ let currentUser = null;
   .catch(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('userInfo');
-    window.location.href = '/login.html';
+    window.location.href = embeddedHref('/login.html');
   });
 })();
 
@@ -791,7 +808,20 @@ function initTheme() {
 }
 
 /* Navigation */
+function closeChatSessions() {
+  var layout = document.querySelector('.chat-layout');
+  if (layout) layout.classList.remove('sessions-open');
+}
+
+function toggleChatSessions(force) {
+  var layout = document.querySelector('.chat-layout');
+  if (!layout) return;
+  var open = typeof force === 'boolean' ? force : !layout.classList.contains('sessions-open');
+  layout.classList.toggle('sessions-open', open);
+}
+
 function showPage(page) {
+  closeChatSessions();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
@@ -1104,6 +1134,7 @@ async function loadSessions() {
 
 async function switchSession(sid) {
   CURRENT_SESSION = sid;
+  closeChatSessions();
   // Update sidebar
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
     el.classList.toggle('active', el.dataset.sid === sid);
@@ -1130,9 +1161,14 @@ async function switchSession(sid) {
 }
 
 async function newSession() {
-  const sid = 'session-' + Date.now();
-  CURRENT_SESSION = sid;
+  var data = await apiFetch(API + '/agent/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: LOCALE === 'zh' ? '新对话' : 'New Session' })
+  });
+  CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
   document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div></div>';
+  closeChatSessions();
   await loadSessions();
 }
 
@@ -1919,7 +1955,7 @@ apiFetch = async function(url, options) {
 function doLogout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = '/login.html';
+  window.location.href = embeddedHref('/login.html');
 }
 
 /* Password Modal */
