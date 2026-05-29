@@ -222,7 +222,7 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
 .resource-actions { display: flex; gap: 6px; }
 .resource-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; }
-.status-dot.running { background: var(--success); }
+.status-dot.running, .status-dot.active { background: var(--success); }
 .status-dot.stopped { background: var(--text-muted); }
 .resource-action-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: var(--font-mono); }
 .resource-action-btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -823,7 +823,7 @@ async function apiFetch(url, options) {
 async function loadDashboard() {
   let data = await apiFetch(API + '/stats');
   if (data && data.stats) data = data.stats;
-  else data = mockData.stats;
+  else data = null;
   if (!data) return;
   const keys = ['resources', 'accounts', 'terraform', 'members'];
   const cards = document.getElementById('statsGrid').querySelectorAll('.stat-card');
@@ -1224,15 +1224,24 @@ function getMockChatResponse(text) {
 /* Resources */
 let cachedResources = null;
 
+function normalizeStatus(s) {
+  return (s === 'active' || s === 'Succeeded' || s === 'succeeded' || s === 'Ready') ? 'running' : 
+         (s === 'stopped' || s === 'Failed' || s === 'failed') ? 'stopped' : s;
+}
+
+function normalizeResources(list) {
+  return list.map(r => { r.status = normalizeStatus(r.status); return r; });
+}
+
 async function loadResources() {
   let data = await apiFetch(API + '/resources');
   if (data) {
-    cachedResources = data.resources || [];
+    cachedResources = normalizeResources(data.resources || []);
     if (data.last_sync) {
       document.getElementById('lastSyncLabel').textContent = t('resource.last_sync') + new Date(data.last_sync).toLocaleTimeString();
     }
   } else {
-    cachedResources = mockData.resources;
+    cachedResources = [];
   }
   renderResources(cachedResources);
 }
@@ -1243,7 +1252,7 @@ async function syncResources() {
   btn.disabled = true;
   let data = await apiFetch(API + '/resources/sync', { method: 'POST' });
   if (data) {
-    cachedResources = data.resources || [];
+    cachedResources = normalizeResources(data.resources || []);
     if (data.last_sync) {
       document.getElementById('lastSyncLabel').textContent = t('resource.last_sync') + new Date(data.last_sync).toLocaleTimeString();
     }
@@ -1261,15 +1270,16 @@ function renderResources(list) {
   }
   container.innerHTML = list.map(r => {
     const cloudLabel = cloudLabels[r.cloud_type] || r.cloud_type;
-    const statusLabel = r.status === 'running' ? t('resource.status_running') : t('resource.status_stopped');
+    const s = r.status === 'active' ? 'running' : r.status;
+    const statusLabel = s === 'running' ? t('resource.status_running') : t('resource.status_stopped');
     return '<div class="resource-card">' +
       '<div class="resource-info">' +
         '<div class="resource-name">' + r.name + '</div>' +
         '<div class="resource-meta">' + cloudLabel + ' / ' + (r.region || '') + ' / ' + (r.spec || r.type || '') + '</div>' +
-        '<div class="resource-status"><span class="status-dot ' + r.status + '"></span>' + statusLabel + '</div>' +
+        '<div class="resource-status"><span class="status-dot ' + s + '"></span>' + statusLabel + '</div>' +
       '</div>' +
       '<div class="resource-actions">' +
-        (r.status === 'running' ? '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'stop\')">' + t('resource.stop') + '</button>' : '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'start\')">' + t('resource.start') + '</button>') +
+        (s === 'running' ? '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'stop\')">' + t('resource.stop') + '</button>' : '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'start\')">' + t('resource.start') + '</button>') +
       '</div>' +
     '</div>';
   }).join('');
@@ -1279,7 +1289,7 @@ function filterResources() {
   const cloud = document.getElementById('resCloudFilter').value;
   const status = document.getElementById('resStatusFilter').value;
   const search = document.getElementById('resSearch').value.toLowerCase();
-  let list = cachedResources || mockData.resources;
+  let list = cachedResources || [];
   if (cloud) list = list.filter(r => r.cloud_type === cloud);
   if (status) list = list.filter(r => r.status === status);
   if (search) list = list.filter(r => r.name.toLowerCase().includes(search));
@@ -1297,7 +1307,7 @@ let cachedAccounts = null;
 async function loadAccounts() {
   let data = await apiFetch(API + '/accounts');
   if (data && data.accounts) cachedAccounts = data.accounts;
-  else cachedAccounts = mockData.accounts;
+  else cachedAccounts = [];
   renderAccounts(cachedAccounts);
 }
 
@@ -1379,7 +1389,7 @@ async function loadTeam() {
   let data = await apiFetch(API + '/teams');
   let members;
   if (data && data.members) members = data.members;
-  else members = mockData.members;
+  else members = [];
   document.getElementById('teamCount').textContent = members.length;
   const container = document.getElementById('teamList');
   container.innerHTML = members.map(m =>
@@ -1412,7 +1422,7 @@ async function loadTerraform() {
   let data = await apiFetch(API + '/terraform/templates');
   let templates;
   if (data && data.templates) templates = data.templates;
-  else templates = mockData.templates;
+  else templates = [];
   const container = document.getElementById('terraformList');
   if (!templates || templates.length === 0) {
     container.innerHTML = '<div class="empty-state">' + t('terraform.empty') + '</div>';
