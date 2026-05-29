@@ -62,8 +62,11 @@ func SetupRoutes(router *gin.Engine, db *services.Database, redis *services.Redi
 		agentGroup := protected.Group("/agent")
 		{
 			agentGroup.POST("/chat", agentV2H.Chat)
+			agentGroup.POST("/chat/stream", agentV2H.ChatStream)
+			agentGroup.POST("/confirm", agentV2H.ConfirmAction)
 			agentGroup.GET("/sessions", agentV2H.ListSessions)
 			agentGroup.GET("/sessions/:id", agentV2H.SessionDetail)
+			agentGroup.DELETE("/sessions/:id", agentV2H.DeleteSession)
 			agentGroup.GET("/tools", agentV2H.GetTools)
 
 			// Operator+

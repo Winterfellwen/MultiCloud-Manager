@@ -98,13 +98,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 .activity-placeholder { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; text-align: center; color: var(--text-secondary); font-size: 14px; }
 
 /* Chat - OpenCode style */
-.chat-container { display: flex; flex-direction: column; height: calc(100vh - 56px - 48px); }
-.chat-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 0px; padding-top: 0px; border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 48px; }
+.chat-layout { display: flex; flex: 1; gap: 0; height: calc(100vh - 56px - 48px); }
+.chat-sidebar { width: 240px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+.chat-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid var(--border); }
+.chat-sidebar-header h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.chat-new-btn { background: none; border: 1px solid var(--border); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); font-size: 16px; transition: all .2s; }
+.chat-new-btn:hover { border-color: var(--primary); color: var(--primary); }
+.chat-session-list { flex: 1; overflow-y: auto; padding: 4px; }
+.chat-session-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all .15s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px; }
+.chat-session-item:hover { background: var(--surface-hover); color: var(--text); }
+.chat-session-item.active { background: var(--primary-subtle); color: var(--primary); }
+.chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; padding: 0 2px; }
+.chat-session-item:hover .session-del-btn { opacity: .6; }
+.chat-session-item .session-del-btn:hover { opacity: 1; }
+.chat-main { flex: 1; display: flex; flex-direction: column; padding: 0 16px; min-width: 0; }
+.chat-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 44px; }
 .chat-header-actions { display: flex; align-items: center; gap: 8px; }
 
 /* Mode toggle */
 .mode-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
-.mode-btn { padding: 4px 16px; font-size: 12px; font-weight: 500; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 999px; transition: all .2s; }
+.mode-btn { padding: 4px 14px; font-size: 12px; font-weight: 500; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 999px; transition: all .2s; }
 .mode-btn:hover { color: var(--text); }
 .mode-btn.active { background: var(--primary); color: #fff; }
 
@@ -117,9 +130,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 .msg.agent .msg-content p { margin: 4px 0; }
 .msg.agent .msg-content p:first-child { margin-top: 0; }
 .msg.agent .msg-content p:last-child { margin-bottom: 0; }
-.msg.agent .msg-content pre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; margin: 6px 0; }
+.msg.agent .msg-content pre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 40px 12px 12px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.5; margin: 6px 0; position: relative; }
 .msg.agent .msg-content code { background: var(--primary-subtle); border-radius: 4px; padding: 1px 4px; font-family: var(--font-mono); font-size: 13px; color: var(--primary); }
 .msg.agent .msg-content pre code { background: none; padding: 0; border-radius: 0; color: inherit; }
+.msg.agent .msg-content pre .copy-btn { position: absolute; top: 4px; right: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
+.msg.agent .msg-content pre:hover .copy-btn { opacity: 1; }
+.msg.agent .msg-content pre .copy-btn:hover { color: var(--text); border-color: var(--text-muted); }
 .msg.agent .msg-content table { border-collapse: collapse; margin: 6px 0; font-size: 13px; width: 100%; }
 .msg.agent .msg-content th, .msg.agent .msg-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
 .msg.agent .msg-content th { background: var(--surface); font-weight: 600; }
@@ -134,11 +150,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 .msg.agent .msg-content a:hover { text-decoration: underline; }
 .msg.system { align-self: center; font-size: 12px; color: var(--text-muted); padding: 2px 0; }
 
+/* Streaming cursor */
+.streaming-cursor::after { content: '|'; animation: blink 1s step-end infinite; color: var(--primary); font-weight: 300; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
 /* Tool call display */
 .tool-call { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 6px 10px; margin: 4px 0; font-family: var(--font-mono); font-size: 13px; }
 .tool-call .tool-name { color: var(--primary); font-weight: 500; }
 .tool-call .tool-params { color: var(--text-secondary); }
 .tool-result { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 8px 10px; margin: 4px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
+
+/* Confirm buttons */
+.confirm-bar { display: flex; gap: 8px; margin: 8px 0; align-items: center; flex-wrap: wrap; }
+.confirm-btn { background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 6px 14px; font-size: 13px; cursor: pointer; transition: background .15s; }
+.confirm-btn:hover { background: var(--primary-hover); }
+.reject-btn { background: transparent; color: var(--danger); border: 1px solid var(--danger); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 13px; cursor: pointer; transition: all .15s; }
+.reject-btn:hover { background: var(--danger); color: #fff; }
+.confirm-status { font-size: 12px; color: var(--text-muted); padding: 4px 0; }
+
+/* Download button */
+.dl-btn { position: absolute; top: 4px; right: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; opacity: 0; transition: opacity .15s; display: flex; align-items: center; gap: 3px; }
+.msg.agent .msg-content pre:hover .dl-btn { opacity: 1; }
+.dl-btn:hover { color: var(--text); border-color: var(--text-muted); }
 
 .typing-indicator { display: none; align-items: center; gap: 6px; align-self: flex-start; font-size: 13px; color: var(--text-secondary); padding: 4px 0; }
 .typing-indicator.active { display: flex; }
@@ -377,32 +410,46 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 
   <!-- Chat - OpenCode style -->
   <div id="page-chat" class="page">
-    <div class="chat-container">
-      <div class="chat-header">
-        <div class="mode-toggle">
-          <button class="mode-btn" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
-          <button class="mode-btn active" data-mode="build" onclick="setChatMode('build')">Build</button>
+    <div class="chat-layout">
+      <!-- Session Sidebar -->
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-header">
+          <h3 data-i18n="chat.sessions">Sessions</h3>
+          <button class="chat-new-btn" onclick="newSession()" title="New Session">+</button>
         </div>
-        <div class="chat-header-actions">
-          <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
+        <div class="chat-session-list" id="sessionList">
+          <div class="chat-session-item" data-sid="loading"><span data-i18n="chat.loading">Loading...</span></div>
         </div>
       </div>
-      <div class="chat-messages" id="chatMessages">
-        <div class="msg agent"><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. How can I help you manage your cloud resources?</p></div></div>
-      </div>
-      <div class="typing-indicator" id="typingIndicator">
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-      </div>
-      <div class="chat-input-area">
-        <div class="chat-input-bar">
-          <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
-          <button onclick="sendChat()" id="chatSendBtn" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-          </button>
+      <!-- Chat Main -->
+      <div class="chat-main">
+        <div class="chat-header">
+          <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
+            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
+            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
+          </div>
+          <div class="chat-header-actions">
+            <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
+          </div>
         </div>
-        <div class="chat-hint">MultiCloud AI Agent &middot; Build mode can execute operations</div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg agent"><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div></div>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-bar">
+            <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
+            <button onclick="sendChat()" id="chatSendBtn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+          </div>
+          <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
+        </div>
       </div>
     </div>
   </div>
@@ -752,6 +799,7 @@ function showPage(page) {
   document.getElementById('topbarTitle').textContent = pageTitles[page] ? t(pageTitles[page]) : page;
 
   if (page === 'dashboard') loadDashboard();
+  if (page === 'chat') { loadSessions(); }
   if (page === 'resources') loadResources();
   if (page === 'accounts') loadAccounts();
   if (page === 'team') loadTeam();
@@ -792,34 +840,41 @@ async function loadDashboard() {
 }
 
 /* Chat */
-let CURRENT_MODE = 'build';
+let CURRENT_MODE = 'plan';
+let CURRENT_SESSION = null;
+let STREAMING_MSG = null;
+let CONFIRM_PENDING = false;
 
 function setChatMode(mode) {
   CURRENT_MODE = mode;
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === mode);
   });
-  const hint = document.querySelector('.chat-hint');
+  const hint = document.getElementById('chatHint');
   if (hint) {
-    hint.textContent = mode === 'plan'
-      ? 'MultiCloud AI Agent · Plan mode is read-only'
-      : 'MultiCloud AI Agent · Build mode can execute operations';
+    const msgs = {
+      plan: 'MultiCloud AI Agent &middot; Plan mode is read-only',
+      build: 'MultiCloud AI Agent &middot; Build mode can execute operations',
+      confirm: 'MultiCloud AI Agent &middot; Confirm mode requires approval for each operation'
+    };
+    hint.innerHTML = msgs[mode] || msgs.plan;
   }
 }
 
 function handleChatKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendChat();
+    if (!CONFIRM_PENDING) sendChat();
   }
 }
 
 function autoResizeTextarea(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 160) + 'px';
-  document.getElementById('chatSendBtn').disabled = el.value.trim().length === 0;
+  document.getElementById('chatSendBtn').disabled = el.value.trim().length === 0 || CONFIRM_PENDING;
 }
 
+/* SSE Chat */
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -827,27 +882,276 @@ async function sendChat() {
   input.value = '';
   autoResizeTextarea(input);
   appendMessage('user', escHtml(text));
+  startStream({message: text, session_id: CURRENT_SESSION, mode: CURRENT_MODE});
+}
+
+async function confirmChat(action, toolName, toolParams) {
+  CONFIRM_PENDING = false;
+  document.getElementById('chatSendBtn').disabled = false;
+  startStream({
+    session_id: CURRENT_SESSION,
+    mode: CURRENT_MODE,
+    confirm_action: action,
+    tool_name: toolName,
+    tool_params: toolParams
+  });
+}
+
+async function startStream(body) {
+  CONFIRM_PENDING = true;
+  document.getElementById('chatSendBtn').disabled = true;
   document.getElementById('typingIndicator').classList.add('active');
-  const msgContainer = document.getElementById('chatMessages');
+
+  STREAMING_MSG = {type: 'agent', content: ''};
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg agent streaming';
+  const content = document.createElement('div');
+  content.className = 'msg-content streaming-cursor';
+  div.appendChild(content);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
   try {
-    const data = await apiFetch(API + '/agent/chat', {
+    const res = await fetch(API + '/agent/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: text,
-        session_id: SESSION_ID,
-        mode: CURRENT_MODE
-      })
+      body: JSON.stringify(body)
     });
-    document.getElementById('typingIndicator').classList.remove('active');
-    const response = (data && data.message) ? data.message : getMockChatResponse(text);
-    appendMessage('agent', renderMarkdown(response));
-  } catch (e) {
-    document.getElementById('typingIndicator').classList.remove('active');
-    appendMessage('agent', renderMarkdown(getMockChatResponse(text)));
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      const parts = buffer.split('\n');
+      buffer = parts.pop() || '';
+      for (const line of parts) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            data.event = currentEvent;
+            handleSSEEvent(data);
+          } catch(e) { /* ignore parse errors */ }
+        }
+      }
+    }
+  } catch(e) {
+    console.error('Stream error:', e);
+  }
+
+  document.getElementById('typingIndicator').classList.remove('active');
+  if (STREAMING_MSG && STREAMING_MSG.content) {
+    const lastMsg = document.querySelector('.msg.streaming');
+    if (lastMsg) {
+      const mc = lastMsg.querySelector('.msg-content');
+      if (mc) mc.classList.remove('streaming-cursor');
+      lastMsg.classList.remove('streaming');
+      mc.innerHTML = renderMarkdown(STREAMING_MSG.content);
+    }
+  }
+  STREAMING_MSG = null;
+
+  if (!CONFIRM_PENDING) {
+    document.getElementById('chatSendBtn').disabled = false;
   }
 }
 
+function handleSSEEvent(data) {
+  const type = data.event || '';
+  const lastMsg = document.querySelector('.msg.streaming .msg-content');
+
+  switch (type) {
+    case 'token': {
+      STREAMING_MSG.content += data.content;
+      if (lastMsg) {
+        lastMsg.textContent = STREAMING_MSG.content;
+        lastMsg.classList.add('streaming-cursor');
+        lastMsg.parentElement.parentElement.scrollTop = lastMsg.parentElement.parentElement.scrollHeight;
+      }
+      break;
+    }
+    case 'confirm_required': {
+      CONFIRM_PENDING = true;
+      if (lastMsg) lastMsg.classList.remove('streaming-cursor');
+      const streamingDiv = document.querySelector('.msg.streaming');
+      if (streamingDiv) streamingDiv.classList.remove('streaming');
+
+      const container = document.getElementById('chatMessages');
+      const confirmDiv = document.createElement('div');
+      confirmDiv.className = 'msg agent confirm-block';
+      let html = '<div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
+      (data.tool_calls || []).forEach(function(tc, idx) {
+        var paramsStr = JSON.stringify(tc.params);
+        var name = tc.name;
+        html += '<div class="tool-call"><span class="tool-name">' + name + '</span> <span class="tool-params">' + paramsStr + '</span></div>';
+        html += '<div class="confirm-bar">';
+        html += '<button class="confirm-btn" onclick="doConfirm(\'' + name + '\')">' + (LOCALE === 'zh' ? '确认' : 'Confirm') + '</button>';
+        html += '<button class="reject-btn" onclick="doReject(\'' + name + '\')">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      confirmDiv.innerHTML = html;
+      container.appendChild(confirmDiv);
+      container.scrollTop = container.scrollHeight;
+      break;
+    }
+    case 'done':
+      CONFIRM_PENDING = false;
+      break;
+    case 'error':
+      console.error('SSE error:', data.message);
+      CONFIRM_PENDING = false;
+      break;
+  }
+}
+
+function doConfirm(toolName) {
+  // Find the matching confirm block and get params
+  const block = document.querySelector('.confirm-block:last-child');
+  if (!block) return;
+  const toolCalls = document.querySelectorAll('.confirm-block:last-child .tool-call');
+  var params = null;
+  for (var i = 0; i < toolCalls.length; i++) {
+    var nameEl = toolCalls[i].querySelector('.tool-name');
+    if (nameEl && nameEl.textContent === toolName) {
+      var paramsEl = toolCalls[i].querySelector('.tool-params');
+      if (paramsEl) {
+        try { params = JSON.parse(paramsEl.textContent); } catch(e) {}
+      }
+      break;
+    }
+  }
+  confirmChat('confirm', toolName, params);
+}
+
+function doReject(toolName) {
+  confirmChat('reject', toolName, null);
+}
+
+async function confirmChat(action, toolName, toolParams) {
+  CONFIRM_PENDING = false;
+  document.getElementById('chatSendBtn').disabled = false;
+  startStream({
+    session_id: CURRENT_SESSION,
+    mode: CURRENT_MODE,
+    confirm_action: action,
+    tool_name: toolName,
+    tool_params: toolParams
+  });
+}
+      break;
+    }
+    case 'confirm_required': {
+      CONFIRM_PENDING = true;
+      // Remove streaming cursor and finalize
+      if (lastMsg) lastMsg.classList.remove('streaming-cursor');
+      const streamingDiv = document.querySelector('.msg.streaming');
+      if (streamingDiv) streamingDiv.classList.remove('streaming');
+
+      // Render confirm buttons
+      const container = document.getElementById('chatMessages');
+      const confirmDiv = document.createElement('div');
+      confirmDiv.className = 'msg agent';
+      let html = '<div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
+      (data.tool_calls || []).forEach(function(tc, idx) {
+        html += '<div class="tool-call"><span class="tool-name">' + escHtml(tc.name) + '</span> <span class="tool-params">' + escHtml(JSON.stringify(tc.params)) + '</span></div>';
+        html += '<div class="confirm-bar">';
+        html += '<button class="confirm-btn" onclick="confirmChat(\'confirm\',\'' + escHtml(tc.name) + '\',' + escHtml(JSON.stringify(tc.params)) + ')">' + (LOCALE === 'zh' ? '确认' : 'Confirm') + '</button>';
+        html += '<button class="reject-btn" onclick="confirmChat(\'reject\',\'' + escHtml(tc.name) + '\',null)">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      confirmDiv.innerHTML = html;
+      container.appendChild(confirmDiv);
+      container.scrollTop = container.scrollHeight;
+      break;
+    }
+    case 'done': {
+      CONFIRM_PENDING = false;
+      break;
+    }
+    case 'error': {
+      console.error('SSE error:', data.message);
+      CONFIRM_PENDING = false;
+      break;
+    }
+  }
+}
+
+/* Session Management */
+async function loadSessions() {
+  const data = await apiFetch(API + '/agent/sessions');
+  const list = document.getElementById('sessionList');
+  if (!data || !data.sessions || data.sessions.length === 0) {
+    list.innerHTML = '<div class="chat-session-item" style="cursor:default;color:var(--text-muted);font-size:12px">' + (LOCALE === 'zh' ? '暂无对话' : 'No sessions') + '</div>';
+    CURRENT_SESSION = null;
+    return;
+  }
+  list.innerHTML = '';
+  data.sessions.forEach(function(s) {
+    const item = document.createElement('div');
+    item.className = 'chat-session-item' + (s.session_id === CURRENT_SESSION ? ' active' : '');
+    item.dataset.sid = s.session_id;
+    // Use title or first few chars of last message
+    const title = s.title && s.title.length > 30 ? s.title.slice(0, 30) + '...' : (s.title || 'Session');
+    item.innerHTML = '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    item.onclick = function() { switchSession(s.session_id); };
+    list.appendChild(item);
+  });
+}
+
+async function switchSession(sid) {
+  CURRENT_SESSION = sid;
+  // Update sidebar
+  document.querySelectorAll('.chat-session-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.sid === sid);
+  });
+  // Load messages
+  const data = await apiFetch(API + '/agent/sessions/' + sid);
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+  if (data && data.messages) {
+    data.messages.forEach(function(m) {
+      if (m.role === 'user') {
+        appendMessage('user', escHtml(m.content));
+      } else if (m.role === 'agent' || m.role === 'assistant') {
+        appendMessage('agent', renderMarkdown(m.content));
+      } else if (m.role === 'system') {
+        const div = document.createElement('div');
+        div.className = 'msg system';
+        div.textContent = m.content;
+        container.appendChild(div);
+      }
+    });
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+async function newSession() {
+  const sid = 'session-' + Date.now();
+  CURRENT_SESSION = sid;
+  document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div></div>';
+  await loadSessions();
+}
+
+async function deleteSession(sid) {
+  await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
+  if (CURRENT_SESSION === sid) {
+    CURRENT_SESSION = null;
+    document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div></div>';
+  }
+  await loadSessions();
+}
+
+/* Append message (for loading history) */
 function appendMessage(type, html) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
@@ -860,14 +1164,14 @@ function appendMessage(type, html) {
   container.scrollTop = container.scrollHeight;
 }
 
+/* Markdown rendering with download buttons */
 function renderMarkdown(text) {
-  // escape then process markdown
   var html = text
-    // code blocks first
-    .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    // inline code
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+      const ext = {'bash':'sh','shell':'sh','python':'py','javascript':'js','typescript':'ts','yaml':'yaml','yml':'yml','json':'json','terraform':'tf','hcl':'tf','sql':'sql','dockerfile':'Dockerfile','go':'go','rust':'rs','ruby':'rb','php':'php','java':'java','c':'c','cpp':'cpp','css':'css','html':'html','xml':'xml','toml':'toml','ini':'ini','cfg':'cfg','md':'md','markdown':'md','text':'txt','plain':'txt'}[lang] || lang || 'txt';
+      return '<div style="position:relative"><pre><code class="language-' + lang + '">' + code + '</code><button class="dl-btn" onclick="downloadCode(\'' + escHtml(ext) + '\',this)">&#8595;</button></pre></div>';
+    })
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // tables
     .replace(/\|(.+)\|/g, function(m) {
       if (m.includes('---')) return '';
       var cells = m.slice(1,-1).split('|').map(function(c) { return c.trim(); });
@@ -894,28 +1198,20 @@ function renderMarkdown(text) {
       tbl += '</tbody></table>';
       return tbl;
     })
-    // headers
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // blockquote
     .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-    // bold/italic
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // unordered list
     .replace(/^[\s]*[-*] (.+)$/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    // ordered list
     .replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>')
-    // links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-    // line breaks
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
 
-  // wrap non-block content in <p>
   if (!html.startsWith('<h') && !html.startsWith('<pre') && !html.startsWith('<table') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<blockquote')) {
     html = '<p>' + html + '</p>';
   }
@@ -926,6 +1222,20 @@ function escHtml(s) {
   var el = document.createElement('div');
   el.textContent = s;
   return el.innerHTML;
+}
+
+function downloadCode(ext, btn) {
+  var pre = btn.closest('div').querySelector('pre') || btn.closest('pre');
+  var code = pre ? (pre.querySelector('code') || pre).textContent : '';
+  var filename = 'download.' + ext;
+  var blob = new Blob([code], {type: 'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  btn.textContent = '\u2713';
+  setTimeout(function() { btn.innerHTML = '&#8595;'; }, 2000);
 }
 
 function getMockChatResponse(text) {
@@ -1285,14 +1595,12 @@ var __ = {
     'chat.title': 'AI 云助手',
     'chat.mode_build': '执行模式',
     'chat.mode_plan': '仅生成方案',
+    'chat.mode_confirm': '确认模式',
     'chat.settings_title': 'AI 配置',
-    'chat.quick_accounts': '查看账户',
-    'chat.quick_resources': '查看资源',
-    'chat.quick_create': '新建VM',
-    'chat.welcome': '你好！我是 AI 云助手，可以帮助你管理多云资源。有什么需要帮忙的吗？',
-    'chat.thinking': 'AI 正在思考',
-    'chat.placeholder': '输入你的问题...',
-    'chat.send': '发送',
+    'chat.sessions': '对话历史',
+    'chat.loading': '加载中...',
+    'chat.new_session': '新建对话',
+    'chat.no_sessions': '暂无对话',
     'config.title': 'AI 模型配置',
     'config.desc': '配置 AI 云助手的语言模型，支持任何 OpenAI 兼容的 API。未配置时使用内置规则回复。',
     'config.endpoint': 'API 端点',
@@ -1408,16 +1716,14 @@ var __ = {
     'activity.title': 'Recent Activity',
     'activity.empty': 'No activity yet',
     'chat.title': 'AI Assistant',
-    'chat.mode_build': 'Build Mode',
-    'chat.mode_plan': 'Plan Only',
+    'chat.mode_build': 'Build',
+    'chat.mode_plan': 'Plan',
+    'chat.mode_confirm': 'Confirm',
     'chat.settings_title': 'AI Settings',
-    'chat.quick_accounts': 'View Accounts',
-    'chat.quick_resources': 'View Resources',
-    'chat.quick_create': 'New VM',
-    'chat.welcome': 'Hello! I am the AI cloud assistant. How can I help you manage your multi-cloud resources?',
-    'chat.thinking': 'AI is thinking',
-    'chat.placeholder': 'Type your question...',
-    'chat.send': 'Send',
+    'chat.sessions': 'Sessions',
+    'chat.loading': 'Loading...',
+    'chat.new_session': 'New Session',
+    'chat.no_sessions': 'No sessions',
     'config.title': 'AI Model Config',
     'config.desc': 'Configure the AI assistant\'s language model. Supports any OpenAI-compatible API. Falls back to built-in rules when not configured.',
     'config.endpoint': 'API Endpoint',
