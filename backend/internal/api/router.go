@@ -45,6 +45,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 		auth.PUT("/auth/password", resourcesHandler.ChangePassword)
 		auth.GET("/agent/config", GetAIConfig)
 		auth.PUT("/agent/config", UpdateAIConfig)
+		auth.POST("/agent/config/test", TestAIConfig)
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
 		auth.GET("/accounts", accountsHandler.List)
 		auth.POST("/accounts", accountsHandler.Create)

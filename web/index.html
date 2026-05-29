@@ -209,6 +209,7 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
 .modal-btn-primary:hover { background: var(--primary-hover); }
 .modal-btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border) !important; }
 .modal-btn-cancel:hover { background: var(--surface-hover); }
+.modal-btn-secondary { background: var(--primary-subtle); color: var(--primary); border: 1px solid var(--primary); }
 
 /* Resources */
 .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -480,8 +481,10 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
       </div>
       <div class="modal-actions">
         <button class="modal-btn-cancel" onclick="closeAIConfig()" data-i18n="config.cancel">取消</button>
+        <button class="modal-btn-secondary" onclick="testAIConfig()" data-i18n="config.test">测试连接</button>
         <button class="modal-btn-primary" onclick="saveAIConfig()" data-i18n="config.save">保存</button>
       </div>
+      <div id="aiTestResult" style="margin-top:10px;font-size:12px;display:none"></div>
     </div>
   </div>
 
@@ -1512,9 +1515,30 @@ async function saveAIConfig() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  if (result) {
+  if (result && !result.error) {
     closeAIConfig();
     alert(t('config.saved'));
+  } else if (result && result.error) {
+    alert('保存失败: ' + result.error);
+  }
+}
+
+async function testAIConfig() {
+  var resultDiv = document.getElementById('aiTestResult');
+  resultDiv.innerHTML = '测试中...';
+  resultDiv.style.display = 'block';
+  resultDiv.style.color = 'var(--text-secondary)';
+  
+  var result = await apiFetch(API + '/agent/config/test', { method: 'POST' });
+  if (result && result.message) {
+    resultDiv.innerHTML = '✅ ' + result.message + (result.reply ? '<br>回复: ' + result.reply : '');
+    resultDiv.style.color = 'var(--success)';
+  } else if (result && result.error) {
+    resultDiv.innerHTML = '❌ ' + result.error;
+    resultDiv.style.color = 'var(--danger)';
+  } else {
+    resultDiv.innerHTML = '❌ 测试失败: 无法连接服务器';
+    resultDiv.style.color = 'var(--danger)';
   }
 }
 
