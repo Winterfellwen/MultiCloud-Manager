@@ -156,8 +156,16 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		return
 	}
 
-	// 保存AI回复
-	h.saveMessage(sessionID, "agent", resp.Content)
+	// 保存AI回复（清理tool call格式，避免污染历史）
+	cleanReply := resp.Content
+	if idx := strings.Index(cleanReply, "```tool"); idx >= 0 {
+		cleanReply = cleanReply[:idx]
+	}
+	cleanReply = strings.TrimSpace(cleanReply)
+	if cleanReply == "" {
+		cleanReply = "已处理您的请求"
+	}
+	h.saveMessage(sessionID, "agent", cleanReply)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    resp.Content,
