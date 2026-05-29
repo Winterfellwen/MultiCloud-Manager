@@ -7,3 +7,6 @@
 node_modules/
 backend/ai_config.json
 backend/multicloud.db
+backend/server
+backend/server.exe
+backend-old/
