@@ -150,7 +150,11 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 
 	s.detectDeletedResources(ctx, accountID, liveIDs)
 
-	s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?`, accountID)
+	if s.isPostgres {
+		s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
+	} else {
+		s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?`, accountID)
+	}
 	return nil
 }
 
