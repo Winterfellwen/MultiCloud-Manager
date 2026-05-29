@@ -34,7 +34,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 
 	syncer := cloud.NewSyncer(db, isPostgres)
 	accountsHandler := NewAccountsHandler(db, isPostgres)
-	resourcesHandler := NewResourcesHandler(syncer, db)
+	resourcesHandler := NewResourcesHandler(syncer, db, isPostgres)
 
 	syncer.Start(context.Background(), 5*time.Minute)
 

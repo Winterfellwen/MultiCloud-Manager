@@ -11,14 +11,16 @@ import (
 )
 
 type AuthHandler struct {
-	jwtSecret string
-	db        *sql.DB
+	jwtSecret  string
+	db         *sql.DB
+	isPostgres bool
 }
 
-func NewAuthHandler(jwtSecret string, db *sql.DB) *AuthHandler {
+func NewAuthHandler(jwtSecret string, db *sql.DB, isPostgres bool) *AuthHandler {
 	return &AuthHandler{
-		jwtSecret: jwtSecret,
-		db:        db,
+		jwtSecret:  jwtSecret,
+		db:         db,
+		isPostgres: isPostgres,
 	}
 }
 
@@ -35,7 +37,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	var passwordHash string
-	err := h.db.QueryRow(`SELECT password_hash FROM users WHERE username = ?`, req.Username).Scan(&passwordHash)
+	var err error
+	if h.isPostgres {
+		err = h.db.QueryRow(`SELECT password_hash FROM users WHERE username = $1`, req.Username).Scan(&passwordHash)
+	} else {
+		err = h.db.QueryRow(`SELECT password_hash FROM users WHERE username = ?`, req.Username).Scan(&passwordHash)
+	}
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return

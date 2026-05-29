@@ -28,7 +28,7 @@ func main() {
 
 	api.InitAIConfig(database.DB)
 
-	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB)
+	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB, database.IsPostgres())
 	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, database.IsPostgres())
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
