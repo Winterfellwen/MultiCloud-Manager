@@ -948,20 +948,20 @@ async function startStream(body) {
   }
 
   document.getElementById('typingIndicator').classList.remove('active');
-  if (STREAMING_MSG && STREAMING_MSG.content) {
-    const lastMsg = document.querySelector('.msg.streaming');
-    if (lastMsg) {
-      const mc = lastMsg.querySelector('.msg-content');
-      if (mc) mc.classList.remove('streaming-cursor');
-      lastMsg.classList.remove('streaming');
-      mc.innerHTML = renderMarkdown(STREAMING_MSG.content);
+  // Always clean up streaming state, even when no tokens received (e.g. error)
+  const lastMsg = document.querySelector('.msg.streaming');
+  if (lastMsg) {
+    const mc = lastMsg.querySelector('.msg-content');
+    if (mc) {
+      mc.classList.remove('streaming-cursor');
+      if (STREAMING_MSG && STREAMING_MSG.content) {
+        mc.innerHTML = renderMarkdown(STREAMING_MSG.content);
+      }
     }
+    lastMsg.classList.remove('streaming');
   }
   STREAMING_MSG = null;
-
-  if (!CONFIRM_PENDING) {
-    document.getElementById('chatSendBtn').disabled = false;
-  }
+  document.getElementById('chatSendBtn').disabled = false;
 }
 
 function handleSSEEvent(data) {
@@ -1006,10 +1006,19 @@ function handleSSEEvent(data) {
     case 'done':
       CONFIRM_PENDING = false;
       break;
-    case 'error':
-      console.error('SSE error:', data.message);
+    case 'error': {
       CONFIRM_PENDING = false;
+      // Cleanup streaming UI immediately
+      const streamingMsg = document.querySelector('.msg.streaming');
+      if (streamingMsg) {
+        const mc = streamingMsg.querySelector('.msg-content');
+        if (mc) mc.classList.remove('streaming-cursor');
+        streamingMsg.classList.remove('streaming');
+      }
+      // Show error message in chat
+      appendMessage('agent', (LOCALE === 'zh' ? '错误：' : 'Error: ') + escHtml(data.message || ''));
       break;
+    }
   }
 }
 
