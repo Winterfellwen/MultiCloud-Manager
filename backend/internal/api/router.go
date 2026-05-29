@@ -35,6 +35,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 	syncer := cloud.NewSyncer(db, isPostgres)
 	accountsHandler := NewAccountsHandler(db, isPostgres)
 	resourcesHandler := NewResourcesHandler(syncer, db, isPostgres)
+	teamsHandler := NewTeamsHandler(db, isPostgres)
 
 	syncer.Start(context.Background(), 5*time.Minute)
 
@@ -55,6 +56,16 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 		auth.POST("/resources/sync", resourcesHandler.Sync)
 		auth.POST("/resources/:id/:action", resourcesHandler.Action)
 		auth.GET("/stats", resourcesHandler.Stats)
+		// 团队管理端点
+		auth.GET("/teams", teamsHandler.GetTeams)
+		auth.GET("/teams/:teamId/members", teamsHandler.GetTeamMembers)
+		auth.DELETE("/teams/:teamId/members/:id", teamsHandler.RemoveTeamMember)
+		// Terraform模板端点
+		auth.GET("/terraform/templates", GetTerraformTemplatesHandler)
+		auth.GET("/terraform/templates/:id", GetTerraformTemplateHandler)
+		auth.POST("/terraform/templates/:id/apply", ApplyTerraformTemplateHandler)
+		auth.DELETE("/terraform/templates/:id", DestroyTerraformTemplateHandler)
+		auth.POST("/terraform/templates/:id/destroy", DestroyTerraformTemplateHandler)
 	}
 
 	webDir := getWebDir()

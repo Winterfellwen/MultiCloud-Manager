@@ -1,7 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
 export const TEST_USER = process.env.TEST_USER || 'admin';
-export const TEST_PASS = process.env.TEST_PASS || 'Test.1234';
+export const TEST_PASS = process.env.TEST_PASS || 'test123';
 
 export async function login(page: Page, url?: string) {
   await page.goto(url || '/login.html');
