@@ -146,7 +146,11 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 
 	resp, err := h.agent.Chat(ctx, messages, sessionID)
 	if err != nil {
-		log.Printf("Agent chat failed: %v | sessionID=%s | msgLen=%d | historyLen=%d", err, sessionID, len(req.Message), len(messages))
+		msgPreview := req.Message
+		if len(msgPreview) > 20 {
+			msgPreview = msgPreview[:20]
+		}
+		log.Printf("Agent chat failed: %v | sessionID=%s | historyLen=%d | msg=%s", err, sessionID, len(history), msgPreview)
 		h.saveMessage(sessionID, "agent", "抱歉，处理您的请求时遇到了错误。")
 		c.JSON(http.StatusOK, gin.H{
 			"message":    "抱歉，处理您的请求时遇到了错误。",
