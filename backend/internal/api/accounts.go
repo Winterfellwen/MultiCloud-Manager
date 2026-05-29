@@ -34,16 +34,23 @@ func (h *AccountsHandler) List(c *gin.Context) {
 	var accounts []map[string]interface{}
 	for rows.Next() {
 		var id, name, cloudType string
-		var isActive int
+		var isActive interface{}
 		var lastSync sql.NullTime
 		if err := rows.Scan(&id, &name, &cloudType, &isActive, &lastSync); err != nil {
 			continue
+		}
+		active := false
+		switch v := isActive.(type) {
+		case bool:
+			active = v
+		case int64:
+			active = v == 1
 		}
 		acc := map[string]interface{}{
 			"id":         id,
 			"name":       name,
 			"cloud_type": cloudType,
-			"is_active":  isActive == 1,
+			"is_active":  active,
 		}
 		if lastSync.Valid {
 			acc["last_sync_at"] = lastSync.Time.Format("2006-01-02 15:04:05")
