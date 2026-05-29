@@ -120,20 +120,18 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	// 保存用户消息
 	h.saveMessage(sessionID, "user", req.Message)
 
-	// 获取对话历史（保留最近2条，agent回复截断）
+	// 获取对话历史（仅保留用户消息，避免agent回复污染）
 	history := h.getConversationHistory(sessionID, 2)
 
-	// 构建消息列表
+	// 构建消息列表（只包含用户消息）
 	var messages []agent.Message
 	for _, m := range history {
-		content := m.Content
-		if m.Role == "agent" && len(content) > 200 {
-			content = content[:200] + "..."
+		if m.Role == "user" {
+			messages = append(messages, agent.Message{
+				Role:    "user",
+				Content: m.Content,
+			})
 		}
-		messages = append(messages, agent.Message{
-			Role:    m.Role,
-			Content: content,
-		})
 	}
 	messages = append(messages, agent.Message{
 		Role:    "user",
