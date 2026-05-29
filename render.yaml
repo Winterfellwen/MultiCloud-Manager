@@ -3,8 +3,9 @@ services:
     name: multicloud-backend
     env: go
     plan: free
-    buildCommand: cd backend && go build -o server ./cmd/server/
-    startCommand: cd backend && ./server
+    rootDir: backend
+    buildCommand: go build -o server ./cmd/server/
+    startCommand: ./server
     envVars:
       - key: DATABASE_URL
         fromDatabase:
