@@ -1,16 +1,20 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
+
+	"multicloud/internal/cloud"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.Engine {
+func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostgres bool) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
@@ -28,13 +32,27 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 
 	chatHandler := NewChatStreamHandler(db)
 
+	syncer := cloud.NewSyncer(db, isPostgres)
+	accountsHandler := NewAccountsHandler(db, isPostgres)
+	resourcesHandler := NewResourcesHandler(syncer, db)
+
+	syncer.Start(context.Background(), 5*time.Minute)
+
 	auth := r.Group("/api")
 	auth.Use(AuthMiddleware(jwtSecret))
 	{
 		auth.GET("/auth/profile", authHandler.Profile)
+		auth.PUT("/auth/password", resourcesHandler.ChangePassword)
 		auth.GET("/agent/config", GetAIConfig)
 		auth.PUT("/agent/config", UpdateAIConfig)
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.GET("/accounts", accountsHandler.List)
+		auth.POST("/accounts", accountsHandler.Create)
+		auth.DELETE("/accounts/:id", accountsHandler.Delete)
+		auth.GET("/resources", resourcesHandler.List)
+		auth.POST("/resources/sync", resourcesHandler.Sync)
+		auth.POST("/resources/:id/:action", resourcesHandler.Action)
+		auth.GET("/stats", resourcesHandler.Stats)
 	}
 
 	webDir := getWebDir()

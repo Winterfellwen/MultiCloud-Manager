@@ -1,0 +1,300 @@
+package cloud
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
+
+	"multicloud/internal/cloud/providers"
+	"multicloud/internal/cloud/types"
+)
+
+type Syncer struct {
+	db          *sql.DB
+	isPostgres  bool
+	lastSyncAt  time.Time
+	lastErrors  []string
+	mu          sync.RWMutex
+	bgCtx       context.Context
+	bgCancel    context.CancelFunc
+	started     bool
+}
+
+func NewSyncer(db *sql.DB, isPostgres bool) *Syncer {
+	return &Syncer{
+		db:         db,
+		isPostgres: isPostgres,
+	}
+}
+
+func (s *Syncer) Start(ctx context.Context, interval time.Duration) {
+	if s.db == nil || s.started {
+		return
+	}
+	s.bgCtx, s.bgCancel = context.WithCancel(ctx)
+	s.started = true
+	go func() {
+		log.Printf("syncer: background sync started every %v", interval)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		s.SyncAll(s.bgCtx)
+		for {
+			select {
+			case <-ticker.C:
+				s.SyncAll(s.bgCtx)
+			case <-s.bgCtx.Done():
+				log.Println("syncer: stopped")
+				return
+			}
+		}
+	}()
+}
+
+func (s *Syncer) Stop() {
+	if s.bgCancel != nil {
+		s.bgCancel()
+	}
+	s.started = false
+}
+
+func (s *Syncer) GetLastSync() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.lastSyncAt
+}
+
+func (s *Syncer) SyncAll(ctx context.Context) error {
+	if s.db == nil {
+		return nil
+	}
+
+	rows, err := s.db.QueryContext(ctx, `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = 1`)
+	if err != nil {
+		return fmt.Errorf("syncer: query accounts: %w", err)
+	}
+	defer rows.Close()
+
+	var syncErrors []string
+	for rows.Next() {
+		var id, cloudType string
+		var credJSON string
+		if err := rows.Scan(&id, &cloudType, &credJSON); err != nil {
+			log.Printf("syncer: scan row: %v", err)
+			continue
+		}
+		if err := s.syncAccount(ctx, id, cloudType, credJSON); err != nil {
+			log.Printf("syncer: sync account %s (%s): %v", id, cloudType, err)
+			syncErrors = append(syncErrors, fmt.Sprintf("%s: %v", cloudType, err))
+		}
+	}
+
+	s.mu.Lock()
+	s.lastSyncAt = time.Now()
+	s.lastErrors = syncErrors
+	s.mu.Unlock()
+
+	if len(syncErrors) > 0 {
+		return fmt.Errorf("sync errors: %s", strings.Join(syncErrors, "; "))
+	}
+	return nil
+}
+
+func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON string) error {
+	var creds map[string]string
+	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+		return fmt.Errorf("parse credentials: %w", err)
+	}
+
+	prov := createProvider(cloudType, creds)
+	if prov == nil {
+		return nil
+	}
+
+	instances, err := prov.ListInstances(ctx, types.ListOptions{Limit: 100})
+	if err != nil {
+		return fmt.Errorf("list instances: %w", err)
+	}
+
+	liveIDs := make(map[string]bool, len(instances))
+	for _, inst := range instances {
+		liveIDs[inst.ID] = true
+		specJSON, _ := json.Marshal(inst.Spec)
+		tagsJSON, _ := json.Marshal(inst.Tags)
+
+		if s.isPostgres {
+			s.db.Exec(`
+				INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
+				VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+				ON CONFLICT (account_id, cloud_resource_id)
+				DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
+			`, accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
+		} else {
+			s.db.Exec(`
+				INSERT OR REPLACE INTO resources_cache (id, account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags, last_synced_at)
+				VALUES ((SELECT id FROM resources_cache WHERE account_id = ? AND cloud_resource_id = ?), ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+			`, accountID, inst.ID,
+				accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
+		}
+	}
+
+	s.detectDeletedResources(ctx, accountID, liveIDs)
+
+	s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?`, accountID)
+	return nil
+}
+
+func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, liveIDs map[string]bool) {
+	var rows *sql.Rows
+	var err error
+	if s.isPostgres {
+		rows, err = s.db.QueryContext(ctx,
+			`SELECT id, cloud_resource_id, name, resource_type FROM resources_cache WHERE account_id = $1`, accountID)
+	} else {
+		rows, err = s.db.QueryContext(ctx,
+			`SELECT id, cloud_resource_id, name, resource_type FROM resources_cache WHERE account_id = ?`, accountID)
+	}
+	if err != nil {
+		log.Printf("syncer: query cache: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cacheID, cloudResID string
+		var name, resType sql.NullString
+		if err := rows.Scan(&cacheID, &cloudResID, &name, &resType); err != nil {
+			continue
+		}
+		if !liveIDs[cloudResID] {
+			s.db.Exec(`DELETE FROM resources_cache WHERE id = ?`, cacheID)
+			log.Printf("syncer: removed deleted resource %s (%s)", cloudResID, name.String)
+		}
+	}
+}
+
+func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, error) {
+	if s.db == nil {
+		return nil, nil
+	}
+
+	var rows *sql.Rows
+	var err error
+	if s.isPostgres {
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
+				rc.spec, ca.cloud_type, ca.name as account_name
+			FROM resources_cache rc
+			JOIN cloud_accounts ca ON rc.account_id = ca.id
+			ORDER BY rc.last_synced_at DESC
+		`)
+	} else {
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
+				rc.spec, ca.cloud_type, ca.name as account_name
+			FROM resources_cache rc
+			JOIN cloud_accounts ca ON rc.account_id = ca.id
+			ORDER BY rc.last_synced_at DESC
+		`)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query resources: %w", err)
+	}
+	defer rows.Close()
+
+	var resources []map[string]interface{}
+	for rows.Next() {
+		var id, name, resourceType, region, status, cloudType, accountName string
+		var specJSON []byte
+		if err := rows.Scan(&id, &name, &resourceType, &region, &status, &specJSON, &cloudType, &accountName); err != nil {
+			continue
+		}
+
+		var spec map[string]interface{}
+		if len(specJSON) > 0 {
+			json.Unmarshal(specJSON, &spec)
+		}
+
+		r := map[string]interface{}{
+			"id":         id,
+			"name":       name,
+			"type":       resourceType,
+			"cloud_type": cloudType,
+			"region":     region,
+			"status":     status,
+			"account":    accountName,
+		}
+		if spec != nil {
+			for k, v := range spec {
+				r[k] = v
+			}
+		}
+		resources = append(resources, r)
+	}
+	if resources == nil {
+		resources = []map[string]interface{}{}
+	}
+	return resources, nil
+}
+
+func (s *Syncer) SyncAccount(ctx context.Context, accountID, cloudType, credJSON string) error {
+	return s.syncAccount(ctx, accountID, cloudType, credJSON)
+}
+
+func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) (types.Provider, string, error) {
+	if s.db == nil {
+		return nil, "", fmt.Errorf("no database")
+	}
+
+	var accountID, cloudType, credJSON, cloudResID string
+	var err error
+	if s.isPostgres {
+		err = s.db.QueryRowContext(ctx, `
+			SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials
+			FROM resources_cache rc
+			JOIN cloud_accounts ca ON rc.account_id = ca.id
+			WHERE rc.id = $1
+		`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
+	} else {
+		err = s.db.QueryRowContext(ctx, `
+			SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials
+			FROM resources_cache rc
+			JOIN cloud_accounts ca ON rc.account_id = ca.id
+			WHERE rc.id = ?
+		`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
+	}
+	if err != nil {
+		return nil, "", fmt.Errorf("resource lookup: %w", err)
+	}
+
+	var creds map[string]string
+	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+		return nil, "", fmt.Errorf("parse credentials: %w", err)
+	}
+
+	prov := createProvider(cloudType, creds)
+	if prov == nil {
+		return nil, "", fmt.Errorf("unsupported cloud type: %s", cloudType)
+	}
+
+	return prov, cloudResID, nil
+}
+
+func createProvider(cloudType string, creds map[string]string) types.Provider {
+	switch cloudType {
+	case "azure":
+		return providers.NewAzureProvider(creds)
+	case "tencent":
+		return providers.NewTencentProvider(creds)
+	case "oracle":
+		return providers.NewOracleProvider(creds)
+	case "render":
+		return providers.NewRenderProvider(creds)
+	default:
+		return nil
+	}
+}

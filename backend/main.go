@@ -29,7 +29,7 @@ func main() {
 	api.InitAIConfig(database.DB)
 
 	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB)
-	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB)
+	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, database.IsPostgres())
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("Server starting on %s", addr)
