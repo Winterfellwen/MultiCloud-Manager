@@ -31,14 +31,7 @@ func (h *TeamsHandler) GetTeams(c *gin.Context) {
 		return
 	}
 	userID := userIDAny.(string)
-
-	// 获取当前用户的用户名
-	var username string
-	err := h.db.QueryRow("SELECT username FROM users WHERE id = ?", userID).Scan(&username)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户信息失败"})
-		return
-	}
+	username := userID // JWT sub 存储的是 username
 
 	// 返回固定的团队和当前用户作为成员
 	member := map[string]interface{}{
@@ -131,19 +124,11 @@ func (h *TeamsHandler) GetTeamMembers(c *gin.Context) {
 		return
 	}
 	userID := userIDAny.(string)
+	username := userID // JWT sub 存储的是 username
 
-	// 解析团队ID
 	teamID := c.Param("teamId")
 	if teamID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少团队ID"})
-		return
-	}
-
-	// 获取当前用户的用户名
-	var username string
-	err := h.db.QueryRow("SELECT username FROM users WHERE id = ?", userID).Scan(&username)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取用户信息失败"})
 		return
 	}
 
