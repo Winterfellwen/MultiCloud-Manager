@@ -98,6 +98,38 @@ func (h *AccountsHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": id})
 }
 
+func (h *AccountsHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	var req struct {
+		Name        string `json:"name"`
+		CloudType   string `json:"cloud_type"`
+		Credentials string `json:"credentials"`
+		IsActive    *bool  `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if h.isPostgres {
+		_, err := h.db.Exec(`UPDATE cloud_accounts SET name = $1, cloud_type = $2, credentials = $3 WHERE id = $4`,
+			req.Name, req.CloudType, req.Credentials, id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		_, err := h.db.Exec(`UPDATE cloud_accounts SET name = ?, cloud_type = ?, credentials = ? WHERE id = ?`,
+			req.Name, req.CloudType, req.Credentials, id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func (h *AccountsHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	if h.isPostgres {

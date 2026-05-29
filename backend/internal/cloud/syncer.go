@@ -129,31 +129,45 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 	liveIDs := make(map[string]bool, len(instances))
 	for _, inst := range instances {
 		liveIDs[inst.ID] = true
-		specJSON, _ := json.Marshal(inst.Spec)
-		tagsJSON, _ := json.Marshal(inst.Tags)
+		specJSON, err := json.Marshal(inst.Spec)
+		if err != nil {
+			log.Printf("syncer: marshal spec for %s: %v", inst.ID, err)
+			specJSON = []byte("{}")
+		}
+		tagsJSON, err := json.Marshal(inst.Tags)
+		if err != nil {
+			log.Printf("syncer: marshal tags for %s: %v", inst.ID, err)
+			tagsJSON = []byte("{}")
+		}
 
 		if s.isPostgres {
-			s.db.Exec(`
+			_, err = s.db.Exec(`
 				INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
 				VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
 				ON CONFLICT (account_id, cloud_resource_id)
 				DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
 			`, accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
 		} else {
-			s.db.Exec(`
-				INSERT OR REPLACE INTO resources_cache (id, account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags, last_synced_at)
+			_, err = s.db.Exec(`
+				INSERT INTO resources_cache (id, account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags, last_synced_at)
 				VALUES ((SELECT id FROM resources_cache WHERE account_id = ? AND cloud_resource_id = ?), ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 			`, accountID, inst.ID,
 				accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
+		}
+		if err != nil {
+			log.Printf("syncer: upsert resource %s: %v", inst.Name, err)
 		}
 	}
 
 	s.detectDeletedResources(ctx, accountID, liveIDs)
 
 	if s.isPostgres {
-		s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
+		_, err = s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
 	} else {
-		s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?`, accountID)
+		_, err = s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?`, accountID)
+	}
+	if err != nil {
+		log.Printf("syncer: update last_sync_at for %s: %v", accountID, err)
 	}
 	return nil
 }
@@ -181,8 +195,11 @@ func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, l
 			continue
 		}
 		if !liveIDs[cloudResID] {
-			s.db.Exec(`DELETE FROM resources_cache WHERE id = ?`, cacheID)
-			log.Printf("syncer: removed deleted resource %s (%s)", cloudResID, name.String)
+			if _, err := s.db.Exec(`DELETE FROM resources_cache WHERE id = ?`, cacheID); err != nil {
+				log.Printf("syncer: delete resource %s: %v", cacheID, err)
+			} else {
+				log.Printf("syncer: removed deleted resource %s (%s)", cloudResID, name.String)
+			}
 		}
 	}
 }

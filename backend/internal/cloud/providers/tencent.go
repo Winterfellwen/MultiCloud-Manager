@@ -79,6 +79,8 @@ func (p *TencentProvider) ListInstances(ctx context.Context, opts types.ListOpti
 			status = "running"
 		case "STOPPED":
 			status = "stopped"
+		case "PENDING", "STARTING", "LAUNCH_FAILED":
+			status = "pending"
 		default:
 			status = "stopped"
 		}

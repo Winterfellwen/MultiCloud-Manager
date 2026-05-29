@@ -205,26 +205,22 @@ func splitResourceType(resourceType string) []string {
 }
 
 func (p *AzureProvider) getVMStatus(ctx context.Context, resourceID string) string {
-	url := fmt.Sprintf("https://management.azure.com%s?api-version=2023-03-01", resourceID)
+	url := fmt.Sprintf("https://management.azure.com%s/instanceView?api-version=2023-03-01", resourceID)
 	body, err := p.doAPI(ctx, "GET", url, nil)
 	if err != nil {
 		return "unknown"
 	}
 
 	var result struct {
-		Properties struct {
-			InstanceView struct {
-				Statuses []struct {
-					Code string `json:"code"`
-				} `json:"statuses"`
-			} `json:"instanceView"`
-		} `json:"properties"`
+		Statuses []struct {
+			Code string `json:"code"`
+		} `json:"statuses"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "unknown"
 	}
 
-	for _, s := range result.Properties.InstanceView.Statuses {
+	for _, s := range result.Statuses {
 		if s.Code == "PowerState/running" {
 			return "running"
 		}
