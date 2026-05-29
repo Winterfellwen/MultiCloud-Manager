@@ -12,8 +12,9 @@ import (
 type AgentMode string
 
 const (
-	ModeBuild AgentMode = "build"
-	ModePlan  AgentMode = "plan"
+	ModeBuild   AgentMode = "build"
+	ModePlan    AgentMode = "plan"
+	ModeConfirm AgentMode = "confirm"
 )
 
 var modeConfigs = map[AgentMode]ModeConfig{
@@ -46,6 +47,23 @@ var modeConfigs = map[AgentMode]ModeConfig{
 <parameters>{"参数名":"参数值"}</parameters></tool_call>
 
 可以同时调用多个工具。始终使用中文回复。`,
+	},
+	ModeConfirm: {
+		Mode:      ModeConfirm,
+		MaxRounds: 10,
+		DenyTools: []string{},
+		SystemPrompt: `你是 MultiCloud Manager 的 AI 云助手（确认模式），帮助用户管理多云资源。
+
+你可以查询、创建、管理云资源。
+在生成操作类工具调用时，返回给用户等待确认。
+用户确认后，再执行并返回结果。
+始终使用中文回复。
+
+工具调用格式：
+<tool>工具名称</tool>
+<parameters>{"参数名":"参数值"}</parameters></tool_call>
+
+可以同时调用多个工具。`,
 	},
 }
 
@@ -93,27 +111,39 @@ func (a *Agent) GetTools() []ToolInfo {
 }
 
 type ChatRequest struct {
-	Messages  []Message
-	Mode      AgentMode
-	SessionID string
+	Messages           []Message
+	Mode               AgentMode
+	SessionID          string
+	PendingToolCalls   []ToolCall
+	ConfirmedToolCalls []ToolCall
 }
 
 type ChatResponse struct {
-	Content string
-	Mode    AgentMode
-	Compact bool
-	Summary string
+	Content          string
+	Mode             AgentMode
+	Compact          bool
+	Summary          string
+	NeedsConfirm     bool
+	PendingToolCalls []ToolCall
+	ToolResults      []ToolResult
+}
+
+type ToolResult struct {
+	Tool   string
+	Params map[string]interface{}
+	Result string
+	Error  string
 }
 
 func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	mode := req.Mode
 	if mode == "" {
-		mode = ModeBuild
+		mode = ModePlan
 	}
 
 	modeCfg, ok := modeConfigs[mode]
 	if !ok {
-		modeCfg = modeConfigs[ModeBuild]
+		modeCfg = modeConfigs[ModePlan]
 	}
 
 	systemPrompt := a.buildSystemPrompt(mode, modeCfg)
@@ -186,24 +216,52 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 			}, nil
 		}
 
+		// Confirm mode: return tool calls for approval on first pass
+		if mode == ModeConfirm && len(req.ConfirmedToolCalls) == 0 {
+			return &ChatResponse{
+				Content:          content,
+				Mode:             mode,
+				NeedsConfirm:     true,
+				PendingToolCalls: validCalls,
+			}, nil
+		}
+
+		// Determine which tools to execute
+		toExecute := validCalls
+		if mode == ModeConfirm && len(req.ConfirmedToolCalls) > 0 {
+			toExecute = req.ConfirmedToolCalls
+		}
+
+		// Execute tools
 		var toolResults []string
-		for _, tc := range validCalls {
+		var toolResultsList []ToolResult
+		for _, tc := range toExecute {
 			tool, ok := a.toolRegistry.Get(tc.Name)
 			if !ok {
-				toolResults = append(toolResults, fmt.Sprintf("工具「%s」不存在", tc.Name))
+				msg := fmt.Sprintf("工具「%s」不存在", tc.Name)
+				toolResults = append(toolResults, msg)
+				toolResultsList = append(toolResultsList, ToolResult{Tool: tc.Name, Error: msg})
 				continue
 			}
 			result, err := tool.Execute(ctx, tc.Params)
 			if err != nil {
-				toolResults = append(toolResults, fmt.Sprintf("工具「%s」执行失败: %v", tc.Name, err))
+				msg := fmt.Sprintf("工具「%s」执行失败: %v", tc.Name, err)
+				toolResults = append(toolResults, msg)
+				toolResultsList = append(toolResultsList, ToolResult{Tool: tc.Name, Error: msg})
 			} else {
 				toolResults = append(toolResults, result)
+				toolResultsList = append(toolResultsList, ToolResult{Tool: tc.Name, Result: result, Params: tc.Params})
 			}
 		}
 
 		toolResultMsg := fmt.Sprintf("工具执行结果:\n%s", strings.Join(toolResults, "\n\n"))
 		allMessages = append(allMessages, Message{Role: "assistant", Content: content})
 		allMessages = append(allMessages, Message{Role: "user", Content: toolResultMsg})
+
+		// If confirm mode and we just executed confirmed tools, continue loop for final response
+		if mode == ModeConfirm && len(req.ConfirmedToolCalls) > 0 {
+			req.ConfirmedToolCalls = nil
+		}
 	}
 
 	return &ChatResponse{

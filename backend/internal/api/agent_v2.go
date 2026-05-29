@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"multicloud-manager/config"
@@ -31,6 +32,17 @@ type AgentHandlerV2 struct {
 	syncer    *cloud.Syncer
 	knowledge *knowledge.KnowledgeService
 	agent     *agent.Agent
+
+	// pending confirmations: sessionID -> chan pending tool calls
+	pendingConfirms   map[string]*pendingConfirm
+	pendingConfirmsMu sync.Mutex
+}
+
+type pendingConfirm struct {
+	ToolCalls []agent.ToolCall
+	CreatedAt time.Time
+	Done      chan struct{}
+	Result    []agent.ToolCall
 }
 
 // NewAgentHandlerV2 创建新版Agent Handler
@@ -39,6 +51,7 @@ func NewAgentHandlerV2(db *services.Database, rdb *services.RedisClient, cfg *co
 		db:     db,
 		rdb:    rdb,
 		config: NewConfigHandler(db),
+		pendingConfirms: make(map[string]*pendingConfirm),
 	}
 
 	// 初始化 vault 客户端
@@ -101,12 +114,12 @@ func (h *AgentHandlerV2) SetSyncer(syncer *cloud.Syncer) {
 	h.syncer = syncer
 }
 
-// Chat 聊天接口
+// Chat 聊天接口（非流式，保持兼容）
 func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	var req struct {
 		Message   string `json:"message" binding:"required"`
 		SessionID string `json:"session_id"`
-		Mode      string `json:"mode"` // build 或 plan
+		Mode      string `json:"mode"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.T(c, "msg_required")})
@@ -118,19 +131,17 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		sessionID = "session-" + uuid.New().String()[:8]
 	}
 
-	// 确定模式
-	mode := agent.ModeBuild
-	if req.Mode == "plan" {
-		mode = agent.ModePlan
+	mode := agent.ModePlan
+	if req.Mode == "build" {
+		mode = agent.ModeBuild
+	} else if req.Mode == "confirm" {
+		mode = agent.ModeConfirm
 	}
 
-	// 保存用户消息
 	h.saveMessage(sessionID, "user", req.Message)
 
-	// 获取对话历史（仅保留用户消息，避免agent回复污染）
 	history := h.getConversationHistory(sessionID, 4)
 
-	// 构建消息列表（只包含用户消息）
 	var messages []agent.Message
 	for _, m := range history {
 		if m.Role == "user" {
@@ -145,7 +156,6 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		Content: req.Message,
 	})
 
-	// 调用Agent
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
@@ -157,11 +167,7 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 
 	resp, err := h.agent.Chat(ctx, chatReq)
 	if err != nil {
-		msgPreview := req.Message
-		if len(msgPreview) > 20 {
-			msgPreview = msgPreview[:20]
-		}
-		log.Printf("Agent chat failed: %v | sessionID=%s | historyLen=%d | msg=%s", err, sessionID, len(history), msgPreview)
+		log.Printf("Agent chat failed: %v | sessionID=%s", err, sessionID)
 		h.saveMessage(sessionID, "agent", "抱歉，处理您的请求时遇到了错误。")
 		c.JSON(http.StatusOK, gin.H{
 			"message":    "抱歉，处理您的请求时遇到了错误。",
@@ -170,10 +176,8 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		return
 	}
 
-	// 如果触发了compact，返回摘要
 	if resp.Compact {
 		h.saveMessage(sessionID, "system", "[上下文已压缩]")
-		// 重新发送用户消息
 		chatReq.Messages = []agent.Message{
 			{Role: "user", Content: req.Message},
 		}
@@ -188,13 +192,10 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		}
 	}
 
-	// 保存AI回复（清理tool call格式，避免污染历史）
 	cleanReply := resp.Content
-	// 清理tool call XML格式
 	if idx := strings.Index(cleanReply, "<tool>"); idx >= 0 {
 		cleanReply = cleanReply[:idx]
 	}
-	// 清理旧格式
 	if idx := strings.Index(cleanReply, "```tool"); idx >= 0 {
 		cleanReply = cleanReply[:idx]
 	}
@@ -210,6 +211,233 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		"mode":       resp.Mode,
 		"compact":    resp.Compact,
 	})
+}
+
+// ChatStream SSE流式聊天接口
+func (h *AgentHandlerV2) ChatStream(c *gin.Context) {
+	var req struct {
+		Message          string            `json:"message"`
+		SessionID        string            `json:"session_id"`
+		Mode             string            `json:"mode"`
+		ConfirmedTools   []agent.ToolCall  `json:"confirmed_tools,omitempty"`
+		ConfirmAction    string            `json:"confirm_action,omitempty"` // "confirm" | "reject" | "skip"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.T(c, "msg_required")})
+		return
+	}
+
+	sessionID := req.SessionID
+	if sessionID == "" {
+		sessionID = "session-" + uuid.New().String()[:8]
+	}
+
+	mode := agent.ModePlan
+	if req.Mode == "build" {
+		mode = agent.ModeBuild
+	} else if req.Mode == "confirm" {
+		mode = agent.ModeConfirm
+	}
+
+	// SSE headers
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
+		return
+	}
+
+	sendSSE := func(event string, data interface{}) {
+		d, _ := json.Marshal(data)
+		fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event, d)
+		flusher.Flush()
+	}
+
+	// Save user message
+	if req.Message != "" {
+		h.saveMessage(sessionID, "user", req.Message)
+	}
+
+	// Build message history
+	history := h.getConversationHistory(sessionID, 8)
+
+	var messages []agent.Message
+	for _, m := range history {
+		if m.Role == "user" {
+			messages = append(messages, agent.Message{Role: "user", Content: m.Content})
+		}
+	}
+	if req.Message != "" {
+		messages = append(messages, agent.Message{Role: "user", Content: req.Message})
+	}
+
+	// Run agent in goroutine, stream via channel
+	type streamEvent struct {
+		event string
+		data  interface{}
+	}
+	eventChan := make(chan streamEvent, 100)
+	done := make(chan struct{})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	go func() {
+		defer close(done)
+
+		chatReq := agent.ChatRequest{
+			Messages:           messages,
+			Mode:               mode,
+			SessionID:          sessionID,
+			ConfirmedToolCalls: req.ConfirmedTools,
+		}
+
+		resp, err := h.agent.Chat(ctx, chatReq)
+		if err != nil {
+			eventChan <- streamEvent{"error", map[string]string{"message": err.Error()}}
+			return
+		}
+
+		if resp.Compact {
+			eventChan <- streamEvent{"compact", map[string]string{"summary": resp.Summary}}
+			// Re-run with compacted history
+			chatReq.Messages = []agent.Message{{Role: "user", Content: req.Message}}
+			resp, err = h.agent.Chat(ctx, chatReq)
+			if err != nil {
+				eventChan <- streamEvent{"error", map[string]string{"message": err.Error()}}
+				return
+			}
+		}
+
+		if resp.NeedsConfirm {
+			// Stream text content first
+			cleanContent := resp.Content
+			if idx := strings.Index(cleanContent, "<tool>"); idx >= 0 {
+				cleanContent = cleanContent[:idx]
+			}
+			cleanContent = strings.TrimSpace(cleanContent)
+
+			// Stream tokens
+			for _, ch := range cleanContent {
+				eventChan <- streamEvent{"token", map[string]string{"content": string(ch)}}
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			// Save the clean content as agent message
+			h.saveMessage(sessionID, "agent", cleanContent)
+
+			// Save pending tool calls
+			h.pendingConfirmsMu.Lock()
+			pc := &pendingConfirm{
+				ToolCalls: resp.PendingToolCalls,
+				CreatedAt: time.Now(),
+				Done:      make(chan struct{}),
+			}
+			h.pendingConfirms[sessionID] = pc
+			h.pendingConfirmsMu.Unlock()
+
+			// Send confirm_required event
+			eventChan <- streamEvent{"confirm_required", map[string]interface{}{
+				"tool_calls": resp.PendingToolCalls,
+				"session_id": sessionID,
+			}}
+			return
+		}
+
+		// Clean tool calls from the saved content
+		cleanContent := resp.Content
+		if idx := strings.Index(cleanContent, "<tool>"); idx >= 0 {
+			cleanContent = cleanContent[:idx]
+		}
+		if idx := strings.Index(cleanContent, "```tool"); idx >= 0 {
+			cleanContent = cleanContent[:idx]
+		}
+		cleanContent = strings.TrimSpace(cleanContent)
+		if cleanContent == "" {
+			cleanContent = "已处理您的请求"
+		}
+		h.saveMessage(sessionID, "agent", cleanContent)
+
+		// Stream tokens
+		for _, ch := range resp.Content {
+			eventChan <- streamEvent{"token", map[string]string{"content": string(ch)}}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	// Read events and send to SSE
+	for {
+		select {
+		case evt, ok := <-eventChan:
+			if !ok {
+				sendSSE("done", map[string]string{})
+				return
+			}
+			sendSSE(evt.event, evt.data)
+		case <-done:
+			sendSSE("done", map[string]string{})
+			return
+		case <-ctx.Done():
+			sendSSE("error", map[string]string{"message": "request timeout"})
+			return
+		}
+	}
+}
+
+// ConfirmAction 用户确认/拒绝工具调用
+func (h *AgentHandlerV2) ConfirmAction(c *gin.Context) {
+	var req struct {
+		SessionID  string           `json:"session_id" binding:"required"`
+		Action     string           `json:"action" binding:"required"` // "confirm" | "reject"
+		ToolName   string           `json:"tool_name"`                 // empty = all
+		ToolParams map[string]interface{} `json:"tool_params"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	h.pendingConfirmsMu.Lock()
+	pc, exists := h.pendingConfirms[req.SessionID]
+	if !exists {
+		h.pendingConfirmsMu.Unlock()
+		c.JSON(http.StatusNotFound, gin.H{"error": "no pending confirmation for this session"})
+		return
+	}
+
+	if req.Action == "confirm" {
+		// Filter to the confirmed tool calls
+		for _, tc := range pc.ToolCalls {
+			if req.ToolName == "" || tc.Name == req.ToolName {
+				pc.Result = append(pc.Result, tc)
+			}
+		}
+	}
+
+	// Signal the waiting stream handler
+	delete(h.pendingConfirms, req.SessionID)
+	h.pendingConfirmsMu.Unlock()
+
+	close(pc.Done)
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// DeleteSession 删除会话
+func (h *AgentHandlerV2) DeleteSession(c *gin.Context) {
+	sessionID := c.Param("id")
+	if h.db == nil {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		return
+	}
+
+	h.db.Exec(`DELETE FROM ai_agent_messages WHERE session_id IN (SELECT id FROM ai_agent_sessions WHERE session_id=$1)`, sessionID)
+	h.db.Exec(`DELETE FROM ai_agent_sessions WHERE session_id=$1`, sessionID)
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 // saveMessage 保存消息
