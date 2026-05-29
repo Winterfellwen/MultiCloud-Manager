@@ -60,6 +60,15 @@ func (a *Agent) Chat(ctx context.Context, messages []Message, sessionID string) 
 	}
 	allMessages = append(allMessages, messages...)
 
+	log.Printf("Agent.Chat: sessionID=%s totalMessages=%d", sessionID, len(allMessages))
+	for i, m := range allMessages {
+		content := m.Content
+		if len(content) > 100 {
+			content = content[:100] + "..."
+		}
+		log.Printf("  msg[%d] role=%s content=%s", i, m.Role, content)
+	}
+
 	// 迭代执行（支持多轮tool calling）
 	for i := 0; i < a.config.MaxIterations; i++ {
 		// 调用LLM
