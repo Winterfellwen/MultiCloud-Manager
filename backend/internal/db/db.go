@@ -195,6 +195,29 @@ func (d *Database) migrateSQLite(adminHash string) error {
 		)`,
 		`INSERT OR IGNORE INTO ai_config (id, api_endpoint, model) VALUES (1, 'https://api.openai.com/v1', 'gpt-4o-mini')`,
 		`INSERT OR IGNORE INTO users (id, username, password_hash, role) VALUES ('admin', 'admin', '` + adminHash + `', 'admin')`,
+		`CREATE TABLE IF NOT EXISTS cloud_accounts (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			cloud_type TEXT NOT NULL,
+			credentials TEXT NOT NULL DEFAULT '',
+			is_active INTEGER DEFAULT 1,
+			last_sync_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS resources_cache (
+			id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			account_id TEXT NOT NULL,
+			cloud_resource_id TEXT NOT NULL,
+			resource_type TEXT,
+			cloud_region TEXT,
+			name TEXT,
+			status TEXT DEFAULT 'unknown',
+			spec TEXT,
+			tags TEXT,
+			last_synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (account_id) REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+			UNIQUE(account_id, cloud_resource_id)
+		)`,
 	}
 
 	for _, q := range queries {
@@ -293,6 +316,29 @@ func (d *Database) migratePostgres(adminHash string) error {
 		`CREATE INDEX IF NOT EXISTS idx_tool_calls_part ON tool_calls(part_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_audit_logs_session ON audit_logs(session_id, created_at)`,
+		`CREATE TABLE IF NOT EXISTS cloud_accounts (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(200) NOT NULL,
+			cloud_type VARCHAR(50) NOT NULL,
+			credentials TEXT NOT NULL DEFAULT '',
+			is_active BOOLEAN DEFAULT true,
+			last_sync_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS resources_cache (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			account_id UUID NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+			cloud_resource_id VARCHAR(500) NOT NULL,
+			resource_type VARCHAR(100),
+			cloud_region VARCHAR(100),
+			name VARCHAR(500),
+			status VARCHAR(50) DEFAULT 'unknown',
+			spec JSONB,
+			tags JSONB,
+			last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(account_id, cloud_resource_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
 		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO UPDATE SET password_hash = '%s'`, adminHash, adminHash),
 	}
 
