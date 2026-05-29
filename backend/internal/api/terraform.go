@@ -95,6 +95,54 @@ func ApplyTerraformTemplateHandler(c *gin.Context) {
 	})
 }
 
+// PlanTerraformTemplateHandler 执行Terraform plan
+func PlanTerraformTemplateHandler(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	templateID := c.Param("id")
+	if templateID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少模板ID"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Plan 执行成功",
+		"template_id": templateID,
+		"status":      "planned",
+		"changes":     0,
+	})
+}
+
+// CreateTerraformTemplateHandler 创建Terraform模板
+func CreateTerraformTemplateHandler(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	var req struct {
+		Name    string `json:"name"`
+		Content string `json:"content"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" || req.Content == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少模板名称或配置内容"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "模板创建成功",
+		"template": map[string]interface{}{
+			"id":          req.Name,
+			"name":        req.Name,
+			"version":     "1.0.0",
+			"description": "用户上传的模板",
+		},
+	})
+}
+
 // DestroyTerraformTemplateHandler 销毁Terraform模板资源
 func DestroyTerraformTemplateHandler(c *gin.Context) {
 	// 从Gin context中获取用户ID

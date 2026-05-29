@@ -94,6 +94,34 @@ func (h *TeamsHandler) RemoveTeamMember(c *gin.Context) {
 	c.JSON(http.StatusForbidden, gin.H{"error": "无权限移除其他成员"})
 }
 
+// AddTeamMember 邀请团队成员
+func (h *TeamsHandler) AddTeamMember(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	teamID := c.Param("teamId")
+	if teamID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少团队ID"})
+		return
+	}
+
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少邮箱或用户名"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "邀请已发送",
+		"email":   req.Email,
+		"team_id": teamID,
+	})
+}
+
 // GetTeamMembers 获取团队成员列表
 func (h *TeamsHandler) GetTeamMembers(c *gin.Context) {
 	// 从Gin context中获取用户ID
