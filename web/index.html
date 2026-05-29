@@ -344,10 +344,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
         <h2 data-i18n="chat.title">AI 云助手</h2>
         <div class="chat-header-actions">
           <select id="chatMode">
-            <option value="plan" data-i18n="chat.mode_plan">仅生成方案</option>
-            <option value="confirm" data-i18n="chat.mode_confirm">分步确认</option>
-            <option value="review" selected data-i18n="chat.mode_review">风险审查模式</option>
-            <option value="auto" data-i18n="chat.mode_auto">全自动执行</option>
+            <option value="build" data-i18n="chat.mode_build">执行模式</option>
+            <option value="plan" selected data-i18n="chat.mode_plan">仅生成方案</option>
           </select>
           <button class="chat-settings-btn" onclick="openAIConfig()" title="AI 配置" data-i18n="chat.settings_title">⚙</button>
         </div>
@@ -768,7 +766,11 @@ async function sendChat() {
   const data = await apiFetch(API + '/agent/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: text, session_id: SESSION_ID })
+    body: JSON.stringify({
+      message: text,
+      session_id: SESSION_ID,
+      mode: document.getElementById('chatMode').value
+    })
   });
   document.getElementById('typingIndicator').classList.remove('active');
   const response = (data && data.message) ? data.message : getMockChatResponse(text);
@@ -1139,10 +1141,8 @@ var __ = {
     'activity.title': '最近活动',
     'activity.empty': '暂无活动记录',
     'chat.title': 'AI 云助手',
+    'chat.mode_build': '执行模式',
     'chat.mode_plan': '仅生成方案',
-    'chat.mode_confirm': '分步确认',
-    'chat.mode_review': '风险审查模式',
-    'chat.mode_auto': '全自动执行',
     'chat.settings_title': 'AI 配置',
     'chat.quick_accounts': '查看账户',
     'chat.quick_resources': '查看资源',
@@ -1266,10 +1266,8 @@ var __ = {
     'activity.title': 'Recent Activity',
     'activity.empty': 'No activity yet',
     'chat.title': 'AI Assistant',
+    'chat.mode_build': 'Build Mode',
     'chat.mode_plan': 'Plan Only',
-    'chat.mode_confirm': 'Step Confirm',
-    'chat.mode_review': 'Risk Review',
-    'chat.mode_auto': 'Auto Execute',
     'chat.settings_title': 'AI Settings',
     'chat.quick_accounts': 'View Accounts',
     'chat.quick_resources': 'View Resources',

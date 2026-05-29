@@ -106,6 +106,7 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	var req struct {
 		Message   string `json:"message" binding:"required"`
 		SessionID string `json:"session_id"`
+		Mode      string `json:"mode"` // build 或 plan
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": i18n.T(c, "msg_required")})
@@ -117,11 +118,17 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		sessionID = "session-" + uuid.New().String()[:8]
 	}
 
+	// 确定模式
+	mode := agent.ModeBuild
+	if req.Mode == "plan" {
+		mode = agent.ModePlan
+	}
+
 	// 保存用户消息
 	h.saveMessage(sessionID, "user", req.Message)
 
 	// 获取对话历史（仅保留用户消息，避免agent回复污染）
-	history := h.getConversationHistory(sessionID, 2)
+	history := h.getConversationHistory(sessionID, 4)
 
 	// 构建消息列表（只包含用户消息）
 	var messages []agent.Message
@@ -142,7 +149,13 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	resp, err := h.agent.Chat(ctx, messages, sessionID)
+	chatReq := agent.ChatRequest{
+		Messages:  messages,
+		Mode:      mode,
+		SessionID: sessionID,
+	}
+
+	resp, err := h.agent.Chat(ctx, chatReq)
 	if err != nil {
 		msgPreview := req.Message
 		if len(msgPreview) > 20 {
@@ -157,8 +170,31 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 		return
 	}
 
+	// 如果触发了compact，返回摘要
+	if resp.Compact {
+		h.saveMessage(sessionID, "system", "[上下文已压缩]")
+		// 重新发送用户消息
+		chatReq.Messages = []agent.Message{
+			{Role: "user", Content: req.Message},
+		}
+		resp, err = h.agent.Chat(ctx, chatReq)
+		if err != nil {
+			h.saveMessage(sessionID, "agent", "抱歉，处理您的请求时遇到了错误。")
+			c.JSON(http.StatusOK, gin.H{
+				"message":    "抱歉，处理您的请求时遇到了错误。",
+				"session_id": sessionID,
+			})
+			return
+		}
+	}
+
 	// 保存AI回复（清理tool call格式，避免污染历史）
 	cleanReply := resp.Content
+	// 清理OpenCode XML格式
+	if idx := strings.Index(cleanReply, ""); idx >= 0 {
+		cleanReply = cleanReply[:idx]
+	}
+	// 清理旧格式
 	if idx := strings.Index(cleanReply, "```tool"); idx >= 0 {
 		cleanReply = cleanReply[:idx]
 	}
@@ -171,6 +207,8 @@ func (h *AgentHandlerV2) Chat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":    resp.Content,
 		"session_id": sessionID,
+		"mode":       resp.Mode,
+		"compact":    resp.Compact,
 	})
 }
 

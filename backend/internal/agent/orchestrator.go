@@ -23,17 +23,6 @@ type LLMClient interface {
 	Chat(ctx context.Context, messages []Message) (*ChatResponse, error)
 }
 
-// Message 对话消息
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-// ChatResponse LLM 响应
-type ChatResponse struct {
-	Content string `json:"content"`
-}
-
 // NewOrchestrator 创建 AI Agent 编排器
 func NewOrchestrator(llm LLMClient) *Orchestrator {
 	return &Orchestrator{
