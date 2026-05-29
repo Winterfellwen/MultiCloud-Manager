@@ -329,6 +329,7 @@ func (d *Database) migratePostgres(adminHash string) error {
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encrypted_credentials`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS team_id`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encryption_key_id`,
+		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
 		`CREATE TABLE IF NOT EXISTS resources_cache (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			account_id UUID NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
