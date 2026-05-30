@@ -2,9 +2,13 @@ FROM golang:1.22-alpine
 
 RUN apk add --no-cache curl bash python3 py3-pip
 
-RUN curl -fsSL https://opencode.ai/install | bash
+# Install opencode CLI
+RUN curl -fsSL https://opencode.ai/install | bash && \
+    ls -la /root/.opencode/bin/opencode && \
+    /root/.opencode/bin/opencode --version
 ENV PATH="/root/.opencode/bin:${PATH}"
 
+# Install Azure CLI
 RUN pip3 install azure-cli
 
 WORKDIR /app
@@ -18,4 +22,5 @@ COPY web/ ../web/
 
 EXPOSE 8099 4096
 
-CMD ["sh", "-c", "opencode serve --port 4096 --hostname 0.0.0.0 & ./app"]
+# Start both opencode and Go API
+CMD sh -c "echo 'Starting opencode...' && opencode serve --port 4096 --hostname 0.0.0.0 & sleep 3 && echo 'Starting Go API...' && ./app"
