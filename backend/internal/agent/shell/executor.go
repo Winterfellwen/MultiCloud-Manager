@@ -33,7 +33,7 @@ type Result struct {
 func NewExecutor(cfg Config) *Executor {
 	timeout := time.Duration(cfg.TimeoutSeconds) * time.Second
 	if timeout == 0 {
-		timeout = 300 * time.Second
+		timeout = 30 * time.Second
 	}
 	workspace := cfg.WorkspaceDir
 	if workspace == "" {
