@@ -1139,8 +1139,6 @@ function handleSSEEvent(data) {
       break;
     case 'error':
       CONFIRM_PENDING = false;
-      // Cleanup streaming UI immediately
-      const streamingMsg = document.querySelector('.msg.streaming');
       if (streamingMsg) {
         const mc = streamingMsg.querySelector('.msg-content');
         if (mc) mc.classList.remove('streaming-cursor');
