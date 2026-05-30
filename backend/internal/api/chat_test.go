@@ -116,6 +116,29 @@ data: [DONE]
 		t.Errorf("Expected name=get_cloud_stats, got %v", fn["name"])
 	}
 
+	// Verify arguments defaults to {}
+	if fn["arguments"] != "{}" {
+		t.Errorf("Expected arguments={}, got %v", fn["arguments"])
+	}
+
 	// Verify the whole tool call can be marshaled to valid JSON
 	t.Logf("Tool call: %+v", tc)
+}
+
+func TestCollectStreamResponse_NilFunction(t *testing.T) {
+	// Simulate a streaming response where function is nil (should be skipped)
+	sseData := `data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_999","type":"function"}]},"index":0}]}
+data: {"choices":[{"finish_reason":"stop","index":0}]}
+data: [DONE]
+`
+
+	h := &ChatStreamHandler{}
+	body := io.NopCloser(strings.NewReader(sseData))
+
+	_, toolCalls, _ := h.collectStreamResponse(body)
+
+	// Tool call with nil function should be skipped
+	if len(toolCalls) != 0 {
+		t.Errorf("Expected 0 tool calls (nil function skipped), got %d", len(toolCalls))
+	}
 }
