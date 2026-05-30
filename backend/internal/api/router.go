@@ -99,6 +99,14 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		auth.POST("/terraform/templates/:id/apply", ApplyTerraformTemplateHandler)
 		auth.DELETE("/terraform/templates/:id", DestroyTerraformTemplateHandler)
 		auth.POST("/terraform/templates/:id/destroy", DestroyTerraformTemplateHandler)
+		// Vault
+		auth.GET("/vault/health", func(c *gin.Context) {
+			if vaultClient != nil {
+				c.JSON(http.StatusOK, gin.H{"status": "ok", "addr": vaultAddr})
+			} else {
+				c.JSON(http.StatusOK, gin.H{"status": "unavailable", "message": "VAULT_ADDR not configured"})
+			}
+		})
 	}
 
 	webDir := getWebDir()
