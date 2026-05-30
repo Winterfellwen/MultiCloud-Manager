@@ -1082,6 +1082,7 @@ async function startStream(body) {
   }
   STREAMING_MSG = null;
   document.getElementById('chatSendBtn').disabled = false;
+}
 
 function handleSSEEvent(data) {
   const type = data.event || '';
