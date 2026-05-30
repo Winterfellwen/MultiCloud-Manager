@@ -178,12 +178,18 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 				}
 				select {
 				case <-c.Request.Context().Done():
+					h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
 					return
 				default:
 				}
 				fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": string(runes[j:end])}))
 				flusher.Flush()
 			}
+		}
+
+		// Save after content generation (opencode pattern: save every delta)
+		if allContent.Len() > 0 {
+			h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
 		}
 
 		// If no tool calls, we're done
@@ -281,13 +287,24 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 				"content":      toolResultContent,
 			})
 		}
-		// Save progress every 3 iterations so page refresh doesn't lose state
-		if i%3 == 2 && allContent.Len() > 0 {
-			h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
-		}
 	}
 
 done:
+	// Append tool call summary to allContent so saved history is meaningful
+	if len(messages) > 2 && allContent.Len() > 0 {
+		var sb strings.Builder
+		toolCount := 0
+		for _, m := range messages {
+			if role, _ := m["role"].(string); role == "tool" {
+				toolCount++
+			}
+		}
+		if toolCount > 0 {
+			sb.WriteString(fmt.Sprintf("\n\n> 📋 已执行 %d 次工具调用\n", toolCount))
+		}
+		allContent.WriteString(sb.String())
+	}
+
 	// Build summary if the loop was interrupted
 	if stopReason != "" {
 		summary := fmt.Sprintf("\n\n---\n> ⚠️ AI 在第 %d 步中断：%s\n> 请重新发送消息继续操作。\n", iterCount, stopReason)
