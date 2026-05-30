@@ -5,12 +5,11 @@ import (
 	"database/sql"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
+	"multicloud/internal/agent"
 	"multicloud/internal/cloud"
 	"multicloud/internal/vault"
 
@@ -34,6 +33,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 	r.POST("/api/auth/login", authHandler.Login)
 
 	syncer := cloud.NewSyncer(db)
+	executor := agent.NewExecutor(syncer, db)
 
 	// Create Vault client (optional)
 	var vaultClient *vault.Client
@@ -42,7 +42,15 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		vaultClient = vault.NewClient(vault.Config{Addr: vaultAddr})
 	}
 
+	runtime := agent.NewRuntime(agent.RuntimeConfig{
+		DB:     db,
+		Syncer: syncer,
+		Vault:  vaultClient,
+	})
+
+	chatHandler := NewChatStreamHandler(db, executor, runtime)
 	accountsHandler := NewAccountsHandler(db)
+	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
 	teamsHandler := NewTeamsHandler(db)
 	sessionsHandler := NewSessionsHandler(db)
@@ -54,6 +62,15 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 	{
 		auth.GET("/auth/profile", authHandler.Profile)
 		auth.PUT("/auth/password", resourcesHandler.ChangePassword)
+		auth.GET("/agent/config", GetAIConfig)
+		auth.PUT("/agent/config", UpdateAIConfig)
+		auth.POST("/agent/config/test", TestAIConfig)
+		auth.GET("/agent/config/:type", agentConfigHandler.GetConfig)
+		auth.PUT("/agent/config/:type", agentConfigHandler.UpdateConfig)
+		// Chat endpoints
+		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.POST("/agent/chat", chatHandler.Chat)
+		auth.POST("/agent/execute", chatHandler.Execute)
 		// Session endpoints
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
@@ -91,42 +108,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 				c.JSON(http.StatusOK, gin.H{"status": "unavailable", "message": "VAULT_ADDR not configured"})
 			}
 		})
-		// opencode health check
-		auth.GET("/opencode/health", func(c *gin.Context) {
-			resp, err := http.Get("http://localhost:4096/health")
-			if err == nil && resp.StatusCode < 500 {
-				c.JSON(http.StatusOK, gin.H{"status": "ok"})
-			} else {
-				msg := "unreachable"
-				if err != nil { msg = err.Error() }
-				c.JSON(http.StatusOK, gin.H{"status": "down", "error": msg})
-			}
-		})
-		auth.GET("/opencode/logs", func(c *gin.Context) {
-			data, err := os.ReadFile("/tmp/startup.log")
-			if err != nil {
-				c.JSON(http.StatusOK, gin.H{"error": err.Error()})
-				return
-			}
-			// Also read opencode's own log
-			ocLog, _ := os.ReadFile("/tmp/opencode.log")
-			c.JSON(http.StatusOK, gin.H{
-				"startup": string(data),
-				"opencode": string(ocLog),
-			})
-		})
 	}
-
-	// Proxy /chat/* to opencode server
-	opencodeURL, _ := url.Parse("http://localhost:4096")
-	proxy := httputil.NewSingleHostReverseProxy(opencodeURL)
-	r.Any("/chat/*proxyPath", func(c *gin.Context) {
-		c.Request.URL.Path = "/" + c.Param("proxyPath")
-		proxy.ServeHTTP(c.Writer, c.Request)
-	})
-	r.Any("/chat", func(c *gin.Context) {
-		proxy.ServeHTTP(c.Writer, c.Request)
-	})
 
 	webDir := getWebDir()
 	r.Static("/static", webDir)

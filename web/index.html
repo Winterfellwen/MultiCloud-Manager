@@ -100,7 +100,139 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Activity */
 .activity-placeholder { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
+/* Chat - OpenCode terminal style */
+.chat-layout { display: flex; flex: 1; gap: 0; height: calc(100vh - 44px - 40px); }
+.chat-sidebar { width: 200px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+.chat-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.chat-sidebar-header h3 { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.chat-new-btn { background: none; border: 1px solid var(--border); border-radius: 2px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all .15s; font-family: inherit; }
+.chat-new-btn:hover { border-color: var(--primary); color: var(--primary); }
+.chat-session-list { flex: 1; overflow-y: auto; padding: 4px; }
+.chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.chat-session-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.chat-session-item.active { background: rgba(0,122,255,.1); color: var(--primary); }
+.chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; }
+.chat-session-item:hover .session-del-btn { opacity: .4; }
+.chat-session-item .session-del-btn:hover { opacity: 1; }
+.chat-main { flex: 1; display: flex; flex-direction: column; padding: 0 12px; min-width: 0; }
+.chat-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 36px; }
 
+/* Mode toggle - segmented control */
+.mode-toggle { display: flex; gap: 0; }
+.mode-btn { padding: 3px 10px; font-size: 11px; font-weight: 400; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: inherit; text-transform: uppercase; letter-spacing: .5px; }
+.mode-btn:first-child { border-radius: 2px 0 0 2px; }
+.mode-btn:last-child { border-radius: 0 2px 2px 0; }
+.mode-btn:not(:last-child) { border-right: none; }
+.mode-btn:hover { color: var(--text); background: rgba(255,255,255,.03); }
+.mode-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.chat-messages { flex: 1; overflow-y: auto; padding: 12px 0; display: flex; flex-direction: column; gap: 0; scroll-behavior: smooth; }
+
+/* Message blocks */
+.msg { padding: 10px 20px; font-size: 13px; line-height: 1.6; position: relative; }
+
+/* User message — compact bubble, right-aligned */
+.msg.user { display: flex; flex-direction: column; align-items: flex-end; padding: 8px 20px; }
+.msg.user .msg-bubble { max-width: 75%; background: var(--primary); color: #fff; border-radius: 8px; padding: 8px 12px; border-bottom-right-radius: 2px; }
+.msg.user .msg-bubble p { margin: 0; }
+.msg.user .msg-bubble code { background: rgba(255,255,255,.15); color: #fff; }
+.msg.user .msg-bubble a { color: #fff; text-decoration: underline; }
+.msg.user .msg-bubble pre { background: rgba(0,0,0,.2); border: none; color: inherit; }
+.msg.user .msg-role { display: none; }
+
+/* Agent message — full-width plain text */
+.msg.agent { padding: 12px 20px; border-bottom: 1px solid var(--border-light); }
+.msg.agent:last-child { border-bottom: none; }
+.msg.agent .msg-content { color: var(--text); max-width: 100%; }
+
+/* Role header */
+.msg-role { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.msg-role .role-icon { width: 14px; text-align: center; font-size: 11px; }
+.msg-role .role-label { font-weight: 500; }
+
+.msg-content { color: var(--text); }
+.msg-content p { margin: 2px 0; }
+.msg-content p:first-child { margin-top: 0; }
+.msg-content p:last-child { margin-bottom: 0; }
+.msg-content pre { background: var(--bg); border: 1px solid var(--border); border-radius: 2px; padding: 8px 36px 8px 8px; overflow-x: auto; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; margin: 6px 0; position: relative; }
+.msg-content code { background: rgba(255,255,255,.06); border-radius: 2px; padding: 1px 4px; font-family: var(--font-mono); font-size: 12px; color: var(--primary); }
+.msg-content pre code { background: none; padding: 0; border-radius: 0; color: inherit; }
+.msg-content table { border-collapse: collapse; margin: 4px 0; font-size: 12px; width: 100%; }
+.msg-content th, .msg-content td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+.msg-content th { background: var(--surface); font-weight: 500; }
+.msg-content ul, .msg-content ol { margin: 2px 0; padding-left: 16px; }
+.msg-content li { margin: 1px 0; }
+.msg-content h1, .msg-content h2, .msg-content h3, .msg-content h4 { margin: 8px 0 2px; font-weight: 500; }
+.msg-content h1 { font-size: 15px; }
+.msg-content h2 { font-size: 14px; }
+.msg-content h3 { font-size: 13px; }
+.msg-content blockquote { border-left: 2px solid var(--primary); padding-left: 8px; margin: 2px 0; color: var(--text-secondary); }
+.msg-content a { color: var(--primary); text-decoration: none; }
+.msg-content a:hover { text-decoration: underline; }
+
+.msg.system { text-align: center; font-size: 11px; color: var(--text-muted); padding: 6px 20px; border-bottom: none; }
+
+/* Tool execution block — expandable */
+.tool-block { margin: 6px 0; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; font-family: var(--font-mono); font-size: 12px; cursor: pointer; user-select: none; }
+.tool-block .tool-header { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--surface); }
+.tool-block .tool-header .tool-arrow { font-size: 10px; color: var(--text-muted); width: 12px; flex-shrink: 0; transition: transform .15s; }
+.tool-block.expanded .tool-header .tool-arrow { transform: rotate(90deg); }
+.tool-block .tool-name { color: var(--primary); font-weight: 500; }
+.tool-block .tool-params { color: var(--text-muted); margin-left: 4px; font-size: 11px; }
+.tool-block .tool-status { font-size: 10px; margin-left: auto; text-transform: uppercase; }
+.tool-block .tool-status.running { color: var(--warning); }
+.tool-block .tool-status.done { color: var(--success); }
+.tool-block .tool-status.error { color: var(--danger); }
+.tool-block .tool-result { display: none; padding: 6px 10px; background: var(--bg); color: var(--text-secondary); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; border-top: 1px solid var(--border); }
+.tool-block.expanded .tool-result { display: block; }
+
+/* Streaming cursor */
+.streaming-cursor::after { content: '|'; animation: blink 1s step-end infinite; color: var(--primary); font-weight: 300; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* Tool call display */
+.tool-call { padding: 3px 8px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+.tool-call .tool-name { color: var(--primary); }
+.tool-call .tool-params { color: var(--text-muted); }
+
+/* Confirm buttons */
+.confirm-bar { display: flex; gap: 6px; margin: 4px 0; align-items: center; flex-wrap: wrap; }
+.confirm-btn { background: var(--primary); color: #fff; border: none; border-radius: 2px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: background .15s; font-family: inherit; }
+.confirm-btn:hover { background: var(--primary-hover); }
+.reject-btn { background: transparent; color: var(--danger); border: 1px solid var(--danger); border-radius: 2px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all .15s; font-family: inherit; }
+.reject-btn:hover { background: var(--danger); color: #fff; }
+.confirm-status { font-size: 11px; color: var(--text-muted); padding: 2px 0; }
+
+/* Download button */
+.dl-btn { position: absolute; top: 2px; right: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 5px; font-size: 10px; color: var(--text-muted); cursor: pointer; opacity: 0; transition: opacity .1s; display: flex; align-items: center; gap: 2px; font-family: inherit; }
+.msg.agent .msg-content pre:hover .dl-btn { opacity: 1; }
+.dl-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+.typing-indicator { display: none; align-items: center; gap: 4px; align-self: flex-start; font-size: 12px; color: var(--text-muted); padding: 2px 0; }
+.typing-indicator.active { display: flex; }
+.typing-dot { width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; animation: typingBounce 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingBounce { 0%,60%,100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+/* Input bar */
+.chat-input-area { padding: 8px 0; border-top: 1px solid var(--border); flex-shrink: 0; }
+.chat-input-bar { display: flex; align-items: stretch; gap: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; transition: border-color .15s; }
+.chat-input-bar:focus-within { border-color: var(--primary); }
+.chat-input-bar textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 13px; line-height: 1.5; outline: none; padding: 6px 8px; resize: none; font-family: var(--font-mono); max-height: 120px; }
+.chat-input-bar textarea::placeholder { color: var(--text-muted); }
+.chat-input-bar button { background: transparent; color: var(--primary); border: none; border-left: 1px solid var(--border); width: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; flex-shrink: 0; font-size: 12px; font-family: inherit; }
+.chat-input-bar button:hover { background: var(--primary); color: #fff; }
+.chat-input-bar button:disabled { opacity: .3; cursor: not-allowed; }
+.chat-hint { font-size: 10px; color: var(--text-muted); padding: 3px 0 0 4px; text-transform: uppercase; letter-spacing: .3px; }
+
+/* AI Config Modal */
+.chat-header-actions { display: flex; align-items: center; gap: 8px; }
+.chat-settings-btn { background: none; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 2px; transition: all .15s; line-height: 1; font-family: inherit; }
+.chat-settings-btn:hover { color: var(--primary); background: var(--surface-hover); }
+.chat-sessions-btn { display: none; background: none; border: 1px solid var(--border); border-radius: 2px; color: var(--text-muted); font-size: 14px; cursor: pointer; width: 28px; height: 28px; align-items: center; justify-content: center; font-family: inherit; flex-shrink: 0; }
+.chat-sessions-btn:hover { color: var(--primary); border-color: var(--primary); }
+.chat-sessions-backdrop { display: none; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 1000; display: none; align-items: center; justify-content: center; }
 .modal-overlay.active { display: flex; }
 .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 20px; width: 90%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
@@ -258,7 +390,14 @@ html.mobile-layout .filter-bar { flex-direction: column; }
 html.mobile-layout .filter-bar input { min-width: auto; }
 html.mobile-layout .resource-card, html.mobile-layout .account-card { flex-direction: column; align-items: flex-start; }
 html.mobile-layout .resource-actions, html.mobile-layout .account-actions { align-self: flex-end; }
+html.mobile-layout .chat-header { flex-wrap: wrap; gap: 6px; }
 html.mobile-layout .cloud-selector { grid-template-columns: 1fr 1fr; }
+html.mobile-layout .chat-layout { height: calc(100vh - 44px - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+html.mobile-layout .chat-sessions-btn { display: flex; }
+html.mobile-layout .chat-sidebar { display: none; position: fixed; top: calc(44px + env(safe-area-inset-top, 0px)); left: 0; bottom: calc(48px + env(safe-area-inset-bottom, 0px)); width: min(280px, 85vw); z-index: 200; background: var(--surface); border-right: 1px solid var(--border); flex-direction: column; box-shadow: var(--shadow-lg); }
+html.mobile-layout .chat-layout.sessions-open .chat-sidebar { display: flex; }
+html.mobile-layout .chat-sessions-backdrop { display: none; position: fixed; left: 0; right: 0; top: calc(44px + env(safe-area-inset-top, 0px)); bottom: calc(48px + env(safe-area-inset-bottom, 0px)); background: rgba(0,0,0,.45); z-index: 150; }
+html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display: block; }
 
 @media (max-width: 480px) {
   .filter-bar { flex-direction: column; }
@@ -324,13 +463,92 @@ html.mobile-layout .cloud-selector { grid-template-columns: 1fr 1fr; }
     <div class="activity-placeholder" data-i18n="activity.empty">暂无活动记录</div>
   </div>
 
-  <!-- Chat - powered by opencode -->
+  <!-- Chat - OpenCode style -->
   <div id="page-chat" class="page">
-    <iframe id="opencodeFrame" src="/chat" style="width:100%;height:calc(100vh - 88px);border:0;display:block"
-      allow="clipboard-read; clipboard-write"></iframe>
+    <div class="chat-layout">
+      <div class="chat-sessions-backdrop" onclick="closeChatSessions()"></div>
+      <!-- Session Sidebar -->
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-header">
+          <h3 data-i18n="chat.sessions">Sessions</h3>
+          <button class="chat-new-btn" onclick="newSession()" title="New Session">+</button>
+        </div>
+        <div class="chat-session-list" id="sessionList">
+          <div class="chat-session-item" data-sid="loading"><span data-i18n="chat.loading">Loading...</span></div>
+        </div>
+      </div>
+      <!-- Chat Main -->
+      <div class="chat-main">
+        <div class="chat-header">
+          <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
+          <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
+            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
+            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
+          </div>
+          <div class="chat-header-actions">
+            <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div></div>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-bar">
+            <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
+            <button onclick="sendChat()" id="chatSendBtn" disabled>&#62;</button>
+            <button onclick="stopChat()" id="chatStopBtn" style="display:none;background:var(--danger);color:#fff;border:none;border-radius:2px;width:32px;height:32px;cursor:pointer;font-size:12px;flex-shrink:0" title="Stop">■</button>
+          </div>
+          <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-
+  <!-- AI Config Modal -->
+  <div class="modal-overlay" id="aiConfigModal" role="dialog" aria-modal="true" aria-labelledby="aiConfigTitle" onclick="if(event.target===this)closeAIConfig()">
+    <div class="modal-box">
+      <h3 id="aiConfigTitle" data-i18n="config.title">AI 模型配置</h3>
+      <div class="modal-desc" data-i18n="config.desc">配置 AI 云助手的语言模型，支持任何 OpenAI 兼容的 API。未配置时使用内置规则回复。</div>
+      <div class="modal-field">
+        <label data-i18n="config.endpoint">API 端点</label>
+        <input type="text" id="aiApiEndpoint" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="config.model">模型</label>
+        <input type="text" id="aiModel" placeholder="gpt-4o-mini">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="config.api_key">API Key</label>
+        <input type="password" id="aiApiKey" placeholder="sk-...">
+      </div>
+      <div class="modal-field">
+        <div class="modal-field-row">
+          <input type="checkbox" id="aiEnableReasoning" onchange="toggleReasoningEffort()">
+          <label style="margin:0" data-i18n="config.reasoning">启用推理（Reasoning，适用于 o1 / o3 / DeepSeek-R1 等）</label>
+        </div>
+      </div>
+      <div class="modal-field" id="aiReasoningEffortField" style="display:none">
+        <label data-i18n="config.effort">推理强度</label>
+        <select id="aiReasoningEffort">
+          <option value="low" data-i18n="config.low">低 (low)</option>
+          <option value="medium" selected data-i18n="config.medium">中 (medium)</option>
+          <option value="high" data-i18n="config.high">高 (high)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" onclick="closeAIConfig()" data-i18n="config.cancel">取消</button>
+        <button class="modal-btn-secondary" onclick="testAIConfig()" data-i18n="config.test">测试连接</button>
+        <button class="modal-btn-primary" onclick="saveAIConfig()" data-i18n="config.save">保存</button>
+      </div>
+      <div id="aiTestResult" style="margin-top:10px;font-size:12px;display:none"></div>
+    </div>
+  </div>
 
   <!-- Password Modal -->
   <div class="modal-overlay" id="passwordModal" role="dialog" aria-modal="true" onclick="if(event.target===this)closePasswordModal()">
@@ -635,7 +853,20 @@ function initTheme() {
 }
 
 /* Navigation */
+function closeChatSessions() {
+  var layout = document.querySelector('.chat-layout');
+  if (layout) layout.classList.remove('sessions-open');
+}
+
+function toggleChatSessions(force) {
+  var layout = document.querySelector('.chat-layout');
+  if (!layout) return;
+  var open = typeof force === 'boolean' ? force : !layout.classList.contains('sessions-open');
+  layout.classList.toggle('sessions-open', open);
+}
+
 function showPage(page) {
+  closeChatSessions();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
@@ -649,7 +880,8 @@ function showPage(page) {
   document.getElementById('topbarTitle').textContent = pageTitles[page] ? t(pageTitles[page]) : page;
 
   if (page === 'dashboard') loadDashboard();
-  if (page === 'chat') { /* opencode handles chat */ }
+  if (page === 'chat') { loadSessions(); startSessionPoll(); }
+  else { stopSessionPoll(); }
   if (page === 'resources') loadResources();
   if (page === 'accounts') loadAccounts();
   if (page === 'team') loadTeam();
@@ -703,6 +935,507 @@ async function loadDashboard() {
   cards.forEach((card, i) => {
     card.querySelector('.stat-value').textContent = data[keys[i]] != null ? data[keys[i]] : '--';
   });
+}
+
+/* Chat */
+let CURRENT_MODE = 'plan';
+let CURRENT_SESSION = null;
+let STREAMING_MSG = null;
+let CONFIRM_PENDING = false;
+
+function setChatMode(mode) {
+  CURRENT_MODE = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  const hint = document.getElementById('chatHint');
+  if (hint) {
+    const msgs = {
+      plan: 'MultiCloud AI Agent &middot; Plan mode is read-only',
+      build: 'MultiCloud AI Agent &middot; Build mode can execute operations',
+      confirm: 'MultiCloud AI Agent &middot; Confirm mode requires approval for each operation'
+    };
+    hint.innerHTML = msgs[mode] || msgs.plan;
+  }
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!CONFIRM_PENDING) sendChat();
+  }
+}
+
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  document.getElementById('chatSendBtn').disabled = el.value.trim().length === 0 || CONFIRM_PENDING;
+}
+
+/* SSE Chat */
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResizeTextarea(input);
+  appendMessage('user', escHtml(text));
+  startStream({message: text, session_id: CURRENT_SESSION, mode: CURRENT_MODE});
+}
+
+async function confirmChat(action, toolName, toolParams) {
+  CONFIRM_PENDING = false;
+  document.getElementById('chatSendBtn').disabled = false;
+  startStream({
+    session_id: CURRENT_SESSION,
+    mode: CURRENT_MODE,
+    confirm_action: action,
+    tool_name: toolName,
+    tool_params: toolParams
+  });
+}
+
+var ABORT_CONTROLLER = null;
+
+function stopChat() {
+  if (ABORT_CONTROLLER) {
+    ABORT_CONTROLLER.abort();
+    ABORT_CONTROLLER = null;
+  }
+}
+
+async function stopActiveSession() {
+  stopChat();
+  // Mark session as idle
+  if (CURRENT_SESSION) {
+    try {
+      await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'idle' }) });
+    } catch(e) {}
+    await loadSessions();
+    await switchSession(CURRENT_SESSION);
+  }
+}
+
+async function startStream(body) {
+  CONFIRM_PENDING = true;
+  document.getElementById('chatSendBtn').disabled = true;
+  document.getElementById('chatStopBtn').style.display = '';
+  document.getElementById('typingIndicator').classList.add('active');
+
+  ABORT_CONTROLLER = new AbortController();
+
+  STREAMING_MSG = {type: 'agent', content: ''};
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg agent streaming';
+  div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor"></div>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
+  var streamTimeout = setTimeout(function() {
+    CONFIRM_PENDING = false;
+    document.getElementById('chatSendBtn').disabled = false;
+    document.getElementById('chatStopBtn').style.display = 'none';
+    document.getElementById('typingIndicator').classList.remove('active');
+  }, 120000);
+
+  try {
+    const res = await fetch(API + '/agent/chat/stream', {
+      method: 'POST',
+      headers: Object.assign({}, getAuthHeaders(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+      signal: ABORT_CONTROLLER.signal
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      clearTimeout(streamTimeout);
+      streamTimeout = setTimeout(function() {
+        CONFIRM_PENDING = false;
+        document.getElementById('chatSendBtn').disabled = false;
+        document.getElementById('typingIndicator').classList.remove('active');
+      }, 120000);
+      buffer += decoder.decode(value, {stream: true});
+      const parts = buffer.split('\n');
+      buffer = parts.pop() || '';
+      for (const line of parts) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            data.event = currentEvent;
+            handleSSEEvent(data);
+          } catch(e) { /* ignore parse errors */ }
+        }
+      }
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      // User stopped manually
+      appendMessage('agent', '⏹ ' + (LOCALE === 'zh' ? 'AI 已被手动停止。' : 'AI was manually stopped.'));
+    } else {
+      console.error('Stream error:', e);
+      appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'));
+    }
+  } finally {
+    clearTimeout(streamTimeout);
+  }
+
+  document.getElementById('typingIndicator').classList.remove('active');
+  document.getElementById('chatStopBtn').style.display = 'none';
+  ABORT_CONTROLLER = null;
+
+  var lastMsg = document.querySelector('.msg.streaming');
+  if (lastMsg) {
+    var mc = lastMsg.querySelector('.msg-content');
+    if (mc) {
+      mc.classList.remove('streaming-cursor');
+      if (STREAMING_MSG && STREAMING_MSG.content) {
+        mc.innerHTML = renderMarkdown(STREAMING_MSG.content);
+      }
+    }
+    lastMsg.classList.remove('streaming');
+  }
+  STREAMING_MSG = null;
+  document.getElementById('chatSendBtn').disabled = false;
+}
+
+function handleSSEEvent(data) {
+  const type = data.event || '';
+  const streamingMsg = document.querySelector('.msg.streaming');
+  const lastMsg = streamingMsg ? streamingMsg.querySelector('.msg-content') : null;
+
+  switch (type) {
+    case 'token': {
+      STREAMING_MSG.content += data.content;
+      if (lastMsg) {
+        lastMsg.innerHTML = renderMarkdown(STREAMING_MSG.content);
+        lastMsg.classList.add('streaming-cursor');
+        const container = document.getElementById('chatMessages');
+        container.scrollTop = container.scrollHeight;
+      }
+      break;
+    }
+    case 'tool_start': {
+      if (lastMsg) lastMsg.classList.remove('streaming-cursor');
+      (data.tool_calls || []).forEach(function(tc) {
+        var fn = tc.function || {};
+        var name = fn.name || '';
+        var params = '';
+        try { params = JSON.stringify(JSON.parse(fn.arguments || '{}')); } catch(e) { params = fn.arguments || ''; }
+        var block = document.createElement('div');
+        block.className = 'tool-block';
+        block.dataset.toolName = name;
+        block.onclick = function() { this.classList.toggle('expanded'); };
+        var paramsShort = params.substring(0, 40);
+        block.innerHTML = '<div class="tool-header"><span class="tool-arrow">▶</span><span class="tool-name">' + escHtml(name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status running">running</span></div>';
+        if (streamingMsg) streamingMsg.appendChild(block);
+      });
+      break;
+    }
+    case 'tool_result': {
+      var blocks = streamingMsg ? streamingMsg.querySelectorAll('.tool-block[data-tool-name="' + (data.tool_name || '') + '"]:not(.done)') : [];
+      blocks.forEach(function(block) {
+        var statusEl = block.querySelector('.tool-status');
+        if (statusEl) {
+          if (data.error) {
+            statusEl.className = 'tool-status error';
+            statusEl.textContent = 'error';
+          } else {
+            statusEl.className = 'tool-status done';
+            statusEl.textContent = 'done';
+          }
+        }
+        var resultDiv = block.querySelector('.tool-result');
+        if (!resultDiv) {
+          resultDiv = document.createElement('div');
+          resultDiv.className = 'tool-result';
+          block.appendChild(resultDiv);
+        }
+        var text = data.error || data.result || '';
+        if (text.length > 500) text = text.substring(0, 500) + '... [truncated]';
+        resultDiv.textContent = text;
+        block.classList.add('done');
+      });
+      break;
+    }
+    case 'confirm_required': {
+      CONFIRM_PENDING = true;
+      if (lastMsg) lastMsg.classList.remove('streaming-cursor');
+      const streamingDiv = document.querySelector('.msg.streaming');
+      if (streamingDiv) streamingDiv.classList.remove('streaming');
+
+      const container = document.getElementById('chatMessages');
+      const confirmDiv = document.createElement('div');
+      confirmDiv.className = 'msg agent confirm-block';
+      let html = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
+      (data.tool_calls || []).forEach(function(tc, idx) {
+        var paramsStr = JSON.stringify(tc.params);
+        var name = tc.name;
+        html += '<div class="tool-call"><span class="tool-name">' + name + '</span> <span class="tool-params">' + paramsStr + '</span></div>';
+        html += '<div class="confirm-bar">';
+        html += '<button class="confirm-btn" onclick="doConfirm(\'' + name + '\')">' + (LOCALE === 'zh' ? '确认' : 'Confirm') + '</button>';
+        html += '<button class="reject-btn" onclick="doReject(\'' + name + '\')">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      confirmDiv.innerHTML = html;
+      container.appendChild(confirmDiv);
+      container.scrollTop = container.scrollHeight;
+      break;
+    }
+    case 'done':
+      CONFIRM_PENDING = false;
+      break;
+    case 'error':
+      CONFIRM_PENDING = false;
+      if (streamingMsg) {
+        const mc = streamingMsg.querySelector('.msg-content');
+        if (mc) mc.classList.remove('streaming-cursor');
+        streamingMsg.classList.remove('streaming');
+      }
+      // Show error message in chat
+      appendMessage('agent', (LOCALE === 'zh' ? '错误：' : 'Error: ') + escHtml(data.message || ''));
+      break;
+  }
+}
+
+function doConfirm(toolName) {
+  // Find the matching confirm block and get params
+  const block = document.querySelector('.confirm-block:last-child');
+  if (!block) return;
+  const toolCalls = document.querySelectorAll('.confirm-block:last-child .tool-call');
+  var params = null;
+  for (var i = 0; i < toolCalls.length; i++) {
+    var nameEl = toolCalls[i].querySelector('.tool-name');
+    if (nameEl && nameEl.textContent === toolName) {
+      var paramsEl = toolCalls[i].querySelector('.tool-params');
+      if (paramsEl) {
+        try { params = JSON.parse(paramsEl.textContent); } catch(e) {}
+      }
+      break;
+    }
+  }
+  confirmChat('confirm', toolName, params);
+}
+
+function doReject(toolName) {
+  confirmChat('reject', toolName, null);
+}
+
+/* Session Management */
+async function loadSessions() {
+  const data = await apiFetch(API + '/agent/sessions');
+  const list = document.getElementById('sessionList');
+  if (!data || !data.sessions || data.sessions.length === 0) {
+    list.innerHTML = '<div class="chat-session-item" style="cursor:default;color:var(--text-muted);font-size:12px">' + (LOCALE === 'zh' ? '暂无对话' : 'No sessions') + '</div>';
+    return;
+  }
+  list.innerHTML = '';
+  data.sessions.forEach(function(s) {
+    const item = document.createElement('div');
+    item.className = 'chat-session-item' + (s.session_id === CURRENT_SESSION ? ' active' : '');
+    item.dataset.sid = s.session_id;
+    // Use title or first few chars of last message
+    const title = s.title && s.title.length > 30 ? s.title.slice(0, 30) + '...' : (s.title || 'Session');
+    var runningDot = s.status === 'running' ? '<span style="color:var(--success);margin-right:2px;animation:blink 1s step-end infinite">●</span>' : '';
+    item.innerHTML = runningDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    item.onclick = function() { switchSession(s.session_id); };
+    list.appendChild(item);
+  });
+}
+
+async function switchSession(sid) {
+  CURRENT_SESSION = sid;
+  closeChatSessions();
+  // Update sidebar
+  document.querySelectorAll('.chat-session-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.sid === sid);
+  });
+  // Load messages
+  const data = await apiFetch(API + '/agent/sessions/' + sid);
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+  var msgCount = 0;
+  // If session is running, show working indicator + stop button
+  if (data && data.status === 'running') {
+    var workDiv = document.createElement('div');
+    workDiv.className = 'msg system';
+    workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
+    container.appendChild(workDiv);
+    document.getElementById('chatStopBtn').style.display = '';
+  }
+  if (data && data.messages && data.messages.length > 0) {
+    data.messages.forEach(function(m) {
+      if (m.role === 'user') {
+        appendMessage('user', escHtml(m.content));
+        msgCount++;
+      } else if (m.role === 'agent' || m.role === 'assistant') {
+        appendMessage('agent', renderMarkdown(m.content));
+        msgCount++;
+      } else if (m.role === 'system') {
+        const div = document.createElement('div');
+        div.className = 'msg system';
+        div.textContent = m.content;
+        container.appendChild(div);
+        msgCount++;
+      }
+    });
+    lastSyncedMsgCount = msgCount;
+  }
+  if (msgCount === 0) {
+    appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>');
+    lastSyncedMsgCount = 1;
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+async function newSession() {
+  var data = await apiFetch(API + '/agent/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: LOCALE === 'zh' ? '新对话' : 'New Session' })
+  });
+  CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
+  document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div></div>';
+  closeChatSessions();
+  await loadSessions();
+}
+
+async function deleteSession(sid) {
+  if (!confirm('确定要删除此对话吗？')) return;
+  await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
+  if (CURRENT_SESSION === sid) {
+    CURRENT_SESSION = null;
+    document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div></div>';
+  }
+  await loadSessions();
+}
+
+/* Append message (for loading history) */
+function appendMessage(type, html) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  if (type === 'user') {
+    div.innerHTML = '<div class="msg-bubble">' + html + '</div>';
+  } else if (type === 'agent') {
+    div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>';
+  } else {
+    div.innerHTML = '<div class="msg-content">' + html + '</div>';
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+/* Markdown rendering with download buttons */
+function renderMarkdown(text) {
+  var html = text
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+      const ext = {'bash':'sh','shell':'sh','python':'py','javascript':'js','typescript':'ts','yaml':'yaml','yml':'yml','json':'json','terraform':'tf','hcl':'tf','sql':'sql','dockerfile':'Dockerfile','go':'go','rust':'rs','ruby':'rb','php':'php','java':'java','c':'c','cpp':'cpp','css':'css','html':'html','xml':'xml','toml':'toml','ini':'ini','cfg':'cfg','md':'md','markdown':'md','text':'txt','plain':'txt'}[lang] || lang || 'txt';
+      return '<div style="position:relative"><pre><code class="language-' + lang + '">' + code + '</code><button class="dl-btn" onclick="downloadCode(\'' + escHtml(ext) + '\',this)">&#8595;</button></pre></div>';
+    })
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\|(.+)\|/g, function(m) {
+      if (m.includes('---')) return '';
+      var cells = m.slice(1,-1).split('|').map(function(c) { return c.trim(); });
+      return '<tr><td>' + cells.join('</td><td>') + '</td></tr>';
+    })
+    .replace(/<tr>.*?<\/tr>\n?<tr><td>.*?<\/td><\/tr>/g, function(m) {
+      var lines = m.trim().split('\n').filter(Boolean);
+      if (lines.length < 2) return m;
+      var headers = lines[0].match(/<td>(.*?)<\/td>/g);
+      if (!headers) return m;
+      var headerTexts = headers.map(function(h) { return h.replace(/<\/?td>/g,''); });
+      var rows = lines.slice(1);
+      var tbl = '<table><thead><tr>';
+      headerTexts.forEach(function(h) { tbl += '<th>' + h + '</th>'; });
+      tbl += '</tr></thead><tbody>';
+      rows.forEach(function(r) {
+        var cells = r.match(/<td>(.*?)<\/td>/g);
+        if (cells) {
+          tbl += '<tr>';
+          cells.forEach(function(c) { tbl += '<td>' + c.replace(/<\/?td>/g,'') + '</td>'; });
+          tbl += '</tr>';
+        }
+      });
+      tbl += '</tbody></table>';
+      return tbl;
+    })
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^[\s]*[-*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    .replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return url.match(/^https?:\/\//i) ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : text; })
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  if (!html.startsWith('<h') && !html.startsWith('<pre') && !html.startsWith('<table') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<blockquote')) {
+    html = '<p>' + html + '</p>';
+  }
+  return html;
+}
+
+function escHtml(s) {
+  var el = document.createElement('div');
+  el.textContent = s;
+  return el.innerHTML;
+}
+
+function downloadCode(ext, btn) {
+  var pre = btn.closest('div').querySelector('pre') || btn.closest('pre');
+  var code = pre ? (pre.querySelector('code') || pre).textContent : '';
+  var filename = 'download.' + ext;
+  var blob = new Blob([code], {type: 'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  btn.textContent = '\u2713';
+  setTimeout(function() { btn.innerHTML = '&#8595;'; }, 2000);
+}
+
+function getMockChatResponse(text) {
+  var loc = LOCALE || 'zh';
+  var tFunc = function(key) { return t(key); };
+  if (loc === 'zh') {
+    if (text.includes('查看') || text.includes('账户')) {
+      return '- Azure 订阅 (Pay-As-You-Go)\n- Tencent Cloud 账号\n- Oracle Cloud 账号 (Always Free)\n- Render 账号';
+    }
+    if (text.includes('资源')) {
+      return '以下是您的云资源：\n\n| 资源 | 类型 | 地区 | 状态 |\n|------|------|------|------|\n| WebApp-Prod | App Service | East US | 运行中 |\n| DB-Primary | PostgreSQL | East US | 运行中 |\n| VM-Backend | Virtual Machine | Southeast Asia | 停止 |\n| AKS-Cluster | Kubernetes | West Europe | 运行中 |\n| Storage-Backup | Storage Account | East US | 运行中 |\n| Frontend-App | Static Web App | Global | 运行中 |';
+    }
+    if (text.includes('新建') || text.includes('VM') || text.includes('虚拟机')) {
+      return '## 创建虚拟机方案\n\n我将为您在 Azure 创建一台虚拟机：\n\n1. **选择规格**: Standard_B2s (2vCPU, 4GB RAM)\n2. **配置网络**: 新建 VNet + 公网 IP\n3. **选择镜像**: Ubuntu 22.04 LTS\n4. **设置认证**: SSH 密钥\n\n> 是否确定执行此方案？';
+    }
+    return '您好！我是 MultiCloud AI 助手。我可以：\n\n- 查看云资源列表\n- 查看云账户信息\n- 创建虚拟机、数据库\n- 管理 Kubernetes 集群\n\n请问有什么可以帮您？';
+  }
+  var tl = text.toLowerCase();
+  if (tl.includes('account') || tl.includes('view')) {
+    return '- Azure Subscription (Pay-As-You-Go)\n- Tencent Cloud Account\n- Oracle Cloud Account (Always Free)\n- Render Account';
+  }
+  if (tl.includes('resource')) {
+    return 'Here are your cloud resources:\n\n| Resource | Type | Region | Status |\n|----------|------|--------|--------|\n| WebApp-Prod | App Service | East US | Running |\n| DB-Primary | PostgreSQL | East US | Running |\n| VM-Backend | Virtual Machine | Southeast Asia | Stopped |\n| AKS-Cluster | Kubernetes | West Europe | Running |\n| Storage-Backup | Storage Account | East US | Running |\n| Frontend-App | Static Web App | Global | Running |';
+  }
+  if (tl.includes('create') || tl.includes('new') || tl.includes('vm')) {
+    return '## Virtual Machine Creation Plan\n\nI will create a VM on Azure:\n\n1. **Spec**: Standard_B2s (2vCPU, 4GB RAM)\n2. **Network**: New VNet + Public IP\n3. **Image**: Ubuntu 22.04 LTS\n4. **Auth**: SSH Key\n\n> Proceed with this plan?';
+  }
+  return 'Hello! I am MultiCloud AI Assistant. I can help you:\n\n- View cloud resources\n- Check cloud accounts\n- Create VMs, databases\n- Manage Kubernetes clusters\n\nHow can I help you today?';
 }
 
 /* Resources */
@@ -975,6 +1708,76 @@ async function deleteTemplate(id) {
   if (!confirm('确定要删除此模板吗？此操作不可撤销。')) return;
   await apiFetch(API + '/terraform/templates/' + id, { method: 'DELETE' });
   loadTerraform();
+}
+
+/* AI Config */
+var aiConfigLoaded = false;
+
+function toggleReasoningEffort() {
+  document.getElementById('aiReasoningEffortField').style.display =
+    document.getElementById('aiEnableReasoning').checked ? 'block' : 'none';
+}
+
+function openAIConfig() {
+  document.getElementById('aiConfigModal').classList.add('active');
+  if (!aiConfigLoaded) loadAIConfig();
+}
+
+function closeAIConfig() {
+  document.getElementById('aiConfigModal').classList.remove('active');
+}
+
+async function loadAIConfig() {
+  var data = await apiFetch(API + '/agent/config');
+  if (data) {
+    document.getElementById('aiApiEndpoint').value = data.api_endpoint || 'https://api.openai.com/v1';
+    document.getElementById('aiModel').value = data.model || 'gpt-4o-mini';
+    document.getElementById('aiApiKey').value = data.api_key || '';
+    document.getElementById('aiEnableReasoning').checked = !!data.enable_reasoning;
+    document.getElementById('aiReasoningEffort').value = data.reasoning_effort || 'medium';
+    toggleReasoningEffort();
+    aiConfigLoaded = true;
+  }
+}
+
+async function saveAIConfig() {
+  var body = {
+    api_endpoint: document.getElementById('aiApiEndpoint').value || 'https://api.openai.com/v1',
+    model: document.getElementById('aiModel').value || 'gpt-4o-mini',
+    api_key: document.getElementById('aiApiKey').value || '',
+    enable_reasoning: document.getElementById('aiEnableReasoning').checked,
+    reasoning_effort: document.getElementById('aiReasoningEffort').value
+  };
+  var result = await apiFetch(API + '/agent/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (result && !result.error) {
+    closeAIConfig();
+    alert(t('config.saved'));
+  } else if (result && result.error) {
+    alert('保存失败: ' + result.error);
+  }
+}
+
+async function testAIConfig() {
+  var resultDiv = document.getElementById('aiTestResult');
+  resultDiv.innerHTML = '测试中...';
+  resultDiv.style.display = 'block';
+  resultDiv.style.color = 'var(--text-secondary)';
+  
+  var result = await apiFetch(API + '/agent/config/test', { method: 'POST' });
+  if (result && result.message) {
+    resultDiv.innerHTML = '✅ ' + result.message + (result.reply ? '<br>回复: ' + result.reply : '');
+    resultDiv.style.color = 'var(--success)';
+  } else if (result && result.error) {
+    resultDiv.innerHTML = '❌ ' + result.error;
+    resultDiv.style.color = 'var(--danger)';
+  } else {
+    resultDiv.innerHTML = '❌ 测试失败: 无法连接服务器';
+    resultDiv.style.color = 'var(--danger)';
+  }
 }
 
 /* I18n */
@@ -1399,7 +2202,8 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-overlay.active').forEach(function(m) {
       var id = m.id;
-      if (id === 'passwordModal') closePasswordModal();
+      if (id === 'aiConfigModal') closeAIConfig();
+      else if (id === 'passwordModal') closePasswordModal();
       else if (id === 'inviteModal') closeInviteModal();
       else if (id === 'uploadModal') closeUploadModal();
     });
@@ -1412,6 +2216,55 @@ var langBtnInit = document.getElementById('langToggleBtn');
 if (langBtnInit) langBtnInit.textContent = LOCALE === 'zh' ? 'EN' : '中文';
 applyLang();
 loadDashboard();
+
+/* Session polling — keeps chat in sync across page switches/refreshes */
+var sessionPollTimer = null;
+var lastSyncedMsgCount = 0;
+
+function startSessionPoll() {
+  stopSessionPoll();
+  sessionPollTimer = setInterval(async function() {
+    if (!CURRENT_SESSION) return;
+    // Skip if there's an active streaming message
+    if (document.querySelector('.msg.streaming')) return;
+    try {
+      var data = await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION);
+      if (!data || !data.messages) return;
+      if (data.messages.length !== lastSyncedMsgCount) {
+        // Refresh session list too
+        loadSessions();
+        // Re-render messages
+        var container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+        lastSyncedMsgCount = 0;
+        data.messages.forEach(function(m) {
+          if (m.role === 'user') {
+            appendMessage('user', escHtml(m.content));
+            lastSyncedMsgCount++;
+          } else if (m.role === 'agent' || m.role === 'assistant') {
+            appendMessage('agent', renderMarkdown(m.content));
+            lastSyncedMsgCount++;
+          } else if (m.role === 'system') {
+            var div = document.createElement('div');
+            div.className = 'msg system';
+            div.textContent = m.content;
+            container.appendChild(div);
+            lastSyncedMsgCount++;
+          }
+        });
+        container.scrollTop = container.scrollHeight;
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+function stopSessionPoll() {
+  if (sessionPollTimer) {
+    clearInterval(sessionPollTimer);
+    sessionPollTimer = null;
+  }
+  lastSyncedMsgCount = 0;
+}
 </script>
 </body>
 </html>
