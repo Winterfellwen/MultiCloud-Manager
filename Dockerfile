@@ -2,10 +2,11 @@ FROM golang:1.22
 
 RUN apt-get update -qq && apt-get install -y -qq curl python3 python3-pip
 
-# Install opencode CLI
-RUN curl -fsSL https://opencode.ai/install | bash && \
-    /root/.opencode/bin/opencode --version
-ENV PATH="/root/.opencode/bin:${PATH}"
+# Install opencode CLI (direct binary download — install script fails on Render due to API limits)
+RUN curl -sL -o /tmp/opencode.tar.gz "https://github.com/anomalyco/opencode/releases/download/v1.15.8/opencode-linux-x64.tar.gz" && \
+    tar xzf /tmp/opencode.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/opencode && \
+    opencode --version
 
 # Install Azure CLI
 RUN pip3 install azure-cli
