@@ -110,9 +110,31 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-		resp, err := httpClient.Do(httpReq)
-		if err != nil {
-			stopReason = "connection failed: " + err.Error()
+		// Retry with backoff for transient failures
+		var resp *http.Response
+		var lastErr error
+		for retry := 0; retry < 3; retry++ {
+			resp, lastErr = httpClient.Do(httpReq)
+			if lastErr == nil && (resp.StatusCode < 500 || resp.StatusCode == 429) {
+				break
+			}
+			if lastErr != nil {
+				if retry < 2 {
+					time.Sleep(time.Duration(1<<uint(retry)) * time.Second)
+				}
+				continue
+			}
+			resp.Body.Close()
+			if resp.StatusCode == 429 && retry < 2 {
+				time.Sleep(time.Duration(2<<uint(retry)) * time.Second)
+			} else if resp.StatusCode >= 500 && retry < 2 {
+				time.Sleep(time.Duration(1<<uint(retry)) * time.Second)
+			} else {
+				resp = nil // force re-do for last retry
+			}
+		}
+		if lastErr != nil {
+			stopReason = "connection failed after retries: " + lastErr.Error()
 			break
 		}
 
