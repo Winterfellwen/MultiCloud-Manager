@@ -68,6 +68,14 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		{"role": "user", "content": req.Message},
 	}
 
+	// Mark session as running
+	if req.SessionID != "" && h.db != nil {
+		var sid string
+		if h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, req.SessionID).Scan(&sid) == nil {
+			h.db.Exec(`UPDATE sessions SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid)
+		}
+	}
+
 	maxIterations := 50
 	var allContent strings.Builder
 
@@ -273,6 +281,10 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 				"content":      toolResultContent,
 			})
 		}
+		// Save progress every 3 iterations so page refresh doesn't lose state
+		if i%3 == 2 && allContent.Len() > 0 {
+			h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
+		}
 	}
 
 done:
@@ -316,6 +328,14 @@ done:
 	}
 
 	h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
+
+	// Mark session as idle
+	if req.SessionID != "" && h.db != nil {
+		var sid string
+		if h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, req.SessionID).Scan(&sid) == nil {
+			h.db.Exec(`UPDATE sessions SET status = 'idle', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid)
+		}
+	}
 
 	fmt.Fprintf(c.Writer, "event: done\ndata: {}\n\n")
 	flusher.Flush()
@@ -616,23 +636,26 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 }
 
 // saveSessionMessages persists user and assistant messages to the database.
+// saveSessionMessages persists user and assistant messages to the database.
+// Uses upsert: user message only inserted once, assistant message replaced on each call.
 func (h *ChatStreamHandler) saveSessionMessages(sessionID, userMsg, assistantMsg string) {
 	if sessionID == "" || h.db == nil {
 		return
 	}
-	// Look up internal session UUID
 	var internalID string
 	err := h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, sessionID).Scan(&internalID)
 	if err != nil {
 		return
 	}
-	// Save user message
-	h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'user', $2)`, internalID, userMsg)
-	// Save assistant message
+	var userCount int
+	h.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE session_id = $1 AND role = 'user'`, internalID).Scan(&userCount)
+	if userCount == 0 {
+		h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'user', $2)`, internalID, userMsg)
+	}
 	if assistantMsg != "" {
+		h.db.Exec(`DELETE FROM messages WHERE session_id = $1 AND role IN ('assistant', 'agent')`, internalID)
 		h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'assistant', $2)`, internalID, assistantMsg)
 	}
-	// Update session title from first message if still default
 	h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, userMsg, internalID)
 }
 

@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: go build -o app .
-    startCommand: apt-get update -qq && apt-get install -y -qq python3-pip && pip3 install azure-cli && ./app
+    startCommand: (which az >/dev/null 2>&1 || { which pip3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq python3-pip; }; pip3 install azure-cli; }) && ./app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
