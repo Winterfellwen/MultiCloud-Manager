@@ -9,12 +9,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"multicloud/internal/agent"
 	"multicloud/internal/cloud"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostgres bool) *gin.Engine {
+func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
@@ -30,13 +31,13 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 
 	r.POST("/api/auth/login", authHandler.Login)
 
-	chatHandler := NewChatStreamHandler(db)
-
-	syncer := cloud.NewSyncer(db, isPostgres)
-	accountsHandler := NewAccountsHandler(db, isPostgres)
-	resourcesHandler := NewResourcesHandler(syncer, db, isPostgres)
-	teamsHandler := NewTeamsHandler(db, isPostgres)
-	sessionsHandler := NewSessionsHandler(db, isPostgres)
+	syncer := cloud.NewSyncer(db)
+	executor := agent.NewExecutor(syncer, db)
+	chatHandler := NewChatStreamHandler(db, executor)
+	accountsHandler := NewAccountsHandler(db)
+	resourcesHandler := NewResourcesHandler(syncer, db)
+	teamsHandler := NewTeamsHandler(db)
+	sessionsHandler := NewSessionsHandler(db)
 
 	syncer.Start(context.Background(), 5*time.Minute)
 
@@ -48,25 +49,31 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, isPostg
 		auth.GET("/agent/config", GetAIConfig)
 		auth.PUT("/agent/config", UpdateAIConfig)
 		auth.POST("/agent/config/test", TestAIConfig)
+		// Chat endpoints
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.POST("/agent/chat", chatHandler.Chat)
+		auth.POST("/agent/execute", chatHandler.Execute)
+		// Session endpoints
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
 		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
 		auth.DELETE("/agent/sessions/:sid", sessionsHandler.Delete)
+		// Cloud accounts
 		auth.GET("/accounts", accountsHandler.List)
 		auth.POST("/accounts", accountsHandler.Create)
 		auth.PUT("/accounts/:id", accountsHandler.Update)
 		auth.DELETE("/accounts/:id", accountsHandler.Delete)
+		// Resources
 		auth.GET("/resources", resourcesHandler.List)
 		auth.POST("/resources/sync", resourcesHandler.Sync)
 		auth.POST("/resources/:id/:action", resourcesHandler.Action)
 		auth.GET("/stats", resourcesHandler.Stats)
-		// 团队管理端点
+		// Team management
 		auth.GET("/teams", teamsHandler.GetTeams)
 		auth.GET("/teams/:teamId/members", teamsHandler.GetTeamMembers)
 		auth.POST("/teams/:teamId/members", teamsHandler.AddTeamMember)
 		auth.DELETE("/teams/:teamId/members/:id", teamsHandler.RemoveTeamMember)
-		// Terraform模板端点
+		// Terraform templates
 		auth.GET("/terraform/templates", GetTerraformTemplatesHandler)
 		auth.POST("/terraform/templates", CreateTerraformTemplateHandler)
 		auth.GET("/terraform/templates/:id", GetTerraformTemplateHandler)

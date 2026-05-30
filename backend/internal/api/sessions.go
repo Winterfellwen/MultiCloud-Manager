@@ -10,12 +10,11 @@ import (
 )
 
 type SessionsHandler struct {
-	db         *sql.DB
-	isPostgres bool
+	db *sql.DB
 }
 
-func NewSessionsHandler(db *sql.DB, isPostgres bool) *SessionsHandler {
-	return &SessionsHandler{db: db, isPostgres: isPostgres}
+func NewSessionsHandler(db *sql.DB) *SessionsHandler {
+	return &SessionsHandler{db: db}
 }
 
 func newSessionID() string {
@@ -25,14 +24,8 @@ func newSessionID() string {
 }
 
 func (h *SessionsHandler) List(c *gin.Context) {
-	var query string
-	if h.isPostgres {
-		query = `SELECT session_id, title, status, mode, created_at, updated_at 
-		         FROM sessions ORDER BY created_at DESC LIMIT 50`
-	} else {
-		query = `SELECT id, title, status, mode, created_at, updated_at 
-		         FROM sessions ORDER BY created_at DESC LIMIT 50`
-	}
+	query := `SELECT session_id, title, status, mode, created_at, updated_at 
+	         FROM sessions ORDER BY created_at DESC LIMIT 50`
 
 	rows, err := h.db.Query(query)
 	if err != nil {
@@ -66,14 +59,7 @@ func (h *SessionsHandler) List(c *gin.Context) {
 }
 
 func (h *SessionsHandler) loadMessages(sessionInternalID string) []map[string]interface{} {
-	var query string
-	if h.isPostgres {
-		query = `SELECT role, content, created_at FROM messages WHERE session_id = $1 ORDER BY created_at`
-	} else {
-		query = `SELECT role, content, created_at FROM messages WHERE session_id = ? ORDER BY created_at`
-	}
-
-	rows, err := h.db.Query(query, sessionInternalID)
+	rows, err := h.db.Query(`SELECT role, content, created_at FROM messages WHERE session_id = $1 ORDER BY created_at`, sessionInternalID)
 	if err != nil {
 		return []map[string]interface{}{}
 	}
@@ -109,23 +95,12 @@ func (h *SessionsHandler) Get(c *gin.Context) {
 	var createdAt, updatedAt interface{}
 	var internalID string
 
-	if h.isPostgres {
-		query := `SELECT id, session_id, title, status, mode, created_at, updated_at 
-		          FROM sessions WHERE session_id = $1`
-		err := h.db.QueryRow(query, sessionID).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
-			return
-		}
-	} else {
-		query := `SELECT id, title, status, mode, created_at, updated_at 
-		          FROM sessions WHERE id = ?`
-		err := h.db.QueryRow(query, sessionID).Scan(&internalID, &title, &status, &mode, &createdAt, &updatedAt)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
-			return
-		}
-		sid = internalID
+	query := `SELECT id, session_id, title, status, mode, created_at, updated_at 
+	          FROM sessions WHERE session_id = $1`
+	err := h.db.QueryRow(query, sessionID).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -146,14 +121,8 @@ func (h *SessionsHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	var query string
-	if h.isPostgres {
-		query = `DELETE FROM sessions WHERE session_id = $1`
-	} else {
-		query = `DELETE FROM sessions WHERE id = ?`
-	}
-
-	if _, err := h.db.Exec(query, sessionID); err != nil {
+	_, err := h.db.Exec(`DELETE FROM sessions WHERE session_id = $1`, sessionID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete session"})
 		return
 	}
@@ -170,20 +139,11 @@ func (h *SessionsHandler) Create(c *gin.Context) {
 	}
 
 	var sessionID string
-	var err error
 
-	if h.isPostgres {
-		insertQuery := `INSERT INTO sessions (session_id, title, status, mode) 
-		                VALUES (gen_random_uuid()::text, $1, 'idle', 'plan') 
-		                RETURNING session_id`
-		err = h.db.QueryRow(insertQuery, req.Title).Scan(&sessionID)
-	} else {
-		sessionID = newSessionID()
-		_, err = h.db.Exec(
-			`INSERT INTO sessions (id, title, status, mode) VALUES (?, ?, 'idle', 'plan')`,
-			sessionID, req.Title,
-		)
-	}
+	insertQuery := `INSERT INTO sessions (session_id, title, status, mode) 
+	                VALUES (gen_random_uuid()::text, $1, 'idle', 'plan') 
+	                RETURNING session_id`
+	err := h.db.QueryRow(insertQuery, req.Title).Scan(&sessionID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})

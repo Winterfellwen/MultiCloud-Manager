@@ -32,10 +32,10 @@ func main() {
 		defer redisClient.Close()
 	}
 
-	api.InitAIConfig(database.DB, database.IsPostgres())
+	api.InitAIConfig(database.DB)
 
-	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB, database.IsPostgres())
-	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, database.IsPostgres())
+	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB)
+	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", cfg.Port),

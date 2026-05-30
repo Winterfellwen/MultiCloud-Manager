@@ -15,20 +15,18 @@ import (
 )
 
 type Syncer struct {
-	db          *sql.DB
-	isPostgres  bool
-	lastSyncAt  time.Time
-	lastErrors  []string
-	mu          sync.RWMutex
-	bgCtx       context.Context
-	bgCancel    context.CancelFunc
-	started     bool
+	db         *sql.DB
+	lastSyncAt time.Time
+	lastErrors []string
+	mu         sync.RWMutex
+	bgCtx      context.Context
+	bgCancel   context.CancelFunc
+	started    bool
 }
 
-func NewSyncer(db *sql.DB, isPostgres bool) *Syncer {
+func NewSyncer(db *sql.DB) *Syncer {
 	return &Syncer{
-		db:         db,
-		isPostgres: isPostgres,
+		db: db,
 	}
 }
 
@@ -73,13 +71,7 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 		return nil
 	}
 
-	var query string
-	if s.isPostgres {
-		query = `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = true`
-	} else {
-		query = `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = 1`
-	}
-	rows, err := s.db.QueryContext(ctx, query)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = true`)
 	if err != nil {
 		return fmt.Errorf("syncer: query accounts: %w", err)
 	}
@@ -140,20 +132,12 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 			tagsJSON = []byte("{}")
 		}
 
-		if s.isPostgres {
-			_, err = s.db.Exec(`
-				INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
-				VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-				ON CONFLICT (account_id, cloud_resource_id)
-				DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
-			`, accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
-		} else {
-			_, err = s.db.Exec(`
-				INSERT INTO resources_cache (id, account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags, last_synced_at)
-				VALUES ((SELECT id FROM resources_cache WHERE account_id = ? AND cloud_resource_id = ?), ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-			`, accountID, inst.ID,
-				accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
-		}
+		_, err = s.db.Exec(`
+			INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
+			VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+			ON CONFLICT (account_id, cloud_resource_id)
+			DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
+		`, accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
 		if err != nil {
 			log.Printf("syncer: upsert resource %s: %v", inst.Name, err)
 		}
@@ -161,11 +145,7 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 
 	s.detectDeletedResources(ctx, accountID, liveIDs)
 
-	if s.isPostgres {
-		_, err = s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
-	} else {
-		_, err = s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?`, accountID)
-	}
+	_, err = s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
 	if err != nil {
 		log.Printf("syncer: update last_sync_at for %s: %v", accountID, err)
 	}
@@ -173,15 +153,8 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 }
 
 func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, liveIDs map[string]bool) {
-	var rows *sql.Rows
-	var err error
-	if s.isPostgres {
-		rows, err = s.db.QueryContext(ctx,
-			`SELECT id, cloud_resource_id, name, resource_type FROM resources_cache WHERE account_id = $1`, accountID)
-	} else {
-		rows, err = s.db.QueryContext(ctx,
-			`SELECT id, cloud_resource_id, name, resource_type FROM resources_cache WHERE account_id = ?`, accountID)
-	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, cloud_resource_id, name, resource_type FROM resources_cache WHERE account_id = $1`, accountID)
 	if err != nil {
 		log.Printf("syncer: query cache: %v", err)
 		return
@@ -195,7 +168,8 @@ func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, l
 			continue
 		}
 		if !liveIDs[cloudResID] {
-			if _, err := s.db.Exec(`DELETE FROM resources_cache WHERE id = ?`, cacheID); err != nil {
+			_, delErr := s.db.Exec(`DELETE FROM resources_cache WHERE id = $1`, cacheID)
+			if delErr != nil {
 				log.Printf("syncer: delete resource %s: %v", cacheID, err)
 			} else {
 				log.Printf("syncer: removed deleted resource %s (%s)", cloudResID, name.String)
@@ -209,25 +183,13 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 		return nil, nil
 	}
 
-	var rows *sql.Rows
-	var err error
-	if s.isPostgres {
-		rows, err = s.db.QueryContext(ctx, `
-			SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
-				rc.spec, ca.cloud_type, ca.name as account_name
-			FROM resources_cache rc
-			JOIN cloud_accounts ca ON rc.account_id = ca.id
-			ORDER BY rc.last_synced_at DESC
-		`)
-	} else {
-		rows, err = s.db.QueryContext(ctx, `
-			SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
-				rc.spec, ca.cloud_type, ca.name as account_name
-			FROM resources_cache rc
-			JOIN cloud_accounts ca ON rc.account_id = ca.id
-			ORDER BY rc.last_synced_at DESC
-		`)
-	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
+			rc.spec, ca.cloud_type, ca.name as account_name
+		FROM resources_cache rc
+		JOIN cloud_accounts ca ON rc.account_id = ca.id
+		ORDER BY rc.last_synced_at DESC
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("query resources: %w", err)
 	}
@@ -278,22 +240,12 @@ func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) 
 	}
 
 	var accountID, cloudType, credJSON, cloudResID string
-	var err error
-	if s.isPostgres {
-		err = s.db.QueryRowContext(ctx, `
-			SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials
-			FROM resources_cache rc
-			JOIN cloud_accounts ca ON rc.account_id = ca.id
-			WHERE rc.id = $1
-		`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
-	} else {
-		err = s.db.QueryRowContext(ctx, `
-			SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials
-			FROM resources_cache rc
-			JOIN cloud_accounts ca ON rc.account_id = ca.id
-			WHERE rc.id = ?
-		`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
-	}
+	err := s.db.QueryRowContext(ctx, `
+		SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials
+		FROM resources_cache rc
+		JOIN cloud_accounts ca ON rc.account_id = ca.id
+		WHERE rc.id = $1
+	`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
 	if err != nil {
 		return nil, "", fmt.Errorf("resource lookup: %w", err)
 	}
