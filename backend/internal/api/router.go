@@ -91,6 +91,17 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 				c.JSON(http.StatusOK, gin.H{"status": "unavailable", "message": "VAULT_ADDR not configured"})
 			}
 		})
+		// opencode health check
+		auth.GET("/opencode/health", func(c *gin.Context) {
+			resp, err := http.Get("http://localhost:4096/health")
+			if err == nil && resp.StatusCode < 500 {
+				c.JSON(http.StatusOK, gin.H{"status": "ok"})
+			} else {
+				msg := "unreachable"
+				if err != nil { msg = err.Error() }
+				c.JSON(http.StatusOK, gin.H{"status": "down", "error": msg})
+			}
+		})
 	}
 
 	// Proxy /chat/* to opencode server
