@@ -440,9 +440,12 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 					if argsStr, ok := fn["arguments"].(string); ok {
 						if !json.Valid([]byte(argsStr)) {
 							// Arguments from streaming concatenation may be incomplete JSON.
-							// Remove them so we don't send invalid JSON back to the API.
-							delete(fn, "arguments")
+							// Replace with empty object so the API receives valid JSON.
+							fn["arguments"] = "{}"
 						}
+					} else {
+						// No arguments received yet, default to empty object
+						fn["arguments"] = "{}"
 					}
 				}
 				toolCalls = append(toolCalls, tc)
