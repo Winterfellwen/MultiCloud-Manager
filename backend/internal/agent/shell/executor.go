@@ -37,7 +37,7 @@ func NewExecutor(cfg Config) *Executor {
 	}
 	workspace := cfg.WorkspaceDir
 	if workspace == "" {
-		workspace = "/workspace"
+		workspace = "/tmp"
 	}
 	return &Executor{workspaceDir: workspace, timeout: timeout}
 }
@@ -50,6 +50,9 @@ func (e *Executor) Execute(ctx context.Context, command string, workdir string) 
 	dir := e.workspaceDir
 	if workdir != "" {
 		dir = workdir
+	}
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		dir = "/tmp"
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
