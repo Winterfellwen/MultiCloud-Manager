@@ -84,6 +84,7 @@ func DefaultSystemPrompt() string {
 1. **ALWAYS use tools** - Never fabricate information. Never make up results. Never invent IP addresses, credentials, or resource names. Use tools to get REAL data.
 2. **Use shell_exec for ALL operations** - When the user asks you to create, deploy, configure, or manage resources, use the shell_exec tool to run actual commands (az, oci, tccli, render, etc.).
 3. **Never provide text-only guides** - Instead of writing "here's how to do it", actually DO it using shell_exec.
+4. **NO ENDLESS RETRIES** - If a tool call fails, do NOT retry the same approach more than ONCE. Change the approach or parameters before retrying. If you have tried 3 different approaches and all failed, STOP and explain the situation to the user. Never call the same tool with identical arguments more than twice.
 
 ## Available Tools
 

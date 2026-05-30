@@ -68,7 +68,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		{"role": "user", "content": req.Message},
 	}
 
-	maxIterations := 15
+	maxIterations := 50
 	var allContent strings.Builder
 
 	httpClient := &http.Client{Timeout: 120 * time.Second}
@@ -76,6 +76,14 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	var stopReason string
 	var iterCount int
 	var lastToolCalls []map[string]interface{}
+
+	// Doom loop detection: track last 3 tool calls (name+args)
+	type toolCallKey struct {
+		name string
+		args string
+	}
+	var recentToolCalls [3]toolCallKey
+	var toolCallIdx int
 
 	for i := 0; i < maxIterations; i++ {
 		iterCount = i + 1
@@ -182,6 +190,19 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			toolArgsStr, _ := tc["function"].(map[string]interface{})["arguments"].(string)
 			toolID, _ := tc["id"].(string)
 
+			// Doom loop detection: same tool + same args 3x in a row → warn
+			recentToolCalls[toolCallIdx%3] = toolCallKey{name: toolName, args: toolArgsStr}
+			toolCallIdx++
+			if toolCallIdx >= 3 &&
+				recentToolCalls[0] == recentToolCalls[1] &&
+				recentToolCalls[1] == recentToolCalls[2] {
+				messages = append(messages, map[string]interface{}{
+					"role":    "system",
+					"content": "⚠️ DOOM LOOP DETECTED: You have called the same tool with the same arguments 3 times in a row. This approach is not working. STOP retrying. Instead: (1) try a completely different approach, or (2) tell the user what went wrong and ask for guidance. Do NOT call the same tool with the same parameters again.",
+				})
+				recentToolCalls = [3]toolCallKey{} // reset
+			}
+
 			// Hard block: Plan mode must not execute state-changing commands
 			if req.Mode == "plan" && toolName == "shell_exec" {
 				var targs map[string]interface{}
@@ -242,11 +263,33 @@ done:
 			flusher.Flush()
 		}
 	} else if iterCount >= maxIterations && len(lastToolCalls) > 0 {
-		summary := fmt.Sprintf("\n\n---\n> ℹ️ AI 已执行 %d 轮操作。任务可能未完成，可以继续发送消息推进。\n", maxIterations)
-		allContent.WriteString(summary)
-		for _, part := range chunkRunes(summary, 10) {
-			fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": part}))
-			flusher.Flush()
+		// opencode-style: inject MAX_STEPS as system-level assistant message
+		messages = append(messages, map[string]interface{}{
+			"role":    "system",
+			"content": fmt.Sprintf("CRITICAL — MAXIMUM STEPS REACHED (%d). The maximum number of operations has been reached. Tools are disabled until next user input. Summarize what has been done, explain what remains, and ask the user if they want to continue.", maxIterations),
+		})
+		// One more LLM call to get the final summary
+		finalBody := map[string]interface{}{
+			"model":      cfg.Model,
+			"messages":   messages,
+			"stream":     true,
+			"max_tokens": 1024,
+		}
+		finalBodyBytes, _ := json.Marshal(finalBody)
+		finalURL := strings.TrimRight(cfg.APIEndpoint, "/") + "/chat/completions"
+		finalReq, err := http.NewRequest("POST", finalURL, bytes.NewReader(finalBodyBytes))
+		if err == nil {
+			finalReq.Header.Set("Content-Type", "application/json")
+			finalReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+			finalResp, ferr := httpClient.Do(finalReq)
+			if ferr == nil && finalResp.StatusCode == 200 {
+				finalContent, _, _ := h.collectStreamResponse(finalResp.Body)
+				allContent.WriteString(finalContent)
+				for _, part := range chunkRunes(finalContent, 10) {
+					fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": part}))
+					flusher.Flush()
+				}
+			}
 		}
 	}
 
