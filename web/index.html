@@ -1004,6 +1004,18 @@ function stopChat() {
   }
 }
 
+async function stopActiveSession() {
+  stopChat();
+  // Mark session as idle
+  if (CURRENT_SESSION) {
+    try {
+      await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'idle' }) });
+    } catch(e) {}
+    await loadSessions();
+    await switchSession(CURRENT_SESSION);
+  }
+}
+
 async function startStream(body) {
   CONFIRM_PENDING = true;
   document.getElementById('chatSendBtn').disabled = true;
@@ -1253,6 +1265,14 @@ async function switchSession(sid) {
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
   var msgCount = 0;
+  // If session is running, show working indicator + stop button
+  if (data && data.status === 'running') {
+    var workDiv = document.createElement('div');
+    workDiv.className = 'msg system';
+    workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
+    container.appendChild(workDiv);
+    document.getElementById('chatStopBtn').style.display = '';
+  }
   if (data && data.messages && data.messages.length > 0) {
     data.messages.forEach(function(m) {
       if (m.role === 'user') {

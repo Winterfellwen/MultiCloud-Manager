@@ -130,6 +130,27 @@ func (h *SessionsHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "session deleted"})
 }
 
+func (h *SessionsHandler) Update(c *gin.Context) {
+	sessionID := c.Param("sid")
+	if sessionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing session id"})
+		return
+	}
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+	_, err := h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2`, req.Status, sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update session"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "session updated"})
+}
+
 func (h *SessionsHandler) Create(c *gin.Context) {
 	var req struct {
 		Title string `json:"title"`
