@@ -23,15 +23,13 @@ type AIConfig struct {
 }
 
 var (
-	aiConfigCache     AIConfig
-	aiConfigMu        sync.RWMutex
-	aiConfigDB        *sql.DB
-	aiConfigIsPostgres bool
+	aiConfigCache AIConfig
+	aiConfigMu    sync.RWMutex
+	aiConfigDB    *sql.DB
 )
 
-func InitAIConfig(db *sql.DB, isPostgres bool) {
+func InitAIConfig(db *sql.DB) {
 	aiConfigDB = db
-	aiConfigIsPostgres = isPostgres
 	loadAIConfigFromDB()
 }
 
@@ -73,14 +71,8 @@ func UpdateAIConfig(c *gin.Context) {
 		newConfig.APIKey = existing.APIKey
 	}
 
-	var query string
-	if aiConfigIsPostgres {
-		query = `UPDATE ai_config SET api_endpoint = $1, model = $2, api_key = $3, enable_reasoning = $4, reasoning_effort = $5, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
-	} else {
-		query = `UPDATE ai_config SET api_endpoint = ?, model = ?, api_key = ?, enable_reasoning = ?, reasoning_effort = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
-	}
-
-	_, err := aiConfigDB.Exec(query,
+	_, err := aiConfigDB.Exec(
+		`UPDATE ai_config SET api_endpoint = $1, model = $2, api_key = $3, enable_reasoning = $4, reasoning_effort = $5, updated_at = CURRENT_TIMESTAMP WHERE id = 1`,
 		newConfig.APIEndpoint, newConfig.Model, newConfig.APIKey, newConfig.EnableReasoning, newConfig.ReasoningEffort,
 	)
 	if err != nil {
@@ -108,9 +100,9 @@ func TestAIConfig(c *gin.Context) {
 		{"role": "user", "content": "Say hello in one word."},
 	}
 	body := map[string]interface{}{
-		"model":    cfg.Model,
-		"messages": messages,
-		"stream":   false,
+		"model":      cfg.Model,
+		"messages":   messages,
+		"stream":     false,
 		"max_tokens": 10,
 	}
 
@@ -171,17 +163,10 @@ func loadAIConfigFromDB() {
 	}
 
 	var cfg AIConfig
-	var enableReasoning int
-	var err error
-	if aiConfigIsPostgres {
-		err = aiConfigDB.QueryRow(
-			`SELECT api_endpoint, model, api_key, COALESCE(enable_reasoning, false)::int, COALESCE(reasoning_effort, 'medium') FROM ai_config WHERE id = 1`,
-		).Scan(&cfg.APIEndpoint, &cfg.Model, &cfg.APIKey, &enableReasoning, &cfg.ReasoningEffort)
-	} else {
-		err = aiConfigDB.QueryRow(
-			`SELECT api_endpoint, model, api_key, COALESCE(enable_reasoning, 0), COALESCE(reasoning_effort, 'medium') FROM ai_config WHERE id = 1`,
-		).Scan(&cfg.APIEndpoint, &cfg.Model, &cfg.APIKey, &enableReasoning, &cfg.ReasoningEffort)
-	}
+	var enableReasoning bool
+	err := aiConfigDB.QueryRow(
+		`SELECT api_endpoint, model, api_key, COALESCE(enable_reasoning, false), COALESCE(reasoning_effort, 'medium') FROM ai_config WHERE id = 1`,
+	).Scan(&cfg.APIEndpoint, &cfg.Model, &cfg.APIKey, &enableReasoning, &cfg.ReasoningEffort)
 	if err != nil {
 		cfg = AIConfig{
 			APIEndpoint:     "https://api.openai.com/v1",
@@ -192,7 +177,7 @@ func loadAIConfigFromDB() {
 		}
 	}
 
-	cfg.EnableReasoning = enableReasoning != 0
+	cfg.EnableReasoning = enableReasoning
 
 	aiConfigMu.Lock()
 	aiConfigCache = cfg

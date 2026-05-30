@@ -9,14 +9,12 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	_ "modernc.org/sqlite"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Database struct {
 	*sql.DB
-	driver string
 }
 
 type RedisClient struct {
@@ -25,33 +23,9 @@ type RedisClient struct {
 
 func NewDatabase(dsn string) (*Database, error) {
 	if dsn == "" {
-		return initSQLite()
+		return nil, fmt.Errorf("DATABASE_URL is required (PostgreSQL)")
 	}
 	return initPostgres(dsn)
-}
-
-func initSQLite() (*Database, error) {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "multicloud.db"
-	}
-
-	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL")
-	if err != nil {
-		return nil, err
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	d := &Database{db, "sqlite"}
-	if err := d.Migrate(); err != nil {
-		return nil, err
-	}
-
-	log.Println("SQLite database initialized")
-	return d, nil
 }
 
 func initPostgres(dsn string) (*Database, error) {
@@ -79,17 +53,13 @@ func initPostgres(dsn string) (*Database, error) {
 	db.SetMaxIdleConns(3)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	d := &Database{db, "postgres"}
+	d := &Database{db}
 	if err := d.Migrate(); err != nil {
 		log.Printf("WARNING: Migration failed: %v", err)
 	}
 
 	log.Println("PostgreSQL database initialized")
 	return d, nil
-}
-
-func (d *Database) IsPostgres() bool {
-	return d.driver == "postgres"
 }
 
 func (d *Database) Migrate() error {
@@ -104,133 +74,6 @@ func (d *Database) Migrate() error {
 	}
 	adminHash := string(hashBytes)
 
-	if d.IsPostgres() {
-		return d.migratePostgres(adminHash)
-	}
-	return d.migrateSQLite(adminHash)
-}
-
-func (d *Database) migrateSQLite(adminHash string) error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			username TEXT NOT NULL,
-			password_hash TEXT NOT NULL,
-			role TEXT DEFAULT 'admin',
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS sessions (
-			id TEXT PRIMARY KEY,
-			title TEXT,
-			status TEXT DEFAULT 'idle',
-			mode TEXT DEFAULT 'plan',
-			parent_id TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			archived_at DATETIME,
-			share_url TEXT
-		)`,
-		`CREATE TABLE IF NOT EXISTS messages (
-			id TEXT PRIMARY KEY,
-			session_id TEXT NOT NULL,
-			role TEXT NOT NULL,
-			content TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-		)`,
-		`CREATE TABLE IF NOT EXISTS parts (
-			id TEXT PRIMARY KEY,
-			message_id TEXT NOT NULL,
-			type TEXT NOT NULL,
-			content TEXT,
-			metadata TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
-		)`,
-		`CREATE TABLE IF NOT EXISTS tool_calls (
-			id TEXT PRIMARY KEY,
-			part_id TEXT NOT NULL,
-			tool_name TEXT NOT NULL,
-			params TEXT,
-			status TEXT DEFAULT 'pending',
-			output TEXT,
-			requires_confirm INTEGER DEFAULT 0,
-			confirmed_by TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE CASCADE
-		)`,
-		`CREATE TABLE IF NOT EXISTS file_changes (
-			id TEXT PRIMARY KEY,
-			session_id TEXT NOT NULL,
-			message_id TEXT,
-			path TEXT NOT NULL,
-			action TEXT NOT NULL,
-			diff TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-		)`,
-		`CREATE TABLE IF NOT EXISTS credentials (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			provider TEXT NOT NULL,
-			credential TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS audit_logs (
-			id TEXT PRIMARY KEY,
-			session_id TEXT,
-			action TEXT NOT NULL,
-			details TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS ai_config (
-			id INTEGER PRIMARY KEY,
-			api_endpoint TEXT NOT NULL DEFAULT 'https://api.openai.com/v1',
-			model TEXT NOT NULL DEFAULT 'gpt-4o-mini',
-			api_key TEXT NOT NULL DEFAULT '',
-			enable_reasoning INTEGER DEFAULT 0,
-			reasoning_effort TEXT DEFAULT 'medium',
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`INSERT OR IGNORE INTO ai_config (id, api_endpoint, model) VALUES (1, 'https://api.openai.com/v1', 'gpt-4o-mini')`,
-		`INSERT OR IGNORE INTO users (id, username, password_hash, role) VALUES ('admin', 'admin', '` + adminHash + `', 'admin')`,
-		`CREATE TABLE IF NOT EXISTS cloud_accounts (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			cloud_type TEXT NOT NULL,
-			credentials TEXT NOT NULL DEFAULT '',
-			is_active INTEGER DEFAULT 1,
-			last_sync_at DATETIME,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS resources_cache (
-			id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-			account_id TEXT NOT NULL,
-			cloud_resource_id TEXT NOT NULL,
-			resource_type TEXT,
-			cloud_region TEXT,
-			name TEXT,
-			status TEXT DEFAULT 'unknown',
-			spec TEXT,
-			tags TEXT,
-			last_synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (account_id) REFERENCES cloud_accounts(id) ON DELETE CASCADE,
-			UNIQUE(account_id, cloud_resource_id)
-		)`,
-	}
-
-	for _, q := range queries {
-		if _, err := d.Exec(q); err != nil {
-			return fmt.Errorf("SQLite migration failed: %v\nSQL: %s", err, q)
-		}
-	}
-
-	log.Println("SQLite migrations completed")
-	return nil
-}
-
-func (d *Database) migratePostgres(adminHash string) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -329,7 +172,6 @@ func (d *Database) migratePostgres(adminHash string) error {
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encrypted_credentials`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS team_id`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encryption_key_id`,
-		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
 		`CREATE TABLE IF NOT EXISTS resources_cache (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			account_id UUID NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
@@ -344,6 +186,7 @@ func (d *Database) migratePostgres(adminHash string) error {
 			UNIQUE(account_id, cloud_resource_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
+		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
 		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO NOTHING`, adminHash),
 	}
 

@@ -10,15 +10,13 @@ import (
 
 // TeamsHandler struct follows the same pattern as other handlers
 type TeamsHandler struct {
-	db         *sql.DB
-	isPostgres bool
+	db *sql.DB
 }
 
 // NewTeamsHandler creates a new TeamsHandler instance
-func NewTeamsHandler(db *sql.DB, isPostgres bool) *TeamsHandler {
+func NewTeamsHandler(db *sql.DB) *TeamsHandler {
 	return &TeamsHandler{
-		db:         db,
-		isPostgres: isPostgres,
+		db: db,
 	}
 }
 
@@ -35,9 +33,9 @@ func (h *TeamsHandler) GetTeams(c *gin.Context) {
 
 	// 返回固定的团队和当前用户作为成员
 	member := map[string]interface{}{
-		"id":    userID,
-		"name":  username,
-		"role":  "admin",
+		"id":   userID,
+		"name": username,
+		"role": "admin",
 	}
 	members := []map[string]interface{}{member}
 
@@ -133,9 +131,9 @@ func (h *TeamsHandler) GetTeamMembers(c *gin.Context) {
 	}
 
 	member := map[string]interface{}{
-		"id":    userID,
-		"name":  username,
-		"role":  "admin",
+		"id":   userID,
+		"name": username,
+		"role": "admin",
 	}
 	members := []map[string]interface{}{member}
 

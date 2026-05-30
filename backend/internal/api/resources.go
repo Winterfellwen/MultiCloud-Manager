@@ -12,13 +12,12 @@ import (
 )
 
 type ResourcesHandler struct {
-	syncer     *cloud.Syncer
-	db         *sql.DB
-	isPostgres bool
+	syncer *cloud.Syncer
+	db     *sql.DB
 }
 
-func NewResourcesHandler(syncer *cloud.Syncer, db *sql.DB, isPostgres bool) *ResourcesHandler {
-	return &ResourcesHandler{syncer: syncer, db: db, isPostgres: isPostgres}
+func NewResourcesHandler(syncer *cloud.Syncer, db *sql.DB) *ResourcesHandler {
+	return &ResourcesHandler{syncer: syncer, db: db}
 }
 
 func (h *ResourcesHandler) List(c *gin.Context) {
@@ -125,11 +124,7 @@ func (h *ResourcesHandler) ChangePassword(c *gin.Context) {
 	}
 
 	var passwordHash string
-	if h.isPostgres {
-		h.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&passwordHash)
-	} else {
-		h.db.QueryRow("SELECT password_hash FROM users WHERE username = ?", username).Scan(&passwordHash)
-	}
+	h.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&passwordHash)
 	if passwordHash == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 		return
@@ -146,11 +141,7 @@ func (h *ResourcesHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if h.isPostgres {
-		_, err = h.db.Exec("UPDATE users SET password_hash = $1 WHERE username = $2", string(hash), username)
-	} else {
-		_, err = h.db.Exec("UPDATE users SET password_hash = ? WHERE username = ?", string(hash), username)
-	}
+	_, err = h.db.Exec("UPDATE users SET password_hash = $1 WHERE username = $2", string(hash), username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
