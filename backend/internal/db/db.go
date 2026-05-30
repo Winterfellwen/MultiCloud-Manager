@@ -188,6 +188,18 @@ func (d *Database) Migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
 		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
 		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO NOTHING`, adminHash),
+		`CREATE TABLE IF NOT EXISTS agent_config (
+			id SERIAL PRIMARY KEY,
+			config_type VARCHAR(50) NOT NULL,
+			config JSONB NOT NULL DEFAULT '{}',
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(config_type)
+		)`,
+		`INSERT INTO agent_config (config_type, config) VALUES 
+			('shell', '{"workspace_dir": "/workspace", "timeout_seconds": 300}'),
+			('mcp', '{}'),
+			('skills', '[]')
+		ON CONFLICT (config_type) DO NOTHING`,
 	}
 
 	for i, q := range queries {

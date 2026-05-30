@@ -103,6 +103,15 @@ func (r *Runtime) BuildPrompt() string {
 	return r.prompt.Build()
 }
 
+// GetSystemPrompt builds the system prompt for the given mode.
+func (r *Runtime) GetSystemPrompt(mode string) string {
+	prompt := r.prompt
+	if mode != "" {
+		prompt = prompt.SetMode(mode)
+	}
+	return prompt.Build()
+}
+
 // ChatSession represents a conversation session with the agent.
 type ChatSession struct {
 	ID       string
