@@ -68,6 +68,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 	// Tool calling loop: keep calling LLM until it stops requesting tools
 	maxIterations := 5
+	var finalContent string
 	for i := 0; i < maxIterations; i++ {
 		body := map[string]interface{}{
 			"model":    cfg.Model,
@@ -107,6 +108,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 		// Collect the full response from the stream
 		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body)
+		finalContent = fullContent
 
 		// Stream content tokens to the client
 		if fullContent != "" {
@@ -183,6 +185,9 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 		// Continue the loop — LLM will see tool results and can respond or call more tools
 	}
+
+	// Save messages to session for history
+	h.saveSessionMessages(req.SessionID, req.Message, finalContent)
 
 	fmt.Fprintf(c.Writer, "event: done\ndata: {}\n\n")
 	flusher.Flush()
@@ -476,6 +481,27 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 	}
 
 	return fullContent.String(), toolCalls, finishReason
+}
+
+// saveSessionMessages persists user and assistant messages to the database.
+func (h *ChatStreamHandler) saveSessionMessages(sessionID, userMsg, assistantMsg string) {
+	if sessionID == "" || h.db == nil {
+		return
+	}
+	// Look up internal session UUID
+	var internalID string
+	err := h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, sessionID).Scan(&internalID)
+	if err != nil {
+		return
+	}
+	// Save user message
+	h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'user', $2)`, internalID, userMsg)
+	// Save assistant message
+	if assistantMsg != "" {
+		h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'assistant', $2)`, internalID, assistantMsg)
+	}
+	// Update session title from first message if still default
+	h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, userMsg, internalID)
 }
 
 func buildSystemPrompt(mode string) string {
