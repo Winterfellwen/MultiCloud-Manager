@@ -21,7 +21,7 @@ func (t *ShellTool) Name() string {
 }
 
 func (t *ShellTool) Description() string {
-	return "Execute a shell command on the server. Use this to run cloud CLI tools (az, oci, tccli, render), install packages, deploy applications, run scripts, check logs, and perform system administration tasks."
+	return "Execute a shell command on the server. THIS IS YOUR PRIMARY TOOL. Use it for ALL operations including: running Azure CLI (az), Render API, cloud resource creation, deployment, configuration, checking service status, installing packages, and any other server-side task. Always use this tool instead of providing text-only instructions."
 }
 
 func (t *ShellTool) Parameters() map[string]interface{} {
