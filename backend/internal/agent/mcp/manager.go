@@ -2,15 +2,14 @@ package mcp
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 )
 
 type Manager struct {
-	mu      sync.Mutex
 	clients map[string]*Client
 	configs map[string]ServerConfig
+	mu      sync.RWMutex
 }
 
 func NewManager() *Manager {
@@ -26,78 +25,58 @@ func (m *Manager) LoadConfigs(configs map[string]ServerConfig) {
 	m.configs = configs
 }
 
-func (m *Manager) ConnectAll(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for name, config := range m.configs {
-		if !config.Enabled {
+func (m *Manager) ConnectAll(ctx context.Context) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for name, cfg := range m.configs {
+		if !cfg.Enabled {
 			continue
 		}
-		client := NewClient(config)
-		if err := client.Connect(ctx); err != nil {
-			log.Printf("mcp: failed to connect to %s: %v", name, err)
-			continue
-		}
-		if err := client.Initialize(ctx); err != nil {
-			log.Printf("mcp: failed to initialize %s: %v", name, err)
-			client.Close()
-			continue
-		}
-		m.clients[name] = client
+		go m.connect(ctx, name, cfg)
 	}
-	return nil
 }
 
-func (m *Manager) GetAllTools() []Tool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	var allTools []Tool
-	for name, client := range m.clients {
-		tools := client.GetTools()
-		for i := range tools {
-			tools[i].Name = fmt.Sprintf("%s__%s", name, tools[i].Name)
-		}
-		allTools = append(allTools, tools...)
+func (m *Manager) connect(ctx context.Context, name string, cfg ServerConfig) {
+	client := NewClient(name, cfg)
+	if err := client.Connect(ctx); err != nil {
+		log.Printf("mcp[%s]: connect failed: %v", name, err)
+		return
 	}
-	return allTools
-}
-
-func (m *Manager) CallTool(ctx context.Context, serverName, toolName string, args map[string]interface{}) (string, error) {
 	m.mu.Lock()
-	client, ok := m.clients[serverName]
+	m.clients[name] = client
 	m.mu.Unlock()
-	if !ok {
-		return "", fmt.Errorf("server not connected: %s", serverName)
+	log.Printf("mcp[%s]: connected", name)
+}
+
+func (m *Manager) GetAllTools(ctx context.Context) []MCPTool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var tools []MCPTool
+	for name, client := range m.clients {
+		t, err := client.ListTools(ctx)
+		if err != nil {
+			log.Printf("mcp[%s]: list tools: %v", name, err)
+			continue
+		}
+		for _, tool := range t {
+			tools = append(tools, MCPTool{Name: tool.Name, Description: tool.Description, Client: client, ServerName: name})
+		}
 	}
-	return client.CallTool(ctx, toolName, args)
+	return tools
+}
+
+type MCPTool struct {
+	Name        string
+	Description string
+	Client      *Client
+	ServerName  string
 }
 
 func (m *Manager) CloseAll() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for name, client := range m.clients {
-		if err := client.Close(); err != nil {
-			log.Printf("mcp: failed to close %s: %v", name, err)
-		}
+	for _, client := range m.clients {
+		client.Close()
 	}
 	m.clients = make(map[string]*Client)
-}
-
-func (m *Manager) Client(name string) (*Client, bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	c, ok := m.clients[name]
-	return c, ok
-}
-
-func (m *Manager) ServerNames() []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	names := make([]string, 0, len(m.clients))
-	for name := range m.clients {
-		names = append(names, name)
-	}
-	return names
 }

@@ -2,130 +2,88 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type Client struct {
-	config ServerConfig
-	transport interface {
-		Start(ctx context.Context) error
-		SendRequest(ctx context.Context, method string, params interface{}) (*JSONRPCResponse, error)
-		Close() error
-	}
-	tools []Tool
+	name    string
+	config  ServerConfig
+	session *mcp.ClientSession
 }
 
-func NewClient(config ServerConfig) *Client {
-	return &Client{config: config}
+func NewClient(name string, config ServerConfig) *Client {
+	return &Client{name: name, config: config}
 }
 
 func (c *Client) Connect(ctx context.Context) error {
+	var transport mcp.Transport
+
 	switch c.config.Transport {
 	case "stdio":
-		t := NewStdioTransport(c.config.Command, c.config.Args, c.config.Env)
-		if err := t.Start(ctx); err != nil {
-			return fmt.Errorf("stdio start: %w", err)
-		}
-		c.transport = t
+		cmd := exec.CommandContext(ctx, c.config.Command, c.config.Args...)
+		cmd.Env = append(os.Environ(), envToList(c.config.Env)...)
+		transport = &mcp.CommandTransport{Command: cmd}
+	case "http":
+		transport = &mcp.StreamableClientTransport{Endpoint: c.config.URL}
 	case "sse":
-		t := NewSSETransport(c.config.URL, c.config.Headers)
-		if err := t.Start(ctx); err != nil {
-			return fmt.Errorf("sse start: %w", err)
-		}
-		c.transport = t
+		transport = &mcp.SSEClientTransport{Endpoint: c.config.URL}
 	default:
 		return fmt.Errorf("unsupported transport: %s", c.config.Transport)
 	}
+
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "multicloud-agent",
+		Version: "1.0.0",
+	}, nil)
+
+	session, err := client.Connect(ctx, transport, nil)
+	if err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+	c.session = session
 	return nil
 }
 
-func (c *Client) Initialize(ctx context.Context) error {
-	initParams := map[string]interface{}{
-		"protocolVersion": "2024-11-05",
-		"capabilities":    map[string]interface{}{},
-		"clientInfo": map[string]interface{}{
-			"name":    "multicloud-agent",
-			"version": "1.0.0",
-		},
-	}
-
-	resp, err := c.transport.SendRequest(ctx, "initialize", initParams)
+func (c *Client) ListTools(ctx context.Context) ([]*mcp.Tool, error) {
+	result, err := c.session.ListTools(ctx, &mcp.ListToolsParams{})
 	if err != nil {
-		return fmt.Errorf("initialize: %w", err)
+		return nil, err
 	}
-	_ = resp
-
-	notificationsResp, err := c.transport.SendRequest(ctx, "notifications/initialized", nil)
-	if err != nil {
-		return fmt.Errorf("notifications/initialized: %w", err)
-	}
-	_ = notificationsResp
-
-	return c.refreshTools(ctx)
+	return result.Tools, nil
 }
 
-func (c *Client) refreshTools(ctx context.Context) error {
-	resp, err := c.transport.SendRequest(ctx, "tools/list", nil)
-	if err != nil {
-		return fmt.Errorf("tools/list: %w", err)
-	}
-
-	resultBytes, err := json.Marshal(resp.Result)
-	if err != nil {
-		return fmt.Errorf("marshal result: %w", err)
-	}
-
-	var result struct {
-		Tools []Tool `json:"tools"`
-	}
-	if err := json.Unmarshal(resultBytes, &result); err != nil {
-		return fmt.Errorf("unmarshal tools: %w", err)
-	}
-
-	c.tools = result.Tools
-	return nil
-}
-
-func (c *Client) GetTools() []Tool {
-	return c.tools
-}
-
-func (c *Client) CallTool(ctx context.Context, name string, args map[string]interface{}) (string, error) {
-	params := ToolCallParams{
+func (c *Client) CallTool(ctx context.Context, name string, args map[string]any) (string, error) {
+	result, err := c.session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      name,
 		Arguments: args,
-	}
-
-	resp, err := c.transport.SendRequest(ctx, "tools/call", params)
+	})
 	if err != nil {
-		return "", fmt.Errorf("call tool %s: %w", name, err)
+		return "", err
 	}
-
-	resultBytes, err := json.Marshal(resp.Result)
-	if err != nil {
-		return "", fmt.Errorf("marshal result: %w", err)
+	var text string
+	for _, content := range result.Content {
+		if tc, ok := content.(*mcp.TextContent); ok {
+			text += tc.Text
+		}
 	}
-
-	var result struct {
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	}
-	if err := json.Unmarshal(resultBytes, &result); err != nil {
-		return string(resultBytes), nil
-	}
-
-	if len(result.Content) > 0 {
-		return result.Content[0].Text, nil
-	}
-	return string(resultBytes), nil
+	return text, nil
 }
 
 func (c *Client) Close() error {
-	if c.transport != nil {
-		return c.transport.Close()
+	if c.session != nil {
+		return c.session.Close()
 	}
 	return nil
+}
+
+func envToList(env map[string]string) []string {
+	var list []string
+	for k, v := range env {
+		list = append(list, k+"="+v)
+	}
+	return list
 }
