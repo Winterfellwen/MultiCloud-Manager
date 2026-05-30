@@ -106,7 +106,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		}
 
 		// Collect the full response from the stream
-		fullContent, toolCalls, finishReason := h.collectStreamResponse(resp.Body)
+		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body)
 
 		// Stream content tokens to the client
 		if fullContent != "" {
@@ -123,8 +123,8 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			}
 		}
 
-		// If no tool calls or finish_reason is "stop", we're done
-		if len(toolCalls) == 0 || finishReason == "stop" {
+		// If no tool calls, we're done
+		if len(toolCalls) == 0 {
 			// Add assistant message to history
 			messages = append(messages, map[string]interface{}{
 				"role":    "assistant",
@@ -272,7 +272,7 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 		finalContent = choice.Message.Content
 
 		// If no tool calls, we're done
-		if len(choice.Message.ToolCalls) == 0 || choice.FinishReason == "stop" {
+		if len(choice.Message.ToolCalls) == 0 {
 			messages = append(messages, map[string]interface{}{
 				"role":    "assistant",
 				"content": finalContent,
@@ -432,10 +432,19 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 		}
 	}
 
-	// Convert map to sorted slice
+	// Convert map to sorted slice, validating each tool call
 	if len(toolCallsMap) > 0 {
 		for i := 0; i < len(toolCallsMap); i++ {
 			if tc, ok := toolCallsMap[i]; ok {
+				if fn, ok := tc["function"].(map[string]interface{}); ok {
+					if argsStr, ok := fn["arguments"].(string); ok {
+						if !json.Valid([]byte(argsStr)) {
+							// Arguments from streaming concatenation may be incomplete JSON.
+							// Remove them so we don't send invalid JSON back to the API.
+							delete(fn, "arguments")
+						}
+					}
+				}
 				toolCalls = append(toolCalls, tc)
 			}
 		}
