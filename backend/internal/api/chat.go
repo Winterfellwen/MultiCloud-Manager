@@ -26,12 +26,13 @@ type ChatRequest struct {
 }
 
 type ChatStreamHandler struct {
-	db        *sql.DB
-	executor  *agent.Executor
+	db       *sql.DB
+	executor *agent.Executor
+	runtime  *agent.Runtime
 }
 
-func NewChatStreamHandler(db *sql.DB, executor *agent.Executor) *ChatStreamHandler {
-	return &ChatStreamHandler{db: db, executor: executor}
+func NewChatStreamHandler(db *sql.DB, executor *agent.Executor, runtime *agent.Runtime) *ChatStreamHandler {
+	return &ChatStreamHandler{db: db, executor: executor, runtime: runtime}
 }
 
 // Stream handles SSE streaming chat with tool calling support.
@@ -60,7 +61,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		return
 	}
 
-	systemPrompt := buildSystemPrompt(req.Mode)
+	systemPrompt := h.runtime.GetSystemPrompt(req.Mode)
 	messages := []map[string]interface{}{
 		{"role": "system", "content": systemPrompt},
 		{"role": "user", "content": req.Message},
@@ -74,7 +75,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			"model":    cfg.Model,
 			"messages": messages,
 			"stream":   true,
-			"tools":    agent.GetToolDefinitions(),
+			"tools":    h.runtime.GetToolDefinitions(),
 		}
 
 		if cfg.EnableReasoning {
@@ -161,7 +162,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			}
 
 			// Execute the tool
-			result, execErr := h.executor.ExecuteTool(c.Request.Context(), toolName, toolArgs)
+			result, execErr := h.runtime.ExecuteTool(c.Request.Context(), toolName, toolArgs)
 
 			// Send tool result to client
 			fmt.Fprintf(c.Writer, "event: tool_result\ndata: %s\n\n", toJSON(map[string]interface{}{
@@ -207,7 +208,7 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 		return
 	}
 
-	systemPrompt := buildSystemPrompt(req.Mode)
+	systemPrompt := h.runtime.GetSystemPrompt(req.Mode)
 	messages := []map[string]interface{}{
 		{"role": "system", "content": systemPrompt},
 		{"role": "user", "content": req.Message},
@@ -222,7 +223,7 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 			"model":    cfg.Model,
 			"messages": messages,
 			"stream":   false,
-			"tools":    agent.GetToolDefinitions(),
+			"tools":    h.runtime.GetToolDefinitions(),
 		}
 
 		if cfg.EnableReasoning {
@@ -308,7 +309,7 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 				toolArgs = map[string]interface{}{}
 			}
 
-			result, execErr := h.executor.ExecuteTool(c.Request.Context(), toolName, toolArgs)
+			result, execErr := h.runtime.ExecuteTool(c.Request.Context(), toolName, toolArgs)
 
 			toolResultContent := result
 			if execErr != nil {

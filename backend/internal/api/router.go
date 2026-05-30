@@ -11,6 +11,7 @@ import (
 
 	"multicloud/internal/agent"
 	"multicloud/internal/cloud"
+	"multicloud/internal/vault"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,8 +34,23 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 
 	syncer := cloud.NewSyncer(db)
 	executor := agent.NewExecutor(syncer, db)
-	chatHandler := NewChatStreamHandler(db, executor)
+
+	// Create Vault client (optional)
+	var vaultClient *vault.Client
+	vaultAddr := os.Getenv("VAULT_ADDR")
+	if vaultAddr != "" {
+		vaultClient = vault.NewClient(vault.Config{Addr: vaultAddr})
+	}
+
+	runtime := agent.NewRuntime(agent.RuntimeConfig{
+		DB:     db,
+		Syncer: syncer,
+		Vault:  vaultClient,
+	})
+
+	chatHandler := NewChatStreamHandler(db, executor, runtime)
 	accountsHandler := NewAccountsHandler(db)
+	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
 	teamsHandler := NewTeamsHandler(db)
 	sessionsHandler := NewSessionsHandler(db)
@@ -49,6 +65,8 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		auth.GET("/agent/config", GetAIConfig)
 		auth.PUT("/agent/config", UpdateAIConfig)
 		auth.POST("/agent/config/test", TestAIConfig)
+		auth.GET("/agent/config/:type", agentConfigHandler.GetConfig)
+		auth.PUT("/agent/config/:type", agentConfigHandler.UpdateConfig)
 		// Chat endpoints
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
 		auth.POST("/agent/chat", chatHandler.Chat)
