@@ -501,6 +501,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           <div class="chat-input-bar">
             <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
             <button onclick="sendChat()" id="chatSendBtn" disabled>&#62;</button>
+            <button onclick="stopChat()" id="chatStopBtn" style="display:none;background:var(--danger);color:#fff;border:none;border-radius:2px;width:32px;height:32px;cursor:pointer;font-size:12px;flex-shrink:0" title="Stop">■</button>
           </div>
           <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
         </div>
@@ -982,10 +983,22 @@ async function confirmChat(action, toolName, toolParams) {
   });
 }
 
+var ABORT_CONTROLLER = null;
+
+function stopChat() {
+  if (ABORT_CONTROLLER) {
+    ABORT_CONTROLLER.abort();
+    ABORT_CONTROLLER = null;
+  }
+}
+
 async function startStream(body) {
   CONFIRM_PENDING = true;
   document.getElementById('chatSendBtn').disabled = true;
+  document.getElementById('chatStopBtn').style.display = '';
   document.getElementById('typingIndicator').classList.add('active');
+
+  ABORT_CONTROLLER = new AbortController();
 
   STREAMING_MSG = {type: 'agent', content: ''};
   const container = document.getElementById('chatMessages');
@@ -998,6 +1011,7 @@ async function startStream(body) {
   var streamTimeout = setTimeout(function() {
     CONFIRM_PENDING = false;
     document.getElementById('chatSendBtn').disabled = false;
+    document.getElementById('chatStopBtn').style.display = 'none';
     document.getElementById('typingIndicator').classList.remove('active');
   }, 120000);
 
@@ -1005,7 +1019,8 @@ async function startStream(body) {
     const res = await fetch(API + '/agent/chat/stream', {
       method: 'POST',
       headers: Object.assign({}, getAuthHeaders(), { 'Content-Type': 'application/json' }),
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: ABORT_CONTROLLER.signal
     });
 
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1039,17 +1054,24 @@ async function startStream(body) {
       }
     }
   } catch(e) {
-    console.error('Stream error:', e);
-    appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'));
+    if (e.name === 'AbortError') {
+      // User stopped manually
+      appendMessage('agent', '⏹ ' + (LOCALE === 'zh' ? 'AI 已被手动停止。' : 'AI was manually stopped.'));
+    } else {
+      console.error('Stream error:', e);
+      appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'));
+    }
   } finally {
     clearTimeout(streamTimeout);
   }
 
   document.getElementById('typingIndicator').classList.remove('active');
-  // Always clean up streaming state, even when no tokens received (e.g. error)
-  const lastMsg = document.querySelector('.msg.streaming');
+  document.getElementById('chatStopBtn').style.display = 'none';
+  ABORT_CONTROLLER = null;
+
+  var lastMsg = document.querySelector('.msg.streaming');
   if (lastMsg) {
-    const mc = lastMsg.querySelector('.msg-content');
+    var mc = lastMsg.querySelector('.msg-content');
     if (mc) {
       mc.classList.remove('streaming-cursor');
       if (STREAMING_MSG && STREAMING_MSG.content) {
@@ -1060,7 +1082,6 @@ async function startStream(body) {
   }
   STREAMING_MSG = null;
   document.getElementById('chatSendBtn').disabled = false;
-}
 
 function handleSSEEvent(data) {
   const type = data.event || '';
@@ -1190,7 +1211,6 @@ async function loadSessions() {
   const list = document.getElementById('sessionList');
   if (!data || !data.sessions || data.sessions.length === 0) {
     list.innerHTML = '<div class="chat-session-item" style="cursor:default;color:var(--text-muted);font-size:12px">' + (LOCALE === 'zh' ? '暂无对话' : 'No sessions') + '</div>';
-    CURRENT_SESSION = null;
     return;
   }
   list.innerHTML = '';
@@ -1217,20 +1237,28 @@ async function switchSession(sid) {
   const data = await apiFetch(API + '/agent/sessions/' + sid);
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
-  lastSyncedMsgCount = 0;
-  if (data && data.messages) {
+  var msgCount = 0;
+  if (data && data.messages && data.messages.length > 0) {
     data.messages.forEach(function(m) {
       if (m.role === 'user') {
         appendMessage('user', escHtml(m.content));
+        msgCount++;
       } else if (m.role === 'agent' || m.role === 'assistant') {
         appendMessage('agent', renderMarkdown(m.content));
+        msgCount++;
       } else if (m.role === 'system') {
         const div = document.createElement('div');
         div.className = 'msg system';
         div.textContent = m.content;
         container.appendChild(div);
+        msgCount++;
       }
     });
+    lastSyncedMsgCount = msgCount;
+  }
+  if (msgCount === 0) {
+    appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>');
+    lastSyncedMsgCount = 1;
   }
   container.scrollTop = container.scrollHeight;
 }

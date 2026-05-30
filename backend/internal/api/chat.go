@@ -182,6 +182,27 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			toolArgsStr, _ := tc["function"].(map[string]interface{})["arguments"].(string)
 			toolID, _ := tc["id"].(string)
 
+			// Hard block: Plan mode must not execute state-changing commands
+			if req.Mode == "plan" && toolName == "shell_exec" {
+				var targs map[string]interface{}
+				json.Unmarshal([]byte(toolArgsStr), &targs)
+				cmd, _ := targs["command"].(string)
+				if isDestructiveCommand(cmd) {
+					fmt.Fprintf(c.Writer, "event: tool_result\ndata: %s\n\n", toJSON(map[string]interface{}{
+						"tool_name": toolName,
+						"result":    "",
+						"error":     "BLOCKED: Shell execution is disabled in Plan mode. Use Build mode to execute commands.",
+					}))
+					flusher.Flush()
+					messages = append(messages, map[string]interface{}{
+						"role":         "tool",
+						"tool_call_id": toolID,
+						"content":      "BLOCKED: Shell execution is disabled in Plan mode. Switch to Build mode to execute commands. You can only run read-only diagnostic commands like 'pwd', 'ls', 'cat', 'echo', 'which'.",
+					})
+					continue
+				}
+			}
+
 			var toolArgs map[string]interface{}
 			if err := json.Unmarshal([]byte(toolArgsStr), &toolArgs); err != nil {
 				toolArgs = map[string]interface{}{}
@@ -611,4 +632,34 @@ func chunkRunes(s string, size int) []string {
 		chunks = append(chunks, string(runes[i:end]))
 	}
 	return chunks
+}
+
+func isDestructiveCommand(cmd string) bool {
+	destructive := []string{
+		"install", "update", "upgrade", "remove", "delete", "rm ", "uninstall",
+		"create", "mkfs", "mkswap", "mk", "dd ", "mount", "umount",
+		"apt-get", "apt ", "yum ", "dnf ", "pacman", "brew", "pip", "pip3", "npm",
+		"systemctl", "service", "reboot", "shutdown", "init ",
+		"az ", "oci ", "tccli", "render", "terraform", "ansible",
+		"chmod", "chown", "useradd", "usermod", "groupadd",
+		">", ">>", "tee ",
+	}
+	readOnly := []string{
+		"ls", "pwd", "echo", "cat", "head", "tail", "less", "more",
+		"which", "whereis", "whoami", "id", "env", "printenv",
+		"uname", "hostname", "date", "uptime", "df", "du", "free",
+		"ps", "top", "who", "w", "last",
+	}
+	cmdLower := strings.ToLower(strings.TrimSpace(cmd))
+	for _, ro := range readOnly {
+		if strings.HasPrefix(cmdLower, ro+" ") || cmdLower == ro {
+			return false
+		}
+	}
+	for _, d := range destructive {
+		if strings.Contains(cmdLower, d) {
+			return true
+		}
+	}
+	return true // default: block unknown commands in plan mode
 }
