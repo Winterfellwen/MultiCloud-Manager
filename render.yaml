@@ -1,23 +1,10 @@
 services:
   - type: web
     name: multicloud-backend
-    env: go
+    env: docker
     plan: free
-    rootDir: backend
-    buildCommand: |
-      go build -o app .
-      curl -sL "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz" | tar xzf -
-      chmod +x opencode
-    startCommand: |
-      # Install Azure CLI if not present
-      if ! which az >/dev/null 2>&1; then
-        which pip3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq python3-pip; }
-        pip3 install azure-cli
-      fi
-      # Start opencode headless server
-      ./opencode serve --port 4096 --hostname 0.0.0.0 &
-      # Start Go API
-      ./app
+    dockerfilePath: ./Dockerfile
+    rootDir: .
     envVars:
       - key: DATABASE_URL
         fromDatabase:
