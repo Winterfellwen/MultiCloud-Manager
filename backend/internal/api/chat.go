@@ -68,7 +68,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	}
 
 	// Tool calling loop: keep calling LLM until it stops requesting tools
-	maxIterations := 8
+	maxIterations := 15
 	var finalContent string
 
 	httpClient := &http.Client{Timeout: 120 * time.Second}
@@ -178,6 +178,9 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			toolResultContent := result
 			if execErr != nil {
 				toolResultContent = fmt.Sprintf("Error: %s", execErr.Error())
+			}
+			if len(toolResultContent) > 2000 {
+				toolResultContent = toolResultContent[:2000] + "...[truncated]"
 			}
 			messages = append(messages, map[string]interface{}{
 				"role":       "tool",
@@ -316,6 +319,9 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 			toolResultContent := result
 			if execErr != nil {
 				toolResultContent = fmt.Sprintf("Error: %s", execErr.Error())
+			}
+			if len(toolResultContent) > 2000 {
+				toolResultContent = toolResultContent[:2000] + "...[truncated]"
 			}
 			messages = append(messages, map[string]interface{}{
 				"role":         "tool",
