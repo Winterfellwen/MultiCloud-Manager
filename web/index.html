@@ -128,21 +128,29 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 .chat-messages { flex: 1; overflow-y: auto; padding: 12px 0; display: flex; flex-direction: column; gap: 0; scroll-behavior: smooth; }
 
-/* Message blocks — opencode terminal style */
-.msg { padding: 10px 20px; font-size: 13px; line-height: 1.6; position: relative; border-bottom: 1px solid var(--border-light); }
-.msg:last-child { border-bottom: none; }
+/* Message blocks */
+.msg { padding: 10px 20px; font-size: 13px; line-height: 1.6; position: relative; }
+
+/* User message — compact bubble, right-aligned */
+.msg.user { display: flex; flex-direction: column; align-items: flex-end; padding: 8px 20px; }
+.msg.user .msg-bubble { max-width: 75%; background: var(--primary); color: #fff; border-radius: 8px; padding: 8px 12px; border-bottom-right-radius: 2px; }
+.msg.user .msg-bubble p { margin: 0; }
+.msg.user .msg-bubble code { background: rgba(255,255,255,.15); color: #fff; }
+.msg.user .msg-bubble a { color: #fff; text-decoration: underline; }
+.msg.user .msg-bubble pre { background: rgba(0,0,0,.2); border: none; color: inherit; }
+.msg.user .msg-role { display: none; }
+
+/* Agent message — full-width plain text */
+.msg.agent { padding: 12px 20px; border-bottom: 1px solid var(--border-light); }
+.msg.agent:last-child { border-bottom: none; }
+.msg.agent .msg-content { color: var(--text); max-width: 100%; }
 
 /* Role header */
-.msg-role { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+.msg-role { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
 .msg-role .role-icon { width: 14px; text-align: center; font-size: 11px; }
 .msg-role .role-label { font-weight: 500; }
-.msg-role .role-time { margin-left: auto; opacity: .4; font-size: 10px; }
-.msg.user .msg-role { color: var(--primary); }
 
-.msg-content { color: var(--text); white-space: pre-wrap; word-break: break-word; }
-.msg.user .msg-content { color: var(--text-secondary); }
-.msg.agent .msg-content { color: var(--text); }
-
+.msg-content { color: var(--text); }
 .msg-content p { margin: 2px 0; }
 .msg-content p:first-child { margin-top: 0; }
 .msg-content p:last-child { margin-bottom: 0; }
@@ -163,19 +171,20 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg-content a:hover { text-decoration: underline; }
 
 .msg.system { text-align: center; font-size: 11px; color: var(--text-muted); padding: 6px 20px; border-bottom: none; }
-.msg.system .msg-content { color: var(--text-muted); }
 
-/* Agent thinking / tool execution block */
-.tool-block { margin: 6px 0; border-left: 2px solid var(--primary); padding: 4px 10px; background: rgba(0,122,255,.04); border-radius: 0 2px 2px 0; font-family: var(--font-mono); font-size: 12px; }
-.tool-block .tool-header { display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
-.tool-block .tool-header .tool-icon { font-size: 11px; }
+/* Tool execution block — expandable */
+.tool-block { margin: 6px 0; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; font-family: var(--font-mono); font-size: 12px; cursor: pointer; user-select: none; }
+.tool-block .tool-header { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--surface); }
+.tool-block .tool-header .tool-arrow { font-size: 10px; color: var(--text-muted); width: 12px; flex-shrink: 0; transition: transform .15s; }
+.tool-block.expanded .tool-header .tool-arrow { transform: rotate(90deg); }
 .tool-block .tool-name { color: var(--primary); font-weight: 500; }
-.tool-block .tool-status { font-size: 11px; margin-left: auto; }
+.tool-block .tool-params { color: var(--text-muted); margin-left: 4px; font-size: 11px; }
+.tool-block .tool-status { font-size: 10px; margin-left: auto; text-transform: uppercase; }
 .tool-block .tool-status.running { color: var(--warning); }
 .tool-block .tool-status.done { color: var(--success); }
 .tool-block .tool-status.error { color: var(--danger); }
-.tool-block .tool-result { margin-top: 4px; padding: 4px 8px; background: var(--bg); border-radius: 2px; color: var(--text-secondary); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; }
-.tool-block .tool-params { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+.tool-block .tool-result { display: none; padding: 6px 10px; background: var(--bg); color: var(--text-secondary); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; border-top: 1px solid var(--border); }
+.tool-block.expanded .tool-result { display: block; }
 
 /* Streaming cursor */
 .streaming-cursor::after { content: '|'; animation: blink 1s step-end infinite; color: var(--primary); font-weight: 300; }
@@ -1078,7 +1087,8 @@ function handleSSEEvent(data) {
         var block = document.createElement('div');
         block.className = 'tool-block';
         block.dataset.toolName = name;
-        block.innerHTML = '<div class="tool-header"><span class="tool-icon">⚙</span><span class="tool-name">' + escHtml(name) + '</span><span class="tool-params">' + escHtml(params.substring(0, 80)) + '</span><span class="tool-status running">● running</span></div>';
+        block.onclick = function() { this.classList.toggle('expanded'); };
+        block.innerHTML = '<div class="tool-header"><span class="tool-arrow">▶</span><span class="tool-name">' + escHtml(name) + '</span><span class="tool-params">' + escHtml(params.substring(0, 80)) + '</span><span class="tool-status running">running</span></div>';
         if (streamingMsg) streamingMsg.appendChild(block);
       });
       break;
@@ -1090,21 +1100,21 @@ function handleSSEEvent(data) {
         if (statusEl) {
           if (data.error) {
             statusEl.className = 'tool-status error';
-            statusEl.textContent = '✕ error';
+            statusEl.textContent = 'error';
           } else {
             statusEl.className = 'tool-status done';
-            statusEl.textContent = '✓ done';
+            statusEl.textContent = 'done';
           }
         }
-        // Show result preview
-        if (data.result || data.error) {
-          var resultDiv = document.createElement('div');
+        var resultDiv = block.querySelector('.tool-result');
+        if (!resultDiv) {
+          resultDiv = document.createElement('div');
           resultDiv.className = 'tool-result';
-          var text = data.error || data.result || '';
-          if (text.length > 300) text = text.substring(0, 300) + '...';
-          resultDiv.textContent = text;
           block.appendChild(resultDiv);
         }
+        var text = data.error || data.result || '';
+        if (text.length > 500) text = text.substring(0, 500) + '... [truncated]';
+        resultDiv.textContent = text;
         block.classList.add('done');
       });
       break;
@@ -1250,16 +1260,13 @@ function appendMessage(type, html) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg ' + type;
-  var label = '';
-  var icon = '';
   if (type === 'user') {
-    label = LOCALE === 'zh' ? '你' : 'You';
-    icon = '▸';
+    div.innerHTML = '<div class="msg-bubble">' + html + '</div>';
   } else if (type === 'agent') {
-    label = 'AI';
-    icon = '◉';
+    div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>';
+  } else {
+    div.innerHTML = '<div class="msg-content">' + html + '</div>';
   }
-  div.innerHTML = '<div class="msg-role"><span class="role-icon">' + icon + '</span><span class="role-label">' + label + '</span></div><div class="msg-content">' + html + '</div>';
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
