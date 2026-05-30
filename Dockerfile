@@ -1,10 +1,9 @@
-FROM golang:1.22-alpine
+FROM golang:1.22
 
-RUN apk add --no-cache curl bash python3 py3-pip
+RUN apt-get update -qq && apt-get install -y -qq curl python3 python3-pip
 
 # Install opencode CLI
 RUN curl -fsSL https://opencode.ai/install | bash && \
-    ls -la /root/.opencode/bin/opencode && \
     /root/.opencode/bin/opencode --version
 ENV PATH="/root/.opencode/bin:${PATH}"
 
@@ -22,5 +21,4 @@ COPY web/ ../web/
 
 EXPOSE 8099 4096
 
-# Start both opencode and Go API
-CMD sh -c "echo 'Starting opencode...' && opencode serve --port 4096 --hostname 0.0.0.0 & sleep 3 && echo 'Starting Go API...' && ./app"
+CMD sh -c "opencode serve --port 4096 --hostname 0.0.0.0 & ./app"
