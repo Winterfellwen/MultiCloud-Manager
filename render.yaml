@@ -4,21 +4,18 @@ services:
     env: go
     plan: free
     rootDir: backend
-    buildCommand: go build -o app .
+    buildCommand: |
+      go build -o app .
+      curl -sL "https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64.tar.gz" | tar xzf -
+      chmod +x opencode
     startCommand: |
-      PATH=$HOME/.opencode/bin:$HOME/.local/bin:/usr/local/bin:$PATH
-      # Install opencode if not present
-      if [ ! -x "$HOME/.opencode/bin/opencode" ]; then
-        apt-get update -qq && apt-get install -y -qq curl ca-certificates
-        curl -fsSL https://opencode.ai/install | bash
-      fi
       # Install Azure CLI if not present
       if ! which az >/dev/null 2>&1; then
         which pip3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq python3-pip; }
         pip3 install azure-cli
       fi
       # Start opencode headless server
-      opencode serve --port 4096 --hostname 0.0.0.0 &
+      ./opencode serve --port 4096 --hostname 0.0.0.0 &
       # Start Go API
       ./app
     envVars:
