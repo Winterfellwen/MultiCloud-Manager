@@ -102,6 +102,19 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 				c.JSON(http.StatusOK, gin.H{"status": "down", "error": msg})
 			}
 		})
+		auth.GET("/opencode/logs", func(c *gin.Context) {
+			data, err := os.ReadFile("/tmp/startup.log")
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+				return
+			}
+			// Also read opencode's own log
+			ocLog, _ := os.ReadFile("/tmp/opencode.log")
+			c.JSON(http.StatusOK, gin.H{
+				"startup": string(data),
+				"opencode": string(ocLog),
+			})
+		})
 	}
 
 	// Proxy /chat/* to opencode server
