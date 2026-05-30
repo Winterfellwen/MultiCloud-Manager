@@ -4,7 +4,7 @@ services:
     env: go
     plan: free
     rootDir: backend
-    buildCommand: curl -sL https://aka.ms/InstallAzureCLIDeb | bash && go build -o app .
+    buildCommand: pip install azure-cli && go build -o app .
     envVars:
       - key: DATABASE_URL
         fromDatabase:
