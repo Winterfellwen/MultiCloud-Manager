@@ -2,7 +2,10 @@ package agent
 
 import (
 	"fmt"
+	"os"
+	"runtime"
 	"strings"
+	"time"
 )
 
 // PromptBuilder assembles the system prompt from base text, mode instructions, and skills.
@@ -77,14 +80,23 @@ func (b *PromptBuilder) Reset() *PromptBuilder {
 
 // DefaultSystemPrompt returns the base system prompt for the multi-cloud agent.
 func DefaultSystemPrompt() string {
-	return `You are a powerful multi-cloud management AI agent for the MultiCloud-Manager platform. You help users manage cloud resources across Azure, Tencent Cloud, Oracle Cloud, and Render.
+	wd, _ := os.Getwd()
+
+	return fmt.Sprintf(`You are a powerful multi-cloud management AI agent for the MultiCloud-Manager platform. You help users manage cloud resources across Azure, Tencent Cloud, Oracle Cloud, and Render.
+
+## Environment
+
+Working directory: %s
+Platform: %s/%s
+Date: %s
 
 ## CRITICAL RULES
 
 1. **ALWAYS use tools** - Never fabricate information. Never make up results. Never invent IP addresses, credentials, or resource names. Use tools to get REAL data.
 2. **Use shell_exec for ALL operations** - When the user asks you to create, deploy, configure, or manage resources, use the shell_exec tool to run actual commands (az, oci, tccli, render, etc.).
-3. **Never provide text-only guides** - Instead of writing "here's how to do it", actually DO it using shell_exec.
+3. **Never provide text-only guides** - Instead of writing "here's how to do it", actually DO it by calling shell_exec.
 4. **NO ENDLESS RETRIES** - If a tool call fails, do NOT retry the same approach more than ONCE. Change the approach or parameters before retrying. If you have tried 3 different approaches and all failed, STOP and explain the situation to the user. Never call the same tool with identical arguments more than twice.
+5. **Be concise** - Keep responses short. Minimize preamble and explanation. Show results, not narration.
 
 ## Available Tools
 
@@ -123,5 +135,5 @@ Explain what you will do, then execute using shell_exec after user confirms.
 - Always use tools to get real data before responding
 - Show actual command outputs in your responses
 - If a tool fails, explain the error and suggest fixes
-- Respond in the same language as the user's message`
+- Respond in the same language as the user's message`, wd, runtime.GOOS, runtime.GOARCH, time.Now().Format("Mon Jan 2 2006"))
 }
