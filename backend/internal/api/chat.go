@@ -293,6 +293,11 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 			toolArgsStr, _ := tc["function"].(map[string]interface{})["arguments"].(string)
 			toolID, _ := tc["id"].(string)
 
+			// Skip tool calls with empty name
+			if toolName == "" {
+				continue
+			}
+
 			var toolArgs map[string]interface{}
 			if err := json.Unmarshal([]byte(toolArgsStr), &toolArgs); err != nil {
 				toolArgs = map[string]interface{}{}
@@ -401,7 +406,7 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 					// Merge into existing
 					if fn, ok := tc["function"].(map[string]interface{}); ok {
 						if existingFn, ok := existing["function"].(map[string]interface{}); ok {
-							if name, ok := fn["name"].(string); ok {
+							if name, ok := fn["name"].(string); ok && name != "" {
 								existingFn["name"] = name
 							}
 							if args, ok := fn["arguments"].(string); ok {
@@ -413,15 +418,27 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 							}
 						}
 					}
-					if id, ok := tc["id"].(string); ok {
+					if id, ok := tc["id"].(string); ok && id != "" {
 						existing["id"] = id
 					}
 				} else {
-					// New tool call
+					// New tool call — build from chunk
+					fn := tc["function"]
+					if fn == nil {
+						fn = map[string]interface{}{"name": "", "arguments": "{}"}
+					}
+					fnMap, _ := fn.(map[string]interface{})
+					if fnMap == nil {
+						fnMap = map[string]interface{}{"name": "", "arguments": "{}"}
+					}
+					// Ensure arguments defaults to valid JSON
+					if _, ok := fnMap["arguments"].(string); !ok {
+						fnMap["arguments"] = "{}"
+					}
 					toolCallsMap[idx] = map[string]interface{}{
 						"id":       tc["id"],
 						"type":     "function",
-						"function": tc["function"],
+						"function": fnMap,
 					}
 				}
 			}
@@ -438,7 +455,11 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 			if tc, ok := toolCallsMap[i]; ok {
 				fn, fnOk := tc["function"].(map[string]interface{})
 				if !fnOk || fn == nil {
-					// Function object missing or nil — skip this tool call
+					continue
+				}
+				// Skip tool calls with empty name (streaming didn't capture it)
+				name, _ := fn["name"].(string)
+				if name == "" {
 					continue
 				}
 				// Ensure arguments is always a valid JSON string
