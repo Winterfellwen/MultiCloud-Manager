@@ -41,6 +41,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no")
 
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,13 +68,17 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		{"role": "user", "content": req.Message},
 	}
 
-	// Tool calling loop: keep calling LLM until it stops requesting tools
 	maxIterations := 15
-	var finalContent string
+	var allContent strings.Builder
 
 	httpClient := &http.Client{Timeout: 120 * time.Second}
 
+	var stopReason string
+	var iterCount int
+	var lastToolCalls []map[string]interface{}
+
 	for i := 0; i < maxIterations; i++ {
+		iterCount = i + 1
 		body := map[string]interface{}{
 			"model":      cfg.Model,
 			"messages":   messages,
@@ -90,8 +95,8 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		bodyBytes, _ := json.Marshal(body)
 		httpReq, err := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
 		if err != nil {
-			sendSSEError(c, "failed to create request: "+err.Error())
-			return
+			stopReason = "failed to create request: " + err.Error()
+			break
 		}
 
 		httpReq.Header.Set("Content-Type", "application/json")
@@ -99,30 +104,44 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 		resp, err := httpClient.Do(httpReq)
 		if err != nil {
-			sendSSEError(c, "connection failed: "+err.Error())
-			return
+			stopReason = "connection failed: " + err.Error()
+			break
 		}
 
 		if resp.StatusCode != 200 {
 			respBody, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			sendSSEError(c, fmt.Sprintf("API error (HTTP %d): %s", resp.StatusCode, string(respBody)))
-			return
+			stopReason = fmt.Sprintf("API error (HTTP %d)", resp.StatusCode)
+			// Try to extract meaningful error
+			var apiErr struct {
+				Error struct {
+					Message string `json:"message"`
+					Code    string `json:"code"`
+				} `json:"error"`
+			}
+			if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error.Message != "" {
+				stopReason = fmt.Sprintf("API error: %s (%s)", apiErr.Error.Message, apiErr.Error.Code)
+			}
+			break
 		}
 
-		// Collect the full response from the stream
 		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body)
-		finalContent = fullContent
+		allContent.WriteString(fullContent)
+		lastToolCalls = toolCalls
 
 		// Stream content tokens to the client
 		if fullContent != "" {
-			// Send in small chunks for streaming feel
 			chunkSize := 4
 			runes := []rune(fullContent)
 			for j := 0; j < len(runes); j += chunkSize {
 				end := j + chunkSize
 				if end > len(runes) {
 					end = len(runes)
+				}
+				select {
+				case <-c.Request.Context().Done():
+					return
+				default:
 				}
 				fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": string(runes[j:end])}))
 				flusher.Flush()
@@ -131,7 +150,6 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 		// If no tool calls, we're done
 		if len(toolCalls) == 0 {
-			// Add assistant message to history
 			messages = append(messages, map[string]interface{}{
 				"role":    "assistant",
 				"content": fullContent,
@@ -145,7 +163,6 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		}))
 		flusher.Flush()
 
-		// Add assistant message with tool_calls to conversation
 		assistantMsg := map[string]interface{}{
 			"role":       "assistant",
 			"content":    fullContent,
@@ -153,8 +170,14 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		}
 		messages = append(messages, assistantMsg)
 
-		// Execute each tool call and add results
 		for _, tc := range toolCalls {
+			select {
+			case <-c.Request.Context().Done():
+				stopReason = "client disconnected"
+				goto done
+			default:
+			}
+
 			toolName, _ := tc["function"].(map[string]interface{})["name"].(string)
 			toolArgsStr, _ := tc["function"].(map[string]interface{})["arguments"].(string)
 			toolID, _ := tc["id"].(string)
@@ -164,10 +187,8 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 				toolArgs = map[string]interface{}{}
 			}
 
-			// Execute the tool
 			result, execErr := h.runtime.ExecuteTool(c.Request.Context(), toolName, toolArgs)
 
-			// Send tool result to client
 			fmt.Fprintf(c.Writer, "event: tool_result\ndata: %s\n\n", toJSON(map[string]interface{}{
 				"tool_name": toolName,
 				"result":    result,
@@ -175,7 +196,6 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			}))
 			flusher.Flush()
 
-			// Add tool result to messages for next LLM call
 			toolResultContent := result
 			if execErr != nil {
 				toolResultContent = fmt.Sprintf("Error: %s", execErr.Error())
@@ -184,17 +204,32 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 				toolResultContent = toolResultContent[:2000] + "...[truncated]"
 			}
 			messages = append(messages, map[string]interface{}{
-				"role":       "tool",
+				"role":         "tool",
 				"tool_call_id": toolID,
-				"content":    toolResultContent,
+				"content":      toolResultContent,
 			})
 		}
-
-		// Continue the loop — LLM will see tool results and can respond or call more tools
 	}
 
-	// Save messages to session for history
-	h.saveSessionMessages(req.SessionID, req.Message, finalContent)
+done:
+	// Build summary if the loop was interrupted
+	if stopReason != "" {
+		summary := fmt.Sprintf("\n\n---\n> ⚠️ AI 在第 %d 步中断：%s\n> 请重新发送消息继续操作。\n", iterCount, stopReason)
+		allContent.WriteString(summary)
+		for _, part := range chunkRunes(summary, 10) {
+			fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": part}))
+			flusher.Flush()
+		}
+	} else if iterCount >= maxIterations && len(lastToolCalls) > 0 {
+		summary := fmt.Sprintf("\n\n---\n> ℹ️ AI 已执行 %d 轮操作。任务可能未完成，可以继续发送消息推进。\n", maxIterations)
+		allContent.WriteString(summary)
+		for _, part := range chunkRunes(summary, 10) {
+			fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": part}))
+			flusher.Flush()
+		}
+	}
+
+	h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
 
 	fmt.Fprintf(c.Writer, "event: done\ndata: {}\n\n")
 	flusher.Flush()
@@ -563,4 +598,17 @@ func sendSSEError(c *gin.Context, message string) {
 func toJSON(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func chunkRunes(s string, size int) []string {
+	runes := []rune(s)
+	var chunks []string
+	for i := 0; i < len(runes); i += size {
+		end := i + size
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, string(runes[i:end]))
+	}
+	return chunks
 }
