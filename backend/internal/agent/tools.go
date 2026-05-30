@@ -1,29 +1,183 @@
 package agent
 
+import (
+	"context"
+	"encoding/json"
+)
+
+// BuiltInTool is a convenience implementation of Tool backed by a function.
+type BuiltInTool struct {
+	name        string
+	description string
+	params      map[string]interface{}
+	fn          func(ctx context.Context, args map[string]interface{}) (string, error)
+}
+
+func (t *BuiltInTool) Name() string        { return t.name }
+func (t *BuiltInTool) Description() string  { return t.description }
+func (t *BuiltInTool) Parameters() map[string]interface{} { return t.params }
+
+func (t *BuiltInTool) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
+	return t.fn(ctx, args)
+}
+
+// NewBuiltInTool creates a new BuiltInTool.
+func NewBuiltInTool(name, description string, params map[string]interface{},
+	fn func(ctx context.Context, args map[string]interface{}) (string, error)) *BuiltInTool {
+	return &BuiltInTool{
+		name:        name,
+		description: description,
+		params:      params,
+		fn:          fn,
+	}
+}
+
+// RegisterBuiltInTools registers all cloud management tools into the given registry.
+func RegisterBuiltInTools(registry *ToolRegistry, executor *Executor) {
+	registry.Register(NewBuiltInTool(
+		"list_cloud_resources",
+		"List all cloud resources. Can filter by cloud type (azure/tencent/oracle/render) and region.",
+		map[string]interface{}{
+			"cloud_type": map[string]interface{}{
+				"type":        "string",
+				"description": "Cloud platform type",
+				"enum":        []string{"azure", "tencent", "oracle", "render"},
+			},
+			"region": map[string]interface{}{
+				"type":        "string",
+				"description": "Cloud region, e.g. eastus, ap-shanghai",
+			},
+			"status": map[string]interface{}{
+				"type":        "string",
+				"description": "Resource status filter, e.g. running, stopped",
+			},
+		},
+		executor.listResources,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"start_instance",
+		"Start a cloud instance/VM. Requires a resource ID.",
+		map[string]interface{}{
+			"resource_id": map[string]interface{}{
+				"type":        "string",
+				"description": "Internal resource ID (from list_cloud_resources id field)",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.instanceAction(ctx, args, "start")
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"stop_instance",
+		"Stop a cloud instance/VM. Requires a resource ID. Warning: services will be unavailable after stop.",
+		map[string]interface{}{
+			"resource_id": map[string]interface{}{
+				"type":        "string",
+				"description": "Internal resource ID (from list_cloud_resources id field)",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.instanceAction(ctx, args, "stop")
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"restart_instance",
+		"Restart a cloud instance/VM. Requires a resource ID.",
+		map[string]interface{}{
+			"resource_id": map[string]interface{}{
+				"type":        "string",
+				"description": "Internal resource ID (from list_cloud_resources id field)",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.instanceAction(ctx, args, "restart")
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"sync_cloud_resources",
+		"Manually trigger cloud resource sync from all connected cloud platforms.",
+		map[string]interface{}{},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.syncResources(ctx)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"get_cloud_stats",
+		"Get cloud resource statistics including total resource count and account count.",
+		map[string]interface{}{},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.getStats(ctx)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"list_cloud_accounts",
+		"List all configured cloud account information.",
+		map[string]interface{}{},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.listAccounts(ctx)
+		},
+	))
+}
+
+// MarshalJSON returns a JSON representation of a tool's definition in OpenAI format.
+func toolDefinition(t Tool) map[string]interface{} {
+	params := t.Parameters()
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+	return map[string]interface{}{
+		"type": "function",
+		"function": map[string]interface{}{
+			"name":        t.Name(),
+			"description": t.Description(),
+			"parameters": map[string]interface{}{
+				"type":       "object",
+				"properties": params,
+			},
+		},
+	}
+}
+
+// MarshalToolDefinitionsJSON returns all tool definitions as JSON bytes.
+func MarshalToolDefinitionsJSON(tools []Tool) ([]byte, error) {
+	defs := make([]map[string]interface{}, len(tools))
+	for i, t := range tools {
+		defs[i] = toolDefinition(t)
+	}
+	return json.Marshal(defs)
+}
+
 // GetToolDefinitions returns the OpenAI function-calling tool definitions
-// that allow the LLM to control cloud resources.
+// that allow the LLM to control cloud resources. This is a backward-compatible
+// wrapper that returns static definitions without requiring a Registry.
 func GetToolDefinitions() []map[string]interface{} {
 	return []map[string]interface{}{
 		{
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "list_cloud_resources",
-				"description": "列出所有云资源。可以按云类型（azure/tencent/oracle/render）和区域筛选。",
+				"description": "List all cloud resources. Can filter by cloud type (azure/tencent/oracle/render) and region.",
 				"parameters": map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"cloud_type": map[string]interface{}{
 							"type":        "string",
-							"description": "云平台类型",
+							"description": "Cloud platform type",
 							"enum":        []string{"azure", "tencent", "oracle", "render"},
 						},
 						"region": map[string]interface{}{
 							"type":        "string",
-							"description": "云区域，如 eastus、ap-shanghai 等",
+							"description": "Cloud region, e.g. eastus, ap-shanghai",
 						},
 						"status": map[string]interface{}{
 							"type":        "string",
-							"description": "资源状态筛选，如 running、stopped",
+							"description": "Resource status filter, e.g. running, stopped",
 						},
 					},
 				},
@@ -33,13 +187,13 @@ func GetToolDefinitions() []map[string]interface{} {
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "start_instance",
-				"description": "启动一个云实例/虚拟机。需要提供资源ID。",
+				"description": "Start a cloud instance/VM. Requires a resource ID.",
 				"parameters": map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"resource_id": map[string]interface{}{
 							"type":        "string",
-							"description": "资源的内部ID（来自 list_cloud_resources 返回的 id 字段）",
+							"description": "Internal resource ID (from list_cloud_resources id field)",
 						},
 					},
 					"required": []string{"resource_id"},
@@ -50,13 +204,13 @@ func GetToolDefinitions() []map[string]interface{} {
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "stop_instance",
-				"description": "停止一个云实例/虚拟机。需要提供资源ID。注意：停止后服务将不可用。",
+				"description": "Stop a cloud instance/VM. Requires a resource ID. Warning: services will be unavailable after stop.",
 				"parameters": map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"resource_id": map[string]interface{}{
 							"type":        "string",
-							"description": "资源的内部ID（来自 list_cloud_resources 返回的 id 字段）",
+							"description": "Internal resource ID (from list_cloud_resources id field)",
 						},
 					},
 					"required": []string{"resource_id"},
@@ -67,13 +221,13 @@ func GetToolDefinitions() []map[string]interface{} {
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "restart_instance",
-				"description": "重启一个云实例/虚拟机。需要提供资源ID。",
+				"description": "Restart a cloud instance/VM. Requires a resource ID.",
 				"parameters": map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"resource_id": map[string]interface{}{
 							"type":        "string",
-							"description": "资源的内部ID（来自 list_cloud_resources 返回的 id 字段）",
+							"description": "Internal resource ID (from list_cloud_resources id field)",
 						},
 					},
 					"required": []string{"resource_id"},
@@ -84,7 +238,7 @@ func GetToolDefinitions() []map[string]interface{} {
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "sync_cloud_resources",
-				"description": "手动触发云资源同步，从所有云平台拉取最新资源状态。",
+				"description": "Manually trigger cloud resource sync from all connected cloud platforms.",
 				"parameters": map[string]interface{}{
 					"type":       "object",
 					"properties": map[string]interface{}{},
@@ -95,7 +249,7 @@ func GetToolDefinitions() []map[string]interface{} {
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "get_cloud_stats",
-				"description": "获取云资源统计信息，包括资源总数和云账户数。",
+				"description": "Get cloud resource statistics including total resource count and account count.",
 				"parameters": map[string]interface{}{
 					"type":       "object",
 					"properties": map[string]interface{}{},
@@ -106,7 +260,7 @@ func GetToolDefinitions() []map[string]interface{} {
 			"type": "function",
 			"function": map[string]interface{}{
 				"name":        "list_cloud_accounts",
-				"description": "列出所有已配置的云账户信息。",
+				"description": "List all configured cloud account information.",
 				"parameters": map[string]interface{}{
 					"type":       "object",
 					"properties": map[string]interface{}{},
