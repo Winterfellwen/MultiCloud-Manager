@@ -3,10 +3,9 @@ FROM golang:1.22
 RUN apt-get update -qq && apt-get install -y -qq curl python3 python3-pip
 
 # Install opencode CLI (direct binary download — install script fails on Render due to API limits)
-RUN curl -sL -o /tmp/oc.tar.gz "https://github.com/anomalyco/opencode/releases/download/v1.15.8/opencode-linux-x64.tar.gz" && \
-    mkdir -p /tmp/oc && tar xzf /tmp/oc.tar.gz -C /tmp/oc && \
-    find /tmp/oc -name opencode -type f -exec mv {} /usr/local/bin/opencode \; && \
-    chmod +x /usr/local/bin/opencode && \
+# Install opencode CLI via npm
+RUN apt-get update -qq && apt-get install -y -qq nodejs npm && \
+    npm install -g opencode-ai@1.15.8 && \
     opencode --version
 
 # Install Azure CLI
