@@ -10,11 +10,6 @@ services:
         fromDatabase:
           name: multicloud-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: multicloud-redis
-          type: redis
-          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: ENVIRONMENT
@@ -27,8 +22,3 @@ databases:
     databaseName: multicloud
     user: multicloud_user
     plan: free
-
-redis:
-  - name: multicloud-redis
-    plan: free
-    maxmemoryPolicy: noeviction
