@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"multicloud/internal/agent/shell"
 	"multicloud/internal/cloud"
 	"multicloud/internal/vault"
 )
@@ -29,11 +30,30 @@ type RuntimeConfig struct {
 	BasePrompt string
 }
 
+// shellToolWrapper wraps shell.ShellTool to implement agent.Tool interface
+type shellToolWrapper struct {
+	shellTool *shell.ShellTool
+}
+
+func (w *shellToolWrapper) Name() string        { return w.shellTool.Name() }
+func (w *shellToolWrapper) Description() string  { return w.shellTool.Description() }
+func (w *shellToolWrapper) Parameters() map[string]interface{} { return w.shellTool.Parameters() }
+func (w *shellToolWrapper) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
+	return w.shellTool.Execute(ctx, args)
+}
+
 // NewRuntime creates and configures a new Runtime.
 func NewRuntime(cfg RuntimeConfig) *Runtime {
 	registry := NewToolRegistry()
 	executor := NewExecutor(cfg.Syncer, cfg.DB)
 	RegisterBuiltInTools(registry, executor)
+
+	// Register shell executor tool
+	shellExecutor := shell.NewExecutor(shell.Config{
+		WorkspaceDir:   "/workspace",
+		TimeoutSeconds: 300,
+	})
+	registry.Register(&shellToolWrapper{shellTool: shell.NewShellTool(shellExecutor)})
 
 	router := NewRouter(registry)
 
