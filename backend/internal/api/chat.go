@@ -75,10 +75,11 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 	for i := 0; i < maxIterations; i++ {
 		body := map[string]interface{}{
-			"model":    cfg.Model,
-			"messages": messages,
-			"stream":   true,
-			"tools":    h.runtime.GetToolDefinitions(),
+			"model":      cfg.Model,
+			"messages":   messages,
+			"stream":     true,
+			"tools":      h.runtime.GetToolDefinitions(),
+			"max_tokens": 4096,
 		}
 
 		if cfg.EnableReasoning {
@@ -225,10 +226,11 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 
 	for i := 0; i < maxIterations; i++ {
 		body := map[string]interface{}{
-			"model":    cfg.Model,
-			"messages": messages,
-			"stream":   false,
-			"tools":    h.runtime.GetToolDefinitions(),
+			"model":      cfg.Model,
+			"messages":   messages,
+			"stream":     false,
+			"tools":      h.runtime.GetToolDefinitions(),
+			"max_tokens": 4096,
 		}
 
 		if cfg.EnableReasoning {
