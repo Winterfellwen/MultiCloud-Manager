@@ -463,55 +463,13 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
     <div class="activity-placeholder" data-i18n="activity.empty">暂无活动记录</div>
   </div>
 
-  <!-- Chat - OpenCode style -->
+  <!-- Chat - powered by opencode -->
   <div id="page-chat" class="page">
-    <div class="chat-layout">
-      <div class="chat-sessions-backdrop" onclick="closeChatSessions()"></div>
-      <!-- Session Sidebar -->
-      <div class="chat-sidebar">
-        <div class="chat-sidebar-header">
-          <h3 data-i18n="chat.sessions">Sessions</h3>
-          <button class="chat-new-btn" onclick="newSession()" title="New Session">+</button>
-        </div>
-        <div class="chat-session-list" id="sessionList">
-          <div class="chat-session-item" data-sid="loading"><span data-i18n="chat.loading">Loading...</span></div>
-        </div>
-      </div>
-      <!-- Chat Main -->
-      <div class="chat-main">
-        <div class="chat-header">
-          <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
-          <div class="mode-toggle">
-            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
-            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
-            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
-          </div>
-          <div class="chat-header-actions">
-            <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
-          </div>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-          <div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div></div>
-        </div>
-        <div class="typing-indicator" id="typingIndicator">
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-        </div>
-        <div class="chat-input-area">
-          <div class="chat-input-bar">
-            <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <button onclick="sendChat()" id="chatSendBtn" disabled>&#62;</button>
-            <button onclick="stopChat()" id="chatStopBtn" style="display:none;background:var(--danger);color:#fff;border:none;border-radius:2px;width:32px;height:32px;cursor:pointer;font-size:12px;flex-shrink:0" title="Stop">■</button>
-          </div>
-          <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
-        </div>
-      </div>
-    </div>
+    <iframe id="opencodeFrame" src="/chat" style="width:100%;height:calc(100vh - 88px);border:0;display:block"
+      allow="clipboard-read; clipboard-write"></iframe>
   </div>
 
-  <!-- AI Config Modal -->
-  <div class="modal-overlay" id="aiConfigModal" role="dialog" aria-modal="true" aria-labelledby="aiConfigTitle" onclick="if(event.target===this)closeAIConfig()">
+</div><!-- end content -->
     <div class="modal-box">
       <h3 id="aiConfigTitle" data-i18n="config.title">AI 模型配置</h3>
       <div class="modal-desc" data-i18n="config.desc">配置 AI 云助手的语言模型，支持任何 OpenAI 兼容的 API。未配置时使用内置规则回复。</div>

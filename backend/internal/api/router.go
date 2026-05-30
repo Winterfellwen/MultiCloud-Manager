@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
 
-	"multicloud/internal/agent"
 	"multicloud/internal/cloud"
 	"multicloud/internal/vault"
 
@@ -33,24 +34,14 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 	r.POST("/api/auth/login", authHandler.Login)
 
 	syncer := cloud.NewSyncer(db)
-	executor := agent.NewExecutor(syncer, db)
 
-	// Create Vault client (optional)
 	var vaultClient *vault.Client
 	vaultAddr := os.Getenv("VAULT_ADDR")
 	if vaultAddr != "" {
 		vaultClient = vault.NewClient(vault.Config{Addr: vaultAddr})
 	}
 
-	runtime := agent.NewRuntime(agent.RuntimeConfig{
-		DB:     db,
-		Syncer: syncer,
-		Vault:  vaultClient,
-	})
-
-	chatHandler := NewChatStreamHandler(db, executor, runtime)
 	accountsHandler := NewAccountsHandler(db)
-	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
 	teamsHandler := NewTeamsHandler(db)
 	sessionsHandler := NewSessionsHandler(db)
@@ -62,16 +53,6 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 	{
 		auth.GET("/auth/profile", authHandler.Profile)
 		auth.PUT("/auth/password", resourcesHandler.ChangePassword)
-		auth.GET("/agent/config", GetAIConfig)
-		auth.PUT("/agent/config", UpdateAIConfig)
-		auth.POST("/agent/config/test", TestAIConfig)
-		auth.GET("/agent/config/:type", agentConfigHandler.GetConfig)
-		auth.PUT("/agent/config/:type", agentConfigHandler.UpdateConfig)
-		// Chat endpoints
-		auth.POST("/agent/chat/stream", chatHandler.Stream)
-		auth.POST("/agent/chat", chatHandler.Chat)
-		auth.POST("/agent/execute", chatHandler.Execute)
-		// Session endpoints
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
 		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
@@ -109,6 +90,17 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 			}
 		})
 	}
+
+	// Proxy /chat/* to opencode server
+	ocURL, _ := url.Parse("http://localhost:4096")
+	ocProxy := httputil.NewSingleHostReverseProxy(ocURL)
+	r.Any("/chat/*proxyPath", func(c *gin.Context) {
+		c.Request.URL.Path = "/" + c.Param("proxyPath")
+		ocProxy.ServeHTTP(c.Writer, c.Request)
+	})
+	r.Any("/chat", func(c *gin.Context) {
+		ocProxy.ServeHTTP(c.Writer, c.Request)
+	})
 
 	webDir := getWebDir()
 	r.Static("/static", webDir)
