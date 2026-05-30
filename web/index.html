@@ -868,7 +868,8 @@ function showPage(page) {
   document.getElementById('topbarTitle').textContent = pageTitles[page] ? t(pageTitles[page]) : page;
 
   if (page === 'dashboard') loadDashboard();
-  if (page === 'chat') { loadSessions(); }
+  if (page === 'chat') { loadSessions(); startSessionPoll(); }
+  else { stopSessionPoll(); }
   if (page === 'resources') loadResources();
   if (page === 'accounts') loadAccounts();
   if (page === 'team') loadTeam();
@@ -1216,6 +1217,7 @@ async function switchSession(sid) {
   const data = await apiFetch(API + '/agent/sessions/' + sid);
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
+  lastSyncedMsgCount = 0;
   if (data && data.messages) {
     data.messages.forEach(function(m) {
       if (m.role === 'user') {
@@ -1743,7 +1745,7 @@ var __ = {
     'chat.mode_plan': '仅生成方案',
     'chat.mode_confirm': '确认模式',
     'chat.settings_title': 'AI 配置',
-    'chat.sessions': '对话历史',
+    'chat.sessions': '对话',
     'chat.loading': '加载中...',
     'chat.new_session': '新建对话',
     'chat.no_sessions': '暂无对话',
@@ -2135,6 +2137,55 @@ var langBtnInit = document.getElementById('langToggleBtn');
 if (langBtnInit) langBtnInit.textContent = LOCALE === 'zh' ? 'EN' : '中文';
 applyLang();
 loadDashboard();
+
+/* Session polling — keeps chat in sync across page switches/refreshes */
+var sessionPollTimer = null;
+var lastSyncedMsgCount = 0;
+
+function startSessionPoll() {
+  stopSessionPoll();
+  sessionPollTimer = setInterval(async function() {
+    if (!CURRENT_SESSION) return;
+    // Skip if there's an active streaming message
+    if (document.querySelector('.msg.streaming')) return;
+    try {
+      var data = await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION);
+      if (!data || !data.messages) return;
+      if (data.messages.length !== lastSyncedMsgCount) {
+        // Refresh session list too
+        loadSessions();
+        // Re-render messages
+        var container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+        lastSyncedMsgCount = 0;
+        data.messages.forEach(function(m) {
+          if (m.role === 'user') {
+            appendMessage('user', escHtml(m.content));
+            lastSyncedMsgCount++;
+          } else if (m.role === 'agent' || m.role === 'assistant') {
+            appendMessage('agent', renderMarkdown(m.content));
+            lastSyncedMsgCount++;
+          } else if (m.role === 'system') {
+            var div = document.createElement('div');
+            div.className = 'msg system';
+            div.textContent = m.content;
+            container.appendChild(div);
+            lastSyncedMsgCount++;
+          }
+        });
+        container.scrollTop = container.scrollHeight;
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+function stopSessionPoll() {
+  if (sessionPollTimer) {
+    clearInterval(sessionPollTimer);
+    sessionPollTimer = null;
+  }
+  lastSyncedMsgCount = 0;
+}
 </script>
 </body>
 </html>
