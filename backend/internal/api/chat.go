@@ -436,17 +436,18 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 	if len(toolCallsMap) > 0 {
 		for i := 0; i < len(toolCallsMap); i++ {
 			if tc, ok := toolCallsMap[i]; ok {
-				if fn, ok := tc["function"].(map[string]interface{}); ok {
-					if argsStr, ok := fn["arguments"].(string); ok {
-						if !json.Valid([]byte(argsStr)) {
-							// Arguments from streaming concatenation may be incomplete JSON.
-							// Replace with empty object so the API receives valid JSON.
-							fn["arguments"] = "{}"
-						}
-					} else {
-						// No arguments received yet, default to empty object
+				fn, fnOk := tc["function"].(map[string]interface{})
+				if !fnOk || fn == nil {
+					// Function object missing or nil — skip this tool call
+					continue
+				}
+				// Ensure arguments is always a valid JSON string
+				if argsStr, ok := fn["arguments"].(string); ok {
+					if !json.Valid([]byte(argsStr)) {
 						fn["arguments"] = "{}"
 					}
+				} else {
+					fn["arguments"] = "{}"
 				}
 				toolCalls = append(toolCalls, tc)
 			}
