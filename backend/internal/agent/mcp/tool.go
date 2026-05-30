@@ -2,38 +2,33 @@ package mcp
 
 import (
 	"context"
+	"fmt"
+
+	"multicloud/internal/agent"
 )
 
-type MCPTool struct {
-	mcpTool    Tool
-	serverName string
-	client     *Client
+type ToolWrapper struct {
+	mcpTool MCPTool
 }
 
-func NewMCPTool(serverName string, mcpTool Tool, client *Client) *MCPTool {
-	return &MCPTool{
-		mcpTool:    mcpTool,
-		serverName: serverName,
-		client:     client,
-	}
+func NewToolWrapper(t MCPTool) *ToolWrapper {
+	return &ToolWrapper{mcpTool: t}
 }
 
-func (t *MCPTool) Name() string {
-	return t.mcpTool.Name
+func (t *ToolWrapper) Name() string {
+	return fmt.Sprintf("mcp_%s_%s", t.mcpTool.ServerName, t.mcpTool.Name)
 }
 
-func (t *MCPTool) Description() string {
+func (t *ToolWrapper) Description() string {
 	return t.mcpTool.Description
 }
 
-func (t *MCPTool) Parameters() map[string]interface{} {
-	return t.mcpTool.InputSchema
+func (t *ToolWrapper) Parameters() map[string]interface{} {
+	return map[string]interface{}{"type": "object", "properties": map[string]interface{}{}}
 }
 
-func (t *MCPTool) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
-	return t.client.CallTool(ctx, t.mcpTool.Name, args)
+func (t *ToolWrapper) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
+	return t.mcpTool.Client.CallTool(ctx, t.mcpTool.Name, args)
 }
 
-func (t *MCPTool) ServerName() string {
-	return t.serverName
-}
+var _ agent.Tool = (*ToolWrapper)(nil)
