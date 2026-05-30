@@ -420,6 +420,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
     <div class="nav-item" data-page="resources"><span class="nav-icon">#</span> <span data-i18n="nav.resources_short">资源</span></div>
     <div class="nav-item" data-page="accounts"><span class="nav-icon">@</span> <span data-i18n="nav.accounts_short">账户</span></div>
     <div class="nav-item" data-page="team"><span class="nav-icon">+</span> <span data-i18n="nav.team_short">团队</span></div>
+    <div class="nav-item" data-page="vault"><span class="nav-icon">🔐</span> <span>Vault</span></div>
     <div class="nav-item" data-page="terraform"><span class="nav-icon">TF</span> <span data-i18n="quick.terraform">Terraform</span></div>
     <div class="nav-item" data-page="profile"><span class="nav-icon">*</span> <span data-i18n="nav.profile_short">我的</span></div>
   </nav>
@@ -663,6 +664,15 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
     <button class="invite-btn" onclick="openInviteModal()" data-i18n="team.invite">+ 邀请</button>
   </div>
 
+  <!-- Vault -->
+  <div id="page-vault" class="page">
+    <div class="section-title">Agent Vault</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:20px;font-size:13px;color:var(--text-muted)">
+      <p>🔐 Vault 凭证管理 — 安全存储和注入云凭据</p>
+      <p style="margin-top:8px;font-size:12px">Status: <span id="vaultHealth">Checking...</span></p>
+    </div>
+  </div>
+
   <!-- Terraform -->
   <div id="page-terraform" class="page">
     <h2 style="font-size:18px;margin-bottom:16px;" data-i18n="terraform.title">Terraform 模板</h2>
@@ -728,6 +738,7 @@ const pageTitles = {
   resources: 'page.resources',
   accounts: 'page.accounts',
   team: 'page.team',
+  vault: 'Vault',
   terraform: 'page.terraform',
   profile: 'page.profile'
 };
@@ -874,6 +885,7 @@ function showPage(page) {
   if (page === 'resources') loadResources();
   if (page === 'accounts') loadAccounts();
   if (page === 'team') loadTeam();
+  if (page === 'vault') loadVault();
   if (page === 'terraform') loadTerraform();
 }
 
@@ -1111,7 +1123,8 @@ function handleSSEEvent(data) {
         block.className = 'tool-block';
         block.dataset.toolName = name;
         block.onclick = function() { this.classList.toggle('expanded'); };
-        block.innerHTML = '<div class="tool-header"><span class="tool-arrow">▶</span><span class="tool-name">' + escHtml(name) + '</span><span class="tool-params">' + escHtml(params.substring(0, 80)) + '</span><span class="tool-status running">running</span></div>';
+        var paramsShort = params.substring(0, 40);
+        block.innerHTML = '<div class="tool-header"><span class="tool-arrow">▶</span><span class="tool-name">' + escHtml(name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status running">running</span></div>';
         if (streamingMsg) streamingMsg.appendChild(block);
       });
       break;
@@ -1221,7 +1234,8 @@ async function loadSessions() {
     item.dataset.sid = s.session_id;
     // Use title or first few chars of last message
     const title = s.title && s.title.length > 30 ? s.title.slice(0, 30) + '...' : (s.title || 'Session');
-    item.innerHTML = '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    var runningDot = s.status === 'running' ? '<span style="color:var(--success);margin-right:2px;animation:blink 1s step-end infinite">●</span>' : '';
+    item.innerHTML = runningDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
   });
@@ -1575,6 +1589,22 @@ async function submitAccount() {
 }
 
 /* Team */
+async function loadVault() {
+  try {
+    var data = await apiFetch(API + '/vault/health');
+    var el = document.getElementById('vaultHealth');
+    if (data && data.status === 'ok') {
+      el.textContent = '✅ Connected';
+      el.style.color = 'var(--success)';
+    } else {
+      el.textContent = '⚠️ Unavailable';
+      el.style.color = 'var(--warning)';
+    }
+  } catch(e) {
+    document.getElementById('vaultHealth').textContent = '❌ Error: ' + e.message;
+  }
+}
+
 async function loadTeam() {
   let data = await apiFetch(API + '/teams');
   let members;
