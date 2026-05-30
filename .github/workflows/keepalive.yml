@@ -1,0 +1,19 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'  # every minute
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render backend (1/2)
+        run: curl -s -o /dev/null -w "%{http_code}" https://multicloud-backend-qw9d.onrender.com/ || true
+
+      - name: Sleep 50s
+        run: sleep 50
+
+      - name: Ping Render backend (2/2)
+        run: curl -s -o /dev/null -w "%{http_code}" https://multicloud-backend-qw9d.onrender.com/ || true
