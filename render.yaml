@@ -5,7 +5,21 @@ services:
     plan: free
     rootDir: backend
     buildCommand: go build -o app .
-    startCommand: (which az >/dev/null 2>&1 || { which pip3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq python3-pip; }; pip3 install azure-cli; }) && ./app
+    startCommand: |
+      # Install opencode if not present
+      if ! which opencode >/dev/null 2>&1; then
+        curl -fsSL https://opencode.ai/install | bash
+      fi
+      # Install Azure CLI if not present
+      if ! which az >/dev/null 2>&1; then
+        which pip3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq python3-pip; }
+        pip3 install azure-cli
+      fi
+      # Start opencode headless server
+      export PATH=$PATH:$HOME/.bun/bin:$HOME/.local/bin
+      opencode serve --port 4096 --hostname 0.0.0.0 &
+      # Start Go API
+      ./app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
