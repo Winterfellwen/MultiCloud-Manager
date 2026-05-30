@@ -68,8 +68,11 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	}
 
 	// Tool calling loop: keep calling LLM until it stops requesting tools
-	maxIterations := 5
+	maxIterations := 8
 	var finalContent string
+
+	httpClient := &http.Client{Timeout: 120 * time.Second}
+
 	for i := 0; i < maxIterations; i++ {
 		body := map[string]interface{}{
 			"model":    cfg.Model,
@@ -93,7 +96,6 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-		httpClient := &http.Client{}
 		resp, err := httpClient.Do(httpReq)
 		if err != nil {
 			sendSSEError(c, "connection failed: "+err.Error())
