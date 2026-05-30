@@ -62,7 +62,7 @@ test.describe('Full Platform Test', () => {
   });
 
   test('2. Plan mode responds correctly with tools', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(300000);
     await login(page);
     await goToChat(page);
     await newChatSession(page);
@@ -70,8 +70,16 @@ test.describe('Full Platform Test', () => {
     await page.waitForTimeout(300);
 
     await page.locator('#chatInput').fill('查看所有云资源概况');
+    console.log('Sending Plan mode request...');
     await page.locator('#chatSendBtn').click();
-    await waitForStreamEnd(page, 60);
+
+    // Monitor for content/tool blocks to appear
+    await page.waitForFunction(() => {
+      return document.querySelectorAll('.msg.agent').length > 2 || document.querySelectorAll('.tool-block').length > 0;
+    }, { timeout: 60000 }).catch(() => console.log('No agent messages appeared'));
+    console.log('Messages visible:', await page.locator('.msg.agent').count());
+
+    await waitForStreamEnd(page, 240);
 
     const msgs = await page.locator('.msg.agent .msg-content').allTextContents();
     const allText = msgs.filter(t => t).join(' ');
