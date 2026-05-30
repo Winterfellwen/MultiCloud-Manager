@@ -18,7 +18,9 @@ COPY backend/ ./
 RUN go build -o app .
 
 COPY web/ ../web/
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 EXPOSE 8099 4096
 
-CMD sh -c "opencode serve --port 4096 --hostname 0.0.0.0 & ./app"
+CMD ["/start.sh"]
