@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"multicloud/internal/agent"
 )
 
-// ShellTool wraps a shell Executor as an agent.Tool.
+// ShellTool wraps a shell Executor as a callable tool.
 type ShellTool struct {
 	executor *Executor
 }
@@ -23,19 +21,23 @@ func (t *ShellTool) Name() string {
 }
 
 func (t *ShellTool) Description() string {
-	return "Execute a shell command in the workspace directory. Returns stdout, stderr, and exit code."
+	return "Execute a shell command on the server. Use this to run cloud CLI tools (az, oci, tccli, render), install packages, deploy applications, run scripts, check logs, and perform system administration tasks."
 }
 
 func (t *ShellTool) Parameters() map[string]interface{} {
 	return map[string]interface{}{
-		"command": map[string]interface{}{
-			"type":        "string",
-			"description": "The shell command to execute",
+		"type": "object",
+		"properties": map[string]interface{}{
+			"command": map[string]interface{}{
+				"type":        "string",
+				"description": "The shell command to execute",
+			},
+			"workdir": map[string]interface{}{
+				"type":        "string",
+				"description": "Optional working directory (defaults to workspace root)",
+			},
 		},
-		"workdir": map[string]interface{}{
-			"type":        "string",
-			"description": "Optional working directory relative to workspace root",
-		},
+		"required": []string{"command"},
 	}
 }
 
@@ -53,20 +55,14 @@ func (t *ShellTool) Execute(ctx context.Context, args map[string]interface{}) (s
 	}
 
 	output := map[string]interface{}{
-		"stdout":    result.Stdout,
-		"stderr":    result.Stderr,
-		"exit_code": result.ExitCode,
-		"duration":  result.Duration,
+		"stdout":     result.Stdout,
+		"stderr":     result.Stderr,
+		"exit_code":  result.ExitCode,
+		"duration_ms": result.Duration,
 	}
 	b, err := json.Marshal(output)
 	if err != nil {
 		return "", fmt.Errorf("marshaling result: %w", err)
 	}
 	return string(b), nil
-}
-
-// RegisterShellTool registers the shell_exec tool in the given registry.
-func RegisterShellTool(registry *agent.ToolRegistry, executor *Executor) {
-	tool := NewShellTool(executor)
-	registry.Register(tool)
 }
