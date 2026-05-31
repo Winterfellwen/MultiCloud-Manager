@@ -20,7 +20,7 @@ data: [DONE]
 	h := &ChatStreamHandler{}
 	body := io.NopCloser(strings.NewReader(sseData))
 
-	content, toolCalls, finishReason := h.collectStreamResponse(body)
+	content, toolCalls, finishReason := h.collectStreamResponse(body, nil, nil)
 
 	t.Logf("Content: %s", content)
 	t.Logf("Tool calls: %+v", toolCalls)
@@ -61,7 +61,7 @@ data: [DONE]
 	h := &ChatStreamHandler{}
 	body := io.NopCloser(strings.NewReader(sseData))
 
-	content, toolCalls, _ := h.collectStreamResponse(body)
+	content, toolCalls, _ := h.collectStreamResponse(body, nil, nil)
 
 	t.Logf("Content: %s", content)
 	t.Logf("Tool calls: %+v", toolCalls)
@@ -99,7 +99,7 @@ data: [DONE]
 	h := &ChatStreamHandler{}
 	body := io.NopCloser(strings.NewReader(sseData))
 
-	_, toolCalls, _ := h.collectStreamResponse(body)
+	_, toolCalls, _ := h.collectStreamResponse(body, nil, nil)
 
 	if len(toolCalls) == 0 {
 		t.Fatal("Expected at least one tool call")
@@ -135,7 +135,7 @@ data: [DONE]
 	h := &ChatStreamHandler{}
 	body := io.NopCloser(strings.NewReader(sseData))
 
-	_, toolCalls, _ := h.collectStreamResponse(body)
+	_, toolCalls, _ := h.collectStreamResponse(body, nil, nil)
 
 	// Tool call with nil function should be skipped
 	if len(toolCalls) != 0 {
