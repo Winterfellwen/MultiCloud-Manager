@@ -12,10 +12,12 @@ import (
 
 	"multicloud/internal/cloud/providers"
 	"multicloud/internal/cloud/types"
+	"multicloud/internal/vault"
 )
 
 type Syncer struct {
 	db         *sql.DB
+	vault      vault.Service
 	lastSyncAt time.Time
 	lastErrors []string
 	mu         sync.RWMutex
@@ -24,9 +26,10 @@ type Syncer struct {
 	started    bool
 }
 
-func NewSyncer(db *sql.DB) *Syncer {
+func NewSyncer(db *sql.DB, v vault.Service) *Syncer {
 	return &Syncer{
-		db: db,
+		db:    db,
+		vault: v,
 	}
 }
 
@@ -71,7 +74,7 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 		return nil
 	}
 
-	rows, err := s.db.QueryContext(ctx, `SELECT id, cloud_type, credentials FROM cloud_accounts WHERE is_active = true`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, cloud_type, credentials, COALESCE(vault_path, '') FROM cloud_accounts WHERE is_active = true`)
 	if err != nil {
 		return fmt.Errorf("syncer: query accounts: %w", err)
 	}
@@ -81,10 +84,23 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 	for rows.Next() {
 		var id, cloudType string
 		var credJSON string
-		if err := rows.Scan(&id, &cloudType, &credJSON); err != nil {
+		var vaultPath string
+		if err := rows.Scan(&id, &cloudType, &credJSON, &vaultPath); err != nil {
 			log.Printf("syncer: scan row: %v", err)
 			continue
 		}
+
+		// Prefer vault credentials over plaintext
+		if vaultPath != "" && s.vault != nil {
+			if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
+				if dataBytes, err := json.Marshal(secretData); err == nil {
+					credJSON = string(dataBytes)
+				}
+			} else {
+				log.Printf("syncer: vault read %s failed: %v, falling back to DB", vaultPath, err)
+			}
+		}
+
 		if err := s.syncAccount(ctx, id, cloudType, credJSON); err != nil {
 			log.Printf("syncer: sync account %s (%s): %v", id, cloudType, err)
 			syncErrors = append(syncErrors, fmt.Sprintf("%s: %v", cloudType, err))
@@ -104,6 +120,9 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 
 func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON string) error {
 	var creds map[string]string
+
+	// Try to load credentials from vault first (if vault_path is set)
+	// The caller should pass vault_path; for now, try parsing credJSON directly
 	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
 		return fmt.Errorf("parse credentials: %w", err)
 	}

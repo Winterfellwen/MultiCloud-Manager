@@ -33,14 +33,14 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 
 	r.POST("/api/auth/login", authHandler.Login)
 
-	syncer := cloud.NewSyncer(db)
-	executor := agent.NewExecutor(syncer, db)
-
 	// Built-in vault — no external dependency
-	vaultService, err := vault.NewBuiltinVault(db)
+	vaultService, err := vault.NewService(db)
 	if err != nil {
 		log.Printf("WARNING: Vault init failed: %v (vault features disabled)", err)
 	}
+
+	syncer := cloud.NewSyncer(db, vaultService)
+	executor := agent.NewExecutor(syncer, db)
 
 	runtime := agent.NewRuntime(agent.RuntimeConfig{
 		DB:     db,
@@ -48,7 +48,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 	})
 
 	chatHandler := NewChatStreamHandler(db, executor, runtime)
-	accountsHandler := NewAccountsHandler(db)
+	accountsHandler := NewAccountsHandler(db, vaultService)
 	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
 	teamsHandler := NewTeamsHandler(db)
