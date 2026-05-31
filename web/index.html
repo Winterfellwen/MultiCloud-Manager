@@ -677,6 +677,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;font-size:13px">
       <p style="margin:0 0 8px 0;color:var(--text)">🔐 Built-in credential vault — AES-256 encrypted, database-backed</p>
       <p style="margin:0;font-size:12px">Status: <span id="vaultHealth">Checking...</span></p>
+      <button onclick="migrateToVault()" id="vaultMigrateBtn" style="display:none;margin-top:8px;background:var(--warning);color:#000;border:none;border-radius:2px;padding:4px 12px;font-size:11px;cursor:pointer;font-family:inherit">🔄 Migrate existing credentials to vault</button>
     </div>
     <div style="margin-bottom:16px">
       <div style="font-size:13px;font-weight:500;margin-bottom:8px">Add Secret</div>
@@ -1666,6 +1667,10 @@ async function loadVaultAccounts() {
     var el = document.getElementById('vaultAccountsList');
     if (!el) return;
     var accounts = data && data.accounts ? data.accounts : [];
+    // Show migrate button if there are unmigrated accounts
+    var unmigrated = accounts.filter(a => !a.vault_secured);
+    var migrateBtn = document.getElementById('vaultMigrateBtn');
+    if (migrateBtn) migrateBtn.style.display = unmigrated.length > 0 ? '' : 'none';
     if (accounts.length === 0) {
       el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">No cloud accounts configured</div>';
       return;
@@ -1676,6 +1681,18 @@ async function loadVaultAccounts() {
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>' + icon + '</span><span style="font-size:12px;flex:1">' + escHtml(a.name) + ' <span style="color:var(--text-muted)">(' + a.cloud_type + ')</span></span>' + secured + '</div>';
     }).join('');
   } catch(e) {}
+}
+
+async function migrateToVault() {
+  var btn = document.getElementById('vaultMigrateBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Migrating...'; }
+  try {
+    var data = await apiFetch(API + '/vault/migrate', { method: 'POST' });
+    var count = data && data.migrated ? data.migrated : 0;
+    showToast('Migrated ' + count + ' account(s) to vault');
+    loadVault();
+  } catch(e) { showToast('Migration failed: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Migrate existing credentials to vault'; }
 }
 
 async function loadVaultSecrets() {

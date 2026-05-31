@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -163,6 +165,38 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true})
+		})
+		// Migrate existing plaintext credentials to vault
+		auth.POST("/vault/migrate", func(c *gin.Context) {
+			if vaultService == nil {
+				c.JSON(http.StatusOK, gin.H{"error": "vault not available", "migrated": 0})
+				return
+			}
+			rows, err := db.Query(`SELECT id, cloud_type, credentials, COALESCE(vault_path, '') FROM cloud_accounts WHERE credentials != '' AND (vault_path IS NULL OR vault_path = '')`)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			defer rows.Close()
+			migrated := 0
+			for rows.Next() {
+				var id, cloudType, credJSON, vaultPath string
+				if err := rows.Scan(&id, &cloudType, &credJSON, &vaultPath); err != nil {
+					continue
+				}
+				vaultPath = fmt.Sprintf("cloud/%s/%s", cloudType, id)
+				var credData map[string]interface{}
+				if err := json.Unmarshal([]byte(credJSON), &credData); err != nil {
+					credData = map[string]interface{}{"raw": credJSON}
+				}
+				if err := vaultService.SetSecret(vaultPath, credData); err != nil {
+					log.Printf("vault migrate: %s: %v", id, err)
+					continue
+				}
+				db.Exec(`UPDATE cloud_accounts SET vault_path = $1 WHERE id = $2`, vaultPath, id)
+				migrated++
+			}
+			c.JSON(http.StatusOK, gin.H{"migrated": migrated})
 		})
 	}
 
