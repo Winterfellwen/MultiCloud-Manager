@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -35,17 +36,15 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 	syncer := cloud.NewSyncer(db)
 	executor := agent.NewExecutor(syncer, db)
 
-	// Create Vault client (optional)
-	var vaultClient *vault.Client
-	vaultAddr := os.Getenv("VAULT_ADDR")
-	if vaultAddr != "" {
-		vaultClient = vault.NewClient(vault.Config{Addr: vaultAddr})
+	// Built-in vault — no external dependency
+	vaultService, err := vault.NewBuiltinVault(db)
+	if err != nil {
+		log.Printf("WARNING: Vault init failed: %v (vault features disabled)", err)
 	}
 
 	runtime := agent.NewRuntime(agent.RuntimeConfig{
 		DB:     db,
 		Syncer: syncer,
-		Vault:  vaultClient,
 	})
 
 	chatHandler := NewChatStreamHandler(db, executor, runtime)
@@ -100,35 +99,70 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		auth.POST("/terraform/templates/:id/apply", ApplyTerraformTemplateHandler)
 		auth.DELETE("/terraform/templates/:id", DestroyTerraformTemplateHandler)
 		auth.POST("/terraform/templates/:id/destroy", DestroyTerraformTemplateHandler)
-		// Vault — credential management (HashiCorp Vault / Agent Vault)
-		// When VAULT_ADDR is set, connects to external Vault server
-		// When not set, returns degraded status with setup instructions
+		// Vault — built-in credential management
 		auth.GET("/vault/health", func(c *gin.Context) {
-			if vaultClient != nil {
-				// Verify the vault is actually reachable
-				body, status, err := vaultClient.RawRequest("GET", "sys/health", nil)
-				if err != nil || status != 200 {
-					c.JSON(http.StatusOK, gin.H{
-						"status":  "error",
-						"message": "Vault server unreachable",
-						"hint":    "Start Vault: docker-compose up -d vault",
-					})
-					return
-				}
-				_ = body
-				c.JSON(http.StatusOK, gin.H{
-					"status": "ok",
-					"type":   "hashicorp-vault",
-					"addr":   vaultAddr,
-				})
-			} else {
-				c.JSON(http.StatusOK, gin.H{
-					"status":  "unavailable",
-					"type":    "not-configured",
-					"message": "VAULT_ADDR not set",
-					"hint":    "Set VAULT_ADDR env var or run: docker-compose up -d vault",
-				})
+			if vaultService == nil {
+				c.JSON(http.StatusOK, gin.H{"status": "error", "message": "Vault not initialized"})
+				return
 			}
+			c.JSON(http.StatusOK, vaultService.Health())
+		})
+		auth.GET("/vault/secrets", func(c *gin.Context) {
+			if vaultService == nil {
+				c.JSON(http.StatusOK, gin.H{"secrets": []string{}})
+				return
+			}
+			prefix := c.DefaultQuery("prefix", "")
+			paths, err := vaultService.ListSecrets(prefix)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"secrets": paths})
+		})
+		auth.GET("/vault/secrets/:path", func(c *gin.Context) {
+			if vaultService == nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "vault not available"})
+				return
+			}
+			path := c.Param("path")
+			data, err := vaultService.GetSecret(path)
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"path": path, "data": data})
+		})
+		auth.PUT("/vault/secrets/:path", func(c *gin.Context) {
+			if vaultService == nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "vault not available"})
+				return
+			}
+			path := c.Param("path")
+			var body struct {
+				Data map[string]interface{} `json:"data" binding:"required"`
+			}
+			if err := c.ShouldBindJSON(&body); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err := vaultService.SetSecret(path, body.Data); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true})
+		})
+		auth.DELETE("/vault/secrets/:path", func(c *gin.Context) {
+			if vaultService == nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "vault not available"})
+				return
+			}
+			path := c.Param("path")
+			if err := vaultService.DeleteSecret(path); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true})
 		})
 	}
 

@@ -671,9 +671,23 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   <!-- Vault -->
   <div id="page-vault" class="page">
     <div class="section-title">Agent Vault</div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:20px;font-size:13px;color:var(--text-muted)">
-      <p>🔐 Vault 凭证管理 — 安全存储和注入云凭据</p>
-      <p style="margin-top:8px;font-size:12px">Status: <span id="vaultHealth">Checking...</span></p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;font-size:13px">
+      <p style="margin:0 0 8px 0;color:var(--text)">🔐 Built-in credential vault — AES-256 encrypted, database-backed</p>
+      <p style="margin:0;font-size:12px">Status: <span id="vaultHealth">Checking...</span></p>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Add Secret</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="newSecretPath" type="text" placeholder="path (e.g. cloud/aws/credentials)" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--font-mono)">
+      </div>
+      <div style="margin-bottom:8px">
+        <textarea id="newSecretData" rows="3" placeholder='{"username":"xxx","password":"yyy"}' style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--font-mono);resize:vertical"></textarea>
+      </div>
+      <button onclick="addVaultSecret()" style="background:var(--primary);color:#fff;border:none;border-radius:2px;padding:6px 16px;font-size:12px;cursor:pointer;font-family:inherit">Save Secret</button>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Stored Secrets</div>
+      <div id="vaultSecretsList"><div style="color:var(--text-muted);font-size:12px">Loading...</div></div>
     </div>
   </div>
 
@@ -1620,21 +1634,63 @@ async function loadVault() {
     var data = await apiFetch(API + '/vault/health');
     var el = document.getElementById('vaultHealth');
     if (data && data.status === 'ok') {
-      el.textContent = '✅ Connected (' + (data.type || 'vault') + ')';
+      el.textContent = '✅ Active (' + (data.type || 'builtin') + ') — ' + (data.secrets || 0) + ' secrets stored';
       el.style.color = 'var(--success)';
-    } else if (data && data.status === 'unavailable') {
-      el.innerHTML = '⚠️ Not configured — ' + (data.hint || 'Set VAULT_ADDR') ;
-      el.style.color = 'var(--warning)';
     } else if (data && data.status === 'error') {
-      el.innerHTML = '❌ ' + (data.message || 'Error') + ' — ' + (data.hint || '');
+      el.innerHTML = '❌ ' + (data.message || 'Error');
       el.style.color = 'var(--danger)';
     } else {
-      el.textContent = '⚠️ Unknown status';
+      el.textContent = '⚠️ Unavailable';
       el.style.color = 'var(--warning)';
     }
+    // Load secrets list
+    loadVaultSecrets();
   } catch(e) {
-    document.getElementById('vaultHealth').textContent = '❌ Connection failed: ' + e.message;
+    document.getElementById('vaultHealth').textContent = '❌ ' + e.message;
   }
+}
+
+async function loadVaultSecrets() {
+  try {
+    var data = await apiFetch(API + '/vault/secrets');
+    var el = document.getElementById('vaultSecretsList');
+    if (!el) return;
+    var secrets = data && data.secrets ? data.secrets : [];
+    if (secrets.length === 0) {
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">No secrets stored yet</div>';
+      return;
+    }
+    el.innerHTML = secrets.map(function(s) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-mono);font-size:12px;flex:1">' + escHtml(s) + '</span><button onclick="deleteVaultSecret(\'' + escHtml(s) + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px">Delete</button></div>';
+    }).join('');
+  } catch(e) {}
+}
+
+async function addVaultSecret() {
+  var path = document.getElementById('newSecretPath').value.trim();
+  var dataStr = document.getElementById('newSecretData').value.trim();
+  if (!path || !dataStr) { showToast('Path and data required'); return; }
+  try {
+    var data = JSON.parse(dataStr);
+    await apiFetch(API + '/vault/secrets/' + encodeURIComponent(path), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: data })
+    });
+    document.getElementById('newSecretPath').value = '';
+    document.getElementById('newSecretData').value = '';
+    showToast('Secret saved');
+    loadVault();
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+
+async function deleteVaultSecret(path) {
+  if (!confirm('Delete secret: ' + path + '?')) return;
+  try {
+    await apiFetch(API + '/vault/secrets/' + encodeURIComponent(path), { method: 'DELETE' });
+    showToast('Deleted');
+    loadVault();
+  } catch(e) { showToast('Error: ' + e.message); }
 }
 
 async function loadTeam() {
