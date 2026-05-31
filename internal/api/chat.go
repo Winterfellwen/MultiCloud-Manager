@@ -316,7 +316,7 @@ done:
 		}
 	}
 
-	h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
+	h.saveSessionMessages(req.SessionID, messages)
 
 	// Mark session as idle
 	if req.SessionID != "" && h.db != nil {
@@ -464,6 +464,8 @@ func (h *ChatStreamHandler) Chat(c *gin.Context) {
 	}
 
 	// Build response for miniprogram compatibility
+	h.saveSessionMessages(req.SessionID, messages)
+
 	response := map[string]interface{}{
 		"message": finalContent,
 	}
@@ -637,10 +639,8 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Con
 	return fullContent.String(), toolCalls, finishReason
 }
 
-// saveSessionMessages persists user and assistant messages to the database.
-// saveSessionMessages persists user and assistant messages to the database.
-// Uses upsert: user message only inserted once, assistant message replaced on each call.
-func (h *ChatStreamHandler) saveSessionMessages(sessionID, userMsg, assistantMsg string) {
+// saveSessionMessages persists the full conversation to the database.
+func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map[string]interface{}) {
 	if sessionID == "" || h.db == nil {
 		return
 	}
@@ -649,16 +649,78 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID, userMsg, assistantMsg
 	if err != nil {
 		return
 	}
-	var userCount int
-	h.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE session_id = $1 AND role = 'user'`, internalID).Scan(&userCount)
-	if userCount == 0 {
-		h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'user', $2)`, internalID, userMsg)
+
+	// Build a readable history from the full messages array
+	// Skip system prompt (index 0), save user/assistant/tool messages
+	var historyMsgs []map[string]interface{}
+	for _, m := range messages {
+		role, _ := m["role"].(string)
+		if role == "system" {
+			continue
+		}
+		// For assistant messages with tool_calls, include a summary
+		if role == "assistant" {
+			content, _ := m["content"].(string)
+			toolCalls, _ := m["tool_calls"].([]map[string]interface{})
+			if len(toolCalls) > 0 && content == "" {
+				// Tool-call-only message: create a readable summary
+				var parts []string
+				for _, tc := range toolCalls {
+					fn, _ := tc["function"].(map[string]interface{})
+					name, _ := fn["name"].(string)
+					args, _ := fn["arguments"].(string)
+					if len(args) > 100 {
+						args = args[:100] + "..."
+					}
+					parts = append(parts, fmt.Sprintf("[call %s(%s)]", name, args))
+				}
+				content = strings.Join(parts, " ")
+			}
+			if content != "" {
+				historyMsgs = append(historyMsgs, map[string]interface{}{"role": "assistant", "content": content})
+			}
+			continue
+		}
+		// For tool results, include a brief summary
+		if role == "tool" {
+			content, _ := m["content"].(string)
+			toolName, _ := m["tool_name"].(string)
+			if len(content) > 200 {
+				content = content[:200] + "..."
+			}
+			historyMsgs = append(historyMsgs, map[string]interface{}{
+				"role":    "tool",
+				"content": fmt.Sprintf("[%s result] %s", toolName, content),
+			})
+			continue
+		}
+		// User messages: save as-is
+		historyMsgs = append(historyMsgs, m)
 	}
-	if assistantMsg != "" {
-		h.db.Exec(`DELETE FROM messages WHERE session_id = $1 AND role IN ('assistant', 'agent')`, internalID)
-		h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'assistant', $2)`, internalID, assistantMsg)
+
+	if len(historyMsgs) == 0 {
+		return
 	}
-	h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, userMsg, internalID)
+
+	// Serialize the full history
+	historyJSON, err := json.Marshal(historyMsgs)
+	if err != nil {
+		return
+	}
+
+	// Replace all messages for this session
+	h.db.Exec(`DELETE FROM messages WHERE session_id = $1`, internalID)
+	h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, internalID, string(historyJSON))
+
+	// Update title from first user message
+	for _, m := range historyMsgs {
+		if m["role"] == "user" {
+			if title, ok := m["content"].(string); ok && title != "" {
+				h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, title, internalID)
+			}
+			break
+		}
+	}
 }
 
 // loadSessionHistory loads all previous messages for a session from the database.
@@ -671,7 +733,19 @@ func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]in
 	if err != nil {
 		return nil
 	}
-	rows, err := h.db.Query(`SELECT role, content FROM messages WHERE session_id = $1 ORDER BY created_at`, internalID)
+
+	// Try new format first: single 'history' row with full JSON
+	var historyJSON string
+	err = h.db.QueryRow(`SELECT content FROM messages WHERE session_id = $1 AND role = 'history' ORDER BY created_at DESC LIMIT 1`, internalID).Scan(&historyJSON)
+	if err == nil && historyJSON != "" {
+		var history []map[string]interface{}
+		if json.Unmarshal([]byte(historyJSON), &history) == nil {
+			return history
+		}
+	}
+
+	// Fallback: old format (individual user/assistant rows)
+	rows, err := h.db.Query(`SELECT role, content FROM messages WHERE session_id = $1 AND role != 'history' ORDER BY created_at`, internalID)
 	if err != nil {
 		return nil
 	}
