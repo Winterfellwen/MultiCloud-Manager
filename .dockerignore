@@ -1,0 +1,9 @@
+opencode-source/
+node_modules/
+test-results/
+playwright-report/
+tests/
+docs/
+.git/
+*.db
+*.sqlite*
