@@ -65,8 +65,13 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	systemPrompt := h.runtime.GetSystemPrompt(req.Mode)
 	messages := []map[string]interface{}{
 		{"role": "system", "content": systemPrompt},
-		{"role": "user", "content": req.Message},
 	}
+	// Load conversation history for context restoration
+	if history := h.loadSessionHistory(req.SessionID); len(history) > 0 {
+		messages = append(messages, history...)
+	}
+	// Append current user message
+	messages = append(messages, map[string]interface{}{"role": "user", "content": req.Message})
 
 	// Mark session as running
 	if req.SessionID != "" && h.db != nil {
