@@ -149,10 +149,10 @@ func getWebDir() string {
 	execPath, err := os.Executable()
 	if err == nil {
 		execDir := filepath.Dir(execPath)
-		webDir := filepath.Join(execDir, "..", "web")
+		webDir := filepath.Join(execDir, "web")
 		if _, err := os.Stat(webDir); err == nil {
 			return webDir
 		}
 	}
-	return "../web"
+	return "web"
 }
