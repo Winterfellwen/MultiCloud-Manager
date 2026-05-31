@@ -168,41 +168,12 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			break
 		}
 
-		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body)
+		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body, c, flusher)
 		allContent.WriteString(fullContent)
 		lastToolCalls = toolCalls
 
-		// Stream content tokens to the client
-		if fullContent != "" {
-			chunkSize := 4
-			runes := []rune(fullContent)
-			for j := 0; j < len(runes); j += chunkSize {
-				end := j + chunkSize
-				if end > len(runes) {
-					end = len(runes)
-				}
-				select {
-				case <-c.Request.Context().Done():
-					h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
-					return
-				default:
-				}
-				fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": string(runes[j:end])}))
-				flusher.Flush()
-			}
-		}
-
-		// Save after content generation (opencode pattern: save every delta)
-		if allContent.Len() > 0 {
-			h.saveSessionMessages(req.SessionID, req.Message, allContent.String())
-		}
-
 		// If no tool calls, we're done
 		if len(toolCalls) == 0 {
-			messages = append(messages, map[string]interface{}{
-				"role":    "assistant",
-				"content": fullContent,
-			})
 			break
 		}
 
@@ -339,12 +310,8 @@ done:
 			finalReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 			finalResp, ferr := httpClient.Do(finalReq)
 			if ferr == nil && finalResp.StatusCode == 200 {
-				finalContent, _, _ := h.collectStreamResponse(finalResp.Body)
+				finalContent, _, _ := h.collectStreamResponse(finalResp.Body, c, flusher)
 				allContent.WriteString(finalContent)
-				for _, part := range chunkRunes(finalContent, 10) {
-					fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": part}))
-					flusher.Flush()
-				}
 			}
 		}
 	}
@@ -525,9 +492,11 @@ func (h *ChatStreamHandler) Execute(c *gin.Context) {
 	})
 }
 
-// collectStreamResponse reads an SSE stream from the LLM and collects
-// the full content and tool calls.
-func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, []map[string]interface{}, string) {
+// collectStreamResponse reads an SSE stream from the LLM, optionally streams content tokens
+// to the client in real-time, and collects tool calls.
+// If c and flusher are nil, tokens are not streamed (for non-streaming/test use).
+// Returns: accumulated content, tool calls, finish reason.
+func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
 	defer body.Close()
 
 	var fullContent strings.Builder
@@ -570,8 +539,19 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser) (string, [
 		}
 
 		for _, choice := range chunk.Choices {
+			// Accumulate content
 			if choice.Delta.Content != "" {
 				fullContent.WriteString(choice.Delta.Content)
+				// Stream tokens to client in real-time if streaming context provided
+				if c != nil && flusher != nil {
+					select {
+					case <-c.Request.Context().Done():
+						return fullContent.String(), toolCalls, finishReason
+					default:
+					}
+					fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": choice.Delta.Content}))
+					flusher.Flush()
+				}
 			}
 
 			// Accumulate tool calls from streaming chunks

@@ -72,7 +72,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .theme-btn:hover { background: var(--surface-hover); color: var(--text); }
 .sidebar-theme-btn { width: auto; padding: 0 10px; gap: 4px; }
 .topbar-theme-btn { width: 28px; height: 28px; }
-.avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); }
+.avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0; position: relative; z-index: 1; }
 
 /* Content */
 .content { margin-left: 200px; margin-top: 44px; flex: 1; padding: 20px; min-height: calc(100vh - 44px); overflow-y: auto; }
@@ -108,10 +108,11 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-new-btn { background: none; border: 1px solid var(--border); border-radius: 2px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all .15s; font-family: inherit; }
 .chat-new-btn:hover { border-color: var(--primary); color: var(--primary); }
 .chat-session-list { flex: 1; overflow-y: auto; padding: 4px; }
-.chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-session-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .chat-session-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
 .chat-session-item.active { background: rgba(0,122,255,.1); color: var(--primary); }
-.chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; }
+.chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; flex-shrink: 0; }
 .chat-session-item:hover .session-del-btn { opacity: .4; }
 .chat-session-item .session-del-btn:hover { opacity: 1; }
 .chat-main { flex: 1; display: flex; flex-direction: column; padding: 0 12px; min-width: 0; }
@@ -428,7 +429,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
     <div class="nav-item" data-page="profile"><span class="nav-icon">*</span> <span data-i18n="nav.profile_short">我的</span></div>
   </nav>
   <div class="sidebar-bottom">
-    <button class="theme-btn sidebar-theme-btn" onclick="toggleTheme()" data-i18n="nav.theme">&#9790; 主题</button>
+    <button class="theme-btn sidebar-theme-btn" onclick="toggleTheme()" data-i18n="nav.theme"><span class="theme-icon">&#9790;</span> 主题</button>
   </div>
 </aside>
 
@@ -438,7 +439,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   <div class="topbar-right">
     <button class="lang-btn theme-btn topbar-lang-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English">EN</button>
     <button class="theme-btn topbar-theme-btn" onclick="toggleTheme()" title="切换主题">&#9790;</button>
-    <div class="avatar">U</div>
+    <div class="avatar" onclick="showPage('profile')">U</div>
   </div>
 </header>
 
@@ -1268,13 +1269,15 @@ async function switchSession(sid) {
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
   var msgCount = 0;
-  // If session is running, show working indicator + stop button
+  // If session is running, show working indicator + stop button + start polling
   if (data && data.status === 'running') {
     var workDiv = document.createElement('div');
-    workDiv.className = 'msg system';
+    workDiv.className = 'msg system streaming-work';
     workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
     container.appendChild(workDiv);
     document.getElementById('chatStopBtn').style.display = '';
+    // Restart polling to pick up new messages as they arrive
+    startSessionPoll();
   }
   if (data && data.messages && data.messages.length > 0) {
     data.messages.forEach(function(m) {
@@ -2060,6 +2063,9 @@ function applyLang() {
       }
     } else if (el.tagName === 'OPTION') {
       el.textContent = text;
+    } else if (el.classList.contains('theme-btn') && el.querySelector('.theme-icon')) {
+      // Preserve icon span in theme buttons
+      el.querySelector('.theme-icon').nextSibling.textContent = ' ' + text;
     } else {
       el.textContent = text;
     }
@@ -2228,11 +2234,17 @@ function startSessionPoll() {
   stopSessionPoll();
   sessionPollTimer = setInterval(async function() {
     if (!CURRENT_SESSION) return;
-    // Skip if there's an active streaming message
+    // Skip if there's an active streaming message (SSE connected)
     if (document.querySelector('.msg.streaming')) return;
     try {
       var data = await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION);
       if (!data || !data.messages) return;
+      // Remove "AI is working..." indicator if session finished
+      if (data.status !== 'running') {
+        var workIndicator = document.querySelector('.streaming-work');
+        if (workIndicator) workIndicator.remove();
+        document.getElementById('chatStopBtn').style.display = 'none';
+      }
       if (data.messages.length !== lastSyncedMsgCount) {
         // Refresh session list too
         loadSessions();
@@ -2255,6 +2267,14 @@ function startSessionPoll() {
             lastSyncedMsgCount++;
           }
         });
+        // If still running, re-add the working indicator
+        if (data.status === 'running') {
+          var workDiv = document.createElement('div');
+          workDiv.className = 'msg system streaming-work';
+          workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
+          container.appendChild(workDiv);
+          document.getElementById('chatStopBtn').style.display = '';
+        }
         container.scrollTop = container.scrollHeight;
       }
     } catch(e) {}
