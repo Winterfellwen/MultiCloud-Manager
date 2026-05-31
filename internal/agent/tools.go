@@ -123,6 +123,21 @@ func RegisterBuiltInTools(registry *ToolRegistry, executor *Executor) {
 			return executor.listAccounts(ctx)
 		},
 	))
+
+	registry.Register(NewBuiltInTool(
+		"get_cloud_credentials",
+		"Get credentials for a cloud account. Use this to get API keys, tokens, subscription IDs for REST API calls.",
+		map[string]interface{}{
+			"cloud_type": map[string]interface{}{
+				"type":        "string",
+				"description": "Cloud type: azure, oracle, tencent, render",
+				"enum":        []string{"azure", "oracle", "tencent", "render"},
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.getCredentials(ctx, args)
+		},
+	))
 }
 
 // MarshalJSON returns a JSON representation of a tool's definition in OpenAI format.
