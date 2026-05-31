@@ -100,12 +100,34 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		auth.POST("/terraform/templates/:id/apply", ApplyTerraformTemplateHandler)
 		auth.DELETE("/terraform/templates/:id", DestroyTerraformTemplateHandler)
 		auth.POST("/terraform/templates/:id/destroy", DestroyTerraformTemplateHandler)
-		// Vault
+		// Vault — credential management (HashiCorp Vault / Agent Vault)
+		// When VAULT_ADDR is set, connects to external Vault server
+		// When not set, returns degraded status with setup instructions
 		auth.GET("/vault/health", func(c *gin.Context) {
 			if vaultClient != nil {
-				c.JSON(http.StatusOK, gin.H{"status": "ok", "addr": vaultAddr})
+				// Verify the vault is actually reachable
+				body, status, err := vaultClient.RawRequest("GET", "sys/health", nil)
+				if err != nil || status != 200 {
+					c.JSON(http.StatusOK, gin.H{
+						"status":  "error",
+						"message": "Vault server unreachable",
+						"hint":    "Start Vault: docker-compose up -d vault",
+					})
+					return
+				}
+				_ = body
+				c.JSON(http.StatusOK, gin.H{
+					"status": "ok",
+					"type":   "hashicorp-vault",
+					"addr":   vaultAddr,
+				})
 			} else {
-				c.JSON(http.StatusOK, gin.H{"status": "unavailable", "message": "VAULT_ADDR not configured"})
+				c.JSON(http.StatusOK, gin.H{
+					"status":  "unavailable",
+					"type":    "not-configured",
+					"message": "VAULT_ADDR not set",
+					"hint":    "Set VAULT_ADDR env var or run: docker-compose up -d vault",
+				})
 			}
 		})
 	}
