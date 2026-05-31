@@ -9,7 +9,6 @@ import (
 
 	"multicloud/internal/agent/shell"
 	"multicloud/internal/cloud"
-	"multicloud/internal/vault"
 )
 
 // Runtime combines all agent components into a single usable unit.
@@ -18,7 +17,6 @@ type Runtime struct {
 	router   *Router
 	prompt   *PromptBuilder
 	executor *Executor
-	vault    *vault.Client
 	db       *sql.DB
 }
 
@@ -26,7 +24,6 @@ type Runtime struct {
 type RuntimeConfig struct {
 	DB       *sql.DB
 	Syncer   *cloud.Syncer
-	Vault    *vault.Client
 	BasePrompt string
 }
 
@@ -67,7 +64,6 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 		router:   router,
 		prompt:   prompt,
 		executor: executor,
-		vault:    cfg.Vault,
 		db:       cfg.DB,
 	}
 }
@@ -90,11 +86,6 @@ func (r *Runtime) Prompt() *PromptBuilder {
 // Executor returns the underlying executor.
 func (r *Runtime) Executor() *Executor {
 	return r.executor
-}
-
-// Vault returns the vault client.
-func (r *Runtime) Vault() *vault.Client {
-	return r.vault
 }
 
 // DB returns the database connection.
