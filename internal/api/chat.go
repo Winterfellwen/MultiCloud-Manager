@@ -291,6 +291,38 @@ done:
 
 	// Build summary if the loop was interrupted
 	if stopReason != "" {
+		// Handle orphaned tool calls (Crush pattern):
+		// If there are tool_calls without matching tool_results, inject synthetic errors
+		// so the conversation can resume cleanly on next message.
+		toolCallIDs := make(map[string]bool)
+		toolResultIDs := make(map[string]bool)
+		for _, m := range messages {
+			if tc, ok := m["tool_calls"].([]interface{}); ok {
+				for _, t := range tc {
+					if tMap, ok := t.(map[string]interface{}); ok {
+						if id, ok := tMap["id"].(string); ok {
+							toolCallIDs[id] = true
+						}
+					}
+				}
+			}
+			if role, _ := m["role"].(string); role == "tool" {
+				if id, ok := m["tool_call_id"].(string); ok {
+					toolResultIDs[id] = true
+				}
+			}
+		}
+		// Inject synthetic results for orphaned calls
+		for id := range toolCallIDs {
+			if !toolResultIDs[id] {
+				messages = append(messages, map[string]interface{}{
+					"role":         "tool",
+					"tool_call_id": id,
+					"content":      fmt.Sprintf("Error: tool call was interrupted (%s). You may retry if needed.", stopReason),
+				})
+			}
+		}
+
 		summary := fmt.Sprintf("\n\n---\n> ⚠️ AI 在第 %d 步中断：%s\n> 请重新发送消息继续操作。\n", iterCount, stopReason)
 		allContent.WriteString(summary)
 		for _, part := range chunkRunes(summary, 10) {
