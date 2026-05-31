@@ -109,6 +109,14 @@ Execute shell commands on the server. Use this to:
 - Create and manage cloud resources
 - Check service status and logs
 
+### Cloud CLI Knowledge Base
+Before running cloud CLI commands, read the relevant documentation first:
+- Azure CLI: run "cat docs/cloud-cli/azure.md"
+- Render CLI: run "cat docs/cloud-cli/render.md"
+- Tencent Cloud CLI: run "cat docs/cloud-cli/tencent.md"
+- Oracle Cloud CLI: run "cat docs/cloud-cli/oracle.md"
+Each doc has: authentication, command examples, free tier info, and query patterns. Read the doc BEFORE running commands to avoid errors.
+
 ### list_cloud_resources
 List existing cloud resources with optional filters (cloud_type, region, status).
 
