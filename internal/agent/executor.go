@@ -192,6 +192,45 @@ func (e *Executor) listAccounts(ctx context.Context) (string, error) {
 	return string(b), nil
 }
 
+func (e *Executor) getCredentials(ctx context.Context, args map[string]interface{}) (string, error) {
+	cloudType, ok := args["cloud_type"].(string)
+	if !ok || cloudType == "" {
+		return "", fmt.Errorf("cloud_type is required")
+	}
+
+	rows, err := e.db.Query(`SELECT id, name, credentials FROM cloud_accounts WHERE cloud_type = $1 AND is_active = true`, cloudType)
+	if err != nil {
+		return "", fmt.Errorf("query credentials: %w", err)
+	}
+	defer rows.Close()
+
+	var accounts []map[string]interface{}
+	for rows.Next() {
+		var id, name, credentials string
+		if err := rows.Scan(&id, &name, &credentials); err != nil {
+			continue
+		}
+		// Parse credentials JSON
+		var creds map[string]interface{}
+		if err := json.Unmarshal([]byte(credentials), &creds); err != nil {
+			continue
+		}
+		accounts = append(accounts, map[string]interface{}{
+			"id":          id,
+			"name":        name,
+			"credentials": creds,
+		})
+	}
+
+	result := map[string]interface{}{
+		"cloud_type": cloudType,
+		"accounts":   accounts,
+		"count":      len(accounts),
+	}
+	b, _ := json.Marshal(result)
+	return string(b), nil
+}
+
 func filterSlice(ss []map[string]interface{}, test func(map[string]interface{}) bool) []map[string]interface{} {
 	var filtered []map[string]interface{}
 	for _, s := range ss {
