@@ -1,15 +1,16 @@
 FROM golang:1.22
 
-RUN apt-get update -qq && apt-get install -y -qq curl unzip python3 python3-pip && \
+RUN apt-get update -qq && apt-get install -y -qq curl python3 python3-pip && \
     pip3 install azure-cli
 
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
+# Download opencode binary directly
+RUN curl -sL -o /tmp/oc.tar.gz https://github.com/anomalyco/opencode/releases/download/v1.15.8/opencode-linux-x64.tar.gz && \
+    tar xzf /tmp/oc.tar.gz -C /tmp && \
+    find /tmp -name opencode -type f -exec mv {} /usr/local/bin/opencode \; && \
+    chmod +x /usr/local/bin/opencode && \
+    /usr/local/bin/opencode --version
 
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun add opencode-ai@1.15.8
-
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
@@ -19,4 +20,4 @@ COPY web/ ../web/
 
 EXPOSE 8099 4096
 
-CMD sh -c "opencode serve --port 4096 --hostname 0.0.0.0 & ./app"
+CMD sh -c "/usr/local/bin/opencode serve --port 4096 --hostname 0.0.0.0 & ./app"
