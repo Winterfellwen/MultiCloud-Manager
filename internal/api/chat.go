@@ -650,70 +650,35 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		return
 	}
 
-	// Build a readable history from the full messages array
-	// Skip system prompt (index 0), save user/assistant/tool messages
-	var historyMsgs []map[string]interface{}
+	// Save the raw messages as-is (skip system prompt at index 0)
+	var saveMsgs []map[string]interface{}
 	for _, m := range messages {
 		role, _ := m["role"].(string)
 		if role == "system" {
 			continue
 		}
-		// For assistant messages with tool_calls, include a summary
-		if role == "assistant" {
-			content, _ := m["content"].(string)
-			toolCalls, _ := m["tool_calls"].([]map[string]interface{})
-			if len(toolCalls) > 0 && content == "" {
-				// Tool-call-only message: create a readable summary
-				var parts []string
-				for _, tc := range toolCalls {
-					fn, _ := tc["function"].(map[string]interface{})
-					name, _ := fn["name"].(string)
-					args, _ := fn["arguments"].(string)
-					if len(args) > 100 {
-						args = args[:100] + "..."
-					}
-					parts = append(parts, fmt.Sprintf("[call %s(%s)]", name, args))
-				}
-				content = strings.Join(parts, " ")
-			}
-			if content != "" {
-				historyMsgs = append(historyMsgs, map[string]interface{}{"role": "assistant", "content": content})
-			}
-			continue
+		// Copy only role + content (skip tool_call_id, tool_calls etc for storage)
+		clean := map[string]interface{}{
+			"role":    role,
+			"content": m["content"],
 		}
-		// For tool results, include a brief summary
-		if role == "tool" {
-			content, _ := m["content"].(string)
-			toolName, _ := m["tool_name"].(string)
-			if len(content) > 200 {
-				content = content[:200] + "..."
-			}
-			historyMsgs = append(historyMsgs, map[string]interface{}{
-				"role":    "tool",
-				"content": fmt.Sprintf("[%s result] %s", toolName, content),
-			})
-			continue
-		}
-		// User messages: save as-is
-		historyMsgs = append(historyMsgs, m)
+		saveMsgs = append(saveMsgs, clean)
 	}
 
-	if len(historyMsgs) == 0 {
+	if len(saveMsgs) == 0 {
 		return
 	}
 
-	// Serialize the full history
-	historyJSON, err := json.Marshal(historyMsgs)
+	historyJSON, err := json.Marshal(saveMsgs)
 	if err != nil {
 		return
 	}
 
-	// Replace all messages for this session
 	h.db.Exec(`DELETE FROM messages WHERE session_id = $1`, internalID)
 	h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, internalID, string(historyJSON))
 
 	// Update title from first user message
-	for _, m := range historyMsgs {
+	for _, m := range saveMsgs {
 		if m["role"] == "user" {
 			if title, ok := m["content"].(string); ok && title != "" {
 				h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, title, internalID)
