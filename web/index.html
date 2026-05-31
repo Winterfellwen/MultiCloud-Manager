@@ -1316,6 +1316,14 @@ async function switchSession(sid) {
       } else if (m.role === 'agent' || m.role === 'assistant') {
         appendMessage('agent', renderMarkdown(m.content));
         msgCount++;
+      } else if (m.role === 'tool-calls') {
+        // Tool call indicator (compact, one line)
+        const div = document.createElement('div');
+        div.className = 'msg system';
+        div.style.cssText = 'font-size:11px;color:var(--text-muted);font-family:var(--font-mono);padding:4px 20px';
+        div.textContent = m.content;
+        container.appendChild(div);
+        msgCount++;
       } else if (m.role === 'system') {
         const div = document.createElement('div');
         div.className = 'msg system';
@@ -2376,6 +2384,13 @@ function startSessionPoll() {
             lastSyncedMsgCount++;
           } else if (m.role === 'agent' || m.role === 'assistant') {
             appendMessage('agent', renderMarkdown(m.content));
+            lastSyncedMsgCount++;
+          } else if (m.role === 'tool-calls') {
+            var div = document.createElement('div');
+            div.className = 'msg system';
+            div.style.cssText = 'font-size:11px;color:var(--text-muted);font-family:var(--font-mono);padding:4px 20px';
+            div.textContent = m.content;
+            container.appendChild(div);
             lastSyncedMsgCount++;
           } else if (m.role === 'system') {
             var div = document.createElement('div');

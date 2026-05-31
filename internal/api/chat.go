@@ -650,54 +650,50 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		return
 	}
 
-	// Transform messages into a renderable format
+	// Build renderable messages from the raw messages array
 	var saveMsgs []map[string]interface{}
 	for _, m := range messages {
 		role, _ := m["role"].(string)
 		if role == "system" {
 			continue
 		}
-
 		content, _ := m["content"].(string)
-		toolCalls, _ := m["tool_calls"].([]interface{})
 
-		// Assistant with tool_calls but no content → summary
-		if role == "assistant" && content == "" && len(toolCalls) > 0 {
-			var parts []string
-			for _, tc := range toolCalls {
-				tcMap, ok := tc.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				fn, _ := tcMap["function"].(map[string]interface{})
-				name, _ := fn["name"].(string)
-				args, _ := fn["arguments"].(string)
-				if len(args) > 120 {
-					args = args[:120] + "..."
-				}
-				parts = append(parts, "🔧 "+name+"("+args+")")
-			}
-			if len(parts) > 0 {
+		if role == "assistant" {
+			toolCalls, _ := m["tool_calls"].([]interface{})
+			if content != "" {
+				// Assistant with actual text content → save as agent message
 				saveMsgs = append(saveMsgs, map[string]interface{}{
-					"role": "system",
-					"content": strings.Join(parts, " → "),
+					"role": "agent", "content": content,
 				})
+			} else if len(toolCalls) > 0 {
+				// Assistant making tool calls → save as tool-call indicator
+				var parts []string
+				for _, tc := range toolCalls {
+					if tcMap, ok := tc.(map[string]interface{}); ok {
+						fn, _ := tcMap["function"].(map[string]interface{})
+						name, _ := fn["name"].(string)
+						args, _ := fn["arguments"].(string)
+						if len(args) > 100 {
+							args = args[:100] + "..."
+						}
+						parts = append(parts, "🔧 "+name+"("+args+")")
+					}
+				}
+				if len(parts) > 0 {
+					saveMsgs = append(saveMsgs, map[string]interface{}{
+						"role": "tool-calls", "content": strings.Join(parts, " → "),
+					})
+				}
 			}
 			continue
 		}
-
-		// Skip tool results (they're embedded in the assistant's context)
-		if role == "tool" {
-			continue
-		}
-
-		// User and assistant messages: save as-is
-		if content != "" {
+		if role == "user" {
 			saveMsgs = append(saveMsgs, map[string]interface{}{
-				"role":    role,
-				"content": content,
+				"role": "user", "content": content,
 			})
 		}
+		// Skip tool results — they're internal to the AI
 	}
 
 	if len(saveMsgs) == 0 {
