@@ -676,6 +676,35 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID, userMsg, assistantMsg
 	h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, userMsg, internalID)
 }
 
+// loadSessionHistory loads all previous messages for a session from the database.
+func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]interface{} {
+	if sessionID == "" || h.db == nil {
+		return nil
+	}
+	var internalID string
+	err := h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, sessionID).Scan(&internalID)
+	if err != nil {
+		return nil
+	}
+	rows, err := h.db.Query(`SELECT role, content FROM messages WHERE session_id = $1 ORDER BY created_at`, internalID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var history []map[string]interface{}
+	for rows.Next() {
+		var role, content string
+		if err := rows.Scan(&role, &content); err != nil {
+			continue
+		}
+		history = append(history, map[string]interface{}{
+			"role":    role,
+			"content": content,
+		})
+	}
+	return history
+}
+
 func buildSystemPrompt(mode string) string {
 	prompt := `You are an AI cloud operations assistant for a multi-cloud management platform. You can manage resources across Azure, Tencent Cloud, Oracle Cloud, and Render.
 
