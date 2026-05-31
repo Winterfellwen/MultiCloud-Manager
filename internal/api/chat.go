@@ -81,7 +81,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		}
 	}
 
-	maxIterations := 50
+	maxIterations := 100  // increased from 50 - complex tasks need more steps
 	var allContent strings.Builder
 
 	httpClient := &http.Client{Timeout: 120 * time.Second}
@@ -90,13 +90,9 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	var iterCount int
 	var lastToolCalls []map[string]interface{}
 
-	// Doom loop detection: track last 3 tool calls (name+args)
-	type toolCallKey struct {
-		name string
-		args string
-	}
-	var recentToolCalls [3]toolCallKey
+	// Doom loop detection: track tool call patterns
 	var toolCallIdx int
+	var toolCallHistory []string // tracks tool names for loop detection
 
 	for i := 0; i < maxIterations; i++ {
 		iterCount = i + 1
@@ -202,17 +198,29 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			toolArgsStr, _ := tc["function"].(map[string]interface{})["arguments"].(string)
 			toolID, _ := tc["id"].(string)
 
-			// Doom loop detection: same tool + same args 3x in a row → warn
-			recentToolCalls[toolCallIdx%3] = toolCallKey{name: toolName, args: toolArgsStr}
+			// Doom loop detection: hash-based pattern detection (Crush pattern)
+			// Check if the same TOOL is being called repeatedly (even with different args)
 			toolCallIdx++
-			if toolCallIdx >= 3 &&
-				recentToolCalls[0] == recentToolCalls[1] &&
-				recentToolCalls[1] == recentToolCalls[2] {
-				messages = append(messages, map[string]interface{}{
-					"role":    "system",
-					"content": "⚠️ DOOM LOOP DETECTED: You have called the same tool with the same arguments 3 times in a row. This approach is not working. STOP retrying. Instead: (1) try a completely different approach, or (2) tell the user what went wrong and ask for guidance. Do NOT call the same tool with the same parameters again.",
-				})
-				recentToolCalls = [3]toolCallKey{} // reset
+			toolCallHistory = append(toolCallHistory, toolName)
+			if len(toolCallHistory) > 20 {
+				toolCallHistory = toolCallHistory[len(toolCallHistory)-20:]
+			}
+			// Count how many times this tool was called in the last 10 calls
+			if len(toolCallHistory) >= 10 {
+				last10 := toolCallHistory[len(toolCallHistory)-10:]
+				count := 0
+				for _, t := range last10 {
+					if t == toolName {
+						count++
+					}
+				}
+				if count >= 7 {
+					messages = append(messages, map[string]interface{}{
+						"role": "system",
+						"content": fmt.Sprintf("⚠️ LOOP DETECTED: You have called %s %d times in the last 10 tool calls. This approach is not working. STOP. Instead: (1) Tell the user what you tried and why it failed, (2) Ask for guidance, or (3) Move on to a different part of the task. Do NOT retry the same tool.", toolName, count),
+					})
+					toolCallHistory = nil // reset
+				}
 			}
 
 			// Hard block: Plan mode must not execute state-changing commands
