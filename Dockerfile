@@ -1,27 +1,27 @@
 FROM golang:1.22
 
-RUN apt-get update -qq && apt-get install -y -qq curl python3 python3-pip
+RUN apt-get update -qq && apt-get install -y -qq unzip python3 python3-pip && \
+    pip3 install azure-cli
 
-# Install opencode CLI (direct binary download — install script fails on Render due to API limits)
-# Install opencode CLI via npm
-RUN apt-get update -qq && apt-get install -y -qq nodejs npm && \
-    npm install -g opencode-ai@1.15.8 && \
-    opencode --version
+# Install bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
 
-# Install Azure CLI
-RUN pip3 install azure-cli
+# Install opencode
+COPY package.json bun.lock ./
+RUN bun install
 
 WORKDIR /app
+
+# Build Go
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
-
 COPY backend/ ./
 RUN go build -o app .
 
+# Static files
 COPY web/ ../web/
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
 
 EXPOSE 8099 4096
 
-CMD ["/start.sh"]
+CMD sh -c "bun run opencode serve --port 4096 --hostname 0.0.0.0 & ./app"
