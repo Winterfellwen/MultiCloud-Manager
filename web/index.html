@@ -974,6 +974,10 @@ let CURRENT_SESSION = null;
 let STREAMING_MSG = null;
 let CONFIRM_PENDING = false;
 
+// Global message store — per session, survives session switches
+const SESSION_MESSAGES = {};  // { sessionId: [{role, content}, ...] }
+const SESSION_STREAMING = {}; // { sessionId: {role:'agent', content:''} }
+
 function setChatMode(mode) {
   CURRENT_MODE = mode;
   document.querySelectorAll('.mode-btn').forEach(b => {
@@ -1020,8 +1024,13 @@ async function sendChat() {
     });
     if (sessData && sessData.session_id) {
       CURRENT_SESSION = sessData.session_id;
+      SESSION_MESSAGES[CURRENT_SESSION] = [{role: 'user', content: text}];
       loadSessions();
     }
+  } else {
+    // Add user message to global store
+    if (!SESSION_MESSAGES[CURRENT_SESSION]) SESSION_MESSAGES[CURRENT_SESSION] = [];
+    SESSION_MESSAGES[CURRENT_SESSION].push({role: 'user', content: text});
   }
   startStream({message: text, session_id: CURRENT_SESSION, mode: CURRENT_MODE});
 }
@@ -1068,6 +1077,10 @@ async function startStream(body) {
   ABORT_CONTROLLER = new AbortController();
 
   STREAMING_MSG = {type: 'agent', content: ''};
+  // Initialize session message store
+  if (CURRENT_SESSION && !SESSION_MESSAGES[CURRENT_SESSION]) {
+    SESSION_MESSAGES[CURRENT_SESSION] = [];
+  }
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg agent streaming';
@@ -1148,6 +1161,16 @@ async function startStream(body) {
     lastMsg.classList.remove('streaming');
   }
   STREAMING_MSG = null;
+  // Finalize streaming message in global store
+  if (CURRENT_SESSION && SESSION_MESSAGES[CURRENT_SESSION]) {
+    var msgs = SESSION_MESSAGES[CURRENT_SESSION];
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].streaming) {
+        delete msgs[i].streaming;
+        break;
+      }
+    }
+  }
   document.getElementById('chatSendBtn').disabled = false;
 }
 
@@ -1159,6 +1182,16 @@ function handleSSEEvent(data) {
   switch (type) {
     case 'token': {
       STREAMING_MSG.content += data.content;
+      // Store in global message cache
+      if (CURRENT_SESSION && SESSION_MESSAGES[CURRENT_SESSION]) {
+        var msgs = SESSION_MESSAGES[CURRENT_SESSION];
+        var last = msgs[msgs.length - 1];
+        if (last && last.role === 'agent' && last.streaming) {
+          last.content = STREAMING_MSG.content;
+        } else {
+          msgs.push({role: 'agent', content: STREAMING_MSG.content, streaming: true});
+        }
+      }
       if (lastMsg) {
         lastMsg.innerHTML = renderMarkdown(STREAMING_MSG.content);
         lastMsg.classList.add('streaming-cursor');
@@ -1305,52 +1338,83 @@ async function switchSession(sid) {
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
     el.classList.toggle('active', el.dataset.sid === sid);
   });
-  // Load messages
-  const data = await apiFetch(API + '/agent/sessions/' + sid);
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
   var msgCount = 0;
-  // If session is running, show working indicator + stop button + start polling
-  if (data && data.status === 'running') {
-    var workDiv = document.createElement('div');
-    workDiv.className = 'msg system streaming-work';
-    workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
-    container.appendChild(workDiv);
-    document.getElementById('chatStopBtn').style.display = '';
-    // Restart polling to pick up new messages as they arrive
-    startSessionPoll();
-  }
-  if (data && data.messages && data.messages.length > 0) {
-    data.messages.forEach(function(m) {
+
+  // Priority: global in-memory store > DB
+  var liveMsgs = SESSION_MESSAGES[sid];
+  if (liveMsgs && liveMsgs.length > 0) {
+    // Render from live memory (has streaming data)
+    liveMsgs.forEach(function(m) {
       if (m.role === 'user') {
         appendMessage('user', escHtml(m.content));
         msgCount++;
       } else if (m.role === 'agent' || m.role === 'assistant') {
-        appendMessage('agent', renderMarkdown(m.content));
+        if (m.streaming) {
+          // Currently streaming — create streaming div
+          var div = document.createElement('div');
+          div.className = 'msg agent streaming';
+          div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>';
+          container.appendChild(div);
+        } else {
+          appendMessage('agent', renderMarkdown(m.content));
+        }
         msgCount++;
-      } else if (m.role === 'tool-calls') {
-        // Tool call indicator (compact, one line)
-        const div = document.createElement('div');
-        div.className = 'msg system';
-        div.style.cssText = 'font-size:11px;color:var(--text-muted);font-family:var(--font-mono);padding:4px 20px';
-        div.textContent = m.content;
-        container.appendChild(div);
-        msgCount++;
-      } else if (m.role === 'system') {
-        const div = document.createElement('div');
+      } else if (m.role === 'tool-calls' || m.role === 'system') {
+        var div = document.createElement('div');
         div.className = 'msg system';
         div.textContent = m.content;
         container.appendChild(div);
         msgCount++;
       }
     });
+    // If streaming, also restore STREAMING_MSG
+    if (liveMsgs.length > 0 && liveMsgs[liveMsgs.length - 1].streaming) {
+      STREAMING_MSG = {type: 'agent', content: liveMsgs[liveMsgs.length - 1].content};
+      document.getElementById('chatStopBtn').style.display = '';
+    }
     lastSyncedMsgCount = msgCount;
+  } else {
+    // Fallback: load from DB
+    const data = await apiFetch(API + '/agent/sessions/' + sid);
+    if (data && data.status === 'running') {
+      var workDiv = document.createElement('div');
+      workDiv.className = 'msg system streaming-work';
+      workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
+      container.appendChild(workDiv);
+      document.getElementById('chatStopBtn').style.display = '';
+    }
+    if (data && data.messages && data.messages.length > 0) {
+      // Store DB messages in global cache
+      SESSION_MESSAGES[sid] = data.messages.map(function(m) {
+        return {role: m.role, content: m.content};
+      });
+      data.messages.forEach(function(m) {
+        if (m.role === 'user') {
+          appendMessage('user', escHtml(m.content));
+          msgCount++;
+        } else if (m.role === 'agent' || m.role === 'assistant') {
+          appendMessage('agent', renderMarkdown(m.content));
+          msgCount++;
+        } else if (m.role === 'tool-calls' || m.role === 'system') {
+          var div = document.createElement('div');
+          div.className = 'msg system';
+          div.textContent = m.content;
+          container.appendChild(div);
+          msgCount++;
+        }
+      });
+      lastSyncedMsgCount = msgCount;
+    }
   }
+
   if (msgCount === 0) {
     appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>');
     lastSyncedMsgCount = 1;
   }
   container.scrollTop = container.scrollHeight;
+  startSessionPoll();
 }
 
 async function newSession() {
@@ -2386,6 +2450,10 @@ function startSessionPoll() {
         document.getElementById('chatStopBtn').style.display = 'none';
       }
       if (data.messages.length !== lastSyncedMsgCount) {
+        // Merge DB data into global store (DB is source of truth after stream ends)
+        SESSION_MESSAGES[CURRENT_SESSION] = data.messages.map(function(m) {
+          return {role: m.role, content: m.content};
+        });
         // Re-render messages
         var container = document.getElementById('chatMessages');
         container.innerHTML = '';
