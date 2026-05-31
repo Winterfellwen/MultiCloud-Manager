@@ -1154,8 +1154,12 @@ async function startStream(body) {
     var mc = lastMsg.querySelector('.msg-content');
     if (mc) {
       mc.classList.remove('streaming-cursor');
+      // Preserve tool blocks before replacing innerHTML
+      var existingToolBlocks = mc.querySelectorAll('.tool-block');
+      var toolBlocksHTML = '';
+      existingToolBlocks.forEach(function(tb) { toolBlocksHTML += tb.outerHTML; });
       if (STREAMING_MSG && STREAMING_MSG.content) {
-        mc.innerHTML = renderMarkdown(STREAMING_MSG.content);
+        mc.innerHTML = renderMarkdown(STREAMING_MSG.content) + toolBlocksHTML;
       }
     }
     lastMsg.classList.remove('streaming');
