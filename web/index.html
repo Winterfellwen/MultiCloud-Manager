@@ -481,11 +481,6 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       <div class="chat-main">
         <div class="chat-header">
           <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
-          <div class="mode-toggle">
-            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
-            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
-            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
-          </div>
           <div class="chat-header-actions">
             <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
           </div>
@@ -503,6 +498,11 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
             <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
             <button onclick="sendChat()" id="chatSendBtn" disabled>&#62;</button>
             <button onclick="stopChat()" id="chatStopBtn" style="display:none;background:var(--danger);color:#fff;border:none;border-radius:2px;width:32px;height:32px;cursor:pointer;font-size:12px;flex-shrink:0" title="Stop">■</button>
+          </div>
+          <div class="mode-toggle" style="display:flex;gap:4px;margin-top:6px;">
+            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
+            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
+            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
           </div>
           <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
         </div>
