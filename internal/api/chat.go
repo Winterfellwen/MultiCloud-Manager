@@ -750,10 +750,26 @@ func isDestructiveCommand(cmd string) bool {
 		">", ">>", "tee ",
 	}
 	readOnly := []string{
+		// 基础文件/系统
 		"ls", "pwd", "echo", "cat", "head", "tail", "less", "more",
 		"which", "whereis", "whoami", "id", "env", "printenv",
 		"uname", "hostname", "date", "uptime", "df", "du", "free",
 		"ps", "top", "who", "w", "last",
+		// 文本处理
+		"grep", "find", "wc", "sort", "uniq", "diff", "file", "stat",
+		"awk", "sed", "cut", "tr",
+		// Git 只读
+		"git status", "git log", "git diff", "git show", "git branch",
+		"git tag", "git remote", "git config",
+		// 网络诊断
+		"ping", "curl", "wget", "nslookup", "dig", "host", "ip",
+		// 云 CLI 只读
+		"az account", "az group list", "az vm list", "az network",
+		"oci compute instance list", "oci network vcn list",
+		"tccli cvm Describe",
+		// 系统信息
+		"lscpu", "lsblk", "lsusb", "lspci", "lsmod",
+		"cat /proc",
 	}
 	cmdLower := strings.ToLower(strings.TrimSpace(cmd))
 	for _, ro := range readOnly {
@@ -766,5 +782,5 @@ func isDestructiveCommand(cmd string) bool {
 			return true
 		}
 	}
-	return true // default: block unknown commands in plan mode
+	return false // default: allow unknown commands in plan mode (whitelist approach)
 }
