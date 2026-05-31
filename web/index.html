@@ -72,6 +72,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .theme-btn:hover { background: var(--surface-hover); color: var(--text); }
 .sidebar-theme-btn { width: auto; padding: 0 10px; gap: 4px; }
 .topbar-theme-btn { width: 28px; height: 28px; }
+.topbar-action-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; cursor: pointer; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 3px; padding: 0 8px; transition: all .15s; font-family: inherit; }
+.topbar-action-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--primary); }
+.lang-label { font-size: 11px; font-weight: 500; }
 .avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0; position: relative; z-index: 1; }
 
 /* Content */
@@ -437,8 +440,8 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
 <header class="topbar">
   <div class="topbar-title" id="topbarTitle" data-i18n="page.dashboard">仪表盘</div>
   <div class="topbar-right">
-    <button class="lang-btn theme-btn topbar-lang-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English">EN</button>
-    <button class="theme-btn topbar-theme-btn" onclick="toggleTheme()" title="切换主题">&#9790;</button>
+    <button class="topbar-action-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English"><span style="font-size:14px">🌐</span> <span class="lang-label">EN</span></button>
+    <button class="topbar-action-btn" onclick="toggleTheme()" title="切换主题"><span class="theme-icon" style="font-size:14px">☾</span></button>
     <div class="avatar" onclick="showPage('profile')">U</div>
   </div>
 </header>
@@ -2150,8 +2153,8 @@ function switchLang(locale) {
   localStorage.setItem('lang', locale);
   document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en';
   applyLang();
-  var langBtn = document.getElementById('langToggleBtn');
-  if (langBtn) langBtn.textContent = locale === 'zh' ? 'EN' : '中文';
+  var langLabel = document.querySelector('#langToggleBtn .lang-label');
+  if (langLabel) langLabel.textContent = locale === 'zh' ? 'EN' : '中文';
 }
 
 /* Toast */
