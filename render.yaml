@@ -3,8 +3,15 @@ services:
     name: multicloud-backend
     env: go
     plan: free
-    buildCommand: go build -o app .
-    startCommand: (which az >/dev/null 2>&1 || { which pip3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y -qq python3-pip; }; pip3 install azure-cli; }) && ./app
+    buildCommand: |
+      which az >/dev/null 2>&1 || {
+        which pip3 >/dev/null 2>&1 || {
+          apt-get update -qq && apt-get install -y -qq python3-pip
+        }
+        pip3 install azure-cli
+      }
+      go build -o app .
+    startCommand: ./app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
