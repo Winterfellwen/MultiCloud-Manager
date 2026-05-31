@@ -650,19 +650,54 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		return
 	}
 
-	// Save the raw messages as-is (skip system prompt at index 0)
+	// Transform messages into a renderable format
 	var saveMsgs []map[string]interface{}
 	for _, m := range messages {
 		role, _ := m["role"].(string)
 		if role == "system" {
 			continue
 		}
-		// Copy only role + content (skip tool_call_id, tool_calls etc for storage)
-		clean := map[string]interface{}{
-			"role":    role,
-			"content": m["content"],
+
+		content, _ := m["content"].(string)
+		toolCalls, _ := m["tool_calls"].([]interface{})
+
+		// Assistant with tool_calls but no content → summary
+		if role == "assistant" && content == "" && len(toolCalls) > 0 {
+			var parts []string
+			for _, tc := range toolCalls {
+				tcMap, ok := tc.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				fn, _ := tcMap["function"].(map[string]interface{})
+				name, _ := fn["name"].(string)
+				args, _ := fn["arguments"].(string)
+				if len(args) > 120 {
+					args = args[:120] + "..."
+				}
+				parts = append(parts, "🔧 "+name+"("+args+")")
+			}
+			if len(parts) > 0 {
+				saveMsgs = append(saveMsgs, map[string]interface{}{
+					"role": "system",
+					"content": strings.Join(parts, " → "),
+				})
+			}
+			continue
 		}
-		saveMsgs = append(saveMsgs, clean)
+
+		// Skip tool results (they're embedded in the assistant's context)
+		if role == "tool" {
+			continue
+		}
+
+		// User and assistant messages: save as-is
+		if content != "" {
+			saveMsgs = append(saveMsgs, map[string]interface{}{
+				"role":    role,
+				"content": content,
+			})
+		}
 	}
 
 	if len(saveMsgs) == 0 {
