@@ -66,17 +66,29 @@ func (r *ToolRegistry) GetDefinitions() []map[string]interface{} {
 		if params == nil {
 			params = map[string]interface{}{}
 		}
-		defs = append(defs, map[string]interface{}{
-			"type": "function",
-			"function": map[string]interface{}{
-				"name":        tool.Name(),
-				"description": tool.Description(),
-				"parameters": map[string]interface{}{
-					"type":       "object",
-					"properties": params,
+		// If params already has "type" and "properties", use as-is (no double wrap)
+		if _, hasType := params["type"]; hasType {
+			defs = append(defs, map[string]interface{}{
+				"type": "function",
+				"function": map[string]interface{}{
+					"name":        tool.Name(),
+					"description": tool.Description(),
+					"parameters":  params,
 				},
-			},
-		})
+			})
+		} else {
+			defs = append(defs, map[string]interface{}{
+				"type": "function",
+				"function": map[string]interface{}{
+					"name":        tool.Name(),
+					"description": tool.Description(),
+					"parameters": map[string]interface{}{
+						"type":       "object",
+						"properties": params,
+					},
+				},
+			})
+		}
 	}
 	return defs
 }
