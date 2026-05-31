@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +60,18 @@ func (h *SessionsHandler) List(c *gin.Context) {
 }
 
 func (h *SessionsHandler) loadMessages(sessionInternalID string) []map[string]interface{} {
-	rows, err := h.db.Query(`SELECT role, content, created_at FROM messages WHERE session_id = $1 ORDER BY created_at`, sessionInternalID)
+	// Try new format: single 'history' row with full JSON
+	var historyJSON string
+	err := h.db.QueryRow(`SELECT content FROM messages WHERE session_id = $1 AND role = 'history' ORDER BY created_at DESC LIMIT 1`, sessionInternalID).Scan(&historyJSON)
+	if err == nil && historyJSON != "" {
+		var history []map[string]interface{}
+		if json.Unmarshal([]byte(historyJSON), &history) == nil && len(history) > 0 {
+			return history
+		}
+	}
+
+	// Fallback: old format (individual user/assistant rows)
+	rows, err := h.db.Query(`SELECT role, content, created_at FROM messages WHERE session_id = $1 AND role != 'history' ORDER BY created_at`, sessionInternalID)
 	if err != nil {
 		return []map[string]interface{}{}
 	}
