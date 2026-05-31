@@ -1011,6 +1011,18 @@ async function sendChat() {
   input.value = '';
   autoResizeTextarea(input);
   appendMessage('user', escHtml(text));
+  // Auto-create session if none exists
+  if (!CURRENT_SESSION) {
+    var sessData = await apiFetch(API + '/agent/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: text.substring(0, 50) })
+    });
+    if (sessData && sessData.session_id) {
+      CURRENT_SESSION = sessData.session_id;
+      loadSessions();
+    }
+  }
   startStream({message: text, session_id: CURRENT_SESSION, mode: CURRENT_MODE});
 }
 
