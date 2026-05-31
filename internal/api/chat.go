@@ -316,6 +316,15 @@ done:
 		}
 	}
 
+	// Append the final assistant response to messages for saving
+	finalContent := allContent.String()
+	if finalContent != "" {
+		messages = append(messages, map[string]interface{}{
+			"role":    "assistant",
+			"content": finalContent,
+		})
+	}
+
 	h.saveSessionMessages(req.SessionID, messages)
 
 	// Mark session as idle
