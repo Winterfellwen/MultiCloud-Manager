@@ -1620,14 +1620,20 @@ async function loadVault() {
     var data = await apiFetch(API + '/vault/health');
     var el = document.getElementById('vaultHealth');
     if (data && data.status === 'ok') {
-      el.textContent = '✅ Connected';
+      el.textContent = '✅ Connected (' + (data.type || 'vault') + ')';
       el.style.color = 'var(--success)';
+    } else if (data && data.status === 'unavailable') {
+      el.innerHTML = '⚠️ Not configured — ' + (data.hint || 'Set VAULT_ADDR') ;
+      el.style.color = 'var(--warning)';
+    } else if (data && data.status === 'error') {
+      el.innerHTML = '❌ ' + (data.message || 'Error') + ' — ' + (data.hint || '');
+      el.style.color = 'var(--danger)';
     } else {
-      el.textContent = '⚠️ Unavailable';
+      el.textContent = '⚠️ Unknown status';
       el.style.color = 'var(--warning)';
     }
   } catch(e) {
-    document.getElementById('vaultHealth').textContent = '❌ Error: ' + e.message;
+    document.getElementById('vaultHealth').textContent = '❌ Connection failed: ' + e.message;
   }
 }
 

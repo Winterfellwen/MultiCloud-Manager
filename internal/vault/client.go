@@ -41,6 +41,10 @@ func (c *Client) Token() string {
 }
 
 func (c *Client) rawRequest(method, path string, body []byte) ([]byte, int, error) {
+	return c.RawRequest(method, path, body)
+}
+
+func (c *Client) RawRequest(method, path string, body []byte) ([]byte, int, error) {
 	url := fmt.Sprintf("%s/v1/%s", c.addr, path)
 
 	var reqBody io.Reader
