@@ -1,9 +1,11 @@
 FROM golang:1.21-bookworm
 
-# Pre-install Azure CLI (with --break-system-packages for PEP 668)
+# Pre-install Azure CLI using venv to avoid PEP 668
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3-pip && \
-    pip3 install --no-cache-dir --break-system-packages azure-cli && \
+    apt-get install -y --no-install-recommends python3-venv python3-pip && \
+    python3 -m venv /opt/az-cli-env && \
+    /opt/az-cli-env/bin/pip install --no-cache-dir azure-cli && \
+    ln -s /opt/az-cli-env/bin/az /usr/local/bin/az && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
