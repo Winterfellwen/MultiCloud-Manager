@@ -169,6 +169,7 @@ func (d *Database) Migrate() error {
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`ALTER TABLE cloud_accounts ADD COLUMN IF NOT EXISTS credentials TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE cloud_accounts ADD COLUMN IF NOT EXISTS vault_path VARCHAR(500) DEFAULT ''`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encrypted_credentials`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS team_id`,
 		`ALTER TABLE cloud_accounts DROP COLUMN IF EXISTS encryption_key_id`,

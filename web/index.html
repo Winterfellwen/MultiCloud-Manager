@@ -692,6 +692,10 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       <div style="font-size:13px;font-weight:500;margin-bottom:8px">Stored Secrets</div>
       <div id="vaultSecretsList"><div style="color:var(--text-muted);font-size:12px">Loading...</div></div>
     </div>
+    <div style="margin-top:16px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Linked Cloud Accounts</div>
+      <div id="vaultAccountsList"><div style="color:var(--text-muted);font-size:12px">Loading...</div></div>
+    </div>
   </div>
 
   <!-- Terraform -->
@@ -1560,11 +1564,12 @@ function renderAccounts(list) {
   container.innerHTML = list.map(a => {
     const cloudLabel = cloudLabels[a.cloud_type] || a.cloud_type;
     const statusLabel = a.is_active ? t('account.normal') : t('account.error');
+    const vaultBadge = a.vault_secured ? ' <span style="color:var(--success);font-size:10px">🔒</span>' : '';
     return '<div class="account-card">' +
       '<div class="account-left">' +
         '<div class="account-icon ' + a.cloud_type + '">' + (cloudShorts[a.cloud_type] || '??') + '</div>' +
         '<div>' +
-          '<div class="account-name">' + a.name + '</div>' +
+          '<div class="account-name">' + a.name + vaultBadge + '</div>' +
           '<div class="account-meta">' + cloudLabel + ' / ' + statusLabel + ' / ' + t('account.sync_time') + (a.last_sync_at || a.last_sync || t('account.unknown')) + '</div>' +
         '</div>' +
       '</div>' +
@@ -1648,9 +1653,29 @@ async function loadVault() {
     }
     // Load secrets list
     loadVaultSecrets();
+    // Load linked cloud accounts
+    loadVaultAccounts();
   } catch(e) {
     document.getElementById('vaultHealth').textContent = '❌ ' + e.message;
   }
+}
+
+async function loadVaultAccounts() {
+  try {
+    var data = await apiFetch(API + '/accounts');
+    var el = document.getElementById('vaultAccountsList');
+    if (!el) return;
+    var accounts = data && data.accounts ? data.accounts : [];
+    if (accounts.length === 0) {
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">No cloud accounts configured</div>';
+      return;
+    }
+    el.innerHTML = accounts.map(function(a) {
+      var icon = a.cloud_type === 'azure' ? '☁️' : a.cloud_type === 'tencent' ? '🐧' : a.cloud_type === 'oracle' ? '🔴' : '🚀';
+      var secured = a.vault_secured ? '<span style="color:var(--success);font-size:11px">🔒 vault</span>' : '<span style="color:var(--warning);font-size:11px">⚠️ plaintext</span>';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>' + icon + '</span><span style="font-size:12px;flex:1">' + escHtml(a.name) + ' <span style="color:var(--text-muted)">(' + a.cloud_type + ')</span></span>' + secured + '</div>';
+    }).join('');
+  } catch(e) {}
 }
 
 async function loadVaultSecrets() {
