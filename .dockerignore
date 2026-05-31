@@ -17,3 +17,5 @@ package.json
 package-lock.json
 project.config.json
 project.private.config.json
+render.yaml
+.dockerignore
