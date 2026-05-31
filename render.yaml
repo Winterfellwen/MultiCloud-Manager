@@ -1,17 +1,9 @@
 services:
   - type: web
     name: multicloud-backend
-    env: go
+    env: docker
+    dockerfilePath: Dockerfile
     plan: free
-    buildCommand: |
-      which az >/dev/null 2>&1 || {
-        which pip3 >/dev/null 2>&1 || {
-          apt-get update -qq && apt-get install -y -qq python3-pip
-        }
-        pip3 install azure-cli
-      }
-      go build -o app .
-    startCommand: ./app
     envVars:
       - key: DATABASE_URL
         fromDatabase:
