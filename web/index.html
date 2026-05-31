@@ -115,6 +115,11 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-session-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .chat-session-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
 .chat-session-item.active { background: rgba(0,122,255,.1); color: var(--primary); }
+.chat-session-item.running { border-left: 2px solid var(--success); }
+.session-status { font-size: 10px; flex-shrink: 0; display: flex; align-items: center; }
+.session-status .running-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s ease-in-out infinite; }
+.session-status .done-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
 .chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; flex-shrink: 0; }
 .chat-session-item:hover .session-del-btn { opacity: .4; }
 .chat-session-item .session-del-btn:hover { opacity: 1; }
@@ -1268,12 +1273,14 @@ async function loadSessions() {
   list.innerHTML = '';
   data.sessions.forEach(function(s) {
     const item = document.createElement('div');
-    item.className = 'chat-session-item' + (s.session_id === CURRENT_SESSION ? ' active' : '');
+    item.className = 'chat-session-item' + (s.session_id === CURRENT_SESSION ? ' active' : '') + (s.status === 'running' ? ' running' : '');
     item.dataset.sid = s.session_id;
-    // Use title or first few chars of last message
+    item.dataset.status = s.status;
     const title = s.title && s.title.length > 30 ? s.title.slice(0, 30) + '...' : (s.title || 'Session');
-    var runningDot = s.status === 'running' ? '<span style="color:var(--success);margin-right:2px;animation:blink 1s step-end infinite">●</span>' : '';
-    item.innerHTML = runningDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    var statusDot = s.status === 'running'
+      ? '<span class="session-status"><span class="running-dot"></span></span>'
+      : '<span class="session-status"><span class="done-dot"></span></span>';
+    item.innerHTML = statusDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
   });
@@ -2328,7 +2335,7 @@ document.addEventListener('keydown', function(e) {
 
 /* Init */
 initTheme();
-var langBtnInit = document.getElementById('langToggleBtn');
+var langBtnInit = document.querySelector('#langToggleBtn .lang-label');
 if (langBtnInit) langBtnInit.textContent = LOCALE === 'zh' ? 'EN' : '中文';
 applyLang();
 loadDashboard();
@@ -2339,6 +2346,7 @@ var lastSyncedMsgCount = 0;
 
 function startSessionPoll() {
   stopSessionPoll();
+  var lastKnownStatus = '';
   sessionPollTimer = setInterval(async function() {
     if (!CURRENT_SESSION) return;
     // Skip if there's an active streaming message (SSE connected)
@@ -2346,6 +2354,11 @@ function startSessionPoll() {
     try {
       var data = await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION);
       if (!data || !data.messages) return;
+      // Always refresh session list to update running/done status
+      if (data.status !== lastKnownStatus) {
+        lastKnownStatus = data.status;
+        loadSessions();
+      }
       // Remove "AI is working..." indicator if session finished
       if (data.status !== 'running') {
         var workIndicator = document.querySelector('.streaming-work');
@@ -2353,8 +2366,6 @@ function startSessionPoll() {
         document.getElementById('chatStopBtn').style.display = 'none';
       }
       if (data.messages.length !== lastSyncedMsgCount) {
-        // Refresh session list too
-        loadSessions();
         // Re-render messages
         var container = document.getElementById('chatMessages');
         container.innerHTML = '';
