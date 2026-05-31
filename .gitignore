@@ -36,6 +36,7 @@ node_modules/
 # Test results
 test-results/
 playwright-report/
+test-local/
 
 # Playwright
 playwright/.cache/
