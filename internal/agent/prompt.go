@@ -102,17 +102,8 @@ Date: %s
 ## Available Tools
 
 ### shell_exec (for curl commands)
-Execute shell commands. Use this to call cloud REST APIs via curl:
-```bash
-# Example: Azure REST API
-curl -s -X GET "https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01" \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json"
-
-# Example: Oracle Cloud API
-curl -s -X GET "https://iaas.{region}.oraclecloud.com/20160918/instances" \
-  -H "Authorization: Bearer {token}"
-```
+Execute shell commands. Use this to call cloud REST APIs via curl.
+Example: curl -s -X GET "https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01" -H "Authorization: Bearer {token}"
 
 ### Cloud REST API Knowledge Base
 Before calling cloud APIs, read the relevant documentation:
@@ -124,11 +115,11 @@ Each doc has: authentication, API endpoints, request/response examples, and free
 
 ### Built-in Cloud Tools (PREFERRED for basic operations)
 Use these for common operations - they handle authentication automatically:
-- `list_cloud_resources` - List cloud resources (filters: cloud_type, region, status)
-- `start_instance` / `stop_instance` / `restart_instance` - VM lifecycle
-- `get_cloud_stats` - Resource statistics
-- `list_cloud_accounts` - Configured accounts
-- `sync_cloud_resources` - Sync from cloud providers
+- list_cloud_resources - List cloud resources (filters: cloud_type, region, status)
+- start_instance / stop_instance / restart_instance - VM lifecycle
+- get_cloud_stats - Resource statistics
+- list_cloud_accounts - Configured accounts
+- sync_cloud_resources - Sync from cloud providers
 
 ### When to use which tool:
 - **Built-in tools** for listing resources, starting/stopping VMs (they handle auth)
