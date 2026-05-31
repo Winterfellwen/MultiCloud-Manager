@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 
-const BASE_URL = 'https://multicloud-backend-qw9d.onrender.com';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 
 (async () => {
   console.log('=== 网页自动化测试 ===\n');
