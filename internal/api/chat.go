@@ -214,13 +214,13 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 						count++
 					}
 				}
-				if count >= 7 {
-					messages = append(messages, map[string]interface{}{
-						"role": "system",
-						"content": fmt.Sprintf("⚠️ LOOP DETECTED: You have called %s %d times in the last 10 tool calls. This approach is not working. STOP. Instead: (1) Tell the user what you tried and why it failed, (2) Ask for guidance, or (3) Move on to a different part of the task. Do NOT retry the same tool.", toolName, count),
-					})
-					toolCallHistory = nil // reset
-				}
+			if count >= 7 {
+				messages = append(messages, map[string]interface{}{
+					"role": "system",
+					"content": fmt.Sprintf("Note: You have called %s %d times in the last 10 tool calls. This might indicate you're stuck in a loop. Consider whether:\n(1) The previous attempts failed — try a different approach\n(2) The task is complete — summarize and stop\n(3) You need more information — ask the user\nYou are free to continue if you have a clear next step, but be aware of the pattern.", toolName, count),
+				})
+				toolCallHistory = nil // reset counter so AI can start fresh if it changes approach
+			}
 			}
 
 			// Hard block: Plan mode must not execute state-changing commands
@@ -339,10 +339,10 @@ done:
 			flusher.Flush()
 		}
 	} else if iterCount >= maxIterations && len(lastToolCalls) > 0 {
-		// opencode-style: inject MAX_STEPS as system-level assistant message
+		// opencode-style: inject MAX_STEPS as system-level message
 		messages = append(messages, map[string]interface{}{
 			"role":    "system",
-			"content": fmt.Sprintf("CRITICAL — MAXIMUM STEPS REACHED (%d). The maximum number of operations has been reached. Tools are disabled until next user input. Summarize what has been done, explain what remains, and ask the user if they want to continue.", maxIterations),
+			"content": fmt.Sprintf("Maximum conversation turns reached (%d). Please wrap up: summarize what has been accomplished, explain what remains to be done, and ask the user how they want to proceed.", maxIterations),
 		})
 		// One more LLM call to get the final summary
 		finalBody := map[string]interface{}{
