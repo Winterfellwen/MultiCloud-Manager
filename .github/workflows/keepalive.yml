@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Render backend (1/2)
-        run: curl -s -o /dev/null -w "%{http_code}" https://multicloud-backend-qw9d.onrender.com/ || true
+        run: curl -s -o /dev/null -w "%{http_code}" https://multicloud-manager-8ylh.onrender.com/ || true
 
       - name: Sleep 50s
         run: sleep 50
 
       - name: Ping Render backend (2/2)
-        run: curl -s -o /dev/null -w "%{http_code}" https://multicloud-backend-qw9d.onrender.com/ || true
+        run: curl -s -o /dev/null -w "%{http_code}" https://multicloud-manager-8ylh.onrender.com/ || true

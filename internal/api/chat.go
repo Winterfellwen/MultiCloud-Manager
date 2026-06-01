@@ -276,6 +276,10 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 				"content":      toolResultContent,
 			})
 		}
+
+		// Prune message history to keep context window manageable.
+		// Keep system prompt + last N messages so the model doesn't drown in old tool results.
+		messages = pruneMessages(messages)
 	}
 
 done:
@@ -921,4 +925,19 @@ func isDestructiveCommand(cmd string) bool {
 		}
 	}
 	return false // default: allow unknown commands in plan mode (whitelist approach)
+}
+
+// pruneMessages limits the message history to prevent unbounded context growth.
+// It always keeps the system prompt (index 0) and the last N-1 messages.
+// This prevents the model from drowning in accumulated tool results across iterations.
+func pruneMessages(msgs []map[string]interface{}) []map[string]interface{} {
+	const maxMessages = 30
+	if len(msgs) <= maxMessages {
+		return msgs
+	}
+	// Keep system prompt + last (maxMessages-1) messages
+	keep := make([]map[string]interface{}, 0, maxMessages)
+	keep = append(keep, msgs[0])
+	keep = append(keep, msgs[len(msgs)-(maxMessages-1):]...)
+	return keep
 }
