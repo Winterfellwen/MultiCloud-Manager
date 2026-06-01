@@ -717,29 +717,38 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		content, _ := m["content"].(string)
 
 		if role == "assistant" {
-			toolCalls, _ := m["tool_calls"].([]interface{})
+			// tool_calls may be []interface{} (from JSON unmarshal) or []map[string]interface{} (from Go code)
+			var toolCallsAsMaps []map[string]interface{}
+			switch tc := m["tool_calls"].(type) {
+			case []interface{}:
+				for _, item := range tc {
+					if m, ok := item.(map[string]interface{}); ok {
+						toolCallsAsMaps = append(toolCallsAsMaps, m)
+					}
+				}
+			case []map[string]interface{}:
+				toolCallsAsMaps = tc
+			}
 			if content != "" {
 				// Assistant with actual text content → save as agent message
 				saveMsgs = append(saveMsgs, map[string]interface{}{
 					"role": "agent", "content": content,
 				})
 			}
-			if len(toolCalls) > 0 {
+			if len(toolCallsAsMaps) > 0 {
 				// Save tool calls with their results as structured JSON
 				var callInfos []map[string]interface{}
-				for _, tc := range toolCalls {
-					if tcMap, ok := tc.(map[string]interface{}); ok {
-						fn, _ := tcMap["function"].(map[string]interface{})
-						name, _ := fn["name"].(string)
-						args, _ := fn["arguments"].(string)
-						id, _ := tcMap["id"].(string)
-						result := toolResults[id]
-						callInfos = append(callInfos, map[string]interface{}{
-							"name":   name,
-							"params": args,
-							"result": result,
-						})
-					}
+				for _, tcMap := range toolCallsAsMaps {
+					fn, _ := tcMap["function"].(map[string]interface{})
+					name, _ := fn["name"].(string)
+					args, _ := fn["arguments"].(string)
+					id, _ := tcMap["id"].(string)
+					result := toolResults[id]
+					callInfos = append(callInfos, map[string]interface{}{
+						"name":   name,
+						"params": args,
+						"result": result,
+					})
 				}
 				if len(callInfos) > 0 {
 					jsonBytes, _ := json.Marshal(callInfos)
