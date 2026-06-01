@@ -115,8 +115,24 @@ curl -s -X POST "https://management.azure.com/subscriptions/{sub}/resourceGroups
 ```
 
 ### Delete Account
+⚠️ **必须先删除所有嵌套子资源（projects），才能删除父账号！**
 ```bash
+# Step 1: List all projects under an account
+curl -s "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{name}/projects?api-version=2023-10-01-preview" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Step 2: Delete each project first
+curl -s -X DELETE "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{name}/projects/{projectName}?api-version=2023-10-01-preview" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Step 3: Then delete the parent account
 curl -s -X DELETE "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{name}?api-version=2023-05-01" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### List Projects
+```bash
+curl -s "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{name}/projects?api-version=2023-10-01-preview" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

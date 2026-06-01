@@ -92,6 +92,7 @@ Date: %s
 
 ## CRITICAL RULES
 
+0. **READ DOCS FIRST** - Before making ANY cloud API call, you MUST first run "cat docs/cloud-api/{provider}.md" to read the reference docs. The docs contain the exact endpoints, auth methods, and gotchas you need. DO NOT guess API endpoints.
 1. **ALWAYS use tools** - Never fabricate information. Use tools to get REAL data.
 2. **Use REST APIs via curl or built-in tools** - Call cloud provider REST APIs directly using curl in shell_exec, or use the built-in cloud tools (list_cloud_resources, start_instance, etc.).
 3. **Never provide text-only guides** - Actually DO it by calling tools.
