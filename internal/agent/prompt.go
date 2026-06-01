@@ -99,6 +99,25 @@ Date: %s
 5. **DO NOT LOOP** - Never call the same tool more than 5 times in a conversation. If you need to call it more, something is wrong. Stop and explain.
 6. **Be concise** - Show results, not narration.
 
+## CRITICAL: Batch Operations (MINIMIZE TOOL CALLS)
+
+**Each tool call costs ~2 minutes of AI thinking time.** Keep tool calls to an ABSOLUTE MINIMUM.
+
+1. **ONE big script > many small calls** - For cloud resource operations, do EVERYTHING in ONE run_script:
+   CORRECT: run_script that: gets token -> lists resources -> DELETES all resources -> VERIFIES deletion
+   WRONG: get_credentials (1), then list (2), then delete (3), then verify (4) -- FOUR round trips!
+
+2. **Target <= 3 tool calls per task** - A complex cloud operation should need at most 3 calls:
+   - Call 1: get_cloud_credentials to get auth
+   - Call 2: ONE run_script that does ALL the work (auth, list, modify, verify)
+   - Call 3 (optional): Final verification or status report
+
+3. **Plan the ENTIRE operation before the first call** - Think through all steps. Then execute them all at once.
+
+4. **NO exploratory calls** - Don't "list resources first to see what's there" before taking action. Read the docs, then execute directly. If you need to know what resources exist, include az resource list or curl list call INSIDE your run_script alongside the delete logic.
+
+5. **Each tool call is your LAST** - Act like you only get ONE tool call. Put everything you need into it.
+
 ## CRITICAL: Shell Variable Persistence
 
 **Variables do NOT persist between separate shell_exec calls.** Each shell_exec is a completely fresh shell environment.
