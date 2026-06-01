@@ -52,26 +52,28 @@ test('full flow: new session → tool-calls saved → reload → collapsible gro
   }, { timeout: 120000 });
   await page.waitForTimeout(1000);
 
-  // 7. After streaming: collapsible group should exist
-  const toolsGroups = page.locator('.msg.tools');
-  const toolsGroupCount = await toolsGroups.count();
-  console.log('Tool-calls groups after streaming:', toolsGroupCount);
-  expect(toolsGroupCount).toBeGreaterThanOrEqual(1);
+  // 7. After streaming: collapsible group should exist (inline in agent msg or separate .msg.tools)
+  const toolsInline = page.locator('.tool-calls-inline');
+  const toolsMsg = page.locator('.msg.tools');
+  const hasInline = await toolsInline.count() > 0;
+  const hasToolsMsg = await toolsMsg.count() > 0;
+  console.log('Has inline tool calls:', hasInline, 'Has tools msg:', hasToolsMsg);
+  expect(hasInline || hasToolsMsg).toBeTruthy();
 
-  const header = toolsGroups.first().locator('.tool-calls-header');
+  const header = hasInline ? toolsInline.locator('.tool-calls-header') : toolsMsg.locator('.tool-calls-header');
   const headerText = await header.textContent();
   console.log('Header:', headerText);
 
   // Verify body hidden initially
-  const body = toolsGroups.first().locator('.tool-calls-body');
+  const body = header.locator('..').locator('.tool-calls-body');
   await expect(body).toBeHidden();
-  console.log('✅ Body hidden initially');
+  console.log('Body hidden initially');
 
   // Expand and verify
   await header.click();
   await page.waitForTimeout(500);
   await expect(body).toBeVisible();
-  console.log('✅ Body expanded');
+  console.log('Body expanded');
 
   const innerCount = await body.locator('.tool-card').count();
   console.log('Inner tool cards:', innerCount);
@@ -113,24 +115,26 @@ test('full flow: new session → tool-calls saved → reload → collapsible gro
   await sessionItem.click();
   await page.waitForTimeout(3000);
 
-  // 11. Check for tool-calls group from DB
+  // 11. Check for tool-calls group from DB (inline or separate)
+  const reloadedToolsInline = page.locator('.tool-calls-inline');
   const reloadedToolsGroups = page.locator('.msg.tools');
-  const reloadedCount = await reloadedToolsGroups.count();
-  console.log('Tool-calls groups after DB reload:', reloadedCount);
+  const reloadedHasInline = await reloadedToolsInline.count() > 0;
+  const reloadedHasToolsMsg = await reloadedToolsGroups.count() > 0;
+  console.log('Reloaded - has inline:', reloadedHasInline, 'has tools msg:', reloadedHasToolsMsg);
 
-  if (reloadedCount > 0) {
-    const reloadedHeader = reloadedToolsGroups.first().locator('.tool-calls-header');
+  if (reloadedHasInline || reloadedHasToolsMsg) {
+    const reloadedHeader = reloadedHasInline ? reloadedToolsInline.locator('.tool-calls-header') : reloadedToolsGroups.locator('.tool-calls-header');
     const reloadedHeaderText = await reloadedHeader.textContent();
     console.log('Reloaded header:', reloadedHeaderText);
 
-    const reloadedBody = reloadedToolsGroups.first().locator('.tool-calls-body');
+    const reloadedBody = reloadedHeader.locator('..').locator('.tool-calls-body');
     await expect(reloadedBody).toBeHidden();
-    console.log('✅ Reloaded body hidden initially');
+    console.log('Reloaded body hidden initially');
 
     await reloadedHeader.click();
     await page.waitForTimeout(500);
     await expect(reloadedBody).toBeVisible();
-    console.log('✅ Reloaded body expanded');
+    console.log('Reloaded body expanded');
 
     const reloadedInnerCount = await reloadedBody.locator('.tool-card').count();
     console.log('Reloaded inner tool cards:', reloadedInnerCount);
