@@ -283,21 +283,6 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	}
 
 done:
-	// Append tool call summary to allContent so saved history is meaningful
-	if len(messages) > 2 && allContent.Len() > 0 {
-		var sb strings.Builder
-		toolCount := 0
-		for _, m := range messages {
-			if role, _ := m["role"].(string); role == "tool" {
-				toolCount++
-			}
-		}
-		if toolCount > 0 {
-			sb.WriteString(fmt.Sprintf("\n\n> 📋 已执行 %d 次工具调用\n", toolCount))
-		}
-		allContent.WriteString(sb.String())
-	}
-
 	// Build summary if the loop was interrupted
 	if stopReason != "" {
 		// Handle orphaned tool calls (Crush pattern):
@@ -708,6 +693,20 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		return
 	}
 
+	// First pass: build tool_call_id → result map
+	toolResults := make(map[string]string)
+	for _, m := range messages {
+		if role, _ := m["role"].(string); role == "tool" {
+			if id, ok := m["tool_call_id"].(string); ok {
+				content, _ := m["content"].(string)
+				if len(content) > 500 {
+					content = content[:500] + "... [truncated]"
+				}
+				toolResults[id] = content
+			}
+		}
+	}
+
 	// Build renderable messages from the raw messages array
 	var saveMsgs []map[string]interface{}
 	for _, m := range messages {
@@ -724,23 +723,28 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 				saveMsgs = append(saveMsgs, map[string]interface{}{
 					"role": "agent", "content": content,
 				})
-			} else if len(toolCalls) > 0 {
-				// Assistant making tool calls → save as tool-call indicator
-				var parts []string
+			}
+			if len(toolCalls) > 0 {
+				// Save tool calls with their results as structured JSON
+				var callInfos []map[string]interface{}
 				for _, tc := range toolCalls {
 					if tcMap, ok := tc.(map[string]interface{}); ok {
 						fn, _ := tcMap["function"].(map[string]interface{})
 						name, _ := fn["name"].(string)
 						args, _ := fn["arguments"].(string)
-						if len(args) > 100 {
-							args = args[:100] + "..."
-						}
-						parts = append(parts, "🔧 "+name+"("+args+")")
+						id, _ := tcMap["id"].(string)
+						result := toolResults[id]
+						callInfos = append(callInfos, map[string]interface{}{
+							"name":   name,
+							"params": args,
+							"result": result,
+						})
 					}
 				}
-				if len(parts) > 0 {
+				if len(callInfos) > 0 {
+					jsonBytes, _ := json.Marshal(callInfos)
 					saveMsgs = append(saveMsgs, map[string]interface{}{
-						"role": "tool-calls", "content": strings.Join(parts, " → "),
+						"role": "tool-calls", "content": string(jsonBytes),
 					})
 				}
 			}

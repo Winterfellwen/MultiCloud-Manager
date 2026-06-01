@@ -212,6 +212,19 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Inline status indicators (Claude Code style) */
 .inline-status { display: inline; color: var(--text-muted); font-size: 12px; }
 
+/* Collapsible tool calls group (for saved/reloaded sessions) */
+.tool-calls-group { margin: 6px 0 6px 22px; }
+.tool-calls-header { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; font-size: 12px; color: var(--text-muted); cursor: pointer; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: all .15s; user-select: none; }
+.tool-calls-header:hover { border-color: var(--primary); color: var(--primary); }
+.tool-calls-header::before { content: '\u25B6'; font-size: 10px; transition: transform .15s; }
+.tool-calls-header.expanded::before { content: '\u25BC'; }
+.tool-calls-body { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; }
+.tool-calls-group .tool-block.done { display: flex; }
+.tool-calls-group .tool-block.done .tool-result { display: none; }
+.tool-calls-group .tool-block.expanded .tool-result { display: block; }
+.tool-result .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
+.tool-result .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+
 /* Tool call display */
 .tool-call { padding: 3px 8px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
 .tool-call .tool-name { color: var(--primary); }
@@ -1411,7 +1424,10 @@ async function switchSession(sid) {
           appendMessage('agent', renderMarkdown(m.content));
         }
         msgCount++;
-      } else if (m.role === 'tool-calls' || m.role === 'system') {
+      } else if (m.role === 'tool-calls') {
+        renderToolCallsGroup(m.content, container);
+        msgCount++;
+      } else if (m.role === 'system') {
         var div = document.createElement('div');
         div.className = 'msg system';
         div.textContent = m.content;
@@ -1447,7 +1463,10 @@ async function switchSession(sid) {
         } else if (m.role === 'agent' || m.role === 'assistant') {
           appendMessage('agent', renderMarkdown(m.content));
           msgCount++;
-        } else if (m.role === 'tool-calls' || m.role === 'system') {
+        } else if (m.role === 'tool-calls') {
+          renderToolCallsGroup(m.content, container);
+          msgCount++;
+        } else if (m.role === 'system') {
           var div = document.createElement('div');
           div.className = 'msg system';
           div.textContent = m.content;
@@ -1503,6 +1522,69 @@ function appendMessage(type, html) {
   }
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+/* Render tool calls group (from saved session JSON) */
+function renderToolCallsGroup(jsonContent, container) {
+  var toolCalls;
+  try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
+  if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) {
+    // Not JSON — fallback to plain system message
+    var div = document.createElement('div');
+    div.className = 'msg system';
+    div.textContent = jsonContent;
+    container.appendChild(div);
+    return;
+  }
+
+  var header = document.createElement('div');
+  header.className = 'tool-calls-header collapsed';
+  header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
+
+  var body = document.createElement('div');
+  body.className = 'tool-calls-body';
+  body.style.display = 'none';
+
+  toolCalls.forEach(function(tc) {
+    var block = document.createElement('div');
+    block.className = 'tool-block done';
+    var paramsStr = '';
+    try {
+      var p = JSON.parse(tc.params || '{}');
+      paramsStr = JSON.stringify(p).substring(0, 60);
+    } catch(e) { paramsStr = (tc.params || '').substring(0, 60); }
+    var resultText = tc.result || '';
+    block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span>' + (paramsStr ? '<span class="tool-params">' + escHtml(paramsStr) + '</span>' : '') + '<span class="tool-status done">done</span></div>' +
+      '<div class="tool-result">' + escHtml(resultText) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
+    block.onclick = function() { this.classList.toggle('expanded'); };
+    body.appendChild(block);
+  });
+
+  // Toggle expand/collapse on header click
+  header.onclick = function(e) {
+    e.stopPropagation();
+    var isCollapsed = body.style.display === 'none';
+    body.style.display = isCollapsed ? 'flex' : 'none';
+    header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
+  };
+
+  var group = document.createElement('div');
+  group.className = 'tool-calls-group';
+  group.appendChild(header);
+  group.appendChild(body);
+  container.appendChild(group);
+}
+
+/* Copy tool result text */
+function copyToolResult(btn) {
+  var resultDiv = btn.parentNode;
+  var text = resultDiv.textContent.replace((LOCALE === 'zh' ? '复制' : 'Copy'), '').trim();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = (LOCALE === 'zh' ? '已复制' : 'Copied!');
+      setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, 2000);
+    });
+  }
 }
 
 /* Markdown rendering with download buttons */
