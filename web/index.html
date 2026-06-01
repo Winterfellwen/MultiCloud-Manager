@@ -1196,6 +1196,50 @@ async function startStream(body) {
     }
     lastMsg.classList.remove('streaming');
   }
+  // Consolidate inline tool blocks into collapsible group
+  if (lastMsg) {
+    var doneBlocks = lastMsg.querySelectorAll('.tool-block.done');
+    if (doneBlocks.length > 0) {
+      var toolCallData = [];
+      doneBlocks.forEach(function(block) {
+        var name = (block.querySelector('.tool-name') || {}).textContent || '';
+        var params = (block.querySelector('.tool-params') || {}).textContent || '';
+        var resultDiv = block.querySelector('.tool-result');
+        var result = resultDiv ? (resultDiv.getAttribute('data-result') || resultDiv.textContent.replace('Copy','').replace('复制','').trim()) : '';
+        toolCallData.push({name: name, params: params, result: result});
+      });
+      // Remove inline blocks from msg-content
+      doneBlocks.forEach(function(block) { block.remove(); });
+      // Build collapsible group
+      var groupDiv = document.createElement('div');
+      groupDiv.className = 'msg tools';
+      var header = document.createElement('div');
+      header.className = 'tool-calls-header collapsed';
+      header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCallData.length + ')';
+      var body = document.createElement('div');
+      body.className = 'tool-calls-body';
+      body.style.display = 'none';
+      toolCallData.forEach(function(tc) {
+        var block = document.createElement('div');
+        block.className = 'tool-block done';
+        var paramsShort = tc.params.substring(0, 60);
+        var resultAttr = escHtml(tc.result);
+        block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status done">done</span></div>' +
+          '<div class="tool-result" data-result="' + resultAttr + '">' + escHtml(tc.result) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
+        block.onclick = function() { this.classList.toggle('expanded'); };
+        body.appendChild(block);
+      });
+      header.onclick = function(e) {
+        e.stopPropagation();
+        var isCollapsed = body.style.display === 'none';
+        body.style.display = isCollapsed ? 'flex' : 'none';
+        header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
+      };
+      groupDiv.appendChild(header);
+      groupDiv.appendChild(body);
+      lastMsg.appendChild(groupDiv);
+    }
+  }
   STREAMING_MSG = null;
   // Finalize streaming message in global store
   if (CURRENT_SESSION && SESSION_MESSAGES[CURRENT_SESSION]) {
