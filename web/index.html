@@ -188,6 +188,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-block { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 10px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; white-space: nowrap; flex-shrink: 0; background: var(--surface); transition: background .15s; }
 .tool-block:hover { background: var(--bg); }
 .tool-block .tool-arrow { display: none; }
+.tool-block .tool-icon { font-size: 12px; margin-right: 2px; }
 .tool-block .tool-name { color: var(--primary); font-weight: 500; }
 .tool-block .tool-params { color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 .tool-block .tool-status { font-size: 9px; text-transform: uppercase; }
@@ -195,17 +196,10 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-block .tool-status.done { color: var(--success); }
 .tool-block .tool-status.error { color: var(--danger); }
 .tool-block .tool-result { display: none; }
-.tool-block.done { flex-direction: column; align-items: stretch; white-space: normal; border-radius: 4px; border-color: var(--success); border-style: dashed; }
-.tool-block.done .tool-result { display: block; padding: 6px 8px; background: var(--bg); color: var(--text-secondary); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; border-top: 1px solid var(--border); margin-top: 4px; }
+.tool-block.done { flex-direction: column; align-items: stretch; white-space: normal; border-radius: 4px; }
+.tool-block.done .tool-result { display: none; }
 .tool-block.expanded { flex-direction: column; align-items: stretch; white-space: normal; border-radius: 4px; }
 .tool-block.expanded .tool-result { display: block; padding: 6px 8px; background: var(--bg); color: var(--text-secondary); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto; border-top: 1px solid var(--border); margin-top: 4px; }
-
-/* Chat status indicator (Thinking... Implementing...) */
-.chat-status { display: none; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; color: var(--text-muted); align-self: flex-start; }
-.chat-status.active { display: flex; }
-.chat-status .status-text { animation: pulse-text 2s ease-in-out infinite; }
-@keyframes pulse-text { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-.chat-status .status-icon { font-size: 14px; }
 
 /* AI text - separate from tool blocks for selective replacement */
 .ai-text { display: inline; }
@@ -214,6 +208,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 /* Streaming cursor on msg-content (backward compat) */
 .streaming-cursor::after { content: '|'; animation: blink 1s step-end infinite; color: var(--primary); font-weight: 300; }
+
+/* Inline status indicators (Claude Code style) */
+.inline-status { display: inline; color: var(--text-muted); font-size: 12px; }
 
 /* Tool call display */
 .tool-call { padding: 3px 8px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
@@ -512,10 +509,6 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
         </div>
         <div class="chat-messages" id="chatMessages">
           <div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div></div>
-        </div>
-        <div class="chat-status" id="chatStatus">
-          <span class="status-icon" id="statusIcon">&#x1F914;</span>
-          <span class="status-text" id="statusText">Thinking...</span>
         </div>
         <div class="typing-indicator" id="typingIndicator">
           <span class="typing-dot"></span>
@@ -1101,17 +1094,9 @@ async function startStream(body) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg agent streaming';
-  div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"></span></div>';
+  div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status">\u{1F914} ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span></span></div>';
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
-
-  // Show Thinking status
-  var statusEl = document.getElementById('chatStatus');
-  if (statusEl) {
-    document.getElementById('statusIcon').textContent = '\u{1F914}';
-    document.getElementById('statusText').textContent = LOCALE === 'zh' ? '思考中...' : 'Thinking...';
-    statusEl.classList.add('active');
-  }
 
   var streamTimeout = setTimeout(function() {
     CONFIRM_PENDING = false;
@@ -1142,7 +1127,6 @@ async function startStream(body) {
         CONFIRM_PENDING = false;
         document.getElementById('chatSendBtn').disabled = false;
         document.getElementById('typingIndicator').classList.remove('active');
-        document.getElementById('chatStatus').classList.remove('active');
       }, 120000);
       buffer += decoder.decode(value, {stream: true});
       const parts = buffer.split('\n');
@@ -1172,7 +1156,6 @@ async function startStream(body) {
   }
 
   document.getElementById('typingIndicator').classList.remove('active');
-  document.getElementById('chatStatus').classList.remove('active');
   document.getElementById('chatStopBtn').style.display = 'none';
   ABORT_CONTROLLER = null;
 
@@ -1183,6 +1166,10 @@ async function startStream(body) {
       var aiText = lastMsg.querySelector('.ai-text');
       if (aiText) {
         aiText.classList.remove('streaming-cursor');
+        // If still showing "Thinking..." placeholder, replace with empty
+        if (aiText.textContent.indexOf('Thinking') !== -1 || aiText.textContent.indexOf('思考') !== -1) {
+          aiText.innerHTML = '';
+        }
       } else {
         mc.classList.remove('streaming-cursor');
         // No .ai-text element: use innerHTML directly (backward compat)
@@ -1256,13 +1243,6 @@ function handleSSEEvent(data) {
         if (aiTextEl) aiTextEl.classList.remove('streaming-cursor');
         else lastMsg.classList.remove('streaming-cursor');
       }
-      // Update status to Running
-      var statusEl = document.getElementById('chatStatus');
-      if (statusEl) {
-        document.getElementById('statusIcon').textContent = '\u{1F527}';
-        document.getElementById('statusText').textContent = LOCALE === 'zh' ? '执行中...' : 'Implementing...';
-        statusEl.classList.add('active');
-      }
       (data.tool_calls || []).forEach(function(tc) {
         var fn = tc.function || {};
         var name = fn.name || '';
@@ -1273,7 +1253,7 @@ function handleSSEEvent(data) {
         block.dataset.toolName = name;
         block.onclick = function() { this.classList.toggle('expanded'); };
         var paramsShort = params.substring(0, 40);
-        block.innerHTML = '<div class="tool-header"><span class="tool-arrow">▶</span><span class="tool-name">' + escHtml(name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status running">running</span></div>';
+        block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{1F527}</span><span class="tool-name">' + escHtml(name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status running">running</span></div>';
         if (streamingMsg) streamingMsg.appendChild(block);
       });
       break;
@@ -1283,6 +1263,8 @@ function handleSSEEvent(data) {
       var blocks = streamingMsg ? streamingMsg.querySelectorAll('.tool-block[data-tool-name="' + (data.tool_name || '') + '"]:not(.done)') : [];
       blocks.forEach(function(block) {
         var statusEl = block.querySelector('.tool-status');
+        var iconEl = block.querySelector('.tool-icon');
+        if (iconEl) iconEl.textContent = data.error ? '\u{274C}' : '\u{2705}';
         if (statusEl) {
           if (data.error) {
             statusEl.className = 'tool-status error';
@@ -1303,12 +1285,11 @@ function handleSSEEvent(data) {
         resultDiv.textContent = text;
         block.classList.add('done');
       });
-      // Update status back to Thinking (next iteration incoming)
-      var statusEl = document.getElementById('chatStatus');
-      if (statusEl) {
-        document.getElementById('statusIcon').textContent = '\u{1F914}';
-        document.getElementById('statusText').textContent = LOCALE === 'zh' ? '思考中...' : 'Thinking...';
-        statusEl.classList.add('active');
+      // Set .ai-text back to "Thinking..." while AI processes the result
+      var aiText = streamingMsg ? streamingMsg.querySelector('.ai-text') : null;
+      if (aiText) {
+        aiText.innerHTML = '<span class="inline-status">\u{1F914} ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span>';
+        aiText.classList.add('streaming-cursor');
       }
       break;
     }
@@ -1342,7 +1323,6 @@ function handleSSEEvent(data) {
       break;
     case 'error':
       CONFIRM_PENDING = false;
-      document.getElementById('chatStatus').classList.remove('active');
       if (streamingMsg) {
         const mc = streamingMsg.querySelector('.msg-content');
         if (mc) mc.classList.remove('streaming-cursor');
