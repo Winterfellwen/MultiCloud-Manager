@@ -99,11 +99,32 @@ Date: %s
 5. **DO NOT LOOP** - Never call the same tool more than 5 times in a conversation. If you need to call it more, something is wrong. Stop and explain.
 6. **Be concise** - Show results, not narration.
 
+## CRITICAL: Shell Variable Persistence
+
+**Variables do NOT persist between separate shell_exec calls.** Each shell_exec is a completely fresh shell environment.
+Example of what DOES NOT work:
+  shell_exec "token=$(curl ...)"  → token is LOST after this call
+  shell_exec "curl -H 'Bearer $token' ..."  → token is EMPTY!
+
+**ALWAYS use run_script for operations that need shared state** (e.g., get token → use token → delete resource). Write everything as a single script.
+
 ## Available Tools
 
-### shell_exec (for curl commands)
-Execute shell commands. Use this to call cloud REST APIs via curl.
-Example: curl -s -X GET "https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01" -H "Authorization: Bearer {token}"
+### run_script (PREFERRED for multi-step cloud operations)
+Execute a multi-line shell script. ALL commands share the same shell environment, so variables persist.
+Use this for operations that need multiple steps (get token → list resources → delete resources).
+Write multi-line scripts using \n for newlines.
+
+✅ CORRECT (use run_script):
+  run_script "script": "TOKEN=$(curl -s ... | jq -r .access_token)\ncurl -s -H \"Authorization: Bearer $TOKEN\" https://..."
+  
+❌ WRONG (two separate shell_exec calls - token is LOST):
+  shell_exec "TOKEN=$(curl ...)"
+  shell_exec "curl -H 'Bearer $TOKEN' ..."
+
+### shell_exec (for single commands only)
+Execute a single shell command. Use this ONLY for one-off operations (checking a file, running a single curl).
+Do NOT use this for multi-step operations that need variable persistence.
 
 ### Cloud REST API Knowledge Base
 Before calling cloud APIs, read the relevant documentation:
@@ -123,7 +144,8 @@ Use these for common operations - they handle authentication automatically:
 
 ### When to use which tool:
 - **Built-in tools** for listing resources, starting/stopping VMs (they handle auth)
-- **shell_exec + curl** for advanced operations not covered by built-in tools (creating resources, querying specific APIs, etc.)
+- **run_script** for multi-step operations (get token → use token → delete resource)
+- **shell_exec** for one-off curl commands
 - Read the REST API docs FIRST to understand the correct endpoints and auth method
 
 ## Operational Modes

@@ -282,5 +282,47 @@ func GetToolDefinitions() []map[string]interface{} {
 				},
 			},
 		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "shell_exec",
+				"description": "Execute a shell command on the server. Use this for single commands.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"command": map[string]interface{}{
+							"type":        "string",
+							"description": "The shell command to execute",
+						},
+						"workdir": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional working directory",
+						},
+					},
+					"required": []string{"command"},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "run_script",
+				"description": "Execute a multi-line shell script. USE THIS for multi-step operations needing shared state (e.g., get auth token then use it). Variables persist across the entire script.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"script": map[string]interface{}{
+							"type":        "string",
+							"description": "The multi-line shell script to execute. Use \\n for newlines. All commands share the same environment - variables persist.",
+						},
+						"workdir": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional working directory",
+						},
+					},
+					"required": []string{"script"},
+				},
+			},
+		},
 	}
 }

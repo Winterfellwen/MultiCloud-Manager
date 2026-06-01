@@ -224,10 +224,15 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 			}
 
 			// Hard block: Plan mode must not execute state-changing commands
-			if req.Mode == "plan" && toolName == "shell_exec" {
+			if req.Mode == "plan" && (toolName == "shell_exec" || toolName == "run_script") {
 				var targs map[string]interface{}
 				json.Unmarshal([]byte(toolArgsStr), &targs)
-				cmd, _ := targs["command"].(string)
+				cmd := ""
+				if toolName == "shell_exec" {
+					cmd, _ = targs["command"].(string)
+				} else {
+					cmd, _ = targs["script"].(string)
+				}
 				if isDestructiveCommand(cmd) {
 					fmt.Fprintf(c.Writer, "event: tool_result\ndata: %s\n\n", toJSON(map[string]interface{}{
 						"tool_name": toolName,
