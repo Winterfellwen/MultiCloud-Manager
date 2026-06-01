@@ -218,7 +218,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-calls-header:hover { border-color: var(--primary); color: var(--primary); }
 .tool-calls-header::before { content: '\u25B6'; font-size: 10px; margin-right: 4px; }
 .tool-calls-header.expanded::before { content: '\u25BC'; }
-.tool-calls-body { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.tool-calls-body { margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
 .tool-calls-body .tool-block.done { display: flex; border-radius: 4px; }
 .tool-calls-body .tool-block.done .tool-result { display: none; }
 .tool-calls-body .tool-block.expanded .tool-result { display: block; }
@@ -228,41 +228,52 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Inline tool calls inside AI message (bottom) */
 .msg.agent .tool-calls-inline { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
 .msg.agent .tool-calls-inline .tool-calls-header { font-size: 11px; }
-.msg.agent .tool-calls-inline .tool-calls-body .tool-block { font-size: 11px; }
-.msg.agent .tool-calls-inline .tool-calls-body .tool-block .tool-name { font-weight: 600; }
-.msg.agent .tool-calls-inline .tool-calls-body .tool-block .tool-result { font-size: 10px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; }
-.msg.agent .tool-calls-inline .tool-calls-body .tool-block .tool-params { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); background: var(--bg); padding: 1px 4px; border-radius: 2px; }
 
-/* Tool calls sidebar */
-.tool-sidebar { width: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--surface); transition: width .2s ease; display: flex; flex-direction: column; flex-shrink: 0; }
-.tool-sidebar.open { width: 340px; }
-.tool-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); min-height: 36px; flex-shrink: 0; }
-.tool-sidebar-header h3 { font-size: 12px; font-weight: 500; color: var(--text); margin: 0; white-space: nowrap; }
-.tool-sidebar-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1; }
-.tool-sidebar-close:hover { color: var(--text); }
-.tool-sidebar-body { flex: 1; overflow-y: auto; padding: 8px; }
-.tool-sidebar-toggle { background: none; border: 1px solid var(--border); border-radius: 2px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 4px; }
-.tool-sidebar-toggle:hover { border-color: var(--primary); color: var(--primary); }
-.tool-sidebar-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+/* Tool card (card-style layout for each tool call) */
+.tool-card { border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); overflow: hidden; }
+.tool-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text); transition: background .1s; user-select: none; }
+.tool-card-header:hover { background: rgba(255,255,255,.03); }
+.tool-card-header .card-icon { font-size: 14px; }
+.tool-card-header .card-name { color: var(--primary); flex: 1; font-weight: 600; }
+.tool-card-header .card-status { font-size: 9px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; font-weight: 600; }
+.tool-card-header .card-status.done { background: rgba(0,200,83,.12); color: var(--success); }
+.tool-card-header .card-status.error { background: rgba(255,59,48,.12); color: var(--danger); }
+.tool-card-header .expand-arrow { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
+.tool-card-header.expanded .expand-arrow { transform: rotate(90deg); }
+.tool-card-body { display: none; padding: 0 12px 10px 12px; }
+.tool-card-body.expanded { display: block; }
+.tool-card-body .field-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 10px; margin-bottom: 3px; }
+.tool-card-body .field-code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; line-height: 1.4; }
+.tool-card-body .field-result { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow-y: auto; line-height: 1.4; position: relative; }
 
-/* Sidebar tool card */
-.sidebar-tool-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; background: var(--bg); overflow: hidden; }
-.sidebar-tool-card-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text); transition: background .1s; user-select: none; }
-.sidebar-tool-card-header:hover { background: rgba(255,255,255,.03); }
-.sidebar-tool-card-header .tool-icon { font-size: 12px; }
-.sidebar-tool-card-header .tool-name { color: var(--primary); flex: 1; }
-.sidebar-tool-card-header .expand-icon { font-size: 10px; color: var(--text-muted); transition: transform .15s; }
-.sidebar-tool-card-header.expanded .expand-icon { transform: rotate(90deg); }
-.sidebar-tool-card-body { display: none; padding: 0 10px 8px 10px; }
-.sidebar-tool-card-body.expanded { display: block; }
-.sidebar-tool-card-body .field-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 8px; margin-bottom: 2px; }
-.sidebar-tool-card-body .field-value { font-size: 11px; color: var(--text); font-family: var(--font-mono); background: var(--bg); padding: 4px 8px; border-radius: 3px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); }
-.sidebar-tool-card-body .field-value.code { font-size: 10px; }
-.sidebar-tool-card-body .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
-.sidebar-tool-card-body .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
-.sidebar-tool-status { font-size: 9px; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; }
-.sidebar-tool-status.done { background: rgba(0,200,83,.1); color: var(--success); }
-.sidebar-tool-status.error { background: rgba(255,59,48,.1); color: var(--danger); }
+/* Files sidebar (right panel) */
+.files-sidebar { width: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--surface); transition: width .25s ease; display: flex; flex-direction: column; flex-shrink: 0; }
+.files-sidebar.open { width: 320px; }
+.files-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); min-height: 40px; flex-shrink: 0; }
+.files-sidebar-header h3 { font-size: 12px; font-weight: 600; color: var(--text); margin: 0; white-space: nowrap; }
+.files-sidebar-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; line-height: 1; }
+.files-sidebar-close:hover { color: var(--text); }
+.files-sidebar-body { flex: 1; overflow-y: auto; padding: 10px; }
+.files-toggle { background: none; border: 1px solid var(--border); border-radius: 2px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 4px; }
+.files-toggle:hover { border-color: var(--primary); color: var(--primary); }
+.files-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* File card */
+.file-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface2); overflow: hidden; }
+.file-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background .1s; user-select: none; }
+.file-card-header:hover { background: rgba(255,255,255,.03); }
+.file-icon { font-size: 18px; flex-shrink: 0; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 12px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-meta { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.file-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.file-action-btn { background: none; border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
+.file-action-btn:hover { border-color: var(--primary); color: var(--primary); }
+.file-action-btn.download { background: var(--primary); color: #fff; border-color: var(--primary); }
+.file-action-btn.download:hover { background: var(--primary-hover); }
+.file-preview { display: none; padding: 0 12px 10px 12px; }
+.file-preview.expanded { display: block; }
+.file-preview pre { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; line-height: 1.4; }
 
 /* Tool call display */
 .tool-call { padding: 3px 8px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
@@ -556,7 +567,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
         <div class="chat-header">
           <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
           <div class="chat-header-actions">
-            <button class="tool-sidebar-toggle" id="toolSidebarToggle" onclick="toggleToolSidebar()" title="Tool Calls">&#128295;</button>
+            <button class="files-toggle" id="filesSidebarToggle" onclick="toggleFilesSidebar()" title="Files">📄</button>
             <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
           </div>
         </div>
@@ -581,14 +592,14 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           </div>
           <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
       </div>
-      <!-- Tool Calls Sidebar -->
-      <div class="tool-sidebar" id="toolSidebar">
-        <div class="tool-sidebar-header">
-          <h3>Tool Calls</h3>
-          <button class="tool-sidebar-close" onclick="toggleToolSidebar()">&times;</button>
+      <!-- Files Sidebar -->
+      <div class="files-sidebar" id="filesSidebar">
+        <div class="files-sidebar-header">
+          <h3>📄 Files</h3>
+          <button class="files-sidebar-close" onclick="toggleFilesSidebar()">&times;</button>
         </div>
-        <div class="tool-sidebar-body" id="toolSidebarBody">
-          <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">No tool calls yet</div>
+        <div class="files-sidebar-body" id="filesSidebarBody">
+          <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">No files generated yet</div>
         </div>
       </div>
     </div>
@@ -1270,13 +1281,32 @@ async function startStream(body) {
       body.className = 'tool-calls-body';
       body.style.display = 'none';
       toolCallData.forEach(function(tc) {
-        var block = document.createElement('div');
-        block.className = 'tool-block done';
-        var resultAttr = escHtml(tc.result);
-        block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span><span class="tool-status done">done</span></div>' +
-          '<div class="tool-result" data-result="' + resultAttr + '">' + escHtml(tc.result) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
-        block.onclick = function() { this.classList.toggle('expanded'); };
-        body.appendChild(block);
+        var card = document.createElement('div');
+        card.className = 'tool-card';
+        var paramsStr = '';
+        try { var p = JSON.parse(tc.params || '{}'); paramsStr = JSON.stringify(p, null, 2); } catch(e) { paramsStr = tc.params || ''; }
+        var resultText = tc.result || '';
+        var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
+        card.innerHTML = '<div class="tool-card-header">' +
+          '<span class="card-icon">\u{1F527}</span>' +
+          '<span class="card-name">' + escHtml(tc.name) + '</span>' +
+          '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
+          '<span class="expand-arrow">\u25B6</span></div>' +
+          '<div class="tool-card-body">' +
+          '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
+          '<div class="field-code">' + escHtml(tc.name) + '</div>' +
+          '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
+          '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
+          '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
+          '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
+          '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
+        var cardHeader = card.querySelector('.tool-card-header');
+        var cardBody = card.querySelector('.tool-card-body');
+        cardHeader.onclick = function() {
+          cardHeader.classList.toggle('expanded');
+          cardBody.classList.toggle('expanded');
+        };
+        body.appendChild(card);
       });
       header.onclick = function(e) {
         e.stopPropagation();
@@ -1287,8 +1317,6 @@ async function startStream(body) {
       inline.appendChild(header);
       inline.appendChild(body);
       lastMsg.appendChild(inline);
-      // Update sidebar
-      updateToolSidebar(toolCallData);
     }
   }
   STREAMING_MSG = null;
@@ -1656,21 +1684,39 @@ function renderToolCallsGroup(jsonContent, container) {
   body.className = 'tool-calls-body';
   body.style.display = 'none';
 
-  toolCalls.forEach(function(tc, idx) {
-    var block = document.createElement('div');
-    block.className = 'tool-block done';
+  toolCalls.forEach(function(tc) {
+    var card = document.createElement('div');
+    card.className = 'tool-card';
+
     var paramsStr = '';
     try {
       var p = JSON.parse(tc.params || '{}');
-      paramsStr = JSON.stringify(p).substring(0, 60);
-    } catch(e) { paramsStr = (tc.params || '').substring(0, 60); }
+      paramsStr = JSON.stringify(p, null, 2);
+    } catch(e) { paramsStr = tc.params || ''; }
     var resultText = tc.result || '';
-    // Store result in data attribute for reliable copy
-    var resultAttr = escHtml(resultText);
-    block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span>' + (paramsStr ? '<span class="tool-params">' + escHtml(paramsStr) + '</span>' : '') + '<span class="tool-status done">done</span></div>' +
-      '<div class="tool-result" data-result="' + resultAttr + '">' + escHtml(resultText) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
-    block.onclick = function() { this.classList.toggle('expanded'); };
-    body.appendChild(block);
+    var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
+
+    card.innerHTML = '<div class="tool-card-header">' +
+      '<span class="card-icon">\u{1F527}</span>' +
+      '<span class="card-name">' + escHtml(tc.name) + '</span>' +
+      '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
+      '<span class="expand-arrow">\u25B6</span></div>' +
+      '<div class="tool-card-body">' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
+      '<div class="field-code">' + escHtml(tc.name) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
+      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
+      '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
+      '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
+
+    var cardHeader = card.querySelector('.tool-card-header');
+    var cardBody = card.querySelector('.tool-card-body');
+    cardHeader.onclick = function() {
+      cardHeader.classList.toggle('expanded');
+      cardBody.classList.toggle('expanded');
+    };
+    body.appendChild(card);
   });
 
   // Toggle expand/collapse on header click
@@ -1717,18 +1763,38 @@ function renderToolCallsInline(jsonContent, agentMsgDiv) {
   body.style.display = 'none';
 
   toolCalls.forEach(function(tc) {
-    var block = document.createElement('div');
-    block.className = 'tool-block done';
+    var card = document.createElement('div');
+    card.className = 'tool-card';
+
     var paramsStr = '';
     try {
       var p = JSON.parse(tc.params || '{}');
       paramsStr = JSON.stringify(p, null, 2);
     } catch(e) { paramsStr = tc.params || ''; }
     var resultText = tc.result || '';
-    block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span><span class="tool-status done">done</span></div>' +
-      '<div class="tool-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
-    block.onclick = function() { this.classList.toggle('expanded'); };
-    body.appendChild(block);
+    var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
+
+    card.innerHTML = '<div class="tool-card-header">' +
+      '<span class="card-icon">\u{1F527}</span>' +
+      '<span class="card-name">' + escHtml(tc.name) + '</span>' +
+      '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
+      '<span class="expand-arrow">\u25B6</span></div>' +
+      '<div class="tool-card-body">' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
+      '<div class="field-code">' + escHtml(tc.name) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
+      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
+      '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
+      '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
+
+    var cardHeader = card.querySelector('.tool-card-header');
+    var cardBody = card.querySelector('.tool-card-body');
+    cardHeader.onclick = function() {
+      cardHeader.classList.toggle('expanded');
+      cardBody.classList.toggle('expanded');
+    };
+    body.appendChild(card);
   });
 
   header.onclick = function(e) {
@@ -1741,76 +1807,78 @@ function renderToolCallsInline(jsonContent, agentMsgDiv) {
   inline.appendChild(header);
   inline.appendChild(body);
   agentMsgDiv.appendChild(inline);
-
-  // Also update sidebar
-  updateToolSidebar(toolCalls);
 }
 
 /* Tool sidebar functions */
-var TOOL_SIDEBAR_OPEN = false;
+var FILES_SIDEBAR_OPEN = false;
 
-function toggleToolSidebar() {
-  var sidebar = document.getElementById('toolSidebar');
-  var toggle = document.getElementById('toolSidebarToggle');
-  TOOL_SIDEBAR_OPEN = !TOOL_SIDEBAR_OPEN;
-  sidebar.classList.toggle('open', TOOL_SIDEBAR_OPEN);
-  if (toggle) toggle.classList.toggle('active', TOOL_SIDEBAR_OPEN);
+function toggleFilesSidebar() {
+  var sidebar = document.getElementById('filesSidebar');
+  var toggle = document.getElementById('filesSidebarToggle');
+  FILES_SIDEBAR_OPEN = !FILES_SIDEBAR_OPEN;
+  sidebar.classList.toggle('open', FILES_SIDEBAR_OPEN);
+  if (toggle) toggle.classList.toggle('active', FILES_SIDEBAR_OPEN);
 }
 
-function updateToolSidebar(toolCalls) {
-  var body = document.getElementById('toolSidebarBody');
-  if (!body || !toolCalls || toolCalls.length === 0) return;
+function updateFilesSidebar(files) {
+  var body = document.getElementById('filesSidebarBody');
+  if (!body || !files || files.length === 0) return;
 
   // Clear placeholder
   if (body.querySelector('div[style]')) body.innerHTML = '';
 
-  toolCalls.forEach(function(tc) {
+  files.forEach(function(file) {
     var card = document.createElement('div');
-    card.className = 'sidebar-tool-card';
+    card.className = 'file-card';
 
-    var paramsStr = '';
-    try {
-      var p = JSON.parse(tc.params || '{}');
-      paramsStr = JSON.stringify(p, null, 2);
-    } catch(e) { paramsStr = tc.params || ''; }
-    var resultText = tc.result || '';
+    var ext = (file.name || '').split('.').pop().toLowerCase();
+    var icon = '📄';
+    if (ext === 'tf') icon = '🔷';
+    else if (ext === 'sh' || ext === 'bash') icon = '🖥️';
+    else if (ext === 'py') icon = '🐍';
+    else if (ext === 'json') icon = '📋';
+    else if (ext === 'yaml' || ext === 'yml') icon = '⚙️';
+    else if (ext === 'go') icon = '🔵';
 
-    var headerEl = document.createElement('div');
-    headerEl.className = 'sidebar-tool-card-header';
-    headerEl.innerHTML = '<span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span><span class="sidebar-tool-status done">done</span><span class="expand-icon">\u25B6</span>';
+    var sizeStr = file.size ? (file.size > 1024 ? Math.round(file.size/1024) + ' KB' : file.size + ' B') : '';
 
-    var bodyEl = document.createElement('div');
-    bodyEl.className = 'sidebar-tool-card-body';
-    bodyEl.innerHTML = '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
-      '<div class="field-value">' + escHtml(tc.name) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
-      '<div class="field-value code"><pre style="margin:0;white-space:pre-wrap;font-size:10px;background:var(--surface);padding:4px 8px;border-radius:3px;border:1px solid var(--border);max-height:120px;overflow-y:auto;">' + escHtml(paramsStr) + '</pre></div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
-      '<div class="field-value code" style="max-height:150px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;font-size:10px;background:var(--surface);padding:4px 8px;border-radius:3px;border:1px solid var(--border);position:relative;">' + escHtml(resultText) + '<button class="copy-btn" style="position:absolute;top:4px;right:4px;" onclick="event.stopPropagation();copySidebarResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
+    card.innerHTML = '<div class="file-card-header">' +
+      '<span class="file-icon">' + icon + '</span>' +
+      '<div class="file-info"><div class="file-name">' + escHtml(file.name) + '</div>' +
+      '<div class="file-meta">' + (file.provider || 'AI Agent') + (sizeStr ? ' · ' + sizeStr : '') + '</div></div>' +
+      '<div class="file-actions">' +
+      '<button class="file-action-btn" onclick="event.stopPropagation();toggleFilePreview(this)">' + (LOCALE === 'zh' ? '预览' : 'Preview') + '</button>' +
+      '<button class="file-action-btn download" onclick="event.stopPropagation();downloadFile(\'' + escHtml(file.name) + '\', this)">' + (LOCALE === 'zh' ? '下载' : 'Download') + '</button>' +
+      '</div></div>' +
+      '<div class="file-preview"><pre>' + escHtml(file.content || '') + '</pre></div>';
 
-    headerEl.onclick = function() {
-      headerEl.classList.toggle('expanded');
-      bodyEl.classList.toggle('expanded');
-    };
-
-    card.appendChild(headerEl);
-    card.appendChild(bodyEl);
     body.appendChild(card);
   });
 
   // Auto-open sidebar if not already open
-  if (!TOOL_SIDEBAR_OPEN) toggleToolSidebar();
+  if (!FILES_SIDEBAR_OPEN) toggleFilesSidebar();
 }
 
-function copySidebarResult(btn) {
-  var field = btn.parentElement;
-  var text = field.textContent.replace('复制', '').replace('Copy', '').trim();
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(function() {
-      btn.textContent = (LOCALE === 'zh' ? '已复制' : 'Copied!');
-      setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, 2000);
-    });
-  }
+function toggleFilePreview(btn) {
+  var card = btn.closest('.file-card');
+  var preview = card.querySelector('.file-preview');
+  preview.classList.toggle('expanded');
+  btn.textContent = preview.classList.contains('expanded') ? (LOCALE === 'zh' ? '收起' : 'Collapse') : (LOCALE === 'zh' ? '预览' : 'Preview');
+}
+
+function downloadFile(name, btn) {
+  var card = btn.closest('.file-card');
+  var pre = card.querySelector('.file-preview pre');
+  if (!pre) { toggleFilePreview(btn); setTimeout(function() { pre = card.querySelector('.file-preview pre'); downloadFileContent(name, pre); }, 200); return; }
+  downloadFileContent(name, pre);
+}
+function downloadFileContent(name, pre) {
+  var blob = new Blob([pre.textContent], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 /* Markdown rendering with download buttons */
