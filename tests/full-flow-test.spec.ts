@@ -65,7 +65,7 @@ test('full flow: new session → tool-calls saved → reload → collapsible gro
   console.log('Header:', headerText);
 
   // Verify body hidden initially
-  const body = header.locator('..').locator('.tool-calls-body');
+  const body = (hasInline ? toolsInline : toolsMsg).locator('.tool-calls-body');
   await expect(body).toBeHidden();
   console.log('Body hidden initially');
 
@@ -127,7 +127,8 @@ test('full flow: new session → tool-calls saved → reload → collapsible gro
     const reloadedHeaderText = await reloadedHeader.textContent();
     console.log('Reloaded header:', reloadedHeaderText);
 
-    const reloadedBody = reloadedHeader.locator('..').locator('.tool-calls-body');
+    const reloadedContainer = reloadedHasInline ? reloadedToolsInline : reloadedToolsGroups;
+    const reloadedBody = reloadedContainer.locator('.tool-calls-body');
     await expect(reloadedBody).toBeHidden();
     console.log('Reloaded body hidden initially');
 

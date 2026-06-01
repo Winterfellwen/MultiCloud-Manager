@@ -77,7 +77,8 @@ test.describe('Collapsible tool-calls group', () => {
     expect(headerText).toMatch(/工具调用\s*\((\d+)\)/);
 
     // 10. Body should be hidden initially
-    const body = header.locator('..').locator('.tool-calls-body');
+    const container = hasInline ? toolsInline : toolsMsg;
+    const body = container.locator('.tool-calls-body');
     await expect(body).toBeHidden();
 
     // 11. Click header to expand
