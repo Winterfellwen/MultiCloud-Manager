@@ -225,6 +225,45 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-result .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
 .tool-result .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
 
+/* Inline tool calls inside AI message (bottom) */
+.msg.agent .tool-calls-inline { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.msg.agent .tool-calls-inline .tool-calls-header { font-size: 11px; }
+.msg.agent .tool-calls-inline .tool-calls-body .tool-block { font-size: 11px; }
+.msg.agent .tool-calls-inline .tool-calls-body .tool-block .tool-name { font-weight: 600; }
+.msg.agent .tool-calls-inline .tool-calls-body .tool-block .tool-result { font-size: 10px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; }
+.msg.agent .tool-calls-inline .tool-calls-body .tool-block .tool-params { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); background: var(--bg); padding: 1px 4px; border-radius: 2px; }
+
+/* Tool calls sidebar */
+.tool-sidebar { width: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--surface); transition: width .2s ease; display: flex; flex-direction: column; flex-shrink: 0; }
+.tool-sidebar.open { width: 340px; }
+.tool-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); min-height: 36px; flex-shrink: 0; }
+.tool-sidebar-header h3 { font-size: 12px; font-weight: 500; color: var(--text); margin: 0; white-space: nowrap; }
+.tool-sidebar-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1; }
+.tool-sidebar-close:hover { color: var(--text); }
+.tool-sidebar-body { flex: 1; overflow-y: auto; padding: 8px; }
+.tool-sidebar-toggle { background: none; border: 1px solid var(--border); border-radius: 2px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 4px; }
+.tool-sidebar-toggle:hover { border-color: var(--primary); color: var(--primary); }
+.tool-sidebar-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* Sidebar tool card */
+.sidebar-tool-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; background: var(--bg); overflow: hidden; }
+.sidebar-tool-card-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text); transition: background .1s; user-select: none; }
+.sidebar-tool-card-header:hover { background: rgba(255,255,255,.03); }
+.sidebar-tool-card-header .tool-icon { font-size: 12px; }
+.sidebar-tool-card-header .tool-name { color: var(--primary); flex: 1; }
+.sidebar-tool-card-header .expand-icon { font-size: 10px; color: var(--text-muted); transition: transform .15s; }
+.sidebar-tool-card-header.expanded .expand-icon { transform: rotate(90deg); }
+.sidebar-tool-card-body { display: none; padding: 0 10px 8px 10px; }
+.sidebar-tool-card-body.expanded { display: block; }
+.sidebar-tool-card-body .field-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 8px; margin-bottom: 2px; }
+.sidebar-tool-card-body .field-value { font-size: 11px; color: var(--text); font-family: var(--font-mono); background: var(--bg); padding: 4px 8px; border-radius: 3px; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto; border: 1px solid var(--border); }
+.sidebar-tool-card-body .field-value.code { font-size: 10px; }
+.sidebar-tool-card-body .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
+.sidebar-tool-card-body .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+.sidebar-tool-status { font-size: 9px; padding: 1px 4px; border-radius: 2px; text-transform: uppercase; }
+.sidebar-tool-status.done { background: rgba(0,200,83,.1); color: var(--success); }
+.sidebar-tool-status.error { background: rgba(255,59,48,.1); color: var(--danger); }
+
 /* Tool call display */
 .tool-call { padding: 3px 8px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
 .tool-call .tool-name { color: var(--primary); }
@@ -517,6 +556,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
         <div class="chat-header">
           <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
           <div class="chat-header-actions">
+            <button class="tool-sidebar-toggle" id="toolSidebarToggle" onclick="toggleToolSidebar()" title="Tool Calls">&#128295;</button>
             <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
           </div>
         </div>
@@ -540,9 +580,19 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
             <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
           </div>
           <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
+      </div>
+      <!-- Tool Calls Sidebar -->
+      <div class="tool-sidebar" id="toolSidebar">
+        <div class="tool-sidebar-header">
+          <h3>Tool Calls</h3>
+          <button class="tool-sidebar-close" onclick="toggleToolSidebar()">&times;</button>
+        </div>
+        <div class="tool-sidebar-body" id="toolSidebarBody">
+          <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">No tool calls yet</div>
         </div>
       </div>
     </div>
+  </div>
   </div>
 
   <!-- AI Config Modal -->
@@ -1196,7 +1246,7 @@ async function startStream(body) {
     }
     lastMsg.classList.remove('streaming');
   }
-  // Consolidate inline tool blocks into collapsible group
+  // Consolidate inline tool blocks into collapsible group at bottom of AI message
   if (lastMsg) {
     var doneBlocks = lastMsg.querySelectorAll('.tool-block.done');
     if (doneBlocks.length > 0) {
@@ -1210,9 +1260,9 @@ async function startStream(body) {
       });
       // Remove inline blocks from msg-content
       doneBlocks.forEach(function(block) { block.remove(); });
-      // Build collapsible group
-      var groupDiv = document.createElement('div');
-      groupDiv.className = 'msg tools';
+      // Create inline collapsible section at bottom of the AI message
+      var inline = document.createElement('div');
+      inline.className = 'tool-calls-inline';
       var header = document.createElement('div');
       header.className = 'tool-calls-header collapsed';
       header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCallData.length + ')';
@@ -1222,9 +1272,8 @@ async function startStream(body) {
       toolCallData.forEach(function(tc) {
         var block = document.createElement('div');
         block.className = 'tool-block done';
-        var paramsShort = tc.params.substring(0, 60);
         var resultAttr = escHtml(tc.result);
-        block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status done">done</span></div>' +
+        block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span><span class="tool-status done">done</span></div>' +
           '<div class="tool-result" data-result="' + resultAttr + '">' + escHtml(tc.result) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
         block.onclick = function() { this.classList.toggle('expanded'); };
         body.appendChild(block);
@@ -1235,9 +1284,11 @@ async function startStream(body) {
         body.style.display = isCollapsed ? 'flex' : 'none';
         header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
       };
-      groupDiv.appendChild(header);
-      groupDiv.appendChild(body);
-      lastMsg.appendChild(groupDiv);
+      inline.appendChild(header);
+      inline.appendChild(body);
+      lastMsg.appendChild(inline);
+      // Update sidebar
+      updateToolSidebar(toolCallData);
     }
   }
   STREAMING_MSG = null;
@@ -1469,7 +1520,13 @@ async function switchSession(sid) {
         }
         msgCount++;
       } else if (m.role === 'tool-calls') {
-        renderToolCallsGroup(m.content, container);
+        // Attach to the preceding AI message
+        var prevAgent = container.querySelector('.msg.agent:last-of-type');
+        if (prevAgent) {
+          renderToolCallsInline(m.content, prevAgent);
+        } else {
+          renderToolCallsGroup(m.content, container);
+        }
         msgCount++;
       } else if (m.role === 'system') {
         var div = document.createElement('div');
@@ -1508,7 +1565,13 @@ async function switchSession(sid) {
           appendMessage('agent', renderMarkdown(m.content));
           msgCount++;
         } else if (m.role === 'tool-calls') {
-          renderToolCallsGroup(m.content, container);
+          // Attach to the preceding AI message
+          var prevAgent = container.querySelector('.msg.agent:last-of-type');
+          if (prevAgent) {
+            renderToolCallsInline(m.content, prevAgent);
+          } else {
+            renderToolCallsGroup(m.content, container);
+          }
           msgCount++;
         } else if (m.role === 'system') {
           var div = document.createElement('div');
@@ -1629,6 +1692,121 @@ function copyToolResult(btn) {
   var text = resultDiv.getAttribute('data-result') || resultDiv.textContent;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text.trim()).then(function() {
+      btn.textContent = (LOCALE === 'zh' ? '已复制' : 'Copied!');
+      setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, 2000);
+    });
+  }
+}
+
+/* Render tool calls inline at the bottom of an AI message */
+function renderToolCallsInline(jsonContent, agentMsgDiv) {
+  var toolCalls;
+  try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
+  if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) return;
+
+  // Create the inline container
+  var inline = document.createElement('div');
+  inline.className = 'tool-calls-inline';
+
+  var header = document.createElement('div');
+  header.className = 'tool-calls-header collapsed';
+  header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
+
+  var body = document.createElement('div');
+  body.className = 'tool-calls-body';
+  body.style.display = 'none';
+
+  toolCalls.forEach(function(tc) {
+    var block = document.createElement('div');
+    block.className = 'tool-block done';
+    var paramsStr = '';
+    try {
+      var p = JSON.parse(tc.params || '{}');
+      paramsStr = JSON.stringify(p, null, 2);
+    } catch(e) { paramsStr = tc.params || ''; }
+    var resultText = tc.result || '';
+    block.innerHTML = '<div class="tool-header"><span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span><span class="tool-status done">done</span></div>' +
+      '<div class="tool-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) + '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
+    block.onclick = function() { this.classList.toggle('expanded'); };
+    body.appendChild(block);
+  });
+
+  header.onclick = function(e) {
+    e.stopPropagation();
+    var isCollapsed = body.style.display === 'none';
+    body.style.display = isCollapsed ? 'flex' : 'none';
+    header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
+  };
+
+  inline.appendChild(header);
+  inline.appendChild(body);
+  agentMsgDiv.appendChild(inline);
+
+  // Also update sidebar
+  updateToolSidebar(toolCalls);
+}
+
+/* Tool sidebar functions */
+var TOOL_SIDEBAR_OPEN = false;
+
+function toggleToolSidebar() {
+  var sidebar = document.getElementById('toolSidebar');
+  var toggle = document.getElementById('toolSidebarToggle');
+  TOOL_SIDEBAR_OPEN = !TOOL_SIDEBAR_OPEN;
+  sidebar.classList.toggle('open', TOOL_SIDEBAR_OPEN);
+  if (toggle) toggle.classList.toggle('active', TOOL_SIDEBAR_OPEN);
+}
+
+function updateToolSidebar(toolCalls) {
+  var body = document.getElementById('toolSidebarBody');
+  if (!body || !toolCalls || toolCalls.length === 0) return;
+
+  // Clear placeholder
+  if (body.querySelector('div[style]')) body.innerHTML = '';
+
+  toolCalls.forEach(function(tc) {
+    var card = document.createElement('div');
+    card.className = 'sidebar-tool-card';
+
+    var paramsStr = '';
+    try {
+      var p = JSON.parse(tc.params || '{}');
+      paramsStr = JSON.stringify(p, null, 2);
+    } catch(e) { paramsStr = tc.params || ''; }
+    var resultText = tc.result || '';
+
+    var headerEl = document.createElement('div');
+    headerEl.className = 'sidebar-tool-card-header';
+    headerEl.innerHTML = '<span class="tool-icon">\u{2705}</span><span class="tool-name">' + escHtml(tc.name) + '</span><span class="sidebar-tool-status done">done</span><span class="expand-icon">\u25B6</span>';
+
+    var bodyEl = document.createElement('div');
+    bodyEl.className = 'sidebar-tool-card-body';
+    bodyEl.innerHTML = '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
+      '<div class="field-value">' + escHtml(tc.name) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
+      '<div class="field-value code"><pre style="margin:0;white-space:pre-wrap;font-size:10px;background:var(--surface);padding:4px 8px;border-radius:3px;border:1px solid var(--border);max-height:120px;overflow-y:auto;">' + escHtml(paramsStr) + '</pre></div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
+      '<div class="field-value code" style="max-height:150px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;font-size:10px;background:var(--surface);padding:4px 8px;border-radius:3px;border:1px solid var(--border);position:relative;">' + escHtml(resultText) + '<button class="copy-btn" style="position:absolute;top:4px;right:4px;" onclick="event.stopPropagation();copySidebarResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div>';
+
+    headerEl.onclick = function() {
+      headerEl.classList.toggle('expanded');
+      bodyEl.classList.toggle('expanded');
+    };
+
+    card.appendChild(headerEl);
+    card.appendChild(bodyEl);
+    body.appendChild(card);
+  });
+
+  // Auto-open sidebar if not already open
+  if (!TOOL_SIDEBAR_OPEN) toggleToolSidebar();
+}
+
+function copySidebarResult(btn) {
+  var field = btn.parentElement;
+  var text = field.textContent.replace('复制', '').replace('Copy', '').trim();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
       btn.textContent = (LOCALE === 'zh' ? '已复制' : 'Copied!');
       setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, 2000);
     });
@@ -2646,11 +2824,13 @@ function startSessionPoll() {
             appendMessage('agent', renderMarkdown(m.content));
             lastSyncedMsgCount++;
           } else if (m.role === 'tool-calls') {
-            var div = document.createElement('div');
-            div.className = 'msg system';
-            div.style.cssText = 'font-size:11px;color:var(--text-muted);font-family:var(--font-mono);padding:4px 20px';
-            div.textContent = m.content;
-            container.appendChild(div);
+            // Attach tool-calls to the preceding AI message instead of rendering as plain text
+            var prevAgent = container.querySelector('.msg.agent:last-of-type');
+            if (prevAgent) {
+              renderToolCallsInline(m.content, prevAgent);
+            } else {
+              renderToolCallsGroup(m.content, container);
+            }
             lastSyncedMsgCount++;
           } else if (m.role === 'system') {
             var div = document.createElement('div');
