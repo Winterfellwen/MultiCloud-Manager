@@ -45,11 +45,15 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 	executor := NewExecutor(cfg.Syncer, cfg.DB)
 	RegisterBuiltInTools(registry, executor)
 
-	// Register shell executor tool
+	// Register shell executor tools
 	shellExecutor := shell.NewExecutor(shell.Config{
 		TimeoutSeconds: 300,
 	})
 	registry.Register(&shellToolWrapper{shellTool: shell.NewShellTool(shellExecutor)})
+
+	// Register script executor tool (for multi-step operations with shared state)
+	// ScriptTool already satisfies agent.Tool interface directly.
+	registry.Register(shell.NewScriptTool(shellExecutor))
 
 	router := NewRouter(registry)
 
