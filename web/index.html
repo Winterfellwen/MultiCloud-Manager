@@ -972,6 +972,7 @@ function startGlobalEventSource() {
   const params = new URLSearchParams({
     session_ids: ids.join(','),
     last_event_id: String(LAST_EVENT_ID),
+    token: localStorage.getItem('token') || '',
   });
   const es = new EventSource(API + '/agent/events?' + params);
   es.onmessage = function(e) {
