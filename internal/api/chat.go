@@ -791,6 +791,11 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 }
 
 // loadSessionHistory loads all previous messages for a session from the database.
+// It converts the DB storage format (roles "agent" and "tool-calls") back to the
+// LLM wire format (roles "assistant" and "tool") so the conversation can be sent
+// to the upstream API. Converting on read also makes the existing saveSessionMessages
+// round-trip work: re-saving will preserve the assistant message and its tool
+// calls/results instead of silently dropping them.
 func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]interface{} {
 	if sessionID == "" || h.db == nil {
 		return nil
@@ -807,7 +812,7 @@ func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]in
 	if err == nil && historyJSON != "" {
 		var history []map[string]interface{}
 		if json.Unmarshal([]byte(historyJSON), &history) == nil {
-			return history
+			return convertHistoryToWireFormat(history)
 		}
 	}
 
@@ -828,7 +833,106 @@ func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]in
 			"content": content,
 		})
 	}
-	return history
+	return convertHistoryToWireFormat(history)
+}
+
+// convertHistoryToWireFormat maps DB storage roles to LLM wire roles:
+//
+//	"agent"      → "assistant"  (text reply)
+//	"tool-calls" → one "assistant" message with the tool_calls field,
+//	                followed by one "tool" message per result
+//	"user"       → "user"  (unchanged)
+//
+// Storage splits an assistant turn that has both content and tool calls into
+// two adjacent rows (agent with the text, then tool-calls with the structured
+// tool info). We merge them back into a single assistant message here.
+func convertHistoryToWireFormat(history []map[string]interface{}) []map[string]interface{} {
+	out := make([]map[string]interface{}, 0, len(history))
+	for i := 0; i < len(history); i++ {
+		m := history[i]
+		role, _ := m["role"].(string)
+		content, _ := m["content"].(string)
+
+		switch role {
+		case "system", "user":
+			out = append(out, map[string]interface{}{"role": role, "content": content})
+		case "agent":
+			assistantMsg := map[string]interface{}{"role": "assistant", "content": content}
+			// If the next row is "tool-calls", merge its tool calls into this assistant message.
+			if i+1 < len(history) {
+				if nextRole, _ := history[i+1]["role"].(string); nextRole == "tool-calls" {
+					if tcs := convertToolCallsRow(history[i+1]["content"].(string)); tcs != nil {
+						toolCalls, results := tcs.calls, tcs.results
+						if len(toolCalls) > 0 {
+							assistantMsg["tool_calls"] = toolCalls
+						}
+						out = append(out, assistantMsg)
+						for idx, result := range results {
+							out = append(out, map[string]interface{}{
+								"role":         "tool",
+								"tool_call_id": fmt.Sprintf("tc_%d", idx),
+								"content":      result,
+							})
+						}
+						i++ // skip the consumed tool-calls row
+						continue
+					}
+				}
+			}
+			out = append(out, assistantMsg)
+		case "tool-calls":
+			// Orphan tool-calls (no preceding agent row): still reconstruct properly.
+			if tcs := convertToolCallsRow(content); tcs != nil {
+				out = append(out, map[string]interface{}{
+					"role":       "assistant",
+					"content":    "",
+					"tool_calls": tcs.calls,
+				})
+				for idx, result := range tcs.results {
+					out = append(out, map[string]interface{}{
+						"role":         "tool",
+						"tool_call_id": fmt.Sprintf("tc_%d", idx),
+						"content":      result,
+					})
+				}
+			}
+		default:
+			// Unknown role: pass through unchanged so we don't lose data.
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+type toolCallsPair struct {
+	calls   []map[string]interface{}
+	results []string
+}
+
+// convertToolCallsRow parses the storage JSON for a "tool-calls" row, returning
+// the wire-format tool_calls array and the per-tool result strings in order.
+func convertToolCallsRow(raw string) *toolCallsPair {
+	var callInfos []map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &callInfos); err != nil || len(callInfos) == 0 {
+		return nil
+	}
+	calls := make([]map[string]interface{}, 0, len(callInfos))
+	results := make([]string, 0, len(callInfos))
+	for idx, ci := range callInfos {
+		name, _ := ci["name"].(string)
+		params, _ := ci["params"].(string)
+		result, _ := ci["result"].(string)
+		calls = append(calls, map[string]interface{}{
+			"id":   fmt.Sprintf("tc_%d", idx),
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":      name,
+				"arguments": params,
+			},
+		})
+		results = append(results, result)
+	}
+	return &toolCallsPair{calls: calls, results: results}
 }
 
 func buildSystemPrompt(mode string) string {

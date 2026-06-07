@@ -85,6 +85,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		auth.PUT("/agent/sessions/:sid", sessionsHandler.Update)
 		// Cloud accounts
 		auth.GET("/accounts", accountsHandler.List)
+		auth.GET("/accounts/:id", accountsHandler.Get)
 		auth.POST("/accounts", accountsHandler.Create)
 		auth.PUT("/accounts/:id", accountsHandler.Update)
 		auth.DELETE("/accounts/:id", accountsHandler.Delete)

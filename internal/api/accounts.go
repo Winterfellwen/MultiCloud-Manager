@@ -57,6 +57,44 @@ func (h *AccountsHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"accounts": accounts})
 }
 
+func (h *AccountsHandler) Get(c *gin.Context) {
+	id := c.Param("id")
+	var name, cloudType, credentials string
+	var vaultPath string
+	var isActive bool
+	var lastSync sql.NullTime
+	err := h.db.QueryRow(`SELECT name, cloud_type, credentials, is_active, last_sync_at, vault_path FROM cloud_accounts WHERE id = $1`, id).
+		Scan(&name, &cloudType, &credentials, &isActive, &lastSync, &vaultPath)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	// Prefer credentials from vault when available — the DB column may have
+	// been cleared (legacy / wiped by older versions), but the vault is the
+	// source of truth once vault_path is set.
+	if vaultPath != "" && h.vault != nil {
+		if sec, err := h.vault.GetSecret(vaultPath); err == nil && sec != nil {
+			if b, err := json.Marshal(sec); err == nil {
+				credentials = string(b)
+			}
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"id":           id,
+		"name":         name,
+		"cloud_type":   cloudType,
+		"credentials":  credentials,
+		"is_active":    isActive,
+		"vault_path":   vaultPath,
+		"vault_secured": vaultPath != "",
+		"_warning":     "credentials are returned in plaintext for this endpoint; restrict via auth",
+	})
+}
+
 func (h *AccountsHandler) Create(c *gin.Context) {
 	var req struct {
 		Name        string `json:"name"`
@@ -113,27 +151,54 @@ func (h *AccountsHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Get existing vault_path
-	var vaultPath string
-	h.db.QueryRow(`SELECT COALESCE(vault_path, '') FROM cloud_accounts WHERE id = $1`, id).Scan(&vaultPath)
+	// Get existing row so we can preserve fields the client didn't send.
+	var existing struct {
+		Name        string
+		CloudType   string
+		Credentials string
+		VaultPath   string
+	}
+	err := h.db.QueryRow(`SELECT name, cloud_type, COALESCE(credentials, ''), COALESCE(vault_path, '') FROM cloud_accounts WHERE id = $1`, id).
+		Scan(&existing.Name, &existing.CloudType, &existing.Credentials, &existing.VaultPath)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-	// Update credentials in vault
-	if h.vault != nil && req.Credentials != "" {
-		if vaultPath == "" {
-			vaultPath = fmt.Sprintf("cloud/%s/%s", req.CloudType, id)
-		}
-		var credData map[string]interface{}
-		if err := json.Unmarshal([]byte(req.Credentials), &credData); err != nil {
-			credData = map[string]interface{}{"raw": req.Credentials}
-		}
-		if err := h.vault.SetSecret(vaultPath, credData); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update vault: " + err.Error()})
-			return
+	if req.Name == "" {
+		req.Name = existing.Name
+	}
+	if req.CloudType == "" {
+		req.CloudType = existing.CloudType
+	}
+	// Credentials: only overwrite if the client actually sent non-empty content.
+	// Empty string means "keep what we have", so a prefilled-then-resubmitted
+	// form doesn't wipe stored secrets.
+	if req.Credentials == "" {
+		req.Credentials = existing.Credentials
+	} else {
+		// Update credentials in vault
+		if h.vault != nil {
+			if existing.VaultPath == "" {
+				existing.VaultPath = fmt.Sprintf("cloud/%s/%s", req.CloudType, id)
+			}
+			var credData map[string]interface{}
+			if err := json.Unmarshal([]byte(req.Credentials), &credData); err != nil {
+				credData = map[string]interface{}{"raw": req.Credentials}
+			}
+			if err := h.vault.SetSecret(existing.VaultPath, credData); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update vault: " + err.Error()})
+				return
+			}
 		}
 	}
 
-	_, err := h.db.Exec(`UPDATE cloud_accounts SET name = $1, cloud_type = $2, credentials = $3, vault_path = $4 WHERE id = $5`,
-		req.Name, req.CloudType, req.Credentials, vaultPath, id)
+	_, err = h.db.Exec(`UPDATE cloud_accounts SET name = $1, cloud_type = $2, credentials = $3, vault_path = $4 WHERE id = $5`,
+		req.Name, req.CloudType, req.Credentials, existing.VaultPath, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
