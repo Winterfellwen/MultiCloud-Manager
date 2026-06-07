@@ -1,5 +1,0 @@
-<web-view wx:if="{{url && !error}}" src="{{url}}" bindload="onWebLoad" binderror="onWebError"></web-view>
-<view wx:else class="state-panel">
-  <text class="state-text">{{error || (loading ? '加载中...' : '')}}</text>
-  <button wx:if="{{error}}" class="retry-btn" bindtap="onRetry">重试</button>
-</view>
