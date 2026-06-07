@@ -851,6 +851,130 @@ func isDestructiveCommand(cmd string) bool {
 	return false
 }
 
+func (h *ChatStreamHandler) Stream(c *gin.Context) {
+	var req struct {
+		Message   string `json:"message"`
+		SessionID string `json:"session_id"`
+		Mode      string `json:"mode"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.Message == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "message is required"})
+		return
+	}
+
+	internalID, isNew, err := h.resolveSession(req.SessionID, req.Message)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if isNew {
+		req.SessionID = internalID
+	}
+
+	r := NewRun(req.SessionID, req.Mode, req.Message)
+	if h.db != nil {
+		_, err := h.db.Exec(
+			`INSERT INTO runs (id, session_id, state, mode, user_message) VALUES ($1, $2, 'pending', $3, $4)`,
+			r.ID, req.SessionID, req.Mode, req.Message)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := h.rm.Start(r); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"run_id":     r.ID,
+		"session_id": req.SessionID,
+		"state":      string(r.State),
+	})
+}
+
+func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (string, bool, error) {
+	if externalID == "" {
+		title := "新对话"
+		if firstMessage != "" {
+			title = firstMessage
+			if len(title) > 100 {
+				title = title[:100]
+			}
+		}
+		var internalID string
+		err := h.db.QueryRow(
+			`INSERT INTO sessions (session_id, title) VALUES (gen_random_uuid()::text, $1) RETURNING id`,
+			title).Scan(&internalID)
+		return internalID, true, err
+	}
+	var internalID string
+	err := h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1 OR id::text = $1`, externalID).Scan(&internalID)
+	if err == sql.ErrNoRows {
+		return externalID, false, nil
+	}
+	return internalID, false, err
+}
+
+func (h *ChatStreamHandler) Confirm(c *gin.Context) {
+	var req struct {
+		RunID  string `json:"run_id"`
+		Action string `json:"action"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.RunID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "run_id is required"})
+		return
+	}
+	run, ok := h.rm.Get(req.RunID)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
+		return
+	}
+	run.mu.Lock()
+	state := run.State
+	run.mu.Unlock()
+	if state != StateWaitingConfirm {
+		c.JSON(http.StatusConflict, gin.H{"error": "run is not waiting for confirm", "state": string(state)})
+		return
+	}
+	if !h.rm.Confirm(req.RunID, req.Action) {
+		c.JSON(http.StatusConflict, gin.H{"error": "confirm failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *ChatStreamHandler) Stop(c *gin.Context) {
+	var req struct {
+		RunID string `json:"run_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.RunID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "run_id is required"})
+		return
+	}
+	run, ok := h.rm.Get(req.RunID)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
+		return
+	}
+	run.mu.Lock()
+	state := run.State
+	run.mu.Unlock()
+	if state == StateDone || state == StateError || state == StateStopped {
+		c.JSON(http.StatusConflict, gin.H{"error": "run already terminal", "state": string(state)})
+		return
+	}
+	h.setRunState(run, StateStopped, "User stopped")
+	h.rm.persistEvent(run, EventStateChange, map[string]interface{}{"state": string(StateStopped), "error_message": "User stopped"})
+	run.Cancel()
+	c.JSON(http.StatusOK, gin.H{"ok": true, "state": string(StateStopped)})
+}
+
 func pruneMessages(msgs []map[string]interface{}) []map[string]interface{} {
 	const maxMessages = 30
 	if len(msgs) <= maxMessages {

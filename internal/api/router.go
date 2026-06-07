@@ -54,7 +54,6 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		Syncer: syncer,
 	})
 
-	_ = NewChatStreamHandler(db, executor, runtime, runMgr)
 	accountsHandler := NewAccountsHandler(db, vaultService)
 	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
@@ -73,8 +72,13 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.POST("/agent/config/test", TestAIConfig)
 		auth.GET("/agent/config/:type", agentConfigHandler.GetConfig)
 		auth.PUT("/agent/config/:type", agentConfigHandler.UpdateConfig)
-		// Chat endpoints — run-based (see RunManager)
-		// TODO: add POST /agent/chat/start, GET /agent/chat/events, POST /agent/chat/stop, POST /agent/chat/confirm
+		// Chat endpoints
+		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
+		eventsHandler := NewEventsSSEHandler(runMgr)
+		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.POST("/agent/chat/confirm", chatHandler.Confirm)
+		auth.POST("/agent/chat/stop", chatHandler.Stop)
+		auth.GET("/agent/events", eventsHandler.Stream)
 		// Session endpoints
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
