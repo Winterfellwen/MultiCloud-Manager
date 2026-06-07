@@ -82,7 +82,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	}
 
 	maxIterations := 100  // increased from 50 - complex tasks need more steps
-	var allContent strings.Builder
+	var lastTurnContent string
 
 	httpClient := &http.Client{Timeout: 120 * time.Second}
 
@@ -165,7 +165,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		}
 
 		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body, c, flusher)
-		allContent.WriteString(fullContent)
+		lastTurnContent = fullContent
 		lastToolCalls = toolCalls
 
 		// If no tool calls, we're done
@@ -318,7 +318,7 @@ done:
 		}
 
 		summary := fmt.Sprintf("\n\n---\n> ⚠️ AI 在第 %d 步中断：%s\n> 请重新发送消息继续操作。\n", iterCount, stopReason)
-		allContent.WriteString(summary)
+		lastTurnContent = summary
 		for _, part := range chunkRunes(summary, 10) {
 			fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": part}))
 			flusher.Flush()
@@ -345,17 +345,16 @@ done:
 			finalResp, ferr := httpClient.Do(finalReq)
 			if ferr == nil && finalResp.StatusCode == 200 {
 				finalContent, _, _ := h.collectStreamResponse(finalResp.Body, c, flusher)
-				allContent.WriteString(finalContent)
+				lastTurnContent = finalContent
 			}
 		}
 	}
 
 	// Append the final assistant response to messages for saving
-	finalContent := allContent.String()
-	if finalContent != "" {
+	if lastTurnContent != "" {
 		messages = append(messages, map[string]interface{}{
 			"role":    "assistant",
-			"content": finalContent,
+			"content": lastTurnContent,
 		})
 	}
 
