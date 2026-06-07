@@ -420,7 +420,13 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 	m.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, r.UserMessage, sessionInternalID)
 	m.db.Exec(`DELETE FROM messages WHERE session_id = $1`, sessionInternalID)
 	m.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, sessionInternalID, string(historyJSON))
-	m.db.Exec(`DELETE FROM run_events WHERE run_id = $1 AND $2 IN (SELECT 1 FROM runs WHERE id = $1 AND state = 'done')`, r.ID, true)
+	// Events cleanup: deferred to a background goroutine to avoid race conditions
+	// with the broadcast channel. Events for done runs are harmless — the session
+	// Get endpoint caps incomplete_runs to 5 runs × 200 events.
+	go func() {
+		time.Sleep(2 * time.Second)
+		m.db.Exec(`DELETE FROM run_events WHERE run_id = $1 AND EXISTS (SELECT 1 FROM runs WHERE id = $1 AND state = 'done')`, r.ID)
+	}()
 }
 
 // RecoverFromRestart marks any runs that were in-progress when the backend

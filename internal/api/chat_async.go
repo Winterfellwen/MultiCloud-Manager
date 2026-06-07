@@ -352,7 +352,8 @@ done:
 		})
 	}
 
-	h.saveSessionMessages(r.SessionID, messages)
+	// AggregateOnDone (called via terminateRun) handles saving history and cleaning events.
+	// No need to call saveSessionMessages here — it uses the old session_id format.
 
 	if r.SessionID != "" && h.db != nil {
 		var sid string
@@ -866,14 +867,12 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		return
 	}
 
-	internalID, isNew, err := h.resolveSession(req.SessionID, req.Message)
+	internalID, _, err := h.resolveSession(req.SessionID, req.Message)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if isNew {
-		req.SessionID = internalID
-	}
+	req.SessionID = internalID
 
 	r := NewRun(req.SessionID, req.Mode, req.Message)
 	if h.db != nil {
