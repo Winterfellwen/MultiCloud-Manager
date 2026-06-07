@@ -201,6 +201,36 @@ func (d *Database) Migrate() error {
 			('mcp', '{}'),
 			('skills', '[]')
 		ON CONFLICT (config_type) DO NOTHING`,
+		`CREATE TABLE IF NOT EXISTS runs (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+			state VARCHAR(20) NOT NULL DEFAULT 'pending',
+			mode VARCHAR(20) NOT NULL DEFAULT 'plan',
+			user_message TEXT NOT NULL,
+			final_content TEXT,
+			error_message TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			started_at TIMESTAMP,
+			terminal_at TIMESTAMP,
+			token_count INTEGER DEFAULT 0,
+			CONSTRAINT runs_state_check CHECK (state IN ('pending','running','waiting_confirm','done','error','stopped'))
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_runs_session_state ON runs(session_id, state)`,
+		`CREATE INDEX IF NOT EXISTS idx_runs_state_created ON runs(state, created_at)`,
+		`CREATE TABLE IF NOT EXISTS run_events (
+			id BIGSERIAL PRIMARY KEY,
+			run_id UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+			session_id UUID NOT NULL,
+			seq INTEGER NOT NULL,
+			event_type VARCHAR(30) NOT NULL,
+			payload JSONB NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(run_id, seq)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_run_events_run ON run_events(run_id, seq)`,
+		`CREATE INDEX IF NOT EXISTS idx_run_events_session ON run_events(session_id, id)`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMP`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS active_run_id UUID`,
 	}
 
 	for i, q := range queries {
