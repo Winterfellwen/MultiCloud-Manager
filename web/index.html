@@ -904,6 +904,7 @@ const cloudConfigs = {
 
 let selectedCloud = null;
 let accountFormVisible = false;
+let editingAccountId = null;
 let currentUser = null;
 
 /* Auth Check */
@@ -2092,6 +2093,7 @@ function renderAccounts(list) {
         '</div>' +
       '</div>' +
       '<div class="account-actions">' +
+        '<button class="btn-secondary" onclick="editAccount(\'' + a.id + '\')" style="margin-right:6px">' + t('account.edit') + '</button>' +
         '<button class="btn-delete" onclick="deleteAccount(\'' + a.id + '\')">' + t('account.delete') + '</button>' +
       '</div>' +
     '</div>';
@@ -2104,8 +2106,38 @@ async function deleteAccount(id) {
   loadAccounts();
 }
 
+async function editAccount(id) {
+  var summary = cachedAccounts.find(function(x){ return x.id === id; });
+  if (!summary) return;
+  // List endpoint omits credentials for security; fetch the full record here.
+  var full = null;
+  try { full = await apiFetch(API + '/accounts/' + id); } catch(e) { full = summary; }
+
+  editingAccountId = id;
+  selectCloud(full.cloud_type);
+  document.getElementById('field-name').value = full.name || '';
+  // prefill credential fields if parseable JSON
+  try {
+    var creds = JSON.parse(full.credentials || '{}');
+    var config = cloudConfigs[full.cloud_type] || [];
+    config.forEach(function(f) {
+      var el = document.getElementById('field-' + f.key);
+      if (el && creds[f.key] !== undefined && creds[f.key] !== null) el.value = creds[f.key];
+    });
+  } catch(e) { /* credentials not JSON, leave blank */ }
+  if (!accountFormVisible) toggleAccountForm();
+}
+
 function toggleAccountForm() {
   accountFormVisible = !accountFormVisible;
+  // Opening via "+ Add" button: clear any edit state and form fields.
+  if (accountFormVisible && !editingAccountId) {
+    selectedCloud = null;
+    document.querySelectorAll('.cloud-option').forEach(o => o.classList.remove('selected'));
+    document.getElementById('formFields').innerHTML = '';
+  }
+  // Closing the form: drop edit state.
+  if (!accountFormVisible) editingAccountId = null;
   document.getElementById('accountForm').classList.toggle('visible', accountFormVisible);
 }
 
@@ -2138,8 +2170,10 @@ async function submitAccount() {
   });
   if (!allFilled && !confirm('某些凭证字段为空，确定要提交吗？')) return;
   const accountName = document.getElementById('field-name').value.trim() || selectedCloud + ' 账户';
-  await apiFetch(API + '/accounts', {
-    method: 'POST',
+  const url = editingAccountId ? (API + '/accounts/' + editingAccountId) : (API + '/accounts');
+  const method = editingAccountId ? 'PUT' : 'POST';
+  await apiFetch(url, {
+    method: method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: accountName,
@@ -2147,6 +2181,7 @@ async function submitAccount() {
       credentials: JSON.stringify(formData)
     })
   });
+  editingAccountId = null;
   toggleAccountForm();
   selectedCloud = null;
   document.querySelectorAll('.cloud-option').forEach(o => o.classList.remove('selected'));
@@ -2497,6 +2532,7 @@ var __ = {
     'account.sync_time': '同步时间: ',
     'account.unknown': '未知',
     'account.delete': '删除',
+    'account.edit': '编辑',
     'account.select_cloud': '请选择云平台',
     'team.title': '开发团队',
     'team.invite': '+ 邀请',
@@ -2626,6 +2662,7 @@ var __ = {
     'account.sync_time': 'Last sync: ',
     'account.unknown': 'Unknown',
     'account.delete': 'Delete',
+    'account.edit': 'Edit',
     'account.select_cloud': 'Please select a cloud platform',
     'team.title': 'Development Team',
     'team.invite': '+ Invite',

@@ -1,53 +1,60 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: multicloud-pg
     environment:
       POSTGRES_USER: multicloud
       POSTGRES_PASSWORD: multicloud_dev
       POSTGRES_DB: multicloud
     ports:
-      - "5432:5432"
+      - target: 5432
+        published: 5432
+        protocol: tcp
+        mode: host
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U multicloud -d multicloud"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+    deploy:
+      restart_policy:
+        condition: on-failure
 
   redis:
     image: redis:7-alpine
-    container_name: multicloud-redis
     ports:
-      - "6379:6379"
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      restart_policy:
+        condition: on-failure
 
-  vault:
-    build: ./vault
-    container_name: multicloud-vault
-    ports:
-      - "8200:8200"
-    volumes:
-      - vault_data:/vault/data
-      - vault_logs:/vault/logs
-    cap_add:
-      - IPC_LOCK
+  backend:
+    image: multicloud-manager-backend:latest
     environment:
-      VAULT_ADDR: "http://0.0.0.0:8200"
-    healthcheck:
-      test: ["CMD", "vault", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      PORT: "8099"
+      GIN_MODE: release
+      ENVIRONMENT: development
+      JWT_SECRET: dev-secret-change-in-production
+      ADMIN_PASSWORD: test123
+      DATABASE_URL: postgres://multicloud:multicloud_dev@postgres:5432/multicloud?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - target: 8099
+        published: 8099
+        protocol: tcp
+        mode: host
+    deploy:
+      restart_policy:
+        condition: on-failure
 
 volumes:
   pg_data:
-  vault_data:
-  vault_logs:

@@ -83,15 +83,19 @@ func (p *AzureProvider) getToken(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	rawBody, _ := io.ReadAll(resp.Body)
 	var result struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   string `json:"expires_in"`
+		Error            string `json:"error"`
+		ErrorDescription string `json:"error_description"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
+	if err := json.Unmarshal(rawBody, &result); err != nil {
+		return "", fmt.Errorf("azure auth: decode failed (status %d): %s", resp.StatusCode, string(rawBody))
 	}
 	if result.AccessToken == "" {
-		return "", fmt.Errorf("azure auth: no access_token in response")
+		return "", fmt.Errorf("azure auth: no access_token (status %d, error=%s, description=%s, body=%s)",
+			resp.StatusCode, result.Error, result.ErrorDescription, string(rawBody))
 	}
 
 	duration := 3600 * time.Second
