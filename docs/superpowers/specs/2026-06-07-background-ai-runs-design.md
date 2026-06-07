@@ -154,8 +154,9 @@ Key design points:
 | User sends message | insert `state=pending` | — | — |
 | RunManager picks up | update `state=running` | — | — |
 | Run executing | `state=running` | continuous insert | — |
-| Run terminal | `state=done/error/stopped` | no more writes | aggregate events → `messages` (run-level cleanup) |
-| Cleanup (after terminal) | row kept | `DELETE WHERE run_id=$1` | already has aggregated row |
+| Run terminal (`done`) | `state=done` | no more writes | aggregate events → `messages` (cleanup row) |
+| Run terminal (`error`/`stopped`) | `state=error` or `state=stopped` | preserved (no cleanup) | not aggregated; surfaced via `incomplete_runs` |
+| Cleanup (only for `done`) | row kept | `DELETE WHERE run_id=$1 AND state='done'` | already has aggregated row |
 
 ## Run State Machine
 
@@ -274,8 +275,9 @@ func (m *RunManager) Start(run *Run)            // pick pending → running, spa
 func (m *RunManager) Stop(runID)                // ctx.Cancel() → goroutine exits
 func (m *RunManager) Confirm(runID, action)     // send to run.confirmCh
 func (m *RunManager) Subscribe(sessionIDs, fromID) (chan Event, func())  // SSE handler
-func (m *RunManager) OnRunComplete(run)         // aggregate run_events → messages,
-                                                // clear events, pick next pending
+func (m *RunManager) OnRunComplete(run)         // state=done: aggregate run_events → messages,
+                                                //            DELETE events, pick next pending
+                                                // state=error/stopped: keep events, pick next pending
 ```
 
 ## API Surface
@@ -334,11 +336,12 @@ data: {"tool_calls":[{"id":"tc_0","name":"get_cloud_stats","params":"{}"}]}
 
 | Endpoint | Status | When |
 |---|---|---|
-| `POST /agent/chat/stream` | 409 | Session has a non-terminal run and queue logic rejects (rare; v1 only happens if the user explicitly asks for rejection semantics) |
 | `POST /agent/chat/confirm` | 404 | run_id not found |
 | `POST /agent/chat/confirm` | 409 | run state is not `waiting_confirm` |
 | `POST /agent/chat/stop` | 404 | run_id not found |
 | `POST /agent/chat/stop` | 409 | run already in terminal state |
+
+`POST /agent/chat/stream` does not return errors in v1: a new user message while a run is active always creates a `pending` run in the queue.
 
 ### List Query (modified)
 
@@ -371,15 +374,45 @@ Response:
   "title": "...",
   "state": "running",
   "active_run_id": "uuid",
-  "messages": [...],                // aggregated history rows (completed runs)
+  "messages": [...],                // aggregated history rows (state=done runs only)
   "active_run_events": [...],       // events for the current active run, in seq order
-  "pending_runs": [                 // queued user messages
+  "pending_runs": [                 // queued user messages (state=pending)
     { "run_id": "uuid", "user_message": "...", "created_at": "..." }
+  ],
+  "incomplete_runs": [              // state=error or state=stopped runs, last 5
+    {
+      "run_id": "uuid",
+      "state": "stopped",
+      "user_message": "...",
+      "events": [...],              // last 200 events
+      "created_at": "...",
+      "terminal_at": "...",
+      "error_message": "..."
+    }
   ]
 }
 ```
 
 Server side: on this endpoint, `UPDATE sessions SET last_viewed_at = NOW() WHERE id = $1` clears the unread marker.
+
+### Session-level `state` Derivation
+
+`state` is computed at read time, not stored. The list and get endpoints apply the same rules:
+
+```
+1. If any run.state IN ('running', 'waiting_confirm'):
+     return that run's state
+2. Else if any run.state = 'pending' (and none is active):
+     return 'queued'   // session is waiting to start a run
+3. Else if latest terminal run is state='done' AND terminal_at > last_viewed_at:
+     return 'done'     // new content waiting to be read
+4. Else if latest terminal run is state IN ('error', 'stopped'):
+     return that state // still relevant for the user
+5. Else:
+     return 'idle'     // everything viewed, no active or queued runs
+```
+
+Result: a session badge never silently flips back to `idle` after a run finishes — the user always sees the latest terminal status until they open the session.
 
 ## Frontend Integration
 
@@ -503,7 +536,7 @@ The user sees an error badge on those sessions and can resubmit. (Resumable runs
 ### Concurrency
 
 - Different sessions with active runs: fully independent.
-- Same session with multiple active runs: cannot happen; `state=pending` expresses the queue.
+- Same session: at most one `active` run (state `running` or `waiting_confirm`). Additional user messages while a run is active become `pending` runs in the queue.
 - Confirm and Stop on the same run: serialized by an internal mutex on the Run; the loser gets HTTP 409.
 - Multiple tabs on the same session: each has its own EventSource; server fans out; UI renders are idempotent.
 
@@ -524,7 +557,10 @@ Browser auto-reconnects with `Last-Event-ID`. Server unsubscribes on disconnect 
 
 - A typical run produces 200–2000 events.
 - Hard cap: 5000 events per run; if exceeded the run is forced to `stopped` with an error.
-- On terminal transition, RunManager aggregates `run_events` into `messages` (using the existing `saveSessionMessages` logic, then adapted to read from events instead of in-memory messages), then `DELETE FROM run_events WHERE run_id = $1`.
+- On terminal transition, behavior depends on the terminal state:
+  - `state = done`: RunManager aggregates `run_events` into `messages` (re-using the existing `saveSessionMessages` shape, sourced from events), then `DELETE FROM run_events WHERE run_id = $1`. The events table no longer holds this run; the aggregated rows in `messages` are the durable history.
+  - `state = error` or `state = stopped`: `run_events` rows are **preserved** (not deleted, not aggregated into `messages`). They are surfaced via the `incomplete_runs` field on the session Get endpoint, capped to the most recent 5 runs and the last 200 events per run. This keeps incomplete content visible without polluting the linear conversation history.
+- The aggregation step is idempotent: on retry (e.g., backend crash between aggregation and delete), the `delete` is conditional on `state='done'`, so re-running aggregation won't lose data.
 
 ### Resource Limits
 
@@ -575,7 +611,9 @@ All tabs share the same `run_events` log and SSE stream. Any state change broadc
 - `confirmCh` wakes the goroutine
 - `ctx.Done()` from `Stop` exits the goroutine gracefully
 - Event aggregation on `done` produces the correct `messages` row
-- Event cleanup deletes `run_events` rows for a terminal run
+- Event cleanup deletes `run_events` rows only when terminal state is `done` (error/stopped are preserved)
+- `incomplete_runs` in Get response returns at most 5 runs and at most 200 events per run
+- Backend restart marks non-terminal runs as `error`
 - 5000-event cap forces `stopped`
 - Backend restart marks non-terminal runs as `error`
 
@@ -610,7 +648,7 @@ Mock LLM via `httptest.Server` returning canned SSE streams.
 | DB event log write pressure at high token rate | High INSERT TPS | Single-row insert v1; observe; add batch writes if needed |
 | Backend restart loses in-flight work | User has to resubmit | Startup marks non-terminal as `error`; UI guides resubmit |
 | Multi-tab concurrent confirm/stop on same run | State race | Internal mutex on Run |
-| Event aggregation bug leaves messages inconsistent | User sees garbled conversation | Write `messages` first, clear events second; on clear failure, keep events for next attempt |
+| Event aggregation bug leaves messages inconsistent on `done` | User sees garbled conversation | Write `messages` first, clear events second; clear is conditional on `state='done'` so a retry won't double-delete |
 | Browser auto-reconnect + server zombie subscriber | Memory leak | `defer unsubscribe()`; ctx close clears channel |
 
 ## Release Plan
