@@ -159,6 +159,36 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg-role .role-icon { width: 14px; text-align: center; font-size: 11px; }
 .msg-role .role-label { font-weight: 500; }
 
+/* Copy button on AI messages */
+.msg.agent { position: relative; }
+.msg-agent-copy {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s, color .12s, border-color .12s, background .12s;
+  text-transform: none;
+  letter-spacing: 0;
+  user-select: none;
+}
+.msg.agent:hover .msg-agent-copy,
+.msg-agent-copy:focus-visible { opacity: 1; }
+.msg-agent-copy:hover { color: var(--primary); border-color: var(--primary); }
+.msg-agent-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; }
+.msg-agent-copy.error { color: #dc2626; border-color: #dc2626; opacity: 1; }
+.msg-agent-copy .icon { font-size: 11px; line-height: 1; }
+
 .msg-content { color: var(--text); }
 .msg-content p { margin: 2px 0; }
 .msg-content p:first-child { margin-top: 0; }
@@ -572,7 +602,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           </div>
         </div>
         <div class="chat-messages" id="chatMessages">
-          <div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div></div>
+          <div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div><button type="button" class="msg-agent-copy" onclick="copyAIMessage(this)" title="复制完整回复（含工具调用）"><span class="icon">⧉</span><span class="label">复制</span></button></div>
         </div>
         <div class="typing-indicator" id="typingIndicator">
           <span class="typing-dot"></span>
@@ -1169,7 +1199,7 @@ async function startStream(body) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg agent streaming';
-  div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status">\u{1F914} ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span></span></div>';
+  div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status">\u{1F914} ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span></span></div>' + buildAgentCopyButton();
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 
@@ -1295,12 +1325,12 @@ async function startStream(body) {
           '<span class="expand-arrow">\u25B6</span></div>' +
           '<div class="tool-card-body">' +
           '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
-          '<div class="field-code">' + escHtml(tc.name) + '</div>' +
-          '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
-          '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
-          '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
-          '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
-          '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
+      '<div class="field-code">' + escHtml(tc.name) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
+      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
+      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
+      '<div class="field-result" data-result="' + escAttr(resultText) + '">' + escHtml(resultText) +
+      '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
         var cardHeader = card.querySelector('.tool-card-header');
         var cardBody = card.querySelector('.tool-card-body');
         cardHeader.onclick = function() {
@@ -1449,7 +1479,7 @@ function handleSSEEvent(data) {
         html += '<button class="reject-btn" onclick="doReject(\'' + name + '\')">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
         html += '</div>';
       });
-      html += '</div>';
+      html += '</div>' + buildAgentCopyButton();
       confirmDiv.innerHTML = html;
       container.appendChild(confirmDiv);
       container.scrollTop = container.scrollHeight;
@@ -1542,7 +1572,7 @@ async function switchSession(sid) {
           // Currently streaming — create streaming div
           var div = document.createElement('div');
           div.className = 'msg agent streaming';
-          div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>';
+          div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton();
           container.appendChild(div);
         } else {
           appendMessage('agent', renderMarkdown(m.content));
@@ -1629,7 +1659,7 @@ async function newSession() {
     body: JSON.stringify({ title: LOCALE === 'zh' ? '新对话' : 'New Session' })
   });
   CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
-  document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div></div>';
+  document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
   closeChatSessions();
   await loadSessions();
 }
@@ -1639,7 +1669,7 @@ async function deleteSession(sid) {
   await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
   if (CURRENT_SESSION === sid) {
     CURRENT_SESSION = null;
-    document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div></div>';
+    document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '</div>';
   }
   await loadSessions();
 }
@@ -1652,12 +1682,124 @@ function appendMessage(type, html) {
   if (type === 'user') {
     div.innerHTML = '<div class="msg-bubble">' + html + '</div>';
   } else if (type === 'agent') {
-    div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>';
+    div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>' + buildAgentCopyButton();
   } else {
     div.innerHTML = '<div class="msg-content">' + html + '</div>';
   }
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+// Build the copy button HTML for an AI message. The button calls
+// copyAIMessage(this) where `this` is the button element, and the closest .msg
+// ancestor holds the reply content. Kept as a string so we can drop it into
+// any innerHTML assignment that builds an AI bubble.
+function buildAgentCopyButton() {
+  var label = LOCALE === 'zh' ? '复制' : 'Copy';
+  return '<button type="button" class="msg-agent-copy" onclick="copyAIMessage(this)" title="' +
+    (LOCALE === 'zh' ? '复制完整回复（含工具调用）' : 'Copy full reply (incl. tool calls)') + '">' +
+    '<span class="icon">⧉</span><span class="label">' + label + '</span></button>';
+}
+
+// Copy a complete AI reply to the clipboard. The format is:
+//   1. Plain-text version of the AI's markdown (innerText of .msg-content)
+//   2. Tool calls appended as a structured block (name, params, result) when present
+// The button briefly shows "已复制" / "Copied" feedback before reverting.
+async function copyAIMessage(btn) {
+  var msgEl = btn.closest('.msg.agent');
+  if (!msgEl) return;
+  var text = buildAgentCopyText(msgEl);
+  if (!text) return;
+  var copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } else {
+      // Fallback for non-secure contexts
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  } catch (e) {
+    copied = false;
+  }
+  var labelEl = btn.querySelector('.label');
+  var orig = labelEl ? labelEl.textContent : null;
+  if (labelEl) labelEl.textContent = copied
+    ? (LOCALE === 'zh' ? '已复制' : 'Copied')
+    : (LOCALE === 'zh' ? '复制失败' : 'Failed');
+  btn.classList.add(copied ? 'copied' : 'error');
+  setTimeout(function() {
+    if (labelEl && orig != null) labelEl.textContent = orig;
+    btn.classList.remove('copied', 'error');
+  }, 1600);
+}
+
+// Build the plain-text payload for an AI message bubble. Includes the rendered
+// reply (innerText of .msg-content) followed by a "工具调用" / "Tool Calls"
+// section that lists each tool's name, params and raw result. Result strings
+// come from the data-result attribute set when the tool card was rendered, so
+// the copy round-trips the full data the user saw on screen.
+function buildAgentCopyText(msgEl) {
+  var content = msgEl.querySelector('.msg-content');
+  if (!content) return '';
+  // Avoid copying the "Thinking..." / "思考中" placeholder
+  var reply = (content.innerText || '').replace(/\s+$/g, '');
+  if (!reply || /^(Thinking\.\.\.|思考中)$/.test(reply.trim())) return '';
+
+  var lines = [reply];
+
+  // Collect tool calls from the rendered inline group (card-style).
+  // Each .tool-card holds the tool name, params and raw result JSON.
+  var cards = msgEl.querySelectorAll('.tool-card');
+  if (cards.length > 0) {
+    lines.push('');
+    lines.push('---');
+    lines.push(LOCALE === 'zh' ? '工具调用 (' + cards.length + ')' : 'Tool Calls (' + cards.length + ')');
+    lines.push('---');
+    cards.forEach(function(card, idx) {
+      var name = (card.querySelector('.card-name') || {}).textContent || '';
+      var status = (card.querySelector('.card-status') || {}).textContent || '';
+      // The card body holds field-labels + field-codes in pairs:
+      //   [调用名称, tool-name]  [完整命令, params-json]  [执行结果, result-json]
+      // Skip the first code block (it's the tool name, already in the header)
+      // and use the second as params.
+      var codeBlocks = card.querySelectorAll('.field-code');
+      var params = codeBlocks.length >= 2 ? codeBlocks[1].textContent : '';
+      var resultDiv = card.querySelector('.field-result');
+      // Prefer the data-result attribute, but fall back to textContent (with
+      // the trailing 复制/Copy button label stripped) when the attribute is
+      // missing or was truncated by an HTML-parse error.
+      var result = '';
+      if (resultDiv) {
+        var attrVal = resultDiv.getAttribute('data-result');
+        if (attrVal && attrVal.length > 1) {
+          result = attrVal;
+        } else {
+          result = (resultDiv.textContent || '')
+            .replace(/复制\s*$/, '').replace(/Copy\s*$/, '').trim();
+        }
+      }
+      var header = '[' + (idx + 1) + '] ' + name + (status ? ' (' + status + ')' : '');
+      lines.push('');
+      lines.push(header);
+      if (params) {
+        lines.push(LOCALE === 'zh' ? '  参数:' : '  Params:');
+        lines.push(params.split('\n').map(function(l){ return '    ' + l; }).join('\n'));
+      }
+      if (result) {
+        lines.push(LOCALE === 'zh' ? '  结果:' : '  Result:');
+        lines.push(result.split('\n').map(function(l){ return '    ' + l; }).join('\n'));
+      }
+    });
+  }
+  return lines.join('\n');
 }
 
 /* Render tool calls group (from saved session JSON) */
@@ -1940,6 +2082,13 @@ function escHtml(s) {
   var el = document.createElement('div');
   el.textContent = s;
   return el.innerHTML;
+}
+
+// Escape a string for safe inclusion as an HTML attribute value (double-quoted).
+// escHtml above only encodes <, >, & — it leaves " and ' alone, which truncates
+// any attribute value that contains a JSON string with quotes.
+function escAttr(s) {
+  return escHtml(s).replace(/"/g, '&quot;');
 }
 
 function downloadCode(ext, btn) {
