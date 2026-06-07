@@ -58,7 +58,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
 	teamsHandler := NewTeamsHandler(db)
-	sessionsHandler := NewSessionsHandler(db)
+	sessionsHandler := NewSessionsHandler(db, runMgr)
 
 	syncer.Start(context.Background(), 5*time.Minute)
 

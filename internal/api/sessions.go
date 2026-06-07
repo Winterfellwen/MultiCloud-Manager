@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,10 +13,11 @@ import (
 
 type SessionsHandler struct {
 	db *sql.DB
+	rm *RunManager
 }
 
-func NewSessionsHandler(db *sql.DB) *SessionsHandler {
-	return &SessionsHandler{db: db}
+func NewSessionsHandler(db *sql.DB, rm *RunManager) *SessionsHandler {
+	return &SessionsHandler{db: db, rm: rm}
 }
 
 func newSessionID() string {
@@ -25,9 +27,20 @@ func newSessionID() string {
 }
 
 func (h *SessionsHandler) List(c *gin.Context) {
-	query := `SELECT session_id, title, status, mode, created_at, updated_at 
-	         FROM sessions ORDER BY created_at DESC LIMIT 50`
-
+	query := `
+		WITH session_runs AS (
+		    SELECT s.id, s.session_id, s.title, s.status, s.mode, s.created_at, s.updated_at,
+		           s.last_viewed_at,
+		           (SELECT state FROM runs WHERE session_id = s.id AND state IN ('running','waiting_confirm') ORDER BY created_at DESC LIMIT 1) AS active_state,
+		           (SELECT COUNT(*) FROM runs WHERE session_id = s.id AND state = 'pending') AS queue_depth,
+		           (SELECT MAX(terminal_at) FROM runs WHERE session_id = s.id AND state = 'done') AS last_done_at
+		    FROM sessions s
+		    ORDER BY s.updated_at DESC
+		    LIMIT 50
+		)
+		SELECT session_id, title, status, mode, created_at, updated_at, last_viewed_at, active_state, queue_depth, last_done_at
+		FROM session_runs
+	`
 	rows, err := h.db.Query(query)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"sessions": []interface{}{}})
@@ -38,24 +51,44 @@ func (h *SessionsHandler) List(c *gin.Context) {
 	var sessions []map[string]interface{}
 	for rows.Next() {
 		var sessionID, title, status, mode string
-		var createdAt, updatedAt interface{}
-		if err := rows.Scan(&sessionID, &title, &status, &mode, &createdAt, &updatedAt); err != nil {
+		var createdAt, updatedAt sql.NullTime
+		var lastViewedAt, lastDoneAt sql.NullTime
+		var activeState sql.NullString
+		var queueDepth int
+		if err := rows.Scan(&sessionID, &title, &status, &mode, &createdAt, &updatedAt, &lastViewedAt, &activeState, &queueDepth, &lastDoneAt); err != nil {
 			continue
 		}
+		state := "idle"
+		switch {
+		case activeState.Valid:
+			state = activeState.String
+		case queueDepth > 0:
+			state = "queued"
+		case lastDoneAt.Valid && (!lastViewedAt.Valid || lastDoneAt.Time.After(lastViewedAt.Time)):
+			state = "done"
+		default:
+			var lastTerminal sql.NullString
+			h.db.QueryRow(`SELECT state FROM runs WHERE session_id = (SELECT id FROM sessions WHERE session_id = $1) AND state IN ('error','stopped') ORDER BY terminal_at DESC LIMIT 1`, sessionID).Scan(&lastTerminal)
+			if lastTerminal.Valid {
+				state = lastTerminal.String
+			}
+		}
+		hasUnread := state == "done" || state == "error" || state == "stopped"
 		sessions = append(sessions, map[string]interface{}{
-			"session_id": sessionID,
-			"title":      title,
-			"status":     status,
-			"mode":       mode,
-			"created_at": createdAt,
-			"updated_at": updatedAt,
+			"session_id":  sessionID,
+			"title":       title,
+			"status":      status,
+			"mode":        mode,
+			"created_at":  createdAt.Time,
+			"updated_at":  updatedAt.Time,
+			"state":       state,
+			"queue_depth": queueDepth,
+			"has_unread":  hasUnread,
 		})
 	}
-
 	if sessions == nil {
 		sessions = []map[string]interface{}{}
 	}
-
 	c.JSON(http.StatusOK, gin.H{"sessions": sessions})
 }
 
@@ -103,27 +136,164 @@ func (h *SessionsHandler) Get(c *gin.Context) {
 		return
 	}
 
-	var sid, title, status, mode string
-	var createdAt, updatedAt interface{}
-	var internalID string
-
-	query := `SELECT id, session_id, title, status, mode, created_at, updated_at 
-	          FROM sessions WHERE session_id = $1`
+	var internalID, sid, title, status, mode string
+	var createdAt, updatedAt sql.NullTime
+	query := `SELECT id, session_id, title, status, mode, created_at, updated_at
+	          FROM sessions WHERE session_id = $1 OR id::text = $1`
 	err := h.db.QueryRow(query, sessionID).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt)
-	if err != nil {
+	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"session_id": sid,
-		"title":      title,
-		"status":     status,
-		"mode":       mode,
-		"created_at": createdAt,
-		"updated_at": updatedAt,
-		"messages":   h.loadMessages(internalID),
-	})
+	var activeRunID sql.NullString
+	h.db.QueryRow(
+		`SELECT id::text FROM runs WHERE session_id = $1 AND state IN ('running','waiting_confirm') ORDER BY created_at DESC LIMIT 1`,
+		internalID).Scan(&activeRunID)
+
+	var activeEvents []map[string]interface{}
+	if activeRunID.Valid {
+		activeEvents = h.fetchRunEvents(activeRunID.String, 0)
+	}
+
+	pendingRows, _ := h.db.Query(
+		`SELECT id::text, user_message, created_at FROM runs WHERE session_id = $1 AND state = 'pending' ORDER BY created_at`,
+		internalID)
+	var pendingRuns []map[string]interface{}
+	if pendingRows != nil {
+		defer pendingRows.Close()
+		for pendingRows.Next() {
+			var rid, msg string
+			var createdAt sql.NullTime
+			if err := pendingRows.Scan(&rid, &msg, &createdAt); err == nil {
+				pendingRuns = append(pendingRuns, map[string]interface{}{
+					"run_id":       rid,
+					"user_message": msg,
+					"created_at":   createdAt.Time,
+				})
+			}
+		}
+	}
+
+	incompleteRows, _ := h.db.Query(
+		`SELECT id::text, state, user_message, COALESCE(terminal_at, created_at), COALESCE(error_message, '')
+		 FROM runs WHERE session_id = $1 AND state IN ('error','stopped')
+		 ORDER BY terminal_at DESC LIMIT 5`,
+		internalID)
+	var incompleteRuns []map[string]interface{}
+	if incompleteRows != nil {
+		defer incompleteRows.Close()
+		for incompleteRows.Next() {
+			var rid, st, msg, errMsg string
+			var termAt sql.NullTime
+			if err := incompleteRows.Scan(&rid, &st, &msg, &termAt, &errMsg); err != nil {
+				continue
+			}
+			incompleteRuns = append(incompleteRuns, map[string]interface{}{
+				"run_id":        rid,
+				"state":         st,
+				"user_message":  msg,
+				"events":        h.fetchRunEventsTail(rid, 200),
+				"created_at":    termAt.Time,
+				"terminal_at":   termAt.Time,
+				"error_message": errMsg,
+			})
+		}
+	}
+
+	h.db.Exec(`UPDATE sessions SET last_viewed_at = CURRENT_TIMESTAMP WHERE id = $1`, internalID)
+
+	resp := gin.H{
+		"session_id":        sid,
+		"title":             title,
+		"status":            status,
+		"mode":              mode,
+		"created_at":        createdAt.Time,
+		"updated_at":        updatedAt.Time,
+		"active_run_id":     activeRunID.String,
+		"messages":          h.loadMessages(internalID),
+		"active_run_events": activeEvents,
+		"pending_runs":      pendingRuns,
+		"incomplete_runs":   incompleteRuns,
+	}
+	if resp["pending_runs"] == nil {
+		resp["pending_runs"] = []map[string]interface{}{}
+	}
+	if resp["incomplete_runs"] == nil {
+		resp["incomplete_runs"] = []map[string]interface{}{}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *SessionsHandler) fetchRunEvents(runID string, limit int) []map[string]interface{} {
+	q := `SELECT id, seq, event_type, payload, created_at FROM run_events WHERE run_id = $1 ORDER BY seq`
+	if limit > 0 {
+		q += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	rows, err := h.db.Query(q, runID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var id int64
+		var seq int
+		var etype string
+		var payload []byte
+		var createdAt sql.NullTime
+		if err := rows.Scan(&id, &seq, &etype, &payload, &createdAt); err != nil {
+			continue
+		}
+		var p map[string]interface{}
+		_ = json.Unmarshal(payload, &p)
+		out = append(out, map[string]interface{}{
+			"id":         id,
+			"seq":        seq,
+			"event_type": etype,
+			"payload":    p,
+			"created_at": createdAt.Time,
+		})
+	}
+	return out
+}
+
+func (h *SessionsHandler) fetchRunEventsTail(runID string, limit int) []map[string]interface{} {
+	rows, err := h.db.Query(
+		`SELECT id, seq, event_type, payload, created_at FROM (
+		    SELECT id, seq, event_type, payload, created_at FROM run_events
+		    WHERE run_id = $1 ORDER BY seq DESC LIMIT $2
+		 ) recent ORDER BY seq`,
+		runID, limit)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var id int64
+		var seq int
+		var etype string
+		var payload []byte
+		var createdAt sql.NullTime
+		if err := rows.Scan(&id, &seq, &etype, &payload, &createdAt); err != nil {
+			continue
+		}
+		var p map[string]interface{}
+		_ = json.Unmarshal(payload, &p)
+		out = append(out, map[string]interface{}{
+			"id":         id,
+			"seq":        seq,
+			"event_type": etype,
+			"payload":    p,
+			"created_at": createdAt.Time,
+		})
+	}
+	return out
 }
 
 func (h *SessionsHandler) Delete(c *gin.Context) {
