@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"sync"
 	"time"
 )
@@ -46,12 +47,13 @@ type Event struct {
 
 // Run is one in-flight or completed chat execution.
 type Run struct {
-	ID          string
-	SessionID   string
-	State       State
-	Mode        string
-	UserMessage string
-	Final       string
+	ID           string
+	SessionID    string
+	State        State
+	Mode         string
+	UserMessage  string
+	Final        string
+	ErrorMessage string
 
 	mu          sync.Mutex
 	seq         int
@@ -105,6 +107,7 @@ type RunManager struct {
 	db      *sql.DB
 	queue   chan string // run ids waiting to start
 	started bool
+	execFn  func(*Run)
 }
 
 // NewRunManager constructs an empty manager. db is required; pass nil in tests that don't persist.
@@ -121,6 +124,13 @@ func (m *RunManager) SetDB(db *sql.DB) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.db = db
+}
+
+// SetExecutor registers the LLM execution function that runLoop will invoke.
+func (m *RunManager) SetExecutor(fn func(*Run)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.execFn = fn
 }
 
 // Start registers a run and starts its goroutine.
@@ -171,9 +181,17 @@ func (m *RunManager) Confirm(id, action string) bool {
 	return true
 }
 
-// runLoop is the per-Run goroutine. Implementation in Task 4.
+// runLoop is the per-Run goroutine. Delegates to execFn if set, otherwise
+// immediately marks the run as done (stub behavior for tests).
 func (m *RunManager) runLoop(r *Run) {
 	defer m.cleanup(r)
+	m.mu.RLock()
+	fn := m.execFn
+	m.mu.RUnlock()
+	if fn != nil {
+		fn(r)
+		return
+	}
 	r.mu.Lock()
 	r.State = StateDone
 	r.mu.Unlock()
@@ -279,6 +297,144 @@ func (m *RunManager) broadcast(ev Event) {
 		default:
 			// drop on full buffer; client will replay from DB if it falls behind
 		}
+	}
+}
+
+// persistEvent stores an event in the DB (if available), assigns a sequence
+// number, broadcasts to subscribers, and returns the DB row id.
+func (m *RunManager) persistEvent(r *Run, t EventType, payload map[string]interface{}) int64 {
+	r.mu.Lock()
+	r.seq++
+	seq := r.seq
+	r.mu.Unlock()
+	ev := Event{
+		RunID:     r.ID,
+		SessionID: r.SessionID,
+		Seq:       seq,
+		Type:      t,
+		Payload:   payload,
+		CreatedAt: time.Now(),
+	}
+	if m.db != nil {
+		var id int64
+		err := m.db.QueryRow(
+			`INSERT INTO run_events (run_id, session_id, seq, event_type, payload)
+			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			r.ID, r.SessionID, seq, string(t), mustJSON(payload)).Scan(&id)
+		if err == nil {
+			ev.ID = id
+		}
+	}
+	m.broadcast(ev)
+	return ev.ID
+}
+
+// AggregateOnDone replays a completed run's events and writes the conversation
+// history to the sessions table, then cleans up run_events.
+func (m *RunManager) AggregateOnDone(r *Run) {
+	if m.db == nil {
+		return
+	}
+	rows, err := m.db.Query(
+		`SELECT seq, event_type, payload FROM run_events WHERE run_id=$1 ORDER BY seq`, r.ID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	var msgs []map[string]interface{}
+	toolResults := map[string]string{}
+	for rows.Next() {
+		var seq int
+		var etype string
+		var payload []byte
+		if err := rows.Scan(&seq, &etype, &payload); err != nil {
+			continue
+		}
+		var p map[string]interface{}
+		_ = jsonUnmarshal(payload, &p)
+		switch EventType(etype) {
+		case EventToken:
+			if c, ok := p["content"].(string); ok && c != "" {
+				msgs = append(msgs, map[string]interface{}{"role": "agent", "content": c})
+			}
+		case EventToolStart:
+			if tcs, ok := p["tool_calls"].([]interface{}); ok {
+				var callInfos []map[string]interface{}
+				for _, item := range tcs {
+					if tc, ok := item.(map[string]interface{}); ok {
+						fn, _ := tc["function"].(map[string]interface{})
+						name, _ := fn["name"].(string)
+						args, _ := fn["arguments"].(string)
+						callInfos = append(callInfos, map[string]interface{}{
+							"name": name, "params": args,
+						})
+					}
+				}
+				if len(callInfos) > 0 {
+					b, _ := json.Marshal(callInfos)
+					msgs = append(msgs, map[string]interface{}{"role": "tool-calls-stub", "content": string(b)})
+				}
+			}
+		case EventToolResult:
+			if name, ok := p["tool_name"].(string); ok {
+				result, _ := p["result"].(string)
+				toolResults[name] = result
+			}
+		}
+	}
+
+	var final []map[string]interface{}
+	for _, m := range msgs {
+		if m["role"] == "tool-calls-stub" {
+			var stubInfos []map[string]interface{}
+			_ = jsonUnmarshal([]byte(m["content"].(string)), &stubInfos)
+			var real []map[string]interface{}
+			for _, ci := range stubInfos {
+				name, _ := ci["name"].(string)
+				params, _ := ci["params"].(string)
+				real = append(real, map[string]interface{}{
+					"name": name, "params": params, "result": toolResults[name],
+				})
+			}
+			b, _ := json.Marshal(real)
+			final = append(final, map[string]interface{}{"role": "tool-calls", "content": string(b)})
+			continue
+		}
+		if len(final) == 0 && m["role"] == "agent" {
+			final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage})
+		}
+		final = append(final, m)
+	}
+	if len(final) == 0 {
+		final = []map[string]interface{}{{"role": "user", "content": r.UserMessage}}
+	}
+	historyJSON, _ := json.Marshal(final)
+	var sessionInternalID string
+	if err := m.db.QueryRow(`SELECT id FROM sessions WHERE session_id=$1`, r.SessionID).Scan(&sessionInternalID); err != nil {
+		m.db.QueryRow(`SELECT id FROM sessions WHERE id::text=$1`, r.SessionID).Scan(&sessionInternalID)
+	}
+	if sessionInternalID == "" {
+		return
+	}
+	m.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, r.UserMessage, sessionInternalID)
+	m.db.Exec(`DELETE FROM messages WHERE session_id = $1`, sessionInternalID)
+	m.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, sessionInternalID, string(historyJSON))
+	m.db.Exec(`DELETE FROM run_events WHERE run_id = $1 AND $2 IN (SELECT 1 FROM runs WHERE id = $1 AND state = 'done')`, r.ID, true)
+}
+
+// RecoverFromRestart marks any runs that were in-progress when the backend
+// restarted as errors, so they don't remain in a zombie state.
+func (m *RunManager) RecoverFromRestart() {
+	if m.db == nil {
+		return
+	}
+	_, err := m.db.Exec(
+		`UPDATE runs SET state='error', error_message='Backend restarted',
+		 terminal_at=CURRENT_TIMESTAMP
+		 WHERE state IN ('pending','running','waiting_confirm')`)
+	if err != nil {
+		log.Printf("RecoverFromRestart: %v", err)
 	}
 }
 

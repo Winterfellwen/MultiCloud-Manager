@@ -34,8 +34,12 @@ func main() {
 
 	api.InitAIConfig(database.DB)
 
+	runMgr := api.NewRunManager()
+	runMgr.SetDB(database.DB)
+	runMgr.RecoverFromRestart()
+
 	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB)
-	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB)
+	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, runMgr)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", cfg.Port),

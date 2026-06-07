@@ -19,7 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.Engine {
+func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) *gin.Engine {
 	r := gin.Default()
 
 	// Health check endpoint for Render
@@ -54,7 +54,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		Syncer: syncer,
 	})
 
-	chatHandler := NewChatStreamHandler(db, executor, runtime)
+	_ = NewChatStreamHandler(db, executor, runtime, runMgr)
 	accountsHandler := NewAccountsHandler(db, vaultService)
 	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
@@ -73,10 +73,8 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB) *gin.En
 		auth.POST("/agent/config/test", TestAIConfig)
 		auth.GET("/agent/config/:type", agentConfigHandler.GetConfig)
 		auth.PUT("/agent/config/:type", agentConfigHandler.UpdateConfig)
-		// Chat endpoints
-		auth.POST("/agent/chat/stream", chatHandler.Stream)
-		auth.POST("/agent/chat", chatHandler.Chat)
-		auth.POST("/agent/execute", chatHandler.Execute)
+		// Chat endpoints — run-based (see RunManager)
+		// TODO: add POST /agent/chat/start, GET /agent/chat/events, POST /agent/chat/stop, POST /agent/chat/confirm
 		// Session endpoints
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
