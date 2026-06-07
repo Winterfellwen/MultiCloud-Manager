@@ -229,8 +229,32 @@ func (d *Database) Migrate() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_run_events_run ON run_events(run_id, seq)`,
 		`CREATE INDEX IF NOT EXISTS idx_run_events_session ON run_events(session_id, id)`,
+		`DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'run_events_event_type_check'
+          AND table_name = 'run_events'
+    ) THEN
+        ALTER TABLE run_events
+            ADD CONSTRAINT run_events_event_type_check
+            CHECK (event_type IN ('token','tool_start','tool_result','confirm_required','state_change','done','error','stopped'));
+    END IF;
+END $$`,
 		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMP`,
 		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS active_run_id UUID`,
+		`DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_sessions_active_run'
+          AND table_name = 'sessions'
+    ) THEN
+        ALTER TABLE sessions
+            ADD CONSTRAINT fk_sessions_active_run
+            FOREIGN KEY (active_run_id) REFERENCES runs(id) ON DELETE SET NULL;
+    END IF;
+END $$`,
 	}
 
 	for i, q := range queries {
