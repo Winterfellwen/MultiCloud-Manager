@@ -123,6 +123,20 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; flex-shrink: 0; }
 .chat-session-item:hover .session-del-btn { opacity: .4; }
 .chat-session-item .session-del-btn:hover { opacity: 1; }
+.session-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge-running { background: #dbeafe; color: #1e40af; }
+.badge-warn    { background: #fef3c7; color: #92400e; }
+.badge-done    { background: #dcfce7; color: #166534; }
+.badge-error   { background: #fee2e2; color: #991b1b; }
+.badge-stopped { background: #e5e7eb; color: #374151; }
+.badge-queued  { background: #ede9fe; color: #5b21b6; }
 .chat-main { flex: 1; display: flex; flex-direction: column; padding: 0 12px; min-width: 0; }
 .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 36px; }
 
@@ -937,6 +951,193 @@ let accountFormVisible = false;
 let editingAccountId = null;
 let currentUser = null;
 
+// === Background AI Runs: global EventSource ===
+let GLOBAL_EVENT_SOURCE = null;
+let LAST_EVENT_ID = parseInt(localStorage.getItem('last_event_id') || '0', 10);
+const SUBSCRIBED_SESSIONS = new Set();
+let CURRENT_RUN_ID = null;
+
+const EVENT_HANDLERS = {
+  token: handleTokenEvent,
+  tool_start: handleToolStartEvent,
+  tool_result: handleToolResultEvent,
+  confirm_required: handleConfirmRequiredEvent,
+  state_change: handleStateChangeEvent,
+};
+
+function startGlobalEventSource() {
+  if (GLOBAL_EVENT_SOURCE) GLOBAL_EVENT_SOURCE.close();
+  const ids = Array.from(SUBSCRIBED_SESSIONS).slice(0, 50);
+  if (ids.length === 0) return;
+  const params = new URLSearchParams({
+    session_ids: ids.join(','),
+    last_event_id: String(LAST_EVENT_ID),
+  });
+  const es = new EventSource(API + '/agent/events?' + params);
+  es.onmessage = function(e) {
+    LAST_EVENT_ID = parseInt(e.lastEventId, 10);
+    localStorage.setItem('last_event_id', String(LAST_EVENT_ID));
+    var parsed;
+    try { parsed = JSON.parse(e.data); } catch(ex) { return; }
+    var handler = EVENT_HANDLERS[parsed.event_type];
+    if (handler) handler(parsed, e.lastEventId);
+  };
+  es.onerror = function() {
+    setTimeout(startGlobalEventSource, 1000);
+  };
+  GLOBAL_EVENT_SOURCE = es;
+}
+
+function subscribeToSession(sessionID) {
+  if (SUBSCRIBED_SESSIONS.has(sessionID)) return;
+  SUBSCRIBED_SESSIONS.add(sessionID);
+  if (SUBSCRIBED_SESSIONS.size > 50) {
+    var first = SUBSCRIBED_SESSIONS.values().next().value;
+    SUBSCRIBED_SESSIONS.delete(first);
+  }
+  startGlobalEventSource();
+}
+
+function handleTokenEvent(ev) {
+  var container = document.getElementById('run-' + ev.run_id);
+  if (!container) {
+    container = document.getElementById('chatMessages');
+    var runDiv = document.createElement('div');
+    runDiv.id = 'run-' + ev.run_id;
+    runDiv.className = 'run-events';
+    container.appendChild(runDiv);
+    container = runDiv;
+  }
+  if (ev.payload && ev.payload.content) {
+    appendMessage('agent', ev.payload.content, false, container);
+  }
+}
+
+function handleToolStartEvent(ev) {
+  var container = document.getElementById('run-' + ev.run_id);
+  if (!container) return;
+  if (ev.payload && ev.payload.tool_calls) {
+    ev.payload.tool_calls.forEach(function(tc) {
+      var fn = tc.function || tc;
+      var name = fn.name || 'unknown';
+      var toolDiv = document.createElement('div');
+      toolDiv.className = 'msg tool';
+      toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F527}</span><span class="role-label">' + escHtml(name) + '</span></div>';
+      container.appendChild(toolDiv);
+    });
+  }
+}
+
+function handleToolResultEvent(ev) {
+  var container = document.getElementById('run-' + ev.run_id);
+  if (!container) return;
+  if (ev.payload) {
+    var name = ev.payload.tool_name || 'tool';
+    var result = ev.payload.result || ev.payload.error || '';
+    var toolDiv = document.createElement('div');
+    toolDiv.className = 'msg tool-result';
+    toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F4CB}</span><span class="role-label">' + escHtml(name) + '</span></div><div class="msg-content">' + escHtml(result.substring(0, 500)) + '</div>';
+    container.appendChild(toolDiv);
+  }
+}
+
+function handleConfirmRequiredEvent(ev) {
+  if (ev.payload && ev.payload.tool_name) {
+    showConfirmModal(ev.run_id, ev.payload);
+  }
+}
+
+function handleStateChangeEvent(ev) {
+  var newState = ev.payload.state;
+  if (newState === 'done' || newState === 'error' || newState === 'stopped') {
+    if (ev.run_id === CURRENT_RUN_ID) {
+      CURRENT_RUN_ID = null;
+      document.getElementById('chatStopBtn').style.display = 'none';
+    }
+  }
+  loadSessions();
+  if (TAB_CHANNEL) TAB_CHANNEL.postMessage({ type: 'session-changed' });
+}
+
+function showConfirmModal(runID, payload) {
+  var modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000';
+  var inner = document.createElement('div');
+  inner.style.cssText = 'background:var(--bg-primary);border-radius:12px;padding:24px;max-width:400px;width:90%';
+  inner.innerHTML = '<h3 style="margin:0 0 12px">' + escHtml(payload.tool_name || 'Confirm') + '</h3><pre style="white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto">' + escHtml(JSON.stringify(payload, null, 2)) + '</pre>';
+  var actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:16px;justify-content:flex-end';
+  var approveBtn = document.createElement('button');
+  approveBtn.textContent = LOCALE === 'zh' ? '批准' : 'Approve';
+  approveBtn.className = 'btn-primary';
+  approveBtn.onclick = function() {
+    confirmChat('approve', payload.tool_name, payload.tool_params);
+    modal.remove();
+  };
+  var rejectBtn = document.createElement('button');
+  rejectBtn.textContent = LOCALE === 'zh' ? '拒绝' : 'Reject';
+  rejectBtn.className = 'btn-secondary';
+  rejectBtn.onclick = function() {
+    confirmChat('reject', payload.tool_name, payload.tool_params);
+    modal.remove();
+  };
+  actions.appendChild(rejectBtn);
+  actions.appendChild(approveBtn);
+  inner.appendChild(actions);
+  modal.appendChild(inner);
+  document.body.appendChild(modal);
+}
+
+function appendRunEvent(container, ev) {
+  switch (ev.event_type) {
+    case 'token':
+      if (ev.payload && ev.payload.content) {
+        appendMessage('agent', ev.payload.content, false, container);
+      }
+      break;
+    case 'tool_start':
+      if (ev.payload && ev.payload.tool_calls) {
+        ev.payload.tool_calls.forEach(function(tc) {
+          var fn = tc.function || tc;
+          var name = fn.name || 'unknown';
+          var toolDiv = document.createElement('div');
+          toolDiv.className = 'msg tool';
+          toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F527}</span><span class="role-label">' + escHtml(name) + '</span></div>';
+          container.appendChild(toolDiv);
+        });
+      }
+      break;
+    case 'tool_result':
+      if (ev.payload) {
+        var name = ev.payload.tool_name || 'tool';
+        var result = ev.payload.result || ev.payload.error || '';
+        var toolDiv = document.createElement('div');
+        toolDiv.className = 'msg tool-result';
+        toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F4CB}</span><span class="role-label">' + escHtml(name) + '</span></div><div class="msg-content">' + escHtml(result.substring(0, 500)) + '</div>';
+        container.appendChild(toolDiv);
+      }
+      break;
+  }
+}
+
+// === Cross-tab consistency ===
+window.addEventListener('storage', function(e) {
+  if (e.key === 'last_event_id' && e.newValue) {
+    LAST_EVENT_ID = parseInt(e.newValue, 10);
+  }
+});
+
+var TAB_CHANNEL = null;
+try { TAB_CHANNEL = new BroadcastChannel('mc-state'); } catch(e) {}
+if (TAB_CHANNEL) {
+  TAB_CHANNEL.onmessage = function(e) {
+    if (e.data && e.data.type === 'session-changed') {
+      loadSessions();
+    }
+  };
+}
+
 /* Auth Check */
 (function checkAuth() {
   const token = localStorage.getItem('token');
@@ -1122,43 +1323,52 @@ function autoResizeTextarea(el) {
   document.getElementById('chatSendBtn').disabled = el.value.trim().length === 0 || CONFIRM_PENDING;
 }
 
-/* SSE Chat */
+/* Background AI Runs */
 async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
+  var input = document.getElementById('chatInput');
+  var text = input.value.trim();
   if (!text) return;
   input.value = '';
   autoResizeTextarea(input);
   appendMessage('user', escHtml(text));
-  // Auto-create session if none exists
-  if (!CURRENT_SESSION) {
+
+  // Create session if needed
+  var sessionId = CURRENT_SESSION;
+  if (!sessionId) {
     var sessData = await apiFetch(API + '/agent/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: text.substring(0, 50) })
     });
     if (sessData && sessData.session_id) {
-      CURRENT_SESSION = sessData.session_id;
-      SESSION_MESSAGES[CURRENT_SESSION] = [{role: 'user', content: text}];
-      loadSessions();
+      sessionId = sessData.session_id;
+      CURRENT_SESSION = sessionId;
     }
   } else {
-    // Add user message to global store
     if (!SESSION_MESSAGES[CURRENT_SESSION]) SESSION_MESSAGES[CURRENT_SESSION] = [];
     SESSION_MESSAGES[CURRENT_SESSION].push({role: 'user', content: text});
   }
-  startStream({message: text, session_id: CURRENT_SESSION, mode: CURRENT_MODE});
+
+  // Send via new run-based API
+  var resp = await apiFetch(API + '/agent/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: text, session_id: sessionId, mode: CURRENT_MODE })
+  });
+  if (resp && resp.run_id) {
+    CURRENT_RUN_ID = resp.run_id;
+    document.getElementById('chatStopBtn').style.display = '';
+    subscribeToSession(sessionId);
+  }
+  await loadSessions();
 }
 
 async function confirmChat(action, toolName, toolParams) {
-  CONFIRM_PENDING = false;
-  document.getElementById('chatSendBtn').disabled = false;
-  startStream({
-    session_id: CURRENT_SESSION,
-    mode: CURRENT_MODE,
-    confirm_action: action,
-    tool_name: toolName,
-    tool_params: toolParams
+  if (!CURRENT_RUN_ID) return;
+  await apiFetch(API + '/agent/chat/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ run_id: CURRENT_RUN_ID, action: action })
   });
 }
 
@@ -1172,15 +1382,16 @@ function stopChat() {
 }
 
 async function stopActiveSession() {
-  stopChat();
-  // Mark session as idle
-  if (CURRENT_SESSION) {
-    try {
-      await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'idle' }) });
-    } catch(e) {}
-    await loadSessions();
-    await switchSession(CURRENT_SESSION);
+  if (CURRENT_RUN_ID) {
+    await apiFetch(API + '/agent/chat/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: CURRENT_RUN_ID })
+    });
+    CURRENT_RUN_ID = null;
+    document.getElementById('chatStopBtn').style.display = 'none';
   }
+  await loadSessions();
 }
 
 async function startStream(body) {
@@ -1545,7 +1756,23 @@ async function loadSessions() {
     item.innerHTML = statusDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
+    // Add state badge
+    var badge = document.createElement('span');
+    badge.className = 'session-badge';
+    var state = s.state || 'idle';
+    var depth = s.queue_depth || 0;
+    switch (state) {
+      case 'running': badge.textContent = '\u2699 ' + (LOCALE === 'zh' ? '运行中' : 'Running'); badge.classList.add('badge-running'); break;
+      case 'waiting_confirm': badge.textContent = '\u26A0 ' + (LOCALE === 'zh' ? '等待确认' : 'Confirm'); badge.classList.add('badge-warn'); break;
+      case 'done': badge.textContent = s.has_unread ? '\u25CF ' + (LOCALE === 'zh' ? '新回复' : 'New') : ''; badge.classList.add('badge-done'); break;
+      case 'error': badge.textContent = '\u2717 ' + (LOCALE === 'zh' ? '错误' : 'Error'); badge.classList.add('badge-error'); break;
+      case 'stopped': badge.textContent = '\u25A0 ' + (LOCALE === 'zh' ? '已停止' : 'Stopped'); badge.classList.add('badge-stopped'); break;
+      case 'queued': badge.textContent = (LOCALE === 'zh' ? '排队中' : 'Queued') + ' (' + depth + ')'; badge.classList.add('badge-queued'); break;
+      default: badge.textContent = '';
+    }
+    if (badge.textContent) item.appendChild(badge);
   });
+  data.sessions.forEach(function(s) { subscribeToSession(s.session_id); });
 }
 
 async function switchSession(sid) {
@@ -1648,6 +1875,44 @@ async function switchSession(sid) {
     appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>');
     lastSyncedMsgCount = 1;
   }
+
+  // Fetch full session data from API (includes active_run_events, etc.)
+  var sessData = await apiFetch(API + '/agent/sessions/' + sid);
+  if (sessData) {
+    // Render active run events as live continuation
+    if (sessData.active_run_id && sessData.active_run_events && sessData.active_run_events.length > 0) {
+      var runDiv = document.createElement('div');
+      runDiv.id = 'run-' + sessData.active_run_id;
+      runDiv.className = 'run-events';
+      sessData.active_run_events.forEach(function(ev) {
+        appendRunEvent(runDiv, ev);
+      });
+      container.appendChild(runDiv);
+      CURRENT_RUN_ID = sessData.active_run_id;
+    }
+    // Render pending queue indicator
+    if (sessData.pending_runs && sessData.pending_runs.length > 0) {
+      var qBanner = document.createElement('div');
+      qBanner.className = 'queue-banner';
+      qBanner.textContent = (LOCALE === 'zh' ? '排队中' : 'Queued') + ' (' + sessData.pending_runs.length + ')';
+      container.appendChild(qBanner);
+    }
+    // Render incomplete runs (error/stopped)
+    if (sessData.incomplete_runs && sessData.incomplete_runs.length > 0) {
+      sessData.incomplete_runs.forEach(function(inc) {
+        var details = document.createElement('details');
+        details.className = 'incomplete-run';
+        var summary = document.createElement('summary');
+        summary.textContent = (inc.state === 'stopped' ? '\u25A0 ' + (LOCALE === 'zh' ? '已停止' : 'Stopped') : '\u2717 ' + (LOCALE === 'zh' ? '错误' : 'Error')) + ': ' + (inc.user_message || '').slice(0, 40);
+        details.appendChild(summary);
+        if (inc.events) {
+          inc.events.forEach(function(ev) { appendRunEvent(details, ev); });
+        }
+        container.appendChild(details);
+      });
+    }
+  }
+
   container.scrollTop = container.scrollHeight;
   startSessionPoll();
 }
