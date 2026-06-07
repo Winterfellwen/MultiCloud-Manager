@@ -1,1 +1,0 @@
-<view class="status-badge status-{{status}}">{{text || status}}</view>
