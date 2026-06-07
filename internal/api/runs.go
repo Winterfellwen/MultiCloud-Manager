@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"sync"
 	"time"
 )
@@ -99,6 +100,8 @@ func (r *Run) Cancel() {
 type RunManager struct {
 	mu      sync.RWMutex
 	runs    map[string]*Run
+	subs    map[string][]chan Event
+	subMu   sync.RWMutex
 	db      *sql.DB
 	queue   chan string // run ids waiting to start
 	started bool
@@ -108,6 +111,7 @@ type RunManager struct {
 func NewRunManager() *RunManager {
 	return &RunManager{
 		runs:  map[string]*Run{},
+		subs:  map[string][]chan Event{},
 		queue: make(chan string, 256),
 	}
 }
@@ -169,12 +173,27 @@ func (m *RunManager) Confirm(id, action string) bool {
 
 // runLoop is the per-Run goroutine. Implementation in Task 4.
 func (m *RunManager) runLoop(r *Run) {
-	// Stub: no-op until Task 4 wires the LLM loop.
 	defer m.cleanup(r)
-	// Yield back to the runtime so the test sees the run reach a terminal state.
 	r.mu.Lock()
 	r.State = StateDone
 	r.mu.Unlock()
+	// Persist a synthetic state_change event so subscribers see the transition.
+	if m.db != nil {
+		var id int64
+		m.db.QueryRow(
+			`INSERT INTO run_events (run_id, session_id, seq, event_type, payload)
+			 VALUES ($1, $2, 1, 'state_change', $3) RETURNING id`,
+			r.ID, r.SessionID, mustJSON(map[string]interface{}{"state": string(StateDone)})).Scan(&id)
+	}
+	m.broadcast(Event{
+		ID:        0,
+		RunID:     r.ID,
+		SessionID: r.SessionID,
+		Seq:       1,
+		Type:      EventStateChange,
+		Payload:   map[string]interface{}{"state": string(StateDone)},
+		CreatedAt: time.Now(),
+	})
 }
 
 // cleanup removes the run from the in-memory map and persists terminal state.
@@ -191,3 +210,83 @@ func (m *RunManager) cleanup(r *Run) {
 // uses crypto/rand; declared in sessions.go. Re-declared here as a
 // forward declaration to keep the file self-contained.
 var newUUID = newSessionID
+
+// Subscribe returns a buffered channel of events for the given sessions,
+// plus an unsubscribe function. fromID > 0 causes the channel to first
+// replay events with id > fromID (read from the DB).
+func (m *RunManager) Subscribe(sessionIDs []string, fromID int64) (<-chan Event, func()) {
+	ch := make(chan Event, 256)
+	for _, sid := range sessionIDs {
+		m.subMu.Lock()
+		m.subs[sid] = append(m.subs[sid], ch)
+		m.subMu.Unlock()
+	}
+	if fromID > 0 {
+		go m.replayEvents(ch, sessionIDs, fromID)
+	}
+	return ch, func() {
+		m.subMu.Lock()
+		for _, sid := range sessionIDs {
+			subs := m.subs[sid]
+			for i, c := range subs {
+				if c == ch {
+					m.subs[sid] = append(subs[:i], subs[i+1:]...)
+					break
+				}
+			}
+		}
+		m.subMu.Unlock()
+	}
+}
+
+// replayEvents fetches events with id > fromID from the DB and sends them to ch.
+// It does not block on ch; if the buffer is full it drops (the live stream continues).
+func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID int64) {
+	if m.db == nil {
+		return
+	}
+	rows, err := m.db.Query(
+		`SELECT id, run_id, session_id, seq, event_type, payload, created_at
+		 FROM run_events WHERE id > $1 AND session_id = ANY($2) ORDER BY id`,
+		fromID, sessionIDs)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ev Event
+		var payload []byte
+		if err := rows.Scan(&ev.ID, &ev.RunID, &ev.SessionID, &ev.Seq, &ev.Type, &payload, &ev.CreatedAt); err != nil {
+			continue
+		}
+		_ = jsonUnmarshal(payload, &ev.Payload)
+		select {
+		case ch <- ev:
+		default:
+			// drop on full buffer
+		}
+	}
+}
+
+// broadcast sends ev to all subscribers of its session.
+func (m *RunManager) broadcast(ev Event) {
+	m.subMu.RLock()
+	subs := append([]chan Event(nil), m.subs[ev.SessionID]...)
+	m.subMu.RUnlock()
+	for _, c := range subs {
+		select {
+		case c <- ev:
+		default:
+			// drop on full buffer; client will replay from DB if it falls behind
+		}
+	}
+}
+
+func jsonUnmarshal(data []byte, v interface{}) error {
+	return json.Unmarshal(data, v)
+}
+
+func mustJSON(v interface{}) []byte {
+	b, _ := json.Marshal(v)
+	return b
+}
