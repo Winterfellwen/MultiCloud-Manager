@@ -47,8 +47,11 @@ func (h *ChatStreamHandler) setRunState(r *Run, s State, errMsg string) {
 	}
 	r.mu.Unlock()
 	if h.db != nil {
-		h.db.Exec(`UPDATE runs SET state=$1, error_message=$2, started_at=CASE WHEN $1='running' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END, terminal_at=CASE WHEN $1 IN ('done','error','stopped') THEN CURRENT_TIMESTAMP ELSE terminal_at END WHERE id=$3`, string(s), errMsg, r.ID)
+		h.db.Exec(`UPDATE runs SET state=$1, error_message=$2, started_at=CASE WHEN $3 AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END, terminal_at=CASE WHEN $4 THEN CURRENT_TIMESTAMP ELSE terminal_at END WHERE id=$5`, string(s), errMsg, s == StateRunning, s == StateDone || s == StateError || s == StateStopped, r.ID)
 	}
+	h.rm.persistEvent(r, EventStateChange, map[string]interface{}{
+		"state": string(s), "error_message": errMsg,
+	})
 }
 
 func (h *ChatStreamHandler) terminateRun(r *Run, errMsg string) {
@@ -57,9 +60,6 @@ func (h *ChatStreamHandler) terminateRun(r *Run, errMsg string) {
 		final = StateError
 	}
 	h.setRunState(r, final, errMsg)
-	h.rm.persistEvent(r, EventStateChange, map[string]interface{}{
-		"state": string(final), "error_message": errMsg,
-	})
 	if final == StateDone {
 		h.rm.AggregateOnDone(r)
 	}

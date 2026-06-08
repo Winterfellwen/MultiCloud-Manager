@@ -250,9 +250,7 @@ func (m *RunManager) Subscribe(sessionIDs []string, fromID int64) (<-chan Event,
 		m.subs[sid] = append(m.subs[sid], ch)
 		m.subMu.Unlock()
 	}
-	if fromID > 0 {
-		go m.replayEvents(ch, sessionIDs, fromID)
-	}
+	go m.replayEvents(ch, sessionIDs, fromID)
 	return ch, func() {
 		m.subMu.Lock()
 		for _, sid := range sessionIDs {
@@ -274,10 +272,14 @@ func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID i
 	if m.db == nil {
 		return
 	}
+	const maxReplay = 500
 	rows, err := m.db.Query(
-		`SELECT id, run_id, session_id, seq, event_type, payload, created_at
-		 FROM run_events WHERE id > $1 AND session_id = ANY($2) ORDER BY id`,
-		fromID, sessionIDs)
+		`SELECT id, run_id, session_id, seq, event_type, payload, created_at FROM (
+		   SELECT id, run_id, session_id, seq, event_type, payload, created_at
+		   FROM run_events WHERE id > $1 AND session_id = ANY($2)
+		   ORDER BY id DESC LIMIT $3
+		 ) sub ORDER BY id`,
+		fromID, sessionIDs, maxReplay)
 	if err != nil {
 		return
 	}
@@ -286,6 +288,9 @@ func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID i
 		var ev Event
 		var payload []byte
 		if err := rows.Scan(&ev.ID, &ev.RunID, &ev.SessionID, &ev.Seq, &ev.Type, &payload, &ev.CreatedAt); err != nil {
+			continue
+		}
+		if ev.Type == EventToken {
 			continue
 		}
 		_ = jsonUnmarshal(payload, &ev.Payload)
@@ -327,10 +332,7 @@ func (m *RunManager) persistEvent(r *Run, t EventType, payload map[string]interf
 	}
 	if m.db != nil {
 		var id int64
-		dbSessionID := r.InternalID
-		if dbSessionID == "" {
-			dbSessionID = r.SessionID
-		}
+		dbSessionID := r.SessionID
 		err := m.db.QueryRow(
 			`INSERT INTO run_events (run_id, session_id, seq, event_type, payload)
 			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
@@ -372,7 +374,12 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 		switch EventType(etype) {
 		case EventToken:
 			if c, ok := p["content"].(string); ok && c != "" {
-				msgs = append(msgs, map[string]interface{}{"role": "agent", "content": c})
+				if len(msgs) > 0 && msgs[len(msgs)-1]["role"] == "agent" {
+					prev := msgs[len(msgs)-1]
+					prev["content"] = prev["content"].(string) + c
+				} else {
+					msgs = append(msgs, map[string]interface{}{"role": "agent", "content": c})
+				}
 			}
 		case EventToolStart:
 			if tcs, ok := p["tool_calls"].([]interface{}); ok {
