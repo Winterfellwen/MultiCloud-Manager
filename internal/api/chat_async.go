@@ -165,15 +165,13 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			break
 		}
 
-		fullContent, toolCalls, _ := h.collectStreamResponse(resp.Body, nil, nil)
+		fullContent, toolCalls, _ := h.collectStreamResponseWithCallback(resp.Body, nil, nil, func(chunk string) {
+			h.rm.persistEvent(r, EventToken, map[string]interface{}{
+				"content": chunk,
+			})
+		})
 		lastTurnContent = fullContent
 		lastToolCalls = toolCalls
-
-		if fullContent != "" {
-			h.rm.persistEvent(r, EventToken, map[string]interface{}{
-				"content": fullContent,
-			})
-		}
 
 		if len(toolCalls) == 0 {
 			break
@@ -396,6 +394,10 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 }
 
 func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
+	return h.collectStreamResponseWithCallback(body, c, flusher, nil)
+}
+
+func (h *ChatStreamHandler) collectStreamResponseWithCallback(body io.ReadCloser, c *gin.Context, flusher http.Flusher, onToken func(string)) (string, []map[string]interface{}, string) {
 	defer body.Close()
 
 	var fullContent strings.Builder
@@ -448,6 +450,8 @@ func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Con
 					}
 					fmt.Fprintf(c.Writer, "event: token\ndata: %s\n\n", toJSON(map[string]string{"content": choice.Delta.Content}))
 					flusher.Flush()
+				} else if onToken != nil {
+					onToken(choice.Delta.Content)
 				}
 			}
 
@@ -867,18 +871,19 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		return
 	}
 
-	internalID, _, err := h.resolveSession(req.SessionID, req.Message)
+	sessionID, internalID, _, err := h.resolveSession(req.SessionID, req.Message)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	req.SessionID = internalID
+	req.SessionID = sessionID
 
 	r := NewRun(req.SessionID, req.Mode, req.Message)
+	r.InternalID = internalID
 	if h.db != nil {
 		_, err := h.db.Exec(
 			`INSERT INTO runs (id, session_id, state, mode, user_message) VALUES ($1, $2, 'pending', $3, $4)`,
-			r.ID, req.SessionID, req.Mode, req.Message)
+			r.ID, internalID, r.Mode, r.UserMessage)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -897,7 +902,9 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	})
 }
 
-func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (string, bool, error) {
+// resolveSession returns (sessionID_uuid, internalID, isNew, error).
+// sessionID_uuid is sessions.session_id (UUID), internalID is sessions.id (integer string).
+func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (string, string, bool, error) {
 	if externalID == "" {
 		title := "新对话"
 		if firstMessage != "" {
@@ -906,18 +913,18 @@ func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (str
 				title = title[:100]
 			}
 		}
-		var internalID string
+		var sessionID, internalID string
 		err := h.db.QueryRow(
-			`INSERT INTO sessions (session_id, title) VALUES (gen_random_uuid()::text, $1) RETURNING id`,
-			title).Scan(&internalID)
-		return internalID, true, err
+			`INSERT INTO sessions (session_id, title) VALUES (gen_random_uuid()::text, $1) RETURNING session_id, id`,
+			title).Scan(&sessionID, &internalID)
+		return sessionID, internalID, true, err
 	}
-	var internalID string
-	err := h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1 OR id::text = $1`, externalID).Scan(&internalID)
+	var sessionID, internalID string
+	err := h.db.QueryRow(`SELECT session_id, id::text FROM sessions WHERE session_id = $1 OR id::text = $1`, externalID).Scan(&sessionID, &internalID)
 	if err == sql.ErrNoRows {
-		return externalID, false, nil
+		return externalID, externalID, false, nil
 	}
-	return internalID, false, err
+	return sessionID, internalID, false, err
 }
 
 func (h *ChatStreamHandler) Confirm(c *gin.Context) {
