@@ -973,6 +973,7 @@ function startGlobalEventSource() {
     session_ids: ids.join(','),
     last_event_id: String(LAST_EVENT_ID),
     token: localStorage.getItem('token') || '',
+    v: '2',
   });
   const es = new EventSource(API + '/agent/events?' + params);
   es.onmessage = function(e) {
@@ -980,8 +981,13 @@ function startGlobalEventSource() {
     localStorage.setItem('last_event_id', String(LAST_EVENT_ID));
     var parsed;
     try { parsed = JSON.parse(e.data); } catch(ex) { return; }
-    var handler = EVENT_HANDLERS[parsed.event_type];
-    if (handler) handler(parsed, e.lastEventId);
+    _esProcessingEvents = true;
+    try {
+      var handler = EVENT_HANDLERS[parsed.event_type];
+      if (handler) handler(parsed, e.lastEventId);
+    } finally {
+      _esProcessingEvents = false;
+    }
   };
   es.onerror = function() {
     setTimeout(startGlobalEventSource, 1000);
@@ -989,6 +995,8 @@ function startGlobalEventSource() {
   GLOBAL_EVENT_SOURCE = es;
 }
 
+var _esRestartPending = false;
+var _esProcessingEvents = false;
 function subscribeToSession(sessionID) {
   if (SUBSCRIBED_SESSIONS.has(sessionID)) return;
   SUBSCRIBED_SESSIONS.add(sessionID);
@@ -996,22 +1004,31 @@ function subscribeToSession(sessionID) {
     var first = SUBSCRIBED_SESSIONS.values().next().value;
     SUBSCRIBED_SESSIONS.delete(first);
   }
-  startGlobalEventSource();
+  if (!_esRestartPending && !_esProcessingEvents) {
+    _esRestartPending = true;
+    setTimeout(function() { _esRestartPending = false; startGlobalEventSource(); }, 0);
+  }
 }
 
+var STREAMING_DIV = null;
+var STREAMING_CONTENT = '';
+
 function handleTokenEvent(ev) {
-  var container = document.getElementById('run-' + ev.run_id);
-  if (!container) {
-    container = document.getElementById('chatMessages');
-    var runDiv = document.createElement('div');
-    runDiv.id = 'run-' + ev.run_id;
-    runDiv.className = 'run-events';
-    container.appendChild(runDiv);
-    container = runDiv;
+  if (!ev.payload || !ev.payload.content) return;
+  STREAMING_CONTENT += ev.payload.content;
+  
+  if (!STREAMING_DIV) {
+    var container = document.getElementById('chatMessages');
+    STREAMING_DIV = document.createElement('div');
+    STREAMING_DIV.className = 'msg agent streaming';
+    STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon">\u25C9</span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor"></div>' + buildAgentCopyButton();
+    container.appendChild(STREAMING_DIV);
   }
-  if (ev.payload && ev.payload.content) {
-    appendMessage('agent', ev.payload.content, false, container);
+  var contentEl = STREAMING_DIV.querySelector('.msg-content');
+  if (contentEl) {
+    contentEl.textContent = STREAMING_CONTENT;
   }
+  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
 }
 
 function handleToolStartEvent(ev) {
@@ -1055,8 +1072,35 @@ function handleStateChangeEvent(ev) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
     }
+    if (STREAMING_DIV) {
+      STREAMING_DIV.classList.remove('streaming');
+      var contentEl = STREAMING_DIV.querySelector('.msg-content');
+      if (contentEl) {
+        contentEl.classList.remove('streaming-cursor');
+        contentEl.innerHTML = renderMarkdown(STREAMING_CONTENT);
+      }
+      STREAMING_DIV = null;
+      STREAMING_CONTENT = '';
+    }
   }
-  loadSessions();
+  // Update sidebar badge directly (don't call loadSessions which restarts EventSource)
+  document.querySelectorAll('.chat-session-item').forEach(function(el) {
+    if (el.dataset.sid === ev.session_id) {
+      var badge = el.querySelector('.session-badge');
+      if (badge) {
+        var stateText = '', stateCls = 'session-badge';
+        switch (newState) {
+          case 'running': stateText = '\u2699 ' + (LOCALE === 'zh' ? '运行中' : 'Running'); stateCls += ' badge-running'; break;
+          case 'waiting_confirm': stateText = '\u26A0 ' + (LOCALE === 'zh' ? '等待确认' : 'Confirm'); stateCls += ' badge-warn'; break;
+          case 'done': stateText = '\u25CF ' + (LOCALE === 'zh' ? '新回复' : 'New'); stateCls += ' badge-done'; break;
+          case 'error': stateText = '\u2717 ' + (LOCALE === 'zh' ? '错误' : 'Error'); stateCls += ' badge-error'; break;
+          case 'stopped': stateText = '\u25A0 ' + (LOCALE === 'zh' ? '已停止' : 'Stopped'); stateCls += ' badge-stopped'; break;
+        }
+        badge.textContent = stateText;
+        badge.className = stateCls;
+      }
+    }
+  });
   if (TAB_CHANNEL) TAB_CHANNEL.postMessage({ type: 'session-changed' });
 }
 
@@ -1331,6 +1375,8 @@ async function sendChat() {
   if (!text) return;
   input.value = '';
   autoResizeTextarea(input);
+  STREAMING_DIV = null;
+  STREAMING_CONTENT = '';
   appendMessage('user', escHtml(text));
 
   // Create session if needed
@@ -1773,7 +1819,12 @@ async function loadSessions() {
     }
     if (badge.textContent) item.appendChild(badge);
   });
-  data.sessions.forEach(function(s) { subscribeToSession(s.session_id); });
+  var hadNew = false;
+  data.sessions.forEach(function(s) {
+    if (!SUBSCRIBED_SESSIONS.has(s.session_id)) hadNew = true;
+    subscribeToSession(s.session_id);
+  });
+  // Only restart EventSource if new sessions were added (deferred via subscribeToSession)
 }
 
 async function switchSession(sid) {

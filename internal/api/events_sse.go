@@ -66,7 +66,7 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 			}
 			id := strconv.FormatInt(ev.ID, 10)
 			data := toJSON(ev)
-			fmt.Fprintf(c.Writer, "id: %s\nevent: %s\ndata: %s\n\n", id, ev.Type, data)
+			fmt.Fprintf(c.Writer, "id: %s\ndata: %s\n\n", id, data)
 			return true
 		case <-tick.C:
 			fmt.Fprintf(c.Writer, ": ping\n\n")

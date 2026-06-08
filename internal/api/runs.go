@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -48,7 +49,8 @@ type Event struct {
 // Run is one in-flight or completed chat execution.
 type Run struct {
 	ID           string
-	SessionID    string
+	SessionID    string // UUID, matches sessions.session_id — used for broadcast (SSE matching)
+	InternalID   string // integer string, matches sessions.id — used for DB queries
 	State        State
 	Mode         string
 	UserMessage  string
@@ -185,6 +187,15 @@ func (m *RunManager) Confirm(id, action string) bool {
 // immediately marks the run as done (stub behavior for tests).
 func (m *RunManager) runLoop(r *Run) {
 	defer m.cleanup(r)
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("runLoop PANIC run=%s: %v", r.ID, rec)
+			r.mu.Lock()
+			r.State = StateError
+			r.ErrorMessage = fmt.Sprintf("panic: %v", rec)
+			r.mu.Unlock()
+		}
+	}()
 	m.mu.RLock()
 	fn := m.execFn
 	m.mu.RUnlock()
@@ -295,7 +306,6 @@ func (m *RunManager) broadcast(ev Event) {
 		select {
 		case c <- ev:
 		default:
-			// drop on full buffer; client will replay from DB if it falls behind
 		}
 	}
 }
@@ -317,11 +327,17 @@ func (m *RunManager) persistEvent(r *Run, t EventType, payload map[string]interf
 	}
 	if m.db != nil {
 		var id int64
+		dbSessionID := r.InternalID
+		if dbSessionID == "" {
+			dbSessionID = r.SessionID
+		}
 		err := m.db.QueryRow(
 			`INSERT INTO run_events (run_id, session_id, seq, event_type, payload)
 			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			r.ID, r.SessionID, seq, string(t), mustJSON(payload)).Scan(&id)
-		if err == nil {
+			r.ID, dbSessionID, seq, string(t), mustJSON(payload)).Scan(&id)
+		if err != nil {
+			log.Printf("persistEvent INSERT error run=%s type=%s: %v", r.ID, t, err)
+		} else {
 			ev.ID = id
 		}
 	}
