@@ -133,7 +133,8 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			body["reasoning_effort"] = cfg.ReasoningEffort
 		}
 
-		apiURL := strings.TrimRight(cfg.APIEndpoint, "/") + "/chat/completions"
+		baseURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions")
+		apiURL := baseURL + "/chat/completions"
 		bodyBytes, _ := json.Marshal(body)
 		httpReq, err := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
 		if err != nil {
@@ -278,7 +279,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			})
 		}
 
-		messages = pruneMessages(messages)
+		messages = compactMessages(messages)
 	}
 
 done:
@@ -330,7 +331,7 @@ done:
 			"max_tokens": 1024,
 		}
 		finalBodyBytes, _ := json.Marshal(finalBody)
-		finalURL := strings.TrimRight(cfg.APIEndpoint, "/") + "/chat/completions"
+		finalURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions") + "/chat/completions"
 		finalReq, err := http.NewRequest("POST", finalURL, bytes.NewReader(finalBodyBytes))
 		if err == nil {
 			finalReq.Header.Set("Content-Type", "application/json")
@@ -372,6 +373,13 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 	var resp *http.Response
 	var lastErr error
 	for retry := 0; retry < 3; retry++ {
+		if req.GetBody != nil {
+			body, err := req.GetBody()
+			if err != nil {
+				return nil, err
+			}
+			req.Body = body
+		}
 		resp, lastErr = client.Do(req)
 		if lastErr != nil {
 			if retry < 2 {
@@ -919,9 +927,11 @@ func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (str
 	if externalID == "" {
 		title := "新对话"
 		if firstMessage != "" {
-			title = firstMessage
-			if len(title) > 100 {
-				title = title[:100]
+			runes := []rune(firstMessage)
+			if len(runes) > 100 {
+				title = string(runes[:100])
+			} else {
+				title = firstMessage
 			}
 		}
 		var sessionID, internalID string
@@ -992,13 +1002,65 @@ func (h *ChatStreamHandler) Stop(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "state": string(StateStopped)})
 }
 
-func pruneMessages(msgs []map[string]interface{}) []map[string]interface{} {
-	const maxMessages = 30
-	if len(msgs) <= maxMessages {
+const (
+	compactionLimit    = 100000
+	pruneProtectTokens = 40000
+	pruneMinTokens     = 20000
+	protectRounds      = 2
+)
+
+func estimateTokens(text string) int {
+	return len(text)/4 + 1
+}
+
+func countMessagesTokens(msgs []map[string]interface{}) int {
+	total := 0
+	for _, m := range msgs {
+		if c, ok := m["content"].(string); ok {
+			total += estimateTokens(c)
+		}
+		if tc, ok := m["tool_calls"]; ok {
+			if b, err := json.Marshal(tc); err == nil {
+				total += estimateTokens(string(b))
+			}
+		}
+	}
+	return total
+}
+
+func compactMessages(msgs []map[string]interface{}) []map[string]interface{} {
+	if len(msgs) <= 1 {
 		return msgs
 	}
-	keep := make([]map[string]interface{}, 0, maxMessages)
-	keep = append(keep, msgs[0])
-	keep = append(keep, msgs[len(msgs)-(maxMessages-1):]...)
-	return keep
+	if countMessagesTokens(msgs) <= compactionLimit {
+		return msgs
+	}
+
+	sysIdx := 0
+	for i, m := range msgs {
+		if role, _ := m["role"].(string); role == "system" {
+			sysIdx = i
+			break
+		}
+	}
+	if sysIdx >= len(msgs)-1 {
+		return msgs
+	}
+
+	turnsSeen := 0
+	for i := len(msgs) - 1; i > sysIdx; i-- {
+		if role, _ := msgs[i]["role"].(string); role == "user" {
+			turnsSeen++
+			continue
+		}
+		if role, _ := msgs[i]["role"].(string); role == "tool" && turnsSeen < protectRounds {
+			continue
+		}
+		if role, _ := msgs[i]["role"].(string); role == "tool" {
+			if c, ok := msgs[i]["content"].(string); ok && len(c) > 200 {
+				msgs[i]["content"] = c[:200] + "... [truncated]"
+			}
+		}
+	}
+	return msgs
 }
