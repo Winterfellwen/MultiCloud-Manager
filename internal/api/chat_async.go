@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -125,7 +126,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			"messages":   messages,
 			"stream":     true,
 			"tools":      h.runtime.GetToolDefinitions(),
-			"max_tokens": 4096,
+			"max_tokens": 8192,
 		}
 
 		if cfg.EnableReasoning {
@@ -142,6 +143,9 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+		httpReq.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(bodyBytes)), nil
+		}
 
 		resp, err := h.doWithRetry(ctx, httpClient, httpReq)
 		if err != nil {
@@ -152,6 +156,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		if resp.StatusCode != 200 {
 			respBody, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
+			log.Printf("Chat stream request failed (HTTP %d, iter %d): %s", resp.StatusCode, iterCount, strings.TrimSpace(string(respBody)))
 			stopReason = fmt.Sprintf("API error (HTTP %d)", resp.StatusCode)
 			var apiErr struct {
 				Error struct {
@@ -368,9 +373,6 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 	var lastErr error
 	for retry := 0; retry < 3; retry++ {
 		resp, lastErr = client.Do(req)
-		if lastErr == nil && (resp.StatusCode < 500 || resp.StatusCode == 429) {
-			return resp, nil
-		}
 		if lastErr != nil {
 			if retry < 2 {
 				select {
@@ -381,14 +383,23 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 			}
 			continue
 		}
-		resp.Body.Close()
-		if retry < 2 {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(time.Duration(1<<uint(retry)) * time.Second):
-			}
+		if resp.StatusCode == 200 {
+			return resp, nil
 		}
+		if resp.StatusCode == 400 || resp.StatusCode == 429 || resp.StatusCode >= 500 {
+			respBody, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			log.Printf("API request failed (HTTP %d, attempt %d/3): %s", resp.StatusCode, retry+1, strings.TrimSpace(string(respBody)))
+			if retry < 2 {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(time.Duration(1<<uint(retry)) * time.Second):
+				}
+			}
+			continue
+		}
+		return resp, nil
 	}
 	return resp, lastErr
 }
