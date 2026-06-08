@@ -78,11 +78,12 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0; position: relative; z-index: 1; }
 
 /* Content */
-.content { margin-left: 200px; margin-top: 44px; flex: 1; padding: 20px; min-height: calc(100vh - 44px); overflow-y: auto; }
+.content { margin-left: 200px; margin-top: 44px; flex: 1; padding: 20px; height: calc(100vh - 44px); overflow: hidden; display: flex; flex-direction: column; }
 
 /* Pages */
-.page { display: none; }
+.page { display: none; overflow-y: auto; }
 .page.active { display: block; }
+.page.active#page-chat { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 
 /* Stats */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
@@ -104,15 +105,19 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .activity-placeholder { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
 /* Chat - OpenCode terminal style */
-.chat-layout { display: flex; flex: 1; gap: 0; height: calc(100vh - 44px - 40px); }
-.chat-sidebar { width: 200px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+.chat-layout { display: flex; flex: 1; gap: 0; min-height: 0; }
+#page-chat { height: 100%; }
+.chat-sidebar { width: 280px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
 .chat-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); }
-.chat-sidebar-header h3 { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.chat-sidebar-header h3 { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin: 0; }
+.chat-sidebar-actions { display: flex; align-items: center; gap: 4px; }
 .chat-new-btn { background: none; border: 1px solid var(--border); border-radius: 2px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all .15s; font-family: inherit; }
 .chat-new-btn:hover { border-color: var(--primary); color: var(--primary); }
 .chat-session-list { flex: 1; overflow-y: auto; padding: 4px; }
-.chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; display: flex; align-items: center; gap: 4px; min-width: 0; }
 .chat-session-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.chat-session-item .session-checkbox { display: none; margin: 0; cursor: pointer; flex-shrink: 0; accent-color: var(--primary); }
+.chat-sidebar.batch-mode .session-checkbox { display: inline-flex; }
 .chat-session-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
 .chat-session-item.active { background: rgba(0,122,255,.1); color: var(--primary); }
 .chat-session-item.running { border-left: 2px solid var(--success); }
@@ -123,21 +128,32 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-session-item .session-del-btn { margin-left: auto; opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; flex-shrink: 0; }
 .chat-session-item:hover .session-del-btn { opacity: .4; }
 .chat-session-item .session-del-btn:hover { opacity: 1; }
+.chat-sidebar.batch-mode .session-del-btn { display: none; }
+.batch-delete-bar { display: none; align-items: center; gap: 6px; padding: 6px 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.chat-sidebar.batch-mode .batch-delete-bar { display: flex; }
+.batch-delete-btn { background: var(--danger); color: #fff; border: none; border-radius: 2px; padding: 3px 10px; font-size: 11px; cursor: pointer; font-family: inherit; }
+.batch-delete-btn:disabled { opacity: .3; cursor: not-allowed; }
+.batch-delete-cancel { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 2px; padding: 3px 10px; font-size: 11px; cursor: pointer; font-family: inherit; }
+.batch-delete-count { flex: 1; }
 .session-badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+  font-size: 0;
 }
-.badge-running { background: #dbeafe; color: #1e40af; }
-.badge-warn    { background: #fef3c7; color: #92400e; }
-.badge-done    { background: #dcfce7; color: #166534; }
-.badge-error   { background: #fee2e2; color: #991b1b; }
-.badge-stopped { background: #e5e7eb; color: #374151; }
-.badge-queued  { background: #ede9fe; color: #5b21b6; }
-.chat-main { flex: 1; display: flex; flex-direction: column; padding: 0 12px; min-width: 0; }
+.badge-running { background: #1e40af; }
+.badge-warn    { background: #92400e; }
+.badge-done    { background: #22c55e; }
+.badge-error   { background: #991b1b; }
+.badge-stopped { background: #374151; }
+.badge-queued  { background: #5b21b6; }
+.chat-main { flex: 1; display: flex; flex-direction: column; padding: 0; min-width: 0; }
 .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; min-height: 36px; }
 
 /* Mode toggle - segmented control */
@@ -600,10 +616,18 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       <div class="chat-sidebar">
         <div class="chat-sidebar-header">
           <h3 data-i18n="chat.sessions">Sessions</h3>
-          <button class="chat-new-btn" onclick="newSession()" title="New Session">+</button>
+          <div class="chat-sidebar-actions">
+            <button class="chat-new-btn" onclick="newSession()" title="New Session">+</button>
+            <button class="chat-new-btn" id="chatBatchDelBtn" onclick="toggleBatchDelete()" title="Batch Delete" style="font-size:11px">&#9633;</button>
+          </div>
         </div>
         <div class="chat-session-list" id="sessionList">
           <div class="chat-session-item" data-sid="loading"><span data-i18n="chat.loading">Loading...</span></div>
+        </div>
+        <div class="batch-delete-bar" id="batchDeleteBar">
+          <span class="batch-delete-count" id="batchDeleteCount">0 selected</span>
+          <button class="batch-delete-cancel" onclick="toggleBatchDelete()">Cancel</button>
+          <button class="batch-delete-btn" id="batchDeleteConfirm" onclick="batchDeleteSessions()" disabled>Delete</button>
         </div>
       </div>
       <!-- Chat Main -->
@@ -636,6 +660,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           </div>
           <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
       </div>
+    </div>
       <!-- Files Sidebar -->
       <div class="files-sidebar" id="filesSidebar">
         <div class="files-sidebar-header">
@@ -646,7 +671,6 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">No files generated yet</div>
         </div>
       </div>
-    </div>
   </div>
   </div>
 
@@ -995,7 +1019,6 @@ function startGlobalEventSource() {
   GLOBAL_EVENT_SOURCE = es;
 }
 
-var _esRestartPending = false;
 var _esProcessingEvents = false;
 function subscribeToSession(sessionID) {
   if (SUBSCRIBED_SESSIONS.has(sessionID)) return;
@@ -1004,9 +1027,12 @@ function subscribeToSession(sessionID) {
     var first = SUBSCRIBED_SESSIONS.values().next().value;
     SUBSCRIBED_SESSIONS.delete(first);
   }
-  if (!_esRestartPending && !_esProcessingEvents) {
-    _esRestartPending = true;
-    setTimeout(function() { _esRestartPending = false; startGlobalEventSource(); }, 0);
+  // Restart EventSource immediately (not deferred) so the new session's
+  // events are captured from the start. _esProcessingEvents guards against
+  // restart during event processing (handleStateChangeEvent no longer
+  // calls loadSessions, but keep the guard for safety).
+  if (!_esProcessingEvents) {
+    startGlobalEventSource();
   }
 }
 
@@ -1015,9 +1041,10 @@ var STREAMING_CONTENT = '';
 
 function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
+  if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
   STREAMING_CONTENT += ev.payload.content;
   
-  if (!STREAMING_DIV) {
+  if (!STREAMING_DIV || !STREAMING_DIV.isConnected) {
     var container = document.getElementById('chatMessages');
     STREAMING_DIV = document.createElement('div');
     STREAMING_DIV.className = 'msg agent streaming';
@@ -1089,15 +1116,17 @@ function handleStateChangeEvent(ev) {
       var badge = el.querySelector('.session-badge');
       if (badge) {
         var stateText = '', stateCls = 'session-badge';
+        var titleText = '';
         switch (newState) {
-          case 'running': stateText = '\u2699 ' + (LOCALE === 'zh' ? '运行中' : 'Running'); stateCls += ' badge-running'; break;
-          case 'waiting_confirm': stateText = '\u26A0 ' + (LOCALE === 'zh' ? '等待确认' : 'Confirm'); stateCls += ' badge-warn'; break;
-          case 'done': stateText = '\u25CF ' + (LOCALE === 'zh' ? '新回复' : 'New'); stateCls += ' badge-done'; break;
-          case 'error': stateText = '\u2717 ' + (LOCALE === 'zh' ? '错误' : 'Error'); stateCls += ' badge-error'; break;
-          case 'stopped': stateText = '\u25A0 ' + (LOCALE === 'zh' ? '已停止' : 'Stopped'); stateCls += ' badge-stopped'; break;
+          case 'running': stateText = ''; stateCls += ' badge-running'; titleText = LOCALE === 'zh' ? '运行中' : 'Running'; break;
+          case 'waiting_confirm': stateText = ''; stateCls += ' badge-warn'; titleText = LOCALE === 'zh' ? '等待确认' : 'Confirm'; break;
+          case 'done': stateText = ''; stateCls += ' badge-done'; titleText = LOCALE === 'zh' ? '新回复' : 'New'; break;
+          case 'error': stateText = ''; stateCls += ' badge-error'; titleText = LOCALE === 'zh' ? '错误' : 'Error'; break;
+          case 'stopped': stateText = ''; stateCls += ' badge-stopped'; titleText = LOCALE === 'zh' ? '已停止' : 'Stopped'; break;
         }
         badge.textContent = stateText;
         badge.className = stateCls;
+        if (titleText) { badge.title = titleText; }
       }
     }
   });
@@ -1132,6 +1161,20 @@ function showConfirmModal(runID, payload) {
   inner.appendChild(actions);
   modal.appendChild(inner);
   document.body.appendChild(modal);
+}
+
+function renderRunEvents(container, events) {
+  var buf = '';
+  for (var i = 0; i < events.length; i++) {
+    var ev = events[i];
+    if (ev.event_type === 'token' && ev.payload && ev.payload.content) {
+      buf += ev.payload.content;
+      continue;
+    }
+    if (buf) { appendMessage('agent', buf); buf = ''; }
+    appendRunEvent(container, ev);
+  }
+  if (buf) { appendMessage('agent', buf); }
 }
 
 function appendRunEvent(container, ev) {
@@ -1800,7 +1843,7 @@ async function loadSessions() {
     var statusDot = s.status === 'running'
       ? '<span class="session-status"><span class="running-dot"></span></span>'
       : '<span class="session-status"><span class="done-dot"></span></span>';
-    item.innerHTML = statusDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    item.innerHTML = '<input type="checkbox" class="session-checkbox" data-sid="' + s.session_id + '" onclick="event.stopPropagation();updateBatchCount()">' + statusDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
     // Add state badge
@@ -1809,12 +1852,12 @@ async function loadSessions() {
     var state = s.state || 'idle';
     var depth = s.queue_depth || 0;
     switch (state) {
-      case 'running': badge.textContent = '\u2699 ' + (LOCALE === 'zh' ? '运行中' : 'Running'); badge.classList.add('badge-running'); break;
-      case 'waiting_confirm': badge.textContent = '\u26A0 ' + (LOCALE === 'zh' ? '等待确认' : 'Confirm'); badge.classList.add('badge-warn'); break;
-      case 'done': badge.textContent = s.has_unread ? '\u25CF ' + (LOCALE === 'zh' ? '新回复' : 'New') : ''; badge.classList.add('badge-done'); break;
-      case 'error': badge.textContent = '\u2717 ' + (LOCALE === 'zh' ? '错误' : 'Error'); badge.classList.add('badge-error'); break;
-      case 'stopped': badge.textContent = '\u25A0 ' + (LOCALE === 'zh' ? '已停止' : 'Stopped'); badge.classList.add('badge-stopped'); break;
-      case 'queued': badge.textContent = (LOCALE === 'zh' ? '排队中' : 'Queued') + ' (' + depth + ')'; badge.classList.add('badge-queued'); break;
+      case 'running': badge.textContent = ''; badge.classList.add('badge-running'); badge.title = LOCALE === 'zh' ? '运行中' : 'Running'; break;
+      case 'waiting_confirm': badge.textContent = ''; badge.classList.add('badge-warn'); badge.title = LOCALE === 'zh' ? '等待确认' : 'Confirm'; break;
+      case 'done': badge.textContent = s.has_unread ? '' : ''; badge.classList.add('badge-done'); if (s.has_unread) badge.title = LOCALE === 'zh' ? '新回复' : 'New'; break;
+      case 'error': badge.textContent = ''; badge.classList.add('badge-error'); badge.title = LOCALE === 'zh' ? '错误' : 'Error'; break;
+      case 'stopped': badge.textContent = ''; badge.classList.add('badge-stopped'); badge.title = LOCALE === 'zh' ? '已停止' : 'Stopped'; break;
+      case 'queued': badge.textContent = ''; badge.classList.add('badge-queued'); badge.title = (LOCALE === 'zh' ? '排队中' : 'Queued') + ' (' + depth + ')'; break;
       default: badge.textContent = '';
     }
     if (badge.textContent) item.appendChild(badge);
@@ -1833,6 +1876,10 @@ async function switchSession(sid) {
   // Update sidebar
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
     el.classList.toggle('active', el.dataset.sid === sid);
+    if (el.dataset.sid === sid) {
+      var badge = el.querySelector('.session-badge');
+      if (badge) { badge.textContent = ''; badge.className = 'session-badge'; }
+    }
   });
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
@@ -1936,11 +1983,12 @@ async function switchSession(sid) {
       var runDiv = document.createElement('div');
       runDiv.id = 'run-' + sessData.active_run_id;
       runDiv.className = 'run-events';
-      sessData.active_run_events.forEach(function(ev) {
-        appendRunEvent(runDiv, ev);
-      });
-      container.appendChild(runDiv);
-      CURRENT_RUN_ID = sessData.active_run_id;
+        renderRunEvents(runDiv, sessData.active_run_events);
+        container.appendChild(runDiv);
+        CURRENT_RUN_ID = sessData.active_run_id;
+        // Reset streaming state so SSE events create a fresh streaming div
+        STREAMING_DIV = null;
+        STREAMING_CONTENT = '';
     }
     // Render pending queue indicator
     if (sessData.pending_runs && sessData.pending_runs.length > 0) {
@@ -1958,10 +2006,27 @@ async function switchSession(sid) {
         summary.textContent = (inc.state === 'stopped' ? '\u25A0 ' + (LOCALE === 'zh' ? '已停止' : 'Stopped') : '\u2717 ' + (LOCALE === 'zh' ? '错误' : 'Error')) + ': ' + (inc.user_message || '').slice(0, 40);
         details.appendChild(summary);
         if (inc.events) {
-          inc.events.forEach(function(ev) { appendRunEvent(details, ev); });
+          renderRunEvents(details, inc.events);
         }
         container.appendChild(details);
       });
+    }
+    // If cache was stale and API has newer messages, render them
+    if (sessData.messages && sessData.messages.length > lastSyncedMsgCount) {
+      for (var i = lastSyncedMsgCount; i < sessData.messages.length; i++) {
+        var m = sessData.messages[i];
+        if (m.role === 'user') {
+          appendMessage('user', escHtml(m.content));
+        } else if (m.role === 'agent' || m.role === 'assistant') {
+          appendMessage('agent', renderMarkdown(m.content));
+        } else if (m.role === 'tool-calls') {
+          renderToolCallsGroup(m.content, container);
+        }
+      }
+      SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
+        return {role: m.role, content: m.content};
+      });
+      lastSyncedMsgCount = sessData.messages.length;
     }
   }
 
@@ -1988,6 +2053,37 @@ async function deleteSession(sid) {
     CURRENT_SESSION = null;
     document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '</div>';
   }
+  await loadSessions();
+}
+
+var _batchMode = false;
+function toggleBatchDelete() {
+  _batchMode = !_batchMode;
+  document.querySelector('.chat-sidebar').classList.toggle('batch-mode', _batchMode);
+  document.getElementById('chatBatchDelBtn').textContent = _batchMode ? '\u2715' : '\u9633';
+  if (!_batchMode) {
+    document.querySelectorAll('.session-checkbox').forEach(function(cb) { cb.checked = false; });
+  }
+  updateBatchCount();
+}
+function updateBatchCount() {
+  var checked = document.querySelectorAll('.session-checkbox:checked').length;
+  document.getElementById('batchDeleteCount').textContent = checked + ' selected';
+  document.getElementById('batchDeleteConfirm').disabled = checked === 0;
+}
+async function batchDeleteSessions() {
+  var checked = document.querySelectorAll('.session-checkbox:checked');
+  if (checked.length === 0) return;
+  if (!confirm('确定要删除选中的 ' + checked.length + ' 个对话吗？')) return;
+  for (var i = 0; i < checked.length; i++) {
+    var sid = checked[i].dataset.sid;
+    await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
+  }
+  if (checked.length > 0) {
+    CURRENT_SESSION = null;
+    document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '</div>';
+  }
+  toggleBatchDelete();
   await loadSessions();
 }
 
