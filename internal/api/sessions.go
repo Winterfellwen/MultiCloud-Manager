@@ -336,17 +336,21 @@ func (h *SessionsHandler) Update(c *gin.Context) {
 func (h *SessionsHandler) Create(c *gin.Context) {
 	var req struct {
 		Title string `json:"title"`
+		Mode  string `json:"mode"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Title == "" {
 		req.Title = "New Session"
+	}
+	if req.Mode == "" {
+		req.Mode = "plan"
 	}
 
 	var sessionID string
 
 	insertQuery := `INSERT INTO sessions (session_id, title, status, mode) 
-	                VALUES (gen_random_uuid()::text, $1, 'idle', 'plan') 
+	                VALUES (gen_random_uuid()::text, $1, 'idle', $2) 
 	                RETURNING session_id`
-	err := h.db.QueryRow(insertQuery, req.Title).Scan(&sessionID)
+	err := h.db.QueryRow(insertQuery, req.Title, req.Mode).Scan(&sessionID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
@@ -357,6 +361,6 @@ func (h *SessionsHandler) Create(c *gin.Context) {
 		"session_id": sessionID,
 		"title":      req.Title,
 		"status":     "idle",
-		"mode":       "plan",
+		"mode":       req.Mode,
 	})
 }

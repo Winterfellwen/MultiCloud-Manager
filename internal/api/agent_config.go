@@ -95,7 +95,8 @@ func TestAIConfig(c *gin.Context) {
 		return
 	}
 
-	apiURL := strings.TrimRight(cfg.APIEndpoint, "/") + "/chat/completions"
+	baseURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions")
+	apiURL := baseURL + "/chat/completions"
 	messages := []map[string]interface{}{
 		{"role": "user", "content": "Say hello in one word."},
 	}
