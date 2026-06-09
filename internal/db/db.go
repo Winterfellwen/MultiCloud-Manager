@@ -265,6 +265,8 @@ END $$`,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`ALTER TABLE team_members ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id)`,
 		`CREATE TABLE IF NOT EXISTS terraform_templates (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			name VARCHAR(200) NOT NULL,

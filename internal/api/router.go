@@ -103,6 +103,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.GET("/teams/:teamId/members", teamsHandler.GetTeamMembers)
 		auth.POST("/teams/:teamId/members", teamsHandler.AddTeamMember)
 		auth.PUT("/teams/:teamId/members/:id", teamsHandler.UpdateTeamMember)
+		auth.PUT("/teams/:teamId/members/:id/password", teamsHandler.ResetPassword)
 		auth.DELETE("/teams/:teamId/members/:id", teamsHandler.RemoveTeamMember)
 		// Terraform templates
 		auth.GET("/terraform/templates", terraformHandler.GetTemplates)

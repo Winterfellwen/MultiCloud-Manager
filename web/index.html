@@ -819,15 +819,52 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   <!-- Invite Modal -->
   <div class="modal-overlay" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
     <div class="modal-box">
-      <h3>邀请团队成员</h3>
-      <div class="modal-desc">输入成员邮箱或用户名进行邀请</div>
+      <h3 data-i18n="team.invite_title">添加团队成员</h3>
+      <div class="modal-desc" data-i18n="team.invite_desc">创建成员账号，设置登录密码</div>
       <div class="modal-field">
-        <label>邮箱或用户名</label>
-        <input type="text" id="inviteEmail" placeholder="user@example.com">
+        <label data-i18n="team.field_email">邮箱 (登录账号)</label>
+        <input type="email" id="inviteEmail" placeholder="user@example.com" required>
+      </div>
+      <div class="modal-field">
+        <label data-i18n="team.field_name">显示名称</label>
+        <input type="text" id="inviteName" placeholder="张三">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="team.field_password">登录密码</label>
+        <div style="position:relative">
+          <input type="password" id="invitePassword" placeholder="至少6位" style="width:100%;padding-right:40px">
+          <button type="button" onclick="toggleInvitePw()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)" aria-label="Toggle password visibility">👁</button>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label data-i18n="team.field_role">角色</label>
+        <select id="inviteRole" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text)">
+          <option value="member" data-i18n="team.member">成员</option>
+          <option value="admin" data-i18n="team.admin">管理员</option>
+        </select>
       </div>
       <div class="modal-actions">
         <button class="modal-btn-cancel" onclick="closeInviteModal()" data-i18n="config.cancel">取消</button>
-        <button class="modal-btn-primary" onclick="submitInvite()">邀请</button>
+        <button class="modal-btn-primary" onclick="submitInvite()" data-i18n="team.invite_create">创建账号</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div class="modal-overlay" id="resetPwModal" onclick="if(event.target===this)closeResetPwModal()">
+    <div class="modal-box">
+      <h3 data-i18n="team.reset_pw_title">重置密码</h3>
+      <div class="modal-desc" id="resetPwDesc">为成员设置新密码</div>
+      <div class="modal-field">
+        <label data-i18n="team.field_new_password">新密码</label>
+        <div style="position:relative">
+          <input type="password" id="resetNewPassword" placeholder="至少6位" style="width:100%;padding-right:40px">
+          <button type="button" onclick="toggleResetPw()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)" aria-label="Toggle password visibility">👁</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" onclick="closeResetPwModal()" data-i18n="config.cancel">取消</button>
+        <button class="modal-btn-primary" onclick="submitResetPw()" data-i18n="team.reset_pw_confirm">确认重置</button>
       </div>
     </div>
   </div>
@@ -3274,18 +3311,26 @@ async function loadTeam() {
   else members = [];
   document.getElementById('teamCount').textContent = members.length;
   const container = document.getElementById('teamList');
-  container.innerHTML = members.map(m =>
-    '<div class="member-card">' +
+  container.innerHTML = members.map(m => {
+    var avatarLetter = (m.name || m.email || 'U').charAt(0).toUpperCase();
+    var isAdmin = (m.role || 'member') === 'admin';
+    return '<div class="member-card">' +
       '<div class="member-left">' +
-        '<div class="member-avatar">' + (m.avatar || m.nickname?.[0] || 'U') + '</div>' +
+        '<div class="member-avatar">' + avatarLetter + '</div>' +
         '<div>' +
-          '<div class="member-name">' + (m.name || m.nickname || 'Unknown') + '</div>' +
-          '<div class="member-role ' + (m.role || 'member') + '">' + ((m.role || 'member') === 'admin' ? t('team.admin') : t('team.member')) + '</div>' +
+          '<div class="member-name">' + (m.name || 'Unknown') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted)">' + (m.email || '') + '</div>' +
+          '<div class="member-role ' + (m.role || 'member') + '">' + (isAdmin ? t('team.admin') : t('team.member')) +
+            (m.has_account ? ' · <span style="color:var(--primary)">可登录</span>' : ' · <span style="color:var(--warning)">未激活</span>') +
+          '</div>' +
         '</div>' +
       '</div>' +
-      ((m.role || 'member') !== 'admin' ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')">' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + t('team.admin') + '</span>') +
-    '</div>'
-  ).join('');
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        '<button class="btn-action" onclick="openResetPwModal(\'' + m.id + '\',\'' + (m.name || m.email || '') + '\')" title="' + (t('team.reset_pw') || '重置密码') + '" style="font-size:12px;padding:4px 8px">🔑</button>' +
+        (!isAdmin ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')">' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + t('team.admin') + '</span>') +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 async function removeMember(id) {
@@ -3530,6 +3575,17 @@ var __ = {
     'terraform.confirm_apply': '确定要执行 Apply 吗？',
     'terraform.delete': '删除',
     'team.confirm_remove': '确定要移除该成员吗？',
+    'team.invite_title': '添加团队成员',
+    'team.invite_desc': '创建成员账号，设置登录密码',
+    'team.field_email': '邮箱 (登录账号)',
+    'team.field_name': '显示名称',
+    'team.field_password': '登录密码',
+    'team.field_role': '角色',
+    'team.invite_create': '创建账号',
+    'team.reset_pw': '重置密码',
+    'team.reset_pw_title': '重置密码',
+    'team.field_new_password': '新密码',
+    'team.reset_pw_confirm': '确认重置',
     'account.name': '账户名称',
     'account.name_placeholder': '请输入账户名称',
     'profile.name': '管理员',
@@ -3660,6 +3716,17 @@ var __ = {
     'terraform.confirm_apply': 'Are you sure you want to run Apply?',
     'terraform.delete': 'Delete',
     'team.confirm_remove': 'Are you sure you want to remove this member?',
+    'team.invite_title': 'Add Team Member',
+    'team.invite_desc': 'Create account with login credentials',
+    'team.field_email': 'Email (Login Username)',
+    'team.field_name': 'Display Name',
+    'team.field_password': 'Login Password',
+    'team.field_role': 'Role',
+    'team.invite_create': 'Create Account',
+    'team.reset_pw': 'Reset Password',
+    'team.reset_pw_title': 'Reset Password',
+    'team.field_new_password': 'New Password',
+    'team.reset_pw_confirm': 'Confirm Reset',
     'account.name': 'Account Name',
     'account.name_placeholder': 'Enter account name',
     'profile.name': 'Admin',
@@ -3793,27 +3860,73 @@ async function submitPassword() {
 function openInviteModal() {
   document.getElementById('inviteModal').classList.add('active');
   document.getElementById('inviteEmail').value = '';
+  document.getElementById('inviteName').value = '';
+  document.getElementById('invitePassword').value = '';
+  document.getElementById('inviteRole').value = 'member';
 }
 function closeInviteModal() {
   document.getElementById('inviteModal').classList.remove('active');
 }
+function toggleInvitePw() {
+  var inp = document.getElementById('invitePassword');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
 async function submitInvite() {
   var email = document.getElementById('inviteEmail').value.trim();
-  if (!email) { showToast('请输入邮箱或用户名'); return; }
+  var name = document.getElementById('inviteName').value.trim();
+  var password = document.getElementById('invitePassword').value;
+  var role = document.getElementById('inviteRole').value;
+  if (!email) { showToast('请输入邮箱'); return; }
+  if (!password || password.length < 6) { showToast('密码长度至少6位'); return; }
   var teamData = await apiFetch(API + '/teams');
   var teamId = teamData && teamData.teams && teamData.teams.length > 0 ? teamData.teams[0].id : null;
   if (!teamId) { showToast('无法获取团队信息'); closeInviteModal(); return; }
   var result = await apiFetch(API + '/teams/' + teamId + '/members', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email })
+    body: JSON.stringify({ name: name, email: email, password: password, role: role })
   });
   if (result && result.error) {
     showToast(result.error);
   } else {
     closeInviteModal();
-    showToast('邀请已发送');
+    showToast('成员已添加，可使用 ' + email + ' 登录');
     loadTeam();
+  }
+}
+
+/* Reset Password Modal */
+var RESET_MEMBER_ID = null;
+function openResetPwModal(memberId, memberName) {
+  RESET_MEMBER_ID = memberId;
+  document.getElementById('resetPwDesc').textContent = '为 ' + (memberName || '成员') + ' 设置新密码';
+  document.getElementById('resetNewPassword').value = '';
+  document.getElementById('resetPwModal').classList.add('active');
+}
+function closeResetPwModal() {
+  document.getElementById('resetPwModal').classList.remove('active');
+  RESET_MEMBER_ID = null;
+}
+function toggleResetPw() {
+  var inp = document.getElementById('resetNewPassword');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+async function submitResetPw() {
+  if (!RESET_MEMBER_ID) return;
+  var password = document.getElementById('resetNewPassword').value;
+  if (!password || password.length < 6) { showToast('密码长度至少6位'); return; }
+  var teamData = await apiFetch(API + '/teams');
+  var teamId = teamData && teamData.teams && teamData.teams[0] ? teamData.teams[0].id : 'default';
+  var result = await apiFetch(API + '/teams/' + teamId + '/members/' + RESET_MEMBER_ID + '/password', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: password })
+  });
+  if (result && result.error) {
+    showToast(result.error);
+  } else {
+    closeResetPwModal();
+    showToast('密码已重置');
   }
 }
 
@@ -3852,6 +3965,7 @@ document.addEventListener('keydown', function(e) {
       if (id === 'aiConfigModal') closeAIConfig();
       else if (id === 'passwordModal') closePasswordModal();
       else if (id === 'inviteModal') closeInviteModal();
+      else if (id === 'resetPwModal') closeResetPwModal();
       else if (id === 'uploadModal') closeUploadModal();
     });
   }
