@@ -127,7 +127,7 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 		return fmt.Errorf("parse credentials: %w", err)
 	}
 
-	prov := createProvider(cloudType, creds)
+	prov := NewProvider(cloudType, creds)
 	if prov == nil {
 		return nil
 	}
@@ -293,7 +293,7 @@ func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) 
 		return nil, "", fmt.Errorf("parse credentials: %w", err)
 	}
 
-	prov := createProvider(cloudType, creds)
+	prov := NewProvider(cloudType, creds)
 	if prov == nil {
 		return nil, "", fmt.Errorf("unsupported cloud type: %s", cloudType)
 	}
@@ -301,7 +301,7 @@ func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) 
 	return prov, cloudResID, nil
 }
 
-func createProvider(cloudType string, creds map[string]string) types.Provider {
+func NewProvider(cloudType string, creds map[string]string) types.Provider {
 	switch cloudType {
 	case "azure":
 		return providers.NewAzureProvider(creds)

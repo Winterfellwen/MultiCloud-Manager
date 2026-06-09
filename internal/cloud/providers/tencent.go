@@ -179,6 +179,101 @@ func (p *TencentProvider) tencentRequest(ctx context.Context, service, action, v
 	return respBody, nil
 }
 
+func (p *TencentProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {
+	// Extract service from URL: https://<service>.tencentcloudapi.com/
+	if !strings.HasSuffix(reqURL, ".tencentcloudapi.com/") &&
+		!strings.Contains(reqURL, ".tencentcloudapi.com?") {
+		return nil, fmt.Errorf("tencent: URL must be <service>.tencentcloudapi.com")
+	}
+
+	action := headers["X-TC-Action"]
+	if action == "" {
+		return nil, fmt.Errorf("tencent: X-TC-Action header is required")
+	}
+	version := headers["X-TC-Version"]
+	if version == "" {
+		version = "2017-03-12"
+	}
+	region := headers["X-TC-Region"]
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+
+	// Extract host from URL for signing
+	host := strings.TrimPrefix(reqURL, "https://")
+	host = strings.TrimSuffix(host, "/")
+	host = strings.Split(host, "?")[0]
+	service := strings.TrimSuffix(host, ".tencentcloudapi.com")
+
+	timestamp := time.Now().Unix()
+	date := time.Now().UTC().Format("2006-01-02")
+
+	canonicalHeaders := fmt.Sprintf("content-type:%s\nhost:%s\nx-tc-action:%s\n", "application/json; charset=utf-8", strings.ToLower(host), strings.ToLower(action))
+	signedHeaders := "content-type;host;x-tc-action"
+	hashedPayload := sha256Hex(body)
+	canonicalRequest := fmt.Sprintf("%s\n/\n\n%s\n%s\n%s", method, canonicalHeaders, signedHeaders, hashedPayload)
+
+	credentialScope := fmt.Sprintf("%s/%s/tc3_request", date, service)
+	stringToSign := fmt.Sprintf("TC3-HMAC-SHA256\n%d\n%s\n%s", timestamp, credentialScope, sha256Hex([]byte(canonicalRequest)))
+
+	secretDate := hmacSHA256([]byte("TC3"+p.secretKey), []byte(date))
+	secretService := hmacSHA256(secretDate, []byte(service))
+	secretSigning := hmacSHA256(secretService, []byte("tc3_request"))
+	signature := hex.EncodeToString(hmacSHA256(secretSigning, []byte(stringToSign)))
+
+	auth := fmt.Sprintf("TC3-HMAC-SHA256 Credential=%s/%s, SignedHeaders=%s, Signature=%s",
+		p.secretID, credentialScope, signedHeaders, signature)
+
+	endpoint := "https://" + host
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Host", strings.ToLower(host))
+	req.Header.Set("X-TC-Action", action)
+	req.Header.Set("X-TC-Timestamp", fmt.Sprintf("%d", timestamp))
+	req.Header.Set("X-TC-Version", version)
+	req.Header.Set("X-TC-Region", region)
+	req.Header.Set("Authorization", auth)
+	for k, v := range headers {
+		if k != "X-TC-Action" && k != "X-TC-Version" && k != "X-TC-Region" {
+			req.Header.Set(k, v)
+		}
+	}
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	respHeaders := map[string]string{}
+	for k := range resp.Header {
+		lower := strings.ToLower(k)
+		if lower == "authorization" || lower == "set-cookie" {
+			continue
+		}
+		respHeaders[k] = resp.Header.Get(k)
+	}
+
+	return &types.RawResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       respBody,
+	}, nil
+}
+
 func sha256Hex(data []byte) string {
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])

@@ -203,3 +203,89 @@ func (p *OracleProvider) ociRequest(ctx context.Context, method, reqURL string, 
 	}
 	return respBody, nil
 }
+
+func (p *OracleProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {
+	if p.privateKey == nil {
+		return nil, fmt.Errorf("oracle: private key not loaded")
+	}
+
+	// Validate URL — only allow Oracle Cloud endpoints
+	if !strings.HasSuffix(reqURL, ".oraclecloud.com") &&
+		!strings.Contains(reqURL, ".oraclecloud.com/") &&
+		!strings.Contains(reqURL, ".oraclecloud.com?") {
+		return nil, fmt.Errorf("oracle: URL must be an oraclecloud.com domain")
+	}
+
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Host = req.URL.Host
+	date := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	req.Header.Set("Date", date)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	signedHeaders := []string{"(request-target)", "date", "host"}
+	signingParts := []string{
+		fmt.Sprintf("(request-target): %s %s", strings.ToLower(method), req.URL.RequestURI()),
+		fmt.Sprintf("date: %s", date),
+		fmt.Sprintf("host: %s", req.Host),
+	}
+
+	if body != nil {
+		hash := sha256.Sum256(body)
+		b64 := base64.StdEncoding.EncodeToString(hash[:])
+		req.Header.Set("x-content-sha256", b64)
+		signedHeaders = append(signedHeaders, "x-content-sha256")
+		signingParts = append(signingParts, fmt.Sprintf("x-content-sha256: %s", b64))
+	}
+
+	sigBase := strings.Join(signingParts, "\n")
+	hash := sha256.Sum256([]byte(sigBase))
+	sigBytes, err := rsa.SignPKCS1v15(rand.Reader, p.privateKey, crypto.SHA256, hash[:])
+	if err != nil {
+		return nil, fmt.Errorf("oracle signing: %w", err)
+	}
+	b64Sig := base64.StdEncoding.EncodeToString(sigBytes)
+
+	authHeader := fmt.Sprintf(
+		`Signature version="1",keyId="%s",algorithm="rsa-sha256",headers="%s",signature="%s"`,
+		p.keyID, strings.Join(signedHeaders, " "), b64Sig)
+	req.Header.Set("Authorization", authHeader)
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	respHeaders := map[string]string{}
+	for k := range resp.Header {
+		lower := strings.ToLower(k)
+		if lower == "authorization" || lower == "set-cookie" {
+			continue
+		}
+		respHeaders[k] = resp.Header.Get(k)
+	}
+
+	return &types.RawResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       respBody,
+	}, nil
+}

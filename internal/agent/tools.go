@@ -126,7 +126,7 @@ func RegisterBuiltInTools(registry *ToolRegistry, executor *Executor) {
 
 	registry.Register(NewBuiltInTool(
 		"get_cloud_credentials",
-		"Get credentials for a cloud account. Use this to get API keys, tokens, subscription IDs for REST API calls.",
+		"Get credentials for a cloud account. Use this to discover account IDs for cloud_api_request.",
 		map[string]interface{}{
 			"cloud_type": map[string]interface{}{
 				"type":        "string",
@@ -136,6 +136,42 @@ func RegisterBuiltInTools(registry *ToolRegistry, executor *Executor) {
 		},
 		func(ctx context.Context, args map[string]interface{}) (string, error) {
 			return executor.getCredentials(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"cloud_api_request",
+		`Make an authenticated HTTP request to a cloud provider API. Credentials are injected server-side — never exposed to the AI.
+Use get_cloud_credentials first to discover the account_id.
+Supports: Azure (management.azure.com), Tencent (*.tencentcloudapi.com), Oracle (*.oraclecloud.com), Render (api.render.com).
+For Tencent, pass X-TC-Action in headers (required), X-TC-Version and X-TC-Region (optional).
+For Oracle, the full service URL must be provided.
+Response is automatically filtered — sensitive fields (secrets, tokens) are redacted.`,
+		map[string]interface{}{
+			"account_id": map[string]interface{}{
+				"type":        "string",
+				"description": "Cloud account ID from get_cloud_credentials",
+			},
+			"method": map[string]interface{}{
+				"type":        "string",
+				"description": "HTTP method: GET, POST, PUT, DELETE",
+				"enum":        []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
+			},
+			"url": map[string]interface{}{
+				"type":        "string",
+				"description": "Full API URL (must match the provider's allowed domains)",
+			},
+			"headers": map[string]interface{}{
+				"type":        "object",
+				"description": "Additional HTTP headers as key-value pairs. For Tencent: X-TC-Action is required.",
+			},
+			"body": map[string]interface{}{
+				"type":        "string",
+				"description": "Request body as JSON string (for POST/PUT/PATCH). Omit for GET.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.cloudAPIRequest(ctx, args)
 		},
 	))
 }
