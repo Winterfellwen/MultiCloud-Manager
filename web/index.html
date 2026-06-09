@@ -870,6 +870,33 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
     </div>
   </div>
 
+  <!-- Edit Member Modal -->
+  <div class="modal-overlay" id="editMemberModal" onclick="if(event.target===this)closeEditMemberModal()">
+    <div class="modal-box">
+      <h3 data-i18n="team.edit_title">编辑成员</h3>
+      <div class="modal-field">
+        <label data-i18n="team.field_name">显示名称</label>
+        <input type="text" id="editMemberName" placeholder="名称">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="team.field_email">邮箱</label>
+        <input type="email" id="editMemberEmail" placeholder="邮箱">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="team.field_role">角色</label>
+        <select id="editMemberRole" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text)">
+          <option value="user" data-i18n="team.role_user">普通用户</option>
+          <option value="viewer" data-i18n="team.role_viewer">只读用户</option>
+          <option value="admin" data-i18n="team.role_admin">管理员</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" onclick="closeEditMemberModal()" data-i18n="config.cancel">取消</button>
+        <button class="modal-btn-primary" onclick="submitEditMember()" data-i18n="config.save">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Upload Template Modal -->
   <div class="modal-overlay" id="uploadModal" onclick="if(event.target===this)closeUploadModal()">
     <div class="modal-box">
@@ -1490,7 +1517,7 @@ function applyRolePermissions() {
   const role = getRole();
   const navItems = document.querySelectorAll('.nav-item[data-page]');
   const roleMap = {
-    chat:     ['admin', 'user'],
+    chat:     ['admin', 'user', 'viewer'],
     vault:    ['admin'],
     team:     ['admin', 'user', 'viewer'],
     accounts: ['admin', 'user', 'viewer'],
@@ -1534,6 +1561,18 @@ function applyRolePermissions() {
     roleBadge.textContent = roleLabels[role] || role;
     roleBadge.style.background = roleColors[role] || '#888';
     roleBadge.style.color = '#000';
+  }
+
+  // Viewer: force plan mode, hide build/confirm buttons
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    if (role === 'viewer' && btn.dataset.mode !== 'plan') {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = '';
+    }
+  });
+  if (role === 'viewer' && typeof CURRENT_MODE !== 'undefined' && CURRENT_MODE !== 'plan') {
+    setChatMode('plan');
   }
 }
 
@@ -3391,6 +3430,7 @@ async function loadTeam() {
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center">' +
+        '<button class="btn-action" onclick="openEditMemberModal(\'' + m.id + '\',\'' + (m.name || '').replace(/'/g,"\\'") + '\',\'' + (m.email || '') + '\',\'' + (m.role || 'user') + '\')" title="' + (t('team.edit') || '编辑') + '" style="font-size:12px;padding:4px 8px' + (getRole() !== 'admin' ? ';display:none' : '') + '">✏️</button>' +
         '<button class="btn-action" onclick="openResetPwModal(\'' + m.id + '\',\'' + (m.name || m.email || '') + '\')" title="' + (t('team.reset_pw') || '重置密码') + '" style="font-size:12px;padding:4px 8px' + (getRole() !== 'admin' ? ';display:none' : '') + '">🔑</button>' +
         (!isAdmin ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')" ' + (getRole() !== 'admin' ? 'style="display:none"' : '') + '>' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + roleLabel + '</span>') +
       '</div>' +
@@ -3654,6 +3694,8 @@ var __ = {
     'team.reset_pw_title': '重置密码',
     'team.field_new_password': '新密码',
     'team.reset_pw_confirm': '确认重置',
+    'team.edit': '编辑',
+    'team.edit_title': '编辑成员',
     'account.name': '账户名称',
     'account.name_placeholder': '请输入账户名称',
     'profile.name': '管理员',
@@ -4001,6 +4043,41 @@ async function submitResetPw() {
   }
 }
 
+/* Edit Member Modal */
+var EDIT_MEMBER_ID = null;
+function openEditMemberModal(memberId, name, email, role) {
+  EDIT_MEMBER_ID = memberId;
+  document.getElementById('editMemberName').value = name || '';
+  document.getElementById('editMemberEmail').value = email || '';
+  document.getElementById('editMemberRole').value = role || 'user';
+  document.getElementById('editMemberModal').classList.add('active');
+}
+function closeEditMemberModal() {
+  document.getElementById('editMemberModal').classList.remove('active');
+  EDIT_MEMBER_ID = null;
+}
+async function submitEditMember() {
+  if (!EDIT_MEMBER_ID) return;
+  var name = document.getElementById('editMemberName').value.trim();
+  var email = document.getElementById('editMemberEmail').value.trim();
+  var role = document.getElementById('editMemberRole').value;
+  if (!email) { showToast('邮箱不能为空'); return; }
+  var teamData = await apiFetch(API + '/teams');
+  var teamId = teamData && teamData.teams && teamData.teams[0] ? teamData.teams[0].id : 'default';
+  var result = await apiFetch(API + '/teams/' + teamId + '/members/' + EDIT_MEMBER_ID, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, email: email, role: role })
+  });
+  if (result && result.error) {
+    showToast(result.error);
+  } else {
+    closeEditMemberModal();
+    showToast('成员信息已更新');
+    loadTeam();
+  }
+}
+
 /* Upload Template Modal */
 function openUploadModal() {
   document.getElementById('uploadModal').classList.add('active');
@@ -4037,6 +4114,7 @@ document.addEventListener('keydown', function(e) {
       else if (id === 'passwordModal') closePasswordModal();
       else if (id === 'inviteModal') closeInviteModal();
       else if (id === 'resetPwModal') closeResetPwModal();
+      else if (id === 'editMemberModal') closeEditMemberModal();
       else if (id === 'uploadModal') closeUploadModal();
     });
   }
