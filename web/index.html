@@ -1779,10 +1779,13 @@ async function confirmChat(action, toolName, toolParams) {
 var ABORT_CONTROLLER = null;
 
 function stopChat() {
+  // Abort client-side fetch stream if active
   if (ABORT_CONTROLLER) {
     ABORT_CONTROLLER.abort();
     ABORT_CONTROLLER = null;
   }
+  // Tell backend to stop the running agent
+  stopActiveSession();
 }
 
 async function stopActiveSession() {
