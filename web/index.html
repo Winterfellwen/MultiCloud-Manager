@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/embedded.js"></script>
 <title>MultiCloud Manager</title>
 <style>
@@ -353,12 +354,34 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg.agent .msg-content pre:hover .dl-btn { opacity: 1; }
 .dl-btn:hover { color: var(--text); border-color: var(--text-muted); }
 
-.typing-indicator { display: none; align-items: center; gap: 4px; align-self: flex-start; font-size: 12px; color: var(--text-muted); padding: 2px 0; }
-.typing-indicator.active { display: flex; }
-.typing-dot { width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; animation: typingBounce 1.2s infinite; }
-.typing-dot:nth-child(2) { animation-delay: .2s; }
-.typing-dot:nth-child(3) { animation-delay: .4s; }
-@keyframes typingBounce { 0%,60%,100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+/* AI Status Bar - Claude Code style */
+.ai-status-bar { display: none; align-items: center; gap: 8px; padding: 6px 10px; margin-bottom: 4px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); animation: statusSlideIn .2s ease-out; }
+.ai-status-bar.active { display: flex; }
+@keyframes statusSlideIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.ai-status-bar .status-icon { flex-shrink: 0; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
+.ai-status-bar .status-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-status-bar .status-stop { background: var(--danger); color: #fff; border: none; border-radius: 2px; padding: 1px 6px; font-size: 10px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+/* Thinking state - pulsing brain */
+.ai-status-bar.state-thinking .status-icon { color: var(--primary); animation: statusPulse 1.5s ease-in-out infinite; }
+.ai-status-bar.state-thinking .status-text { color: var(--primary); }
+@keyframes statusPulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+/* Tool state - spinning gear */
+.ai-status-bar.state-tool .status-icon { color: var(--warning); animation: statusSpin 1s linear infinite; }
+.ai-status-bar.state-tool .status-text { color: var(--warning); }
+@keyframes statusSpin { to { transform: rotate(360deg); } }
+/* Generating state - flowing dots */
+.ai-status-bar.state-generating .status-icon { color: var(--success); }
+.ai-status-bar.state-generating .status-text { color: var(--text-secondary); }
+.ai-status-bar.state-generating .status-icon::after { content: ''; display: block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--success); border-radius: 50%; animation: statusSpin .8s linear infinite; }
+/* Done state - checkmark */
+.ai-status-bar.state-done .status-icon { color: var(--success); }
+.ai-status-bar.state-done .status-text { color: var(--success); }
+/* Error state */
+.ai-status-bar.state-error .status-icon { color: var(--danger); }
+.ai-status-bar.state-error .status-text { color: var(--danger); }
+/* Streaming dots animation */
+.ai-status-bar .streaming-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; }
+@keyframes streamDots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
 
 /* Input bar */
 .chat-input-area { padding: 8px 0; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -560,14 +583,14 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
 <aside class="sidebar">
   <div class="sidebar-logo">MultiCloud</div>
   <nav class="sidebar-nav">
-    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">~</span> <span data-i18n="nav.dashboard_short">首页</span></div>
-    <div class="nav-item" data-page="chat"><span class="nav-icon">AI</span> <span data-i18n="nav.chat">AI 云助手</span></div>
-    <div class="nav-item" data-page="resources"><span class="nav-icon">#</span> <span data-i18n="nav.resources_short">资源</span></div>
-    <div class="nav-item" data-page="accounts"><span class="nav-icon">@</span> <span data-i18n="nav.accounts_short">账户</span></div>
-    <div class="nav-item" data-page="team"><span class="nav-icon">+</span> <span data-i18n="nav.team_short">团队</span></div>
-    <div class="nav-item" data-page="vault"><span class="nav-icon">🔐</span> <span>Vault</span></div>
-    <div class="nav-item" data-page="terraform"><span class="nav-icon">TF</span> <span data-i18n="quick.terraform">Terraform</span></div>
-    <div class="nav-item" data-page="profile"><span class="nav-icon">*</span> <span data-i18n="nav.profile_short">我的</span></div>
+    <div class="nav-item active" data-page="dashboard" role="button" aria-label="Dashboard"><span class="nav-icon">~</span> <span data-i18n="nav.dashboard_short">首页</span></div>
+    <div class="nav-item" data-page="chat" role="button" aria-label="AI Chat assistant"><span class="nav-icon">AI</span> <span data-i18n="nav.chat">AI 云助手</span></div>
+    <div class="nav-item" data-page="resources" role="button" aria-label="Cloud Resources"><span class="nav-icon">#</span> <span data-i18n="nav.resources_short">资源</span></div>
+    <div class="nav-item" data-page="accounts" role="button" aria-label="Cloud Accounts"><span class="nav-icon">@</span> <span data-i18n="nav.accounts_short">账户</span></div>
+    <div class="nav-item" data-page="team" role="button" aria-label="Team Management"><span class="nav-icon">+</span> <span data-i18n="nav.team_short">团队</span></div>
+    <div class="nav-item" data-page="vault" role="button" aria-label="Credential Vault"><span class="nav-icon">🔐</span> <span>Vault</span></div>
+    <div class="nav-item" data-page="terraform" role="button" aria-label="Terraform Templates"><span class="nav-icon">TF</span> <span data-i18n="quick.terraform">Terraform</span></div>
+    <div class="nav-item" data-page="profile" role="button" aria-label="Profile Settings"><span class="nav-icon">*</span> <span data-i18n="nav.profile_short">我的</span></div>
   </nav>
   <div class="sidebar-bottom">
     <button class="theme-btn sidebar-theme-btn" onclick="toggleTheme()" data-i18n="nav.theme"><span class="theme-icon">&#9790;</span> 主题</button>
@@ -590,10 +613,10 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   <!-- Dashboard -->
   <div id="page-dashboard" class="page active">
     <div class="stats-grid" id="statsGrid">
-      <div class="stat-card"><div class="stat-label" data-i18n="stat.resources">云资源</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.resources_sub">总计</div></div>
-      <div class="stat-card"><div class="stat-label" data-i18n="stat.accounts">云账号</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.accounts_sub">已接入</div></div>
-      <div class="stat-card"><div class="stat-label" data-i18n="stat.terraform">Terraform</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.terraform_sub">模板数</div></div>
-      <div class="stat-card"><div class="stat-label" data-i18n="stat.members">团队成员</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.members_sub">成员数</div></div>
+      <div class="stat-card" role="status" aria-label="Cloud resources count"><div class="stat-label" data-i18n="stat.resources">云资源</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.resources_sub">总计</div></div>
+      <div class="stat-card" role="status" aria-label="Cloud accounts count"><div class="stat-label" data-i18n="stat.accounts">云账号</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.accounts_sub">已接入</div></div>
+      <div class="stat-card" role="status" aria-label="Terraform templates count"><div class="stat-label" data-i18n="stat.terraform">Terraform</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.terraform_sub">模板数</div></div>
+      <div class="stat-card" role="status" aria-label="Team members count"><div class="stat-label" data-i18n="stat.members">团队成员</div><div class="stat-value">--</div><div class="stat-sub" data-i18n="stat.members_sub">成员数</div></div>
     </div>
 
     <div class="section-title" data-i18n="quick.actions">快捷操作</div>
@@ -617,7 +640,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
         <div class="chat-sidebar-header">
           <h3 data-i18n="chat.sessions">Sessions</h3>
           <div class="chat-sidebar-actions">
-            <button class="chat-new-btn" onclick="newSession()" title="New Session">+</button>
+            <button class="chat-new-btn" onclick="newSession()" title="New Session" aria-label="New chat session">+</button>
             <button class="chat-new-btn" id="chatBatchDelBtn" onclick="toggleBatchDelete()" title="Batch Delete" style="font-size:11px">&#9633;</button>
           </div>
         </div>
@@ -636,27 +659,27 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           <button class="chat-sessions-btn" onclick="toggleChatSessions()" title="Sessions" aria-label="Sessions">&#9776;</button>
           <div class="chat-header-actions">
             <button class="files-toggle" id="filesSidebarToggle" onclick="toggleFilesSidebar()" title="Files">📄</button>
-            <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config">&#9881;</button>
+            <button class="chat-settings-btn" onclick="openAIConfig()" title="AI Config" aria-label="AI configuration settings">&#9881;</button>
           </div>
         </div>
         <div class="chat-messages" id="chatMessages">
           <div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div><button type="button" class="msg-agent-copy" onclick="copyAIMessage(this)" title="复制完整回复（含工具调用）"><span class="icon">⧉</span><span class="label">复制</span></button></div>
         </div>
-        <div class="typing-indicator" id="typingIndicator">
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
+        <div class="ai-status-bar" id="aiStatusBar">
+          <span class="status-icon"></span>
+          <span class="status-text"></span>
+          <button class="status-stop" onclick="stopChat()" id="statusStopBtn">Stop</button>
         </div>
         <div class="chat-input-area">
           <div class="chat-input-bar">
-            <textarea id="chatInput" rows="1" placeholder="Type a message..." onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
-            <button onclick="sendChat()" id="chatSendBtn" disabled>&#62;</button>
-            <button onclick="stopChat()" id="chatStopBtn" style="display:none;background:var(--danger);color:#fff;border:none;border-radius:2px;width:32px;height:32px;cursor:pointer;font-size:12px;flex-shrink:0" title="Stop">■</button>
+            <textarea id="chatInput" rows="1" placeholder="Type a message..." aria-label="Chat message input" onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
+            <button onclick="sendChat()" id="chatSendBtn" disabled aria-label="Send message">&#62;</button>
+            <button onclick="stopChat()" id="chatStopBtn" style="display:none;background:var(--danger);color:#fff;border:none;border-radius:2px;width:32px;height:32px;cursor:pointer;font-size:12px;flex-shrink:0" title="Stop" aria-label="Stop generation">■</button>
           </div>
-          <div class="mode-toggle" style="display:flex;gap:4px;margin-top:6px;">
-            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')">Plan</button>
-            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')">Build</button>
-            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')">Confirm</button>
+          <div class="mode-toggle" role="radiogroup" aria-label="Chat mode selector" style="display:flex;gap:4px;margin-top:6px;">
+            <button class="mode-btn active" data-mode="plan" onclick="setChatMode('plan')" role="radio" aria-checked="true" aria-label="Plan mode - read only">Plan</button>
+            <button class="mode-btn" data-mode="build" onclick="setChatMode('build')" role="radio" aria-checked="false" aria-label="Build mode - execute operations">Build</button>
+            <button class="mode-btn" data-mode="confirm" onclick="setChatMode('confirm')" role="radio" aria-checked="false" aria-label="Confirm mode - requires approval">Confirm</button>
           </div>
           <div class="chat-hint" id="chatHint">MultiCloud AI Agent &middot; Plan mode is read-only</div>
       </div>
@@ -794,7 +817,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       </select>
       <input type="text" id="resSearch" data-i18n="resource.search" placeholder="搜索资源..." oninput="filterResources()">
       <span id="lastSyncLabel" style="font-size:12px;color:var(--text-secondary);margin-left:8px;white-space:nowrap"></span>
-      <button class="resource-action-btn" onclick="syncResources()" style="margin-left:auto" data-i18n="resource.sync">同步</button>
+      <button class="resource-action-btn" onclick="syncResources()" style="margin-left:auto" data-i18n="resource.sync" aria-label="Sync cloud resources">同步</button>
     </div>
     <div id="resourcesList"></div>
   </div>
@@ -802,7 +825,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   <!-- Accounts -->
   <div id="page-accounts" class="page">
     <div id="accountsList"></div>
-    <button class="add-account-btn" onclick="toggleAccountForm()" data-i18n="account.add">+ 添加云账户</button>
+    <button class="add-account-btn" onclick="toggleAccountForm()" data-i18n="account.add" aria-label="Add cloud account">+ 添加云账户</button>
     <div class="account-form" id="accountForm">
       <div class="cloud-selector" id="cloudSelector">
         <div class="cloud-option" data-cloud="azure" onclick="selectCloud('azure')">Microsoft Azure</div>
@@ -874,7 +897,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       <div class="settings-item">
         <span class="settings-label" data-i18n="profile.dark_mode">深色模式</span>
         <label class="toggle-switch">
-          <input type="checkbox" id="darkModeToggle" checked onchange="toggleTheme()">
+          <input type="checkbox" id="darkModeToggle" checked onchange="toggleTheme()" aria-label="Toggle dark mode">
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -902,12 +925,12 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
 
 <!-- Mobile Tabs -->
 <nav class="mobile-tabs" id="mobileTabs">
-  <div class="tab-item active" data-page="dashboard"><span class="tab-icon">~</span><span data-i18n="nav.dashboard_short">首页</span></div>
-  <div class="tab-item" data-page="chat"><span class="tab-icon">AI</span><span data-i18n="nav.chat">AI 云助手</span></div>
-  <div class="tab-item" data-page="resources"><span class="tab-icon">#</span><span data-i18n="nav.resources_short">资源</span></div>
-  <div class="tab-item" data-page="accounts"><span class="tab-icon">@</span><span data-i18n="nav.accounts_short">账户</span></div>
-  <div class="tab-item" data-page="team"><span class="tab-icon">+</span><span data-i18n="nav.team_short">团队</span></div>
-  <div class="tab-item" data-page="profile"><span class="tab-icon">*</span><span data-i18n="nav.profile_short">我的</span></div>
+  <div class="tab-item active" data-page="dashboard" role="tab" aria-label="Dashboard"><span class="tab-icon">~</span><span data-i18n="nav.dashboard_short">首页</span></div>
+  <div class="tab-item" data-page="chat" role="tab" aria-label="AI Chat"><span class="tab-icon">AI</span><span data-i18n="nav.chat">AI 云助手</span></div>
+  <div class="tab-item" data-page="resources" role="tab" aria-label="Resources"><span class="tab-icon">#</span><span data-i18n="nav.resources_short">资源</span></div>
+  <div class="tab-item" data-page="accounts" role="tab" aria-label="Accounts"><span class="tab-icon">@</span><span data-i18n="nav.accounts_short">账户</span></div>
+  <div class="tab-item" data-page="team" role="tab" aria-label="Team"><span class="tab-icon">+</span><span data-i18n="nav.team_short">团队</span></div>
+  <div class="tab-item" data-page="profile" role="tab" aria-label="Profile"><span class="tab-icon">*</span><span data-i18n="nav.profile_short">我的</span></div>
 </nav>
 
 </div>
@@ -1036,6 +1059,40 @@ function subscribeToSession(sessionID) {
   }
 }
 
+// === AI Status Bar (Claude Code style) ===
+var _statusBar = null;
+var _statusTimeout = null;
+
+function _getStatusBar() {
+  if (!_statusBar) _statusBar = document.getElementById('aiStatusBar');
+  return _statusBar;
+}
+
+function showThinking() { showStatus('thinking', '◐', LOCALE === 'zh' ? '思考中' : 'Thinking'); }
+function showToolRunning(name) { showStatus('tool', '⚙', (LOCALE === 'zh' ? '执行 ' : 'Running ') + name); }
+function showGenerating() { showStatus('generating', '◉', (LOCALE === 'zh' ? '生成回复' : 'Generating') + '<span class="streaming-dots"></span>'); }
+function showDone() { showStatus('done', '✓', LOCALE === 'zh' ? '完成' : 'Done'); }
+function showError(msg) { showStatus('error', '✗', msg || (LOCALE === 'zh' ? '出错了' : 'Error')); }
+
+function showStatus(state, icon, text) {
+  var bar = _getStatusBar();
+  if (!bar) return;
+  clearTimeout(_statusTimeout);
+  bar.className = 'ai-status-bar active state-' + state;
+  bar.querySelector('.status-icon').textContent = icon;
+  bar.querySelector('.status-text').innerHTML = text;
+  bar.querySelector('.status-stop').style.display = (state === 'done' || state === 'error') ? 'none' : '';
+  if (state === 'done' || state === 'error') {
+    _statusTimeout = setTimeout(function() { hideStatus(); }, 2000);
+  }
+}
+
+function hideStatus() {
+  var bar = _getStatusBar();
+  if (bar) bar.className = 'ai-status-bar';
+  clearTimeout(_statusTimeout);
+}
+
 var STREAMING_DIV = null;
 var STREAMING_CONTENT = '';
 
@@ -1043,6 +1100,7 @@ function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
   if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
   STREAMING_CONTENT += ev.payload.content;
+  showGenerating();
   
   if (!STREAMING_DIV || !STREAMING_DIV.isConnected) {
     var container = document.getElementById('chatMessages');
@@ -1059,22 +1117,24 @@ function handleTokenEvent(ev) {
 }
 
 function handleToolStartEvent(ev) {
-  var container = document.getElementById('run-' + ev.run_id);
+  var container = document.getElementById('run-' + ev.run_id) || document.getElementById('chatMessages');
   if (!container) return;
   if (ev.payload && ev.payload.tool_calls) {
     ev.payload.tool_calls.forEach(function(tc) {
       var fn = tc.function || tc;
       var name = fn.name || 'unknown';
+      if (ev.session_id === CURRENT_SESSION) showToolRunning(name);
       var toolDiv = document.createElement('div');
       toolDiv.className = 'msg tool';
       toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F527}</span><span class="role-label">' + escHtml(name) + '</span></div>';
       container.appendChild(toolDiv);
     });
+    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
   }
 }
 
 function handleToolResultEvent(ev) {
-  var container = document.getElementById('run-' + ev.run_id);
+  var container = document.getElementById('run-' + ev.run_id) || document.getElementById('chatMessages');
   if (!container) return;
   if (ev.payload) {
     var name = ev.payload.tool_name || 'tool';
@@ -1083,6 +1143,7 @@ function handleToolResultEvent(ev) {
     toolDiv.className = 'msg tool-result';
     toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F4CB}</span><span class="role-label">' + escHtml(name) + '</span></div><div class="msg-content">' + escHtml(result.substring(0, 500)) + '</div>';
     container.appendChild(toolDiv);
+    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
   }
 }
 
@@ -1093,8 +1154,10 @@ function handleConfirmRequiredEvent(ev) {
 }
 
 function handleStateChangeEvent(ev) {
+  var isCurrentSession = ev.session_id === CURRENT_SESSION;
   var newState = ev.payload.state;
-  if (newState === 'done' || newState === 'error' || newState === 'stopped') {
+  if (newState === 'done') {
+    if (isCurrentSession) showDone();
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
@@ -1106,6 +1169,32 @@ function handleStateChangeEvent(ev) {
         contentEl.classList.remove('streaming-cursor');
         contentEl.innerHTML = renderMarkdown(STREAMING_CONTENT);
       }
+      STREAMING_DIV = null;
+      STREAMING_CONTENT = '';
+    }
+  } else if (newState === 'error') {
+    if (isCurrentSession) showError(ev.payload.error_message);
+    if (ev.run_id === CURRENT_RUN_ID) {
+      CURRENT_RUN_ID = null;
+      document.getElementById('chatStopBtn').style.display = 'none';
+    }
+    if (STREAMING_DIV) {
+      STREAMING_DIV.classList.remove('streaming');
+      var contentEl = STREAMING_DIV.querySelector('.msg-content');
+      if (contentEl) contentEl.classList.remove('streaming-cursor');
+      STREAMING_DIV = null;
+      STREAMING_CONTENT = '';
+    }
+  } else if (newState === 'stopped') {
+    if (isCurrentSession) showError(LOCALE === 'zh' ? '已停止' : 'Stopped');
+    if (ev.run_id === CURRENT_RUN_ID) {
+      CURRENT_RUN_ID = null;
+      document.getElementById('chatStopBtn').style.display = 'none';
+    }
+    if (STREAMING_DIV) {
+      STREAMING_DIV.classList.remove('streaming');
+      var contentEl = STREAMING_DIV.querySelector('.msg-content');
+      if (contentEl) contentEl.classList.remove('streaming-cursor');
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
@@ -1385,7 +1474,9 @@ const SESSION_STREAMING = {}; // { sessionId: {role:'agent', content:''} }
 function setChatMode(mode) {
   CURRENT_MODE = mode;
   document.querySelectorAll('.mode-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === mode);
+    const isActive = b.dataset.mode === mode;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-checked', isActive ? 'true' : 'false');
   });
   const hint = document.getElementById('chatHint');
   if (hint) {
@@ -1421,6 +1512,7 @@ async function sendChat() {
   STREAMING_DIV = null;
   STREAMING_CONTENT = '';
   appendMessage('user', escHtml(text));
+  showThinking();
 
   // Create session if needed
   var sessionId = CURRENT_SESSION;
@@ -1488,7 +1580,7 @@ async function startStream(body) {
   CONFIRM_PENDING = true;
   document.getElementById('chatSendBtn').disabled = true;
   document.getElementById('chatStopBtn').style.display = '';
-  document.getElementById('typingIndicator').classList.add('active');
+  showThinking();
 
   ABORT_CONTROLLER = new AbortController();
 
@@ -1508,7 +1600,7 @@ async function startStream(body) {
     CONFIRM_PENDING = false;
     document.getElementById('chatSendBtn').disabled = false;
     document.getElementById('chatStopBtn').style.display = 'none';
-    document.getElementById('typingIndicator').classList.remove('active');
+    hideStatus();
   }, 120000);
 
   try {
@@ -1532,7 +1624,7 @@ async function startStream(body) {
       streamTimeout = setTimeout(function() {
         CONFIRM_PENDING = false;
         document.getElementById('chatSendBtn').disabled = false;
-        document.getElementById('typingIndicator').classList.remove('active');
+        hideStatus();
       }, 120000);
       buffer += decoder.decode(value, {stream: true});
       const parts = buffer.split('\n');
@@ -1561,7 +1653,7 @@ async function startStream(body) {
     clearTimeout(streamTimeout);
   }
 
-  document.getElementById('typingIndicator').classList.remove('active');
+  hideStatus();
   document.getElementById('chatStopBtn').style.display = 'none';
   ABORT_CONTROLLER = null;
 
@@ -1872,6 +1964,7 @@ async function loadSessions() {
 
 async function switchSession(sid) {
   CURRENT_SESSION = sid;
+  hideStatus();
   closeChatSessions();
   // Update sidebar
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
@@ -1931,10 +2024,7 @@ async function switchSession(sid) {
     // Fallback: load from DB
     const data = await apiFetch(API + '/agent/sessions/' + sid);
     if (data && data.status === 'running') {
-      var workDiv = document.createElement('div');
-      workDiv.className = 'msg system streaming-work';
-      workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
-      container.appendChild(workDiv);
+      showThinking();
       document.getElementById('chatStopBtn').style.display = '';
     }
     if (data && data.messages && data.messages.length > 0) {
@@ -2041,6 +2131,7 @@ async function newSession() {
     body: JSON.stringify({ title: LOCALE === 'zh' ? '新对话' : 'New Session' })
   });
   CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
+  hideStatus();
   document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
   closeChatSessions();
   await loadSessions();
@@ -3468,7 +3559,7 @@ function startSessionPoll() {
         lastKnownStatus = data.status;
         loadSessions();
       }
-      // Remove "AI is working..." indicator if session finished
+      // Hide status bar if session finished
       if (data.status !== 'running') {
         var workIndicator = document.querySelector('.streaming-work');
         if (workIndicator) workIndicator.remove();
@@ -3507,12 +3598,9 @@ function startSessionPoll() {
             lastSyncedMsgCount++;
           }
         });
-        // If still running, re-add the working indicator
+        // If still running, show status indicator
         if (data.status === 'running') {
-          var workDiv = document.createElement('div');
-          workDiv.className = 'msg system streaming-work';
-          workDiv.innerHTML = '<span style="color:var(--primary)">⏳ AI is working...</span> <button onclick="stopActiveSession()" style="background:var(--danger);color:#fff;border:none;border-radius:2px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:8px">' + (LOCALE === 'zh' ? '停止' : 'Stop') + '</button>';
-          container.appendChild(workDiv);
+          showThinking();
           document.getElementById('chatStopBtn').style.display = '';
         }
         container.scrollTop = container.scrollHeight;

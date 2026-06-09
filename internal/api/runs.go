@@ -408,6 +408,7 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 	}
 
 	var final []map[string]interface{}
+	userMsgAdded := false
 	for _, m := range msgs {
 		if m["role"] == "tool-calls-stub" {
 			var stubInfos []map[string]interface{}
@@ -421,11 +422,16 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 				})
 			}
 			b, _ := json.Marshal(real)
+			if !userMsgAdded {
+				final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage})
+				userMsgAdded = true
+			}
 			final = append(final, map[string]interface{}{"role": "tool-calls", "content": string(b)})
 			continue
 		}
-		if len(final) == 0 && m["role"] == "agent" {
+		if !userMsgAdded {
 			final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage})
+			userMsgAdded = true
 		}
 		final = append(final, m)
 	}

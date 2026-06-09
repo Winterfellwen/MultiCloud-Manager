@@ -6,10 +6,7 @@ services:
       POSTGRES_PASSWORD: multicloud_dev
       POSTGRES_DB: multicloud
     ports:
-      - target: 5432
-        published: 5432
-        protocol: tcp
-        mode: host
+      - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,28 +14,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    deploy:
-      restart_policy:
-        condition: on-failure
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
-      - target: 6379
-        published: 6379
-        protocol: tcp
-        mode: host
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
-    deploy:
-      restart_policy:
-        condition: on-failure
+    restart: unless-stopped
 
   backend:
-    image: multicloud-manager-backend:latest
+    build: .
     environment:
       PORT: "8099"
       GIN_MODE: release
@@ -48,13 +38,13 @@ services:
       DATABASE_URL: postgres://multicloud:multicloud_dev@postgres:5432/multicloud?sslmode=disable
       REDIS_URL: redis://redis:6379/0
     ports:
-      - target: 8099
-        published: 8099
-        protocol: tcp
-        mode: host
-    deploy:
-      restart_policy:
-        condition: on-failure
+      - "8099:8099"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pg_data:
