@@ -1801,13 +1801,16 @@ function stopChat() {
 async function stopActiveSession() {
   if (CURRENT_RUN_ID) {
     var runId = CURRENT_RUN_ID;
-    await apiFetch(API + '/agent/chat/stop', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ run_id: runId })
-    });
-    // Don't clear CURRENT_RUN_ID here — let handleStateChangeEvent do it
-    // when the state_change(stopped) event arrives via EventSource.
+    // Send stop request — use raw fetch to suppress "run not found" errors
+    // (run may have already completed by the time user clicks stop)
+    try {
+      await fetch(API + '/agent/chat/stop', {
+        method: 'POST',
+        headers: Object.assign({}, getAuthHeaders(), { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ run_id: runId })
+      });
+    } catch(e) { /* ignore */ }
+    CURRENT_RUN_ID = null;
     // Directly re-enable UI as a safety net.
     document.getElementById('chatStopBtn').style.display = 'none';
     document.getElementById('chatSendBtn').disabled = false;
