@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/embedded.js"></script>
 <title>MultiCloud Manager - 登录</title>
 <style>
@@ -81,16 +82,16 @@ html.embedded .login-logo h1 { font-size: 22px; letter-spacing: .5px; }
     
     <form id="loginForm" onsubmit="return handleLogin(event)">
       <div class="form-group">
-        <label>用户名</label>
-        <input type="text" id="username" placeholder="请输入用户名" required autocomplete="username">
+        <label for="username">用户名</label>
+        <input type="text" id="username" placeholder="请输入用户名" required autocomplete="username" aria-label="Username">
       </div>
-      
+
       <div class="form-group">
-        <label>密码</label>
-        <input type="password" id="password" placeholder="请输入密码" required autocomplete="current-password">
+        <label for="password">密码</label>
+        <input type="password" id="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="Password">
       </div>
-      
-      <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+
+      <button type="submit" class="login-btn" id="loginBtn" aria-label="Login">登 录</button>
     </form>
     
     <div class="login-footer">
