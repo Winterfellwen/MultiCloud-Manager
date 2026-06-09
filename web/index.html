@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/embedded.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.4/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
 <title>MultiCloud Manager</title>
 <style>
 :root {
@@ -871,11 +874,24 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       </div>
       <div class="res-actions">
         <input type="text" id="resSearch" data-i18n="resource.search" placeholder="搜索..." oninput="filterResources()" class="res-search">
+        <div class="res-view-toggle" id="resViewToggle">
+          <button class="res-view-btn active" data-view="list" onclick="switchResView('list')">列表</button>
+          <button class="res-view-btn" data-view="topo" onclick="switchResView('topo')">拓扑</button>
+        </div>
         <span id="lastSyncLabel" class="res-sync-label"></span>
         <button class="res-sync-btn" onclick="syncResources()" aria-label="Sync cloud resources" data-i18n="resource.sync">同步</button>
       </div>
     </div>
     <div id="resourcesList"></div>
+    <div id="topologyContainer" style="display:none;position:relative;width:100%;height:calc(100vh - 180px);min-height:400px;background:var(--bg);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <div id="topoControls" style="position:absolute;top:8px;right:8px;z-index:10;display:flex;gap:4px">
+        <button class="res-sync-btn" onclick="topoFit()" title="Fit to screen">Fit</button>
+        <button class="res-sync-btn" onclick="topoZoom(1.3)" title="Zoom in">+</button>
+        <button class="res-sync-btn" onclick="topoZoom(0.7)" title="Zoom out">-</button>
+      </div>
+      <div id="topoDetails" style="position:absolute;bottom:8px;left:8px;right:8px;z-index:10;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;display:none;max-height:120px;overflow-y:auto"></div>
+      <div id="topoGraph" style="width:100%;height:100%"></div>
+    </div>
   </div>
 
   <!-- Accounts -->
@@ -2731,11 +2747,12 @@ async function syncResources() {
 }
 
 function filterResources() {
-  var search = (document.getElementById('resSearch').value || '').toLowerCase();
-  var list = cachedResources || [];
-  if (currentResTab) list = list.filter(function(r) { return r.cloud_type === currentResTab; });
-  if (search) list = list.filter(function(r) { return r.name.toLowerCase().includes(search) || (r.region || '').toLowerCase().includes(search) || (r.instance_type || '').toLowerCase().includes(search); });
-  renderResources(list);
+  var list = getFilteredResources();
+  if (currentResView === 'topo') {
+    renderTopology(list);
+  } else {
+    renderResources(list);
+  }
 }
 
 /* Build a single resource card - platform-aware */
@@ -2907,6 +2924,178 @@ async function ctrlResource(id, action) {
   await apiFetch(API + '/resources/' + id + '/' + action, { method: 'POST' });
   await syncResources();
 }
+
+/* === Topology Graph === */
+var topoCy = null;
+var currentResView = 'list';
+
+function switchResView(view) {
+  currentResView = view;
+  document.querySelectorAll('#resViewToggle .res-view-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  var listEl = document.getElementById('resourcesList');
+  var topoEl = document.getElementById('topologyContainer');
+  if (view === 'topo') {
+    listEl.style.display = 'none';
+    topoEl.style.display = 'block';
+    renderTopology(getFilteredResources());
+  } else {
+    listEl.style.display = '';
+    topoEl.style.display = 'none';
+    filterResources();
+  }
+}
+
+function getFilteredResources() {
+  var search = (document.getElementById('resSearch').value || '').toLowerCase();
+  var list = cachedResources || [];
+  if (currentResTab) list = list.filter(function(r) { return r.cloud_type === currentResTab; });
+  if (search) list = list.filter(function(r) {
+    return r.name.toLowerCase().includes(search) || (r.region || '').toLowerCase().includes(search) || (r.instance_type || '').toLowerCase().includes(search);
+  });
+  return list;
+}
+
+var TOPO_STYLES = {
+  compute:   { shape: 'rectangle',   color: '#3b82f6', text: '#fff' },
+  network:   { shape: 'diamond',     color: '#8b5cf6', text: '#fff' },
+  storage:   { shape: 'hexagon',     color: '#f59e0b', text: '#fff' },
+  database:  { shape: 'ellipse',     color: '#10b981', text: '#fff' },
+  web:       { shape: 'rectangle',   color: '#06b6d4', text: '#fff' },
+  ai:        { shape: 'rectangle',   color: '#ec4899', text: '#fff' },
+  other:     { shape: 'rectangle',   color: '#6b7280', text: '#fff' },
+};
+
+var PLATFORM_COLORS = { azure: '#0078d4', tencent: '#006eff', oracle: '#c74634', render: '#46e8b1' };
+
+function classifyResource(r) {
+  var ns = (r.provider_ns || '').toLowerCase();
+  var t = (r.type || r.instance_type || '').toLowerCase();
+  if (ns.includes('compute') || t.includes('virtualmachine') || t.includes('cvm') || t === 'instance') return 'compute';
+  if (ns.includes('network') || t.includes('vnet') || t.includes('nsg') || t.includes('nic') || t.includes('publicip') || t.includes('networkwatcher')) return 'network';
+  if (ns.includes('storage') || t.includes('storageaccount') || t.includes('blob') || t.includes('bucket')) return 'storage';
+  if (ns.includes('sql') || ns.includes('documentdb') || ns.includes('dbfor') || t.includes('postgres') || t.includes('mysql') || t.includes('database')) return 'database';
+  if (ns.includes('web') || t.includes('sites') || t.includes('appservice') || t.includes('web_service') || t.includes('static_site')) return 'web';
+  if (ns.includes('cognitive') || ns.includes('machinelearningservices') || ns.includes('ai')) return 'ai';
+  return 'other';
+}
+
+function buildTopologyData(resources) {
+  var nodes = [];
+  var edges = [];
+
+  var byPlatform = {};
+  resources.forEach(function(r) {
+    var ct = r.cloud_type || 'other';
+    if (!byPlatform[ct]) byPlatform[ct] = [];
+    byPlatform[ct].push(r);
+  });
+
+  Object.keys(byPlatform).forEach(function(ct) {
+    var res = byPlatform[ct];
+    var pColor = PLATFORM_COLORS[ct] || '#888';
+    var pName = ct.charAt(0).toUpperCase() + ct.slice(1);
+    var pid = 'p_' + ct;
+    nodes.push({ data: { id: pid, label: pName, nodeType: 'platform', bg: pColor, text: '#fff', shape: 'roundrectangle', width: 100, height: 36 } });
+
+    var byGroup = {};
+    res.forEach(function(r) {
+      var key;
+      if (ct === 'azure' && r.resource_group) key = r.resource_group;
+      else if (r.region) key = r.region;
+      else key = 'default';
+      if (!byGroup[key]) byGroup[key] = [];
+      byGroup[key].push(r);
+    });
+
+    Object.keys(byGroup).forEach(function(gk) {
+      var gid = 'g_' + ct + '_' + gk.replace(/[^a-zA-Z0-9]/g, '_');
+      nodes.push({ data: { id: gid, label: gk + ' (' + byGroup[gk].length + ')', nodeType: 'group', bg: pColor, text: '#a1a1aa', shape: 'roundrectangle', border: pColor, width: 140, height: 30, opacity: 0.08 } });
+      edges.push({ data: { source: pid, target: gid } });
+
+      byGroup[gk].forEach(function(r) {
+        var rid = 'r_' + r.id.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        var cls = classifyResource(r);
+        var style = TOPO_STYLES[cls] || TOPO_STYLES.other;
+        var statusColor = r.status === 'running' ? '#22c55e' : r.status === 'stopped' ? '#6b7280' : '#f59e0b';
+        var label = r.name;
+        if (label.length > 24) label = label.substring(0, 22) + '..';
+        nodes.push({ data: {
+          id: rid, label: label, nodeType: 'resource', cls: cls,
+          bg: style.color, text: style.text, shape: style.shape,
+          borderColor: statusColor, resourceId: r.id,
+          fullName: r.name, status: r.status, region: r.region || '',
+          resType: r.type || r.instance_type || '', account: r.account || '',
+          width: Math.max(90, label.length * 6.5 + 16), height: 30
+        }});
+        edges.push({ data: { source: gid, target: rid } });
+      });
+    });
+  });
+
+  return { nodes: nodes, edges: edges };
+}
+
+function renderTopology(resources) {
+  var container = document.getElementById('topoGraph');
+  container.innerHTML = '';
+  document.getElementById('topoDetails').style.display = 'none';
+
+  if (!resources || resources.length === 0) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">No resources to display</div>';
+    return;
+  }
+
+  var data = buildTopologyData(resources);
+
+  topoCy = cytoscape({
+    container: container,
+    elements: { nodes: data.nodes, edges: data.edges },
+    layout: { name: 'dagre', rankDir: 'TB', rankSep: 60, nodeSep: 25, edgeSep: 10, padding: 20 },
+    style: [
+      { selector: 'node', style: {
+        'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
+        'font-size': '11px', 'font-family': 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        'width': 'data(width)', 'height': 'data(height)', 'shape': 'data(shape)',
+        'background-color': 'data(bg)', 'color': 'data(text)',
+        'border-width': 2, 'border-color': 'data(borderColor)',
+        'text-wrap': 'ellipsis', 'text-max-width': '120px', 'text-margin-y': 2,
+      }},
+      { selector: 'node[nodeType="platform"]', style: { 'font-size': '13px', 'font-weight': 'bold', 'border-width': 0, 'text-margin-y': 0 }},
+      { selector: 'node[nodeType="group"]', style: { 'background-opacity': 0.06, 'border-width': 1, 'border-style': 'dashed', 'font-size': '10px', 'color': '#a1a1aa', 'text-valign': 'top', 'text-margin-y': 5 }},
+      { selector: 'node[nodeType="resource"]', style: { 'cursor': 'pointer' }},
+      { selector: 'node:selected', style: { 'border-width': 3, 'border-color': '#007aff', 'background-color': '#007aff', 'color': '#fff' }},
+      { selector: 'edge', style: { 'width': 1.5, 'line-color': '#444', 'target-arrow-shape': 'none', 'curve-style': 'bezier' }},
+    ],
+    minZoom: 0.2, maxZoom: 3, wheelSensitivity: 0.3,
+  });
+
+  topoCy.on('tap', 'node[nodeType="resource"]', function(evt) {
+    var d = evt.target.data();
+    var details = document.getElementById('topoDetails');
+    details.style.display = 'block';
+    details.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<strong style="font-size:13px">' + escHtml(d.fullName) + '</strong>' +
+        '<span class="res-card-tag">' + escHtml(d.resType) + '</span>' +
+        '<span class="res-card-tag">' + escHtml(d.region) + '</span>' +
+        '<span class="res-card-tag">' + escHtml(d.account) + '</span>' +
+        '<span class="status-dot ' + d.status + '" style="width:8px;height:8px"></span><span style="font-size:11px">' + d.status + '</span>' +
+      '</div>';
+  });
+
+  topoCy.on('tap', function(evt) {
+    if (evt.target === topoCy) document.getElementById('topoDetails').style.display = 'none';
+  });
+
+  setTimeout(function() { topoCy.fit(undefined, 30); }, 150);
+}
+
+function topoFit() { if (topoCy) topoCy.fit(undefined, 30); }
+function topoZoom(factor) { if (topoCy) topoCy.zoom({ level: topoCy.zoom() * factor, renderedPosition: { x: topoCy.width() / 2, y: topoCy.height() / 2 } }); }
+
+
 
 /* Accounts */
 let cachedAccounts = null;
