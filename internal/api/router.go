@@ -59,6 +59,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	agentConfigHandler := NewAgentConfigHandler(db)
 	resourcesHandler := NewResourcesHandler(syncer, db)
 	teamsHandler := NewTeamsHandler(db)
+	terraformHandler := NewTerraformHandler(db)
 	sessionsHandler := NewSessionsHandler(db, runMgr)
 
 	syncer.Start(context.Background(), 5*time.Minute)
@@ -101,15 +102,17 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.GET("/teams", teamsHandler.GetTeams)
 		auth.GET("/teams/:teamId/members", teamsHandler.GetTeamMembers)
 		auth.POST("/teams/:teamId/members", teamsHandler.AddTeamMember)
+		auth.PUT("/teams/:teamId/members/:id", teamsHandler.UpdateTeamMember)
 		auth.DELETE("/teams/:teamId/members/:id", teamsHandler.RemoveTeamMember)
 		// Terraform templates
-		auth.GET("/terraform/templates", GetTerraformTemplatesHandler)
-		auth.POST("/terraform/templates", CreateTerraformTemplateHandler)
-		auth.GET("/terraform/templates/:id", GetTerraformTemplateHandler)
-		auth.POST("/terraform/templates/:id/plan", PlanTerraformTemplateHandler)
-		auth.POST("/terraform/templates/:id/apply", ApplyTerraformTemplateHandler)
-		auth.DELETE("/terraform/templates/:id", DestroyTerraformTemplateHandler)
-		auth.POST("/terraform/templates/:id/destroy", DestroyTerraformTemplateHandler)
+		auth.GET("/terraform/templates", terraformHandler.GetTemplates)
+		auth.POST("/terraform/templates", terraformHandler.CreateTemplate)
+		auth.GET("/terraform/templates/:id", terraformHandler.GetTemplate)
+		auth.PUT("/terraform/templates/:id", terraformHandler.UpdateTemplate)
+		auth.POST("/terraform/templates/:id/plan", terraformHandler.PlanTemplate)
+		auth.POST("/terraform/templates/:id/apply", terraformHandler.ApplyTemplate)
+		auth.DELETE("/terraform/templates/:id", terraformHandler.DeleteTemplate)
+		auth.POST("/terraform/templates/:id/destroy", terraformHandler.DestroyTemplate)
 		// Vault — built-in credential management
 		auth.GET("/vault/health", func(c *gin.Context) {
 			if vaultService == nil {

@@ -93,14 +93,18 @@ func (h *ResourcesHandler) Action(c *gin.Context) {
 }
 
 func (h *ResourcesHandler) Stats(c *gin.Context) {
-	var resourceCount, accountCount int
+	var resourceCount, accountCount, terraformCount, teamCount int
 	h.db.QueryRow("SELECT COUNT(*) FROM resources_cache").Scan(&resourceCount)
 	h.db.QueryRow("SELECT COUNT(*) FROM cloud_accounts").Scan(&accountCount)
+	h.db.QueryRow("SELECT COUNT(*) FROM terraform_templates").Scan(&terraformCount)
+	h.db.QueryRow("SELECT COUNT(*) FROM team_members").Scan(&teamCount)
 
 	c.JSON(http.StatusOK, gin.H{
 		"stats": map[string]interface{}{
-			"resources": resourceCount,
-			"accounts":  accountCount,
+			"resources":  resourceCount,
+			"accounts":   accountCount,
+			"terraform":  terraformCount,
+			"members":    teamCount,
 		},
 	})
 }
