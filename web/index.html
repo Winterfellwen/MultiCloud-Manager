@@ -2103,7 +2103,7 @@ async function switchSession(sid) {
     }
   }
 
-  smartScrollBottom(container);
+  container.scrollTop = container.scrollHeight;
   startSessionPoll();
 }
 
