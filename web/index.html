@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script src="/embedded.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.4/cytoscape.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@antv/g6@4/dist/g6.min.js"></script>
 <title>MultiCloud Manager</title>
 <style>
 :root {
@@ -628,7 +626,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
 }
 
 /* Topology dark tech style */
-#topoGraph { background: #0a0a0f; background-image: radial-gradient(circle, #1a1a2e 1px, transparent 1px); background-size: 24px 24px; }
+#topoGraph { background: #080810; background-image: radial-gradient(circle, #15152a 1px, transparent 1px); background-size: 20px 20px; }
 #topoControls .res-sync-btn { background: rgba(15,15,25,0.8); border-color: #1e293b; color: #94a3b8; }
 #topoControls .res-sync-btn:hover { border-color: #00e5ff; color: #00e5ff; }
 </style>
@@ -2930,197 +2928,120 @@ async function ctrlResource(id, action) {
   await syncResources();
 }
 
-/* === Topology Graph === */
-var topoCy = null;
+
+
+
+/* === Topology Graph (AntV G6 v4) === */
+var topoGraph = null;
 var currentResView = 'list';
 
 function switchResView(view) {
   currentResView = view;
-  document.querySelectorAll('#resViewToggle .res-view-btn').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.view === view);
-  });
+  document.querySelectorAll('#resViewToggle .res-view-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.view === view); });
   var listEl = document.getElementById('resourcesList');
   var topoEl = document.getElementById('topologyContainer');
-  if (view === 'topo') {
-    listEl.style.display = 'none';
-    topoEl.style.display = 'block';
-    renderTopology(getFilteredResources());
-  } else {
-    listEl.style.display = '';
-    topoEl.style.display = 'none';
-    filterResources();
-  }
+  if (view === 'topo') { listEl.style.display = 'none'; topoEl.style.display = 'block'; renderTopology(getFilteredResources()); }
+  else { listEl.style.display = ''; topoEl.style.display = 'none'; if (topoGraph) { topoGraph.destroy(); topoGraph = null; } filterResources(); }
 }
 
 function getFilteredResources() {
   var search = (document.getElementById('resSearch').value || '').toLowerCase();
   var list = cachedResources || [];
   if (currentResTab) list = list.filter(function(r) { return r.cloud_type === currentResTab; });
-  if (search) list = list.filter(function(r) {
-    return r.name.toLowerCase().includes(search) || (r.region || '').toLowerCase().includes(search) || (r.instance_type || '').toLowerCase().includes(search);
-  });
+  if (search) list = list.filter(function(r) { return r.name.toLowerCase().includes(search) || (r.region || '').toLowerCase().includes(search); });
   return list;
 }
 
-var TOPO_STYLES = {
-  compute:   { shape: 'rectangle',   color: '#1e3a5f', text: '#60a5fa', glow: '#3b82f6' },
-  network:   { shape: 'diamond',     color: '#2d1b4e', text: '#c084fc', glow: '#8b5cf6' },
-  storage:   { shape: 'hexagon',     color: '#3d2e0a', text: '#fbbf24', glow: '#f59e0b' },
-  database:  { shape: 'ellipse',     color: '#0a2e1f', text: '#34d399', glow: '#10b981' },
-  web:       { shape: 'rectangle',   color: '#0a2a2e', text: '#22d3ee', glow: '#06b6d4' },
-  ai:        { shape: 'rectangle',   color: '#3b0a2a', text: '#f472b6', glow: '#ec4899' },
-  other:     { shape: 'rectangle',   color: '#1a1a2e', text: '#94a3b8', glow: '#475569' },
-};
-
-var PLATFORM_COLORS = { azure: '#0078d4', tencent: '#006eff', oracle: '#c74634', render: '#46e8b1' };
+var TOPO_COLORS = { compute: {bg:'#162447',border:'#3b82f6',text:'#93c5fd'}, network: {bg:'#1e1533',border:'#8b5cf6',text:'#c4b5fd'}, storage: {bg:'#2a1f0a',border:'#f59e0b',text:'#fcd34d'}, database: {bg:'#0a2718',border:'#10b981',text:'#6ee7b7'}, web: {bg:'#0a2328',border:'#06b6d4',text:'#67e8f9'}, ai: {bg:'#2a0a1e',border:'#ec4899',text:'#f9a8d4'}, other: {bg:'#151520',border:'#475569',text:'#94a3b8'} };
+var PLATFORM_STYLES = { azure: {bg:'#0a1929',border:'#0078d4',text:'#60a5fa'}, tencent: {bg:'#0a1929',border:'#006eff',text:'#60a5fa'}, oracle: {bg:'#1a0a0a',border:'#c74634',text:'#fca5a5'}, render: {bg:'#0a1a15',border:'#46e8b1',text:'#6ee7b7'} };
 
 function classifyResource(r) {
-  var ns = (r.provider_ns || '').toLowerCase();
-  var t = (r.type || r.instance_type || '').toLowerCase();
-  if (ns.includes('compute') || t.includes('virtualmachine') || t.includes('cvm') || t === 'instance') return 'compute';
-  if (ns.includes('network') || t.includes('vnet') || t.includes('nsg') || t.includes('nic') || t.includes('publicip') || t.includes('networkwatcher')) return 'network';
-  if (ns.includes('storage') || t.includes('storageaccount') || t.includes('blob') || t.includes('bucket')) return 'storage';
-  if (ns.includes('sql') || ns.includes('documentdb') || ns.includes('dbfor') || t.includes('postgres') || t.includes('mysql') || t.includes('database')) return 'database';
-  if (ns.includes('web') || t.includes('sites') || t.includes('appservice') || t.includes('web_service') || t.includes('static_site')) return 'web';
-  if (ns.includes('cognitive') || ns.includes('machinelearningservices') || ns.includes('ai')) return 'ai';
+  var ns = (r.provider_ns || '').toLowerCase(), t = (r.type || r.instance_type || '').toLowerCase();
+  if (ns.includes('compute') || t.includes('virtualmachine') || t.includes('cvm')) return 'compute';
+  if (ns.includes('network') || t.includes('networkwatcher')) return 'network';
+  if (ns.includes('storage')) return 'storage';
+  if (ns.includes('sql') || ns.includes('documentdb') || t.includes('postgres') || t.includes('database')) return 'database';
+  if (ns.includes('web') || t.includes('sites') || t.includes('web_service')) return 'web';
+  if (ns.includes('cognitive') || ns.includes('ai')) return 'ai';
   return 'other';
 }
 
-function buildTopologyData(resources) {
-  var nodes = [];
-  var edges = [];
-
+function buildG6Data(resources) {
+  var nodes = [], edges = [];
   var byPlatform = {};
-  resources.forEach(function(r) {
-    var ct = r.cloud_type || 'other';
-    if (!byPlatform[ct]) byPlatform[ct] = [];
-    byPlatform[ct].push(r);
-  });
+  resources.forEach(function(r) { var ct = r.cloud_type || 'other'; if (!byPlatform[ct]) byPlatform[ct] = []; byPlatform[ct].push(r); });
 
   Object.keys(byPlatform).forEach(function(ct) {
-    var res = byPlatform[ct];
-    var pColor = PLATFORM_COLORS[ct] || '#888';
-    var pName = ct.charAt(0).toUpperCase() + ct.slice(1);
-    var pid = 'p_' + ct;
-    nodes.push({ data: { id: pid, label: pName, nodeType: 'platform', bg: pColor, text: '#fff', shape: 'roundrectangle', width: 100, height: 36 } });
+    var res = byPlatform[ct], ps = PLATFORM_STYLES[ct] || {bg:'#151520',border:'#475569',text:'#94a3b8'};
+    var pid = 'p_' + ct, pName = ct.charAt(0).toUpperCase() + ct.slice(1);
+
+    nodes.push({ id: pid, label: pName + '\n' + res.length + ' resources', type: 'rect', size: [140, 48],
+      style: { fill: ps.bg, stroke: ps.border, lineWidth: 2, radius: 10, shadowColor: ps.border, shadowBlur: 20, shadowOpacity: 0.5, cursor: 'pointer' },
+      labelCfg: { style: { fill: ps.text, fontSize: 12, fontWeight: 'bold' }, position: 'center' } });
 
     var byGroup = {};
-    res.forEach(function(r) {
-      var key;
-      if (ct === 'azure' && r.resource_group) key = r.resource_group;
-      else if (r.region) key = r.region;
-      else key = 'default';
-      if (!byGroup[key]) byGroup[key] = [];
-      byGroup[key].push(r);
-    });
+    res.forEach(function(r) { var key = (ct === 'azure' && r.resource_group) ? r.resource_group : (r.region || 'default'); if (!byGroup[key]) byGroup[key] = []; byGroup[key].push(r); });
 
     Object.keys(byGroup).forEach(function(gk) {
-      var gid = 'g_' + ct + '_' + gk.replace(/[^a-zA-Z0-9]/g, '_');
-      nodes.push({ data: { id: gid, label: gk + ' (' + byGroup[gk].length + ')', nodeType: 'group', bg: pColor, text: '#a1a1aa', shape: 'roundrectangle', border: pColor, width: 140, height: 30, opacity: 0.08 } });
-      edges.push({ data: { source: pid, target: gid } });
+      var gid = 'g_' + ct + '_' + gk.replace(/[^a-zA-Z0-9]/g, '_'), items = byGroup[gk];
+      nodes.push({ id: gid, label: gk + '  (' + items.length + ')', type: 'rect', size: [170, 30],
+        style: { fill: '#0d0d14', stroke: ps.border, lineWidth: 1, strokeOpacity: 0.3, lineDash: [4, 3], radius: 6, cursor: 'pointer' },
+        labelCfg: { style: { fill: '#94a3b8', fontSize: 10, fontWeight: '600' }, position: 'center' } });
+      edges.push({ source: pid, target: gid, style: { stroke: ps.border, strokeOpacity: 0.2, lineWidth: 1.5, endArrow: { path: G6.Arrow.triangle(4, 6, 0), fill: ps.border, d: 0, fillOpacity: 0.3 } } });
 
-      byGroup[gk].forEach(function(r) {
-        var rid = 'r_' + r.id.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-        var cls = classifyResource(r);
-        var style = TOPO_STYLES[cls] || TOPO_STYLES.other;
-        var statusColor = r.status === 'running' ? '#22c55e' : r.status === 'stopped' ? '#6b7280' : '#f59e0b';
-        var label = r.name;
-        if (label.length > 24) label = label.substring(0, 22) + '..';
-        nodes.push({ data: {
-          id: rid, label: label, nodeType: 'resource', cls: cls,
-          bg: style.color, text: style.text, shape: style.shape, glow: style.glow || style.color,
-          borderColor: statusColor, resourceId: r.id,
-          fullName: r.name, status: r.status, region: r.region || '',
-          resType: r.type || r.instance_type || '', account: r.account || '',
-          width: Math.max(90, label.length * 6.5 + 16), height: 30
-        }});
-        edges.push({ data: { source: gid, target: rid } });
+      items.forEach(function(r) {
+        var rid = 'r_' + (r.id || '').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
+        if (rid.length < 5) rid = 'r_' + Math.random().toString(36).substr(2, 8);
+        var cls = classifyResource(r), tc = TOPO_COLORS[cls] || TOPO_COLORS.other;
+        var statusColor = r.status === 'running' ? '#22c55e' : r.status === 'stopped' ? '#475569' : '#f59e0b';
+        var label = r.name; if (label.length > 20) label = label.substring(0, 18) + '..';
+
+        nodes.push({ id: rid, label: label, type: 'rect',
+          data: { fullName: r.name, resType: r.type || r.instance_type || '', region: r.region || '', account: r.account || '', status: r.status, cls: cls, tc: tc, statusColor: statusColor },
+          size: [155, 36], style: { fill: tc.bg, stroke: tc.border, lineWidth: 1, radius: 8, cursor: 'pointer', shadowColor: r.status === 'running' ? statusColor : 'transparent', shadowBlur: r.status === 'running' ? 12 : 0, shadowOpacity: 0.6 },
+          labelCfg: { style: { fill: tc.text, fontSize: 10, fontWeight: '500' }, position: 'center' } });
+        edges.push({ source: gid, target: rid, style: { stroke: tc.border, strokeOpacity: 0.15, lineWidth: 1 } });
       });
     });
   });
-
   return { nodes: nodes, edges: edges };
 }
 
 function renderTopology(resources) {
-  var container = document.getElementById('topoGraph');
-  container.innerHTML = '';
+  var container = document.getElementById('topoGraph'); container.innerHTML = '';
   document.getElementById('topoDetails').style.display = 'none';
+  if (!resources || resources.length === 0) { container.innerHTML = '<div class="empty-state">No resources</div>'; return; }
+  if (topoGraph) { topoGraph.destroy(); topoGraph = null; }
+  var data = buildG6Data(resources), rect = container.getBoundingClientRect();
 
-  if (!resources || resources.length === 0) {
-    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">No resources to display</div>';
-    return;
-  }
-
-  var data = buildTopologyData(resources);
-
-  topoCy = cytoscape({
-    container: container,
-    elements: { nodes: data.nodes, edges: data.edges },
-    layout: { name: 'dagre', rankDir: 'TB', rankSep: 80, nodeSep: 40, edgeSep: 15, padding: 30 },
-    style: [
-      { selector: 'node', style: {
-        'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
-        'font-size': '10px', 'font-family': 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        'font-weight': '500',
-        'width': 'data(width)', 'height': 'data(height)', 'shape': 'data(shape)',
-        'background-color': 'data(bg)', 'color': 'data(text)',
-        'border-width': 1.5, 'border-color': 'data(borderColor)',
-        'text-wrap': 'ellipsis', 'text-max-width': '120px', 'text-margin-y': 1,
-        'overlay-opacity': 0,
-      }},
-      { selector: 'node[nodeType="platform"]', style: {
-        'font-size': '13px', 'font-weight': '700', 'border-width': 1, 'text-margin-y': 0,
-      }},
-      { selector: 'node[nodeType="group"]', style: {
-        'background-opacity': 0.04, 'border-width': 1, 'border-style': 'dashed',
-        'font-size': '9px', 'color': '#64748b', 'text-valign': 'top', 'text-margin-y': 4,
-      }},
-      { selector: 'node[nodeType="resource"]', style: {
-        'cursor': 'pointer',
-        'transition-property': 'background-color, border-color',
-        'transition-duration': '0.15s',
-      }},
-      { selector: 'node:selected', style: {
-        'border-width': 2, 'border-color': '#00e5ff', 'color': '#fff',
-        'background-color': '#00e5ff', 'background-opacity': 0.85,
-      }},
-      { selector: 'edge', style: {
-        'width': 1, 'line-color': '#1e293b', 'line-opacity': 0.5,
-        'target-arrow-shape': 'none', 'curve-style': 'bezier',
-      }},
-    ],
-    minZoom: 0.3, maxZoom: 4, wheelSensitivity: 0.4,
-    autoungrabify: false,
+  topoGraph = new G6.Graph({
+    container: 'topoGraph', width: rect.width, height: rect.height,
+    fitView: true, fitViewPadding: [50, 80, 50, 80],
+    animate: true, animateCfg: { duration: 400, easing: 'easeCubic' },
+    layout: { type: 'dagre', rankdir: 'TB', nodesep: 40, ranksep: 70, controlPoints: true },
+    defaultEdge: { type: 'cubic-vertical', style: { stroke: '#1e293b', lineWidth: 1, endArrow: { path: G6.Arrow.triangle(4, 6, 0), fill: '#1e293b', d: 0 } } },
+    nodeStateStyles: { selected: { stroke: '#00e5ff', lineWidth: 2, shadowColor: '#00e5ff', shadowBlur: 16, shadowOpacity: 0.6 }, hover: { strokeOpacity: 1 } },
+    modes: { default: ['drag-canvas', 'zoom-canvas', 'drag-node'] },
+    minZoom: 0.3, maxZoom: 4,
   });
+  topoGraph.data(data); topoGraph.render();
 
-  topoCy.on('tap', 'node[nodeType="resource"]', function(evt) {
-    var d = evt.target.data();
-    var details = document.getElementById('topoDetails');
-    details.style.display = 'block';
-    details.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-        '<strong style="font-size:13px">' + escHtml(d.fullName) + '</strong>' +
-        '<span class="res-card-tag">' + escHtml(d.resType) + '</span>' +
-        '<span class="res-card-tag">' + escHtml(d.region) + '</span>' +
-        '<span class="res-card-tag">' + escHtml(d.account) + '</span>' +
-        '<span class="status-dot ' + d.status + '" style="width:8px;height:8px"></span><span style="font-size:11px">' + d.status + '</span>' +
-      '</div>';
+  topoGraph.on('node:click', function(evt) {
+    var model = evt.item.getModel(); if (!model.data || !model.data.fullName) return;
+    var d = model.data, tc = d.tc || TOPO_COLORS.other;
+    var details = document.getElementById('topoDetails'); details.style.display = 'block';
+    details.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><strong style="font-size:13px;color:#e2e8f0">' + escHtml(d.fullName) + '</strong><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:' + tc.bg + ';color:' + tc.text + ';border:1px solid ' + tc.border + '44">' + escHtml(d.resType) + '</span><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#1e293b;color:#94a3b8;border:1px solid #334155">' + escHtml(d.region) + '</span><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#1e293b;color:#94a3b8;border:1px solid #334155">' + escHtml(d.account) + '</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + (d.status === 'running' ? '#4ade80' : '#94a3b8') + '"><span style="width:8px;height:8px;border-radius:50%;background:' + d.statusColor + ';box-shadow:0 0 8px ' + d.statusColor + '88"></span>' + d.status + '</span></div>';
+    topoGraph.setItemState(evt.item, 'selected', true);
   });
-
-  topoCy.on('tap', function(evt) {
-    if (evt.target === topoCy) document.getElementById('topoDetails').style.display = 'none';
-  });
-
-  setTimeout(function() { topoCy.fit(undefined, 10); var z = topoCy.zoom(); topoCy.zoom(Math.min(z * 4, 2.5)); topoCy.center(); }, 200);
+  topoGraph.on('canvas:click', function() { document.getElementById('topoDetails').style.display = 'none'; topoGraph.getNodes().forEach(function(n) { topoGraph.setItemState(n, 'selected', false); }); });
+  topoGraph.on('node:mouseenter', function(evt) { topoGraph.setItemState(evt.item, 'hover', true); });
+  topoGraph.on('node:mouseleave', function(evt) { topoGraph.setItemState(evt.item, 'hover', false); });
+  var rt; window.addEventListener('resize', function() { clearTimeout(rt); rt = setTimeout(function() { if (topoGraph) { var r = container.getBoundingClientRect(); topoGraph.changeSize(r.width, r.height); topoGraph.fitView([50, 80, 50, 80]); } }, 200); });
 }
-
-function topoFit() { if (topoCy) topoCy.fit(undefined, 30); }
-function topoZoom(factor) { if (topoCy) topoCy.zoom({ level: topoCy.zoom() * factor, renderedPosition: { x: topoCy.width() / 2, y: topoCy.height() / 2 } }); }
-
+function topoFit() { if (topoGraph) topoGraph.fitView([50, 80, 50, 80]); }
+function topoZoom(factor) { if (topoGraph) topoGraph.zoom(factor, { x: topoGraph.getWidth() / 2, y: topoGraph.getHeight() / 2 }); }
 
 
-/* Accounts */
 let cachedAccounts = null;
 
 async function loadAccounts() {
