@@ -47,11 +47,12 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	}
 
 	syncer := cloud.NewSyncer(db, vaultService)
-	executor := agent.NewExecutor(syncer, db)
+	executor := agent.NewExecutor(syncer, db, vaultService)
 
 	runtime := agent.NewRuntime(agent.RuntimeConfig{
 		DB:     db,
 		Syncer: syncer,
+		Vault:  vaultService,
 	})
 
 	accountsHandler := NewAccountsHandler(db, vaultService)
@@ -201,7 +202,8 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 					log.Printf("vault migrate: %s: %v", id, err)
 					continue
 				}
-				db.Exec(`UPDATE cloud_accounts SET vault_path = $1 WHERE id = $2`, vaultPath, id)
+				// Set vault_path and clear plaintext credentials
+				db.Exec(`UPDATE cloud_accounts SET vault_path = $1, credentials = '' WHERE id = $2`, vaultPath, id)
 				migrated++
 			}
 			c.JSON(http.StatusOK, gin.H{"migrated": migrated})

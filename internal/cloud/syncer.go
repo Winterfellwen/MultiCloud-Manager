@@ -266,14 +266,26 @@ func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) 
 	}
 
 	var accountID, cloudType, credJSON, cloudResID string
+	var vaultPath string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials
+		SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials, COALESCE(ca.vault_path, '')
 		FROM resources_cache rc
 		JOIN cloud_accounts ca ON rc.account_id = ca.id
 		WHERE rc.id = $1
-	`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON)
+	`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON, &vaultPath)
 	if err != nil {
 		return nil, "", fmt.Errorf("resource lookup: %w", err)
+	}
+
+	// Prefer vault credentials over plaintext
+	if vaultPath != "" && s.vault != nil {
+		if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
+			if dataBytes, err := json.Marshal(secretData); err == nil {
+				credJSON = string(dataBytes)
+			}
+		} else {
+			log.Printf("syncer: vault read %s for resource action: %v, falling back to DB", vaultPath, err)
+		}
 	}
 
 	var creds map[string]string
