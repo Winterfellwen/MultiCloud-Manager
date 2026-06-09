@@ -56,14 +56,22 @@ func (h *ChatStreamHandler) setRunState(r *Run, s State, errMsg string) {
 }
 
 func (h *ChatStreamHandler) terminateRun(r *Run, errMsg string) {
-	final := StateDone
-	if errMsg != "" {
-		final = StateError
+	// Check if the stop handler already set a terminal state (e.g. StateStopped).
+	r.mu.Lock()
+	isTerminal := r.State == StateStopped
+	r.mu.Unlock()
+
+	if !isTerminal {
+		// Normal completion: set done or error state.
+		final := StateDone
+		if errMsg != "" {
+			final = StateError
+		}
+		h.setRunState(r, final, errMsg)
 	}
-	h.setRunState(r, final, errMsg)
-	if final == StateDone {
-		h.rm.AggregateOnDone(r)
-	}
+
+	// Always aggregate and save history (done, error, or stopped).
+	h.rm.AggregateOnDone(r)
 }
 
 // runLLM is the per-Run goroutine that drives the LLM conversation loop.
