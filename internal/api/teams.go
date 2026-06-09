@@ -197,7 +197,7 @@ func (h *TeamsHandler) AddTeamMember(c *gin.Context) {
 	})
 }
 
-// UpdateTeamMember 更新团队成员信息
+// UpdateTeamMember 更新团队成员信息 — 同步角色到 users 表
 func (h *TeamsHandler) UpdateTeamMember(c *gin.Context) {
 	if _, exists := c.Get("user_id"); !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
@@ -234,6 +234,15 @@ func (h *TeamsHandler) UpdateTeamMember(c *gin.Context) {
 	if rows == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "成员不存在"})
 		return
+	}
+
+	// Sync role to users table (so JWT picks up the change on next login)
+	if req.Role != "" {
+		var userID sql.NullString
+		h.db.QueryRow(`SELECT user_id FROM team_members WHERE id = $1`, memberID).Scan(&userID)
+		if userID.Valid {
+			h.db.Exec(`UPDATE users SET role = $1 WHERE id = $2`, req.Role, userID.String)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "成员已更新"})
