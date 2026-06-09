@@ -1094,6 +1094,14 @@ function hideStatus() {
   if (bar) bar.className = 'ai-status-bar';
   clearTimeout(_statusTimeout);
 }
+// Smart scroll: only scroll to bottom if user is already near bottom
+function smartScrollBottom(el) {
+  if (!el) el = document.getElementById('chatMessages');
+  if (!el) return;
+  var nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 150;
+  if (nearBottom) el.scrollTop = el.scrollHeight;
+}
+
 
 var STREAMING_DIV = null;
 var STREAMING_CONTENT = '';
@@ -1116,7 +1124,7 @@ function handleTokenEvent(ev) {
   if (contentEl) {
     contentEl.textContent = STREAMING_CONTENT;
   }
-  document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+  smartScrollBottom();
 }
 
 function handleToolStartEvent(ev) {
@@ -1596,7 +1604,7 @@ async function startStream(body) {
   div.className = 'msg agent streaming';
   div.innerHTML = '<div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status">\u{1F914} ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span></span></div>' + buildAgentCopyButton();
   container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  smartScrollBottom(container);
 
   var streamTimeout = setTimeout(function() {
     CONFIRM_PENDING = false;
@@ -1768,7 +1776,7 @@ function handleSSEEvent(data) {
           aiText.classList.add('streaming-cursor');
         }
         const container = document.getElementById('chatMessages');
-        container.scrollTop = container.scrollHeight;
+        smartScrollBottom(container);
       }
       break;
     }
@@ -1850,7 +1858,7 @@ function handleSSEEvent(data) {
       html += '</div>' + buildAgentCopyButton();
       confirmDiv.innerHTML = html;
       container.appendChild(confirmDiv);
-      container.scrollTop = container.scrollHeight;
+      smartScrollBottom(container);
       break;
     }
     case 'done':
@@ -2095,7 +2103,7 @@ async function switchSession(sid) {
     }
   }
 
-  container.scrollTop = container.scrollHeight;
+  smartScrollBottom(container);
   startSessionPoll();
 }
 
@@ -2166,7 +2174,7 @@ function appendMessage(type, html) {
     div.innerHTML = '<div class="msg-content">' + html + '</div>';
   }
   container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+  smartScrollBottom(container);
 }
 
 // Build the copy button HTML for an AI message. The button calls
@@ -3526,7 +3534,7 @@ function startSessionPoll() {
           showThinking();
           document.getElementById('chatStopBtn').style.display = '';
         }
-        container.scrollTop = container.scrollHeight;
+        smartScrollBottom(container);
       }
     } catch(e) {}
   }, 5000);
