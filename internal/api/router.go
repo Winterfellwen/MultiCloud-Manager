@@ -78,18 +78,18 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.GET("/agent/config/:type", RequireRole("admin"), agentConfigHandler.GetConfig)
 		auth.PUT("/agent/config/:type", RequireRole("admin"), agentConfigHandler.UpdateConfig)
 
-		// Chat endpoints — admin + user
+		// Chat endpoints — all roles (viewer: plan only, enforced in handler)
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
 		eventsHandler := NewEventsSSEHandler(runMgr)
-		auth.POST("/agent/chat/stream", RequireRole("admin", "user"), chatHandler.Stream)
+		auth.POST("/agent/chat/stream", chatHandler.Stream)
 		auth.POST("/agent/chat/confirm", RequireRole("admin", "user"), chatHandler.Confirm)
-		auth.POST("/agent/chat/stop", RequireRole("admin", "user"), chatHandler.Stop)
-		auth.GET("/agent/events", RequireRole("admin", "user"), eventsHandler.Stream)
+		auth.POST("/agent/chat/stop", chatHandler.Stop)
+		auth.GET("/agent/events", eventsHandler.Stream)
 
-		// Session endpoints — admin + user
-		auth.GET("/agent/sessions", RequireRole("admin", "user"), sessionsHandler.List)
-		auth.POST("/agent/sessions", RequireRole("admin", "user"), sessionsHandler.Create)
-		auth.GET("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Get)
+		// Session endpoints — all roles (viewer can view history)
+		auth.GET("/agent/sessions", sessionsHandler.List)
+		auth.POST("/agent/sessions", sessionsHandler.Create)
+		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
 		auth.DELETE("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Delete)
 		auth.PUT("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Update)
 

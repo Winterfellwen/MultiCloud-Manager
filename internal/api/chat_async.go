@@ -890,6 +890,12 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		return
 	}
 
+	// Viewer can only use plan mode
+	if role, _ := c.Get("user_role"); role == "viewer" && req.Mode != "plan" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只读用户只能使用 Plan 模式"})
+		return
+	}
+
 	sessionID, internalID, _, err := h.resolveSession(req.SessionID, req.Message)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
