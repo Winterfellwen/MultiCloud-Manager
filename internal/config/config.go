@@ -23,7 +23,7 @@ func Load() *Config {
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		RedisURL:      getEnv("REDIS_URL", ""),
 		JWTSecret:     getEnv("JWT_SECRET", "dev-secret-change-in-production"),
-		AdminPassword: getEnv("ADMIN_PASSWORD", "test123"),
+		AdminPassword: getEnv("ADMIN_PASSWORD", "Test.1234"),
 		Environment:   env,
 	}
 
@@ -31,7 +31,7 @@ func Load() *Config {
 		if cfg.JWTSecret == "dev-secret-change-in-production" {
 			log.Fatal("FATAL: JWT_SECRET must be set in production")
 		}
-		if cfg.AdminPassword == "test123" {
+		if cfg.AdminPassword == "Test.1234" || cfg.AdminPassword == "test123" {
 			log.Fatal("FATAL: ADMIN_PASSWORD must be set in production")
 		}
 	}
