@@ -1303,6 +1303,8 @@ function handleStateChangeEvent(ev) {
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
+      document.getElementById('chatSendBtn').disabled = false;
+      CONFIRM_PENDING = false;
     }
     // Flush pending tool calls as card group
     if (PENDING_TOOL_CALLS.length > 0 && STREAMING_DIV) {
@@ -1325,6 +1327,8 @@ function handleStateChangeEvent(ev) {
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
+      document.getElementById('chatSendBtn').disabled = false;
+      CONFIRM_PENDING = false;
     }
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
@@ -1338,6 +1342,8 @@ function handleStateChangeEvent(ev) {
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
+      document.getElementById('chatSendBtn').disabled = false;
+      CONFIRM_PENDING = false;
     }
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
