@@ -9,6 +9,7 @@ import (
 
 	"multicloud/internal/agent/shell"
 	"multicloud/internal/cloud"
+	"multicloud/internal/vault"
 )
 
 // Runtime combines all agent components into a single usable unit.
@@ -22,8 +23,9 @@ type Runtime struct {
 
 // RuntimeConfig holds configuration for creating a new Runtime.
 type RuntimeConfig struct {
-	DB       *sql.DB
-	Syncer   *cloud.Syncer
+	DB         *sql.DB
+	Syncer     *cloud.Syncer
+	Vault      vault.Service
 	BasePrompt string
 }
 
@@ -42,7 +44,7 @@ func (w *shellToolWrapper) Execute(ctx context.Context, args map[string]interfac
 // NewRuntime creates and configures a new Runtime.
 func NewRuntime(cfg RuntimeConfig) *Runtime {
 	registry := NewToolRegistry()
-	executor := NewExecutor(cfg.Syncer, cfg.DB)
+	executor := NewExecutor(cfg.Syncer, cfg.DB, cfg.Vault)
 	RegisterBuiltInTools(registry, executor)
 
 	// Register shell executor tools

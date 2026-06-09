@@ -127,9 +127,9 @@ func (h *AccountsHandler) Create(c *gin.Context) {
 		}
 	}
 
-	// Store account with vault_path (credentials column kept for backward compat)
-	_, err := h.db.Exec(`INSERT INTO cloud_accounts (id, name, cloud_type, credentials, vault_path, is_active) VALUES ($1, $2, $3, $4, $5, true)`,
-		id, req.Name, req.CloudType, req.Credentials, vaultPath)
+	// Store account with vault_path (credentials stored securely in vault, not in DB)
+	_, err := h.db.Exec(`INSERT INTO cloud_accounts (id, name, cloud_type, credentials, vault_path, is_active) VALUES ($1, $2, $3, '', $4, true)`,
+		id, req.Name, req.CloudType, vaultPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -197,8 +197,8 @@ func (h *AccountsHandler) Update(c *gin.Context) {
 		}
 	}
 
-	_, err = h.db.Exec(`UPDATE cloud_accounts SET name = $1, cloud_type = $2, credentials = $3, vault_path = $4 WHERE id = $5`,
-		req.Name, req.CloudType, req.Credentials, existing.VaultPath, id)
+	_, err = h.db.Exec(`UPDATE cloud_accounts SET name = $1, cloud_type = $2, credentials = '', vault_path = $3 WHERE id = $4`,
+		req.Name, req.CloudType, existing.VaultPath, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

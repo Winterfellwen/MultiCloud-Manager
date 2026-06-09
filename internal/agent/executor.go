@@ -7,19 +7,22 @@ import (
 	"fmt"
 
 	"multicloud/internal/cloud"
+	"multicloud/internal/vault"
 )
 
 // Executor handles tool call execution by dispatching to cloud providers.
 type Executor struct {
 	syncer *cloud.Syncer
 	db     *sql.DB
+	vault  vault.Service
 }
 
 // NewExecutor creates a new tool executor.
-func NewExecutor(syncer *cloud.Syncer, db *sql.DB) *Executor {
+func NewExecutor(syncer *cloud.Syncer, db *sql.DB, v vault.Service) *Executor {
 	return &Executor{
 		syncer: syncer,
 		db:     db,
+		vault:  v,
 	}
 }
 
@@ -198,7 +201,8 @@ func (e *Executor) getCredentials(ctx context.Context, args map[string]interface
 		return "", fmt.Errorf("cloud_type is required")
 	}
 
-	rows, err := e.db.Query(`SELECT id, name, credentials FROM cloud_accounts WHERE cloud_type = $1 AND is_active = true`, cloudType)
+	// Read from vault (never expose raw credentials to the AI)
+	rows, err := e.db.Query(`SELECT id, name, COALESCE(vault_path, '') FROM cloud_accounts WHERE cloud_type = $1 AND is_active = true`, cloudType)
 	if err != nil {
 		return "", fmt.Errorf("query credentials: %w", err)
 	}
@@ -206,26 +210,36 @@ func (e *Executor) getCredentials(ctx context.Context, args map[string]interface
 
 	var accounts []map[string]interface{}
 	for rows.Next() {
-		var id, name, credentials string
-		if err := rows.Scan(&id, &name, &credentials); err != nil {
+		var id, name, vaultPath string
+		if err := rows.Scan(&id, &name, &vaultPath); err != nil {
 			continue
 		}
-		// Parse credentials JSON
-		var creds map[string]interface{}
-		if err := json.Unmarshal([]byte(credentials), &creds); err != nil {
-			continue
+
+		// Only return metadata, never raw credentials
+		accountInfo := map[string]interface{}{
+			"id":   id,
+			"name": name,
 		}
-		accounts = append(accounts, map[string]interface{}{
-			"id":          id,
-			"name":        name,
-			"credentials": creds,
-		})
+
+		// Verify vault has credentials (without returning them)
+		if vaultPath != "" && e.vault != nil {
+			if _, err := e.vault.GetSecret(vaultPath); err == nil {
+				accountInfo["vault_status"] = "secured"
+			} else {
+				accountInfo["vault_status"] = "error"
+			}
+		} else {
+			accountInfo["vault_status"] = "not_migrated"
+		}
+
+		accounts = append(accounts, accountInfo)
 	}
 
 	result := map[string]interface{}{
 		"cloud_type": cloudType,
 		"accounts":   accounts,
 		"count":      len(accounts),
+		"note":       "Credentials are stored securely in the vault. Use start_instance/stop_instance/restart_instance tools to manage resources - credentials are injected server-side.",
 	}
 	b, _ := json.Marshal(result)
 	return string(b), nil
