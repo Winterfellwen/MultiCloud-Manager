@@ -1,11 +1,28 @@
 services:
   - type: web
-    name: multicloud-manager
-    env: go
-    plan: free
-    buildCommand: go build -o app .
-    startCommand: ./app
+    name: multicloud-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: singapore
+    branch: claude/trusting-ishizaka-0c25f1
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    numInstances: 1
+    openPorts:
+      - port: 8099
+        protocol: TCP
     envVars:
+      - key: PORT
+        value: "8099"
+      - key: GIN_MODE
+        value: release
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: multicloud-db
@@ -15,18 +32,16 @@ services:
           name: multicloud-redis
           type: redis
           property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
-      - key: ENVIRONMENT
-        value: production
 
 databases:
   - name: multicloud-db
     databaseName: multicloud
     user: multicloud_user
     plan: free
+    region: singapore
 
 redis:
   - name: multicloud-redis
     plan: free
+    region: singapore
     maxmemoryPolicy: noeviction
