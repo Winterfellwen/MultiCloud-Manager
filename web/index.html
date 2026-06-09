@@ -422,30 +422,59 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .modal-btn-cancel:hover { background: var(--surface-hover); }
 .modal-btn-secondary { background: var(--primary-subtle); color: var(--primary); border: 1px solid var(--primary); }
 
-/* Resources */
-.filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.filter-bar select, .filter-bar input { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 6px 10px; color: var(--text); font-size: 12px; outline: none; font-family: var(--font-mono); }
-.filter-bar select:focus, .filter-bar input:focus { border-color: var(--primary); }
-.filter-bar input { flex: 1; min-width: 160px; }
-.resource-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.resource-info { display: flex; flex-direction: column; gap: 2px; }
-.resource-name { font-size: 13px; font-weight: 500; }
-.resource-meta { font-size: 11px; color: var(--text-muted); }
-.resource-actions { display: flex; gap: 6px; }
-.resource-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+/* Resources - Platform tabbed layout */
+.res-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.res-tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
+.res-tab { display: flex; align-items: center; gap: 5px; padding: 5px 12px; font-size: 12px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 4px; transition: all .15s; font-family: inherit; white-space: nowrap; }
+.res-tab:hover { color: var(--text); background: var(--surface); }
+.res-tab.active { color: var(--text); background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.res-tab-icon { font-weight: 700; font-size: 11px; width: 16px; text-align: center; }
+.res-tab-count { font-size: 10px; padding: 0 5px; border-radius: 8px; background: var(--border); color: var(--text-muted); min-width: 18px; text-align: center; line-height: 16px; }
+.res-tab.active .res-tab-count { background: var(--primary); color: #fff; }
+.res-actions { display: flex; align-items: center; gap: 8px; }
+.res-search { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; color: var(--text); font-size: 12px; outline: none; font-family: var(--font-mono); width: 160px; transition: border-color .15s; }
+.res-search:focus { border-color: var(--primary); }
+.res-sync-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.res-sync-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: inherit; }
+.res-sync-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Platform section */
+.res-platform { margin-bottom: 20px; }
+.res-platform-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.res-platform-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0; }
+.res-platform-name { font-size: 14px; font-weight: 600; }
+.res-platform-count { font-size: 11px; color: var(--text-muted); }
+.res-platform-stats { display: flex; gap: 12px; margin-left: auto; }
+.res-stat { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+.res-stat .dot { width: 6px; height: 6px; border-radius: 50%; }
+.res-stat .dot.run { background: var(--success); }
+.res-stat .dot.stop { background: var(--text-muted); }
+
+/* Resource card - base */
+.resource-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; transition: border-color .15s; }
+.resource-card:hover { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+.res-card-main { flex: 1; min-width: 0; }
+.res-card-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.res-card-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); font-family: var(--font-mono); white-space: nowrap; }
+.res-card-status { display: flex; align-items: center; gap: 4px; font-size: 11px; flex-shrink: 0; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; }
 .status-dot.running, .status-dot.active { background: var(--success); }
 .status-dot.stopped { background: var(--text-muted); }
 .status-dot.pending { background: var(--warning); animation: blink 1s infinite; }
 .status-dot.error { background: var(--danger); }
 .status-dot.terminated { background: var(--text-muted); opacity: .4; }
-.resource-action-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: var(--font-mono); }
+.res-card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.resource-action-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: inherit; }
 .resource-action-btn:hover { border-color: var(--primary); color: var(--primary); }
 .resource-action-btn.danger { color: var(--danger); }
-.resource-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+.resource-action-btn.danger:hover { border-color: var(--danger); }
+/* Render-specific: URL link */
+.res-card-link { font-size: 11px; color: var(--primary); text-decoration: none; font-family: var(--font-mono); word-break: break-all; }
+.res-card-link:hover { text-decoration: underline; }
+/* Spec badge */
+.res-spec { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); }
 .empty-state { text-align: center; padding: 36px 24px; color: var(--text-muted); font-size: 13px; }
-.load-more { display: block; width: 100%; padding: 8px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 12px; cursor: pointer; text-align: center; transition: all .15s; margin-top: 4px; font-family: var(--font-mono); }
-.load-more:hover { border-color: var(--primary); color: var(--primary); }
 .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: var(--text-muted); font-size: 13px; }
@@ -804,22 +833,29 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
 
   <!-- Resources -->
   <div id="page-resources" class="page">
-    <div class="filter-bar">
-      <select id="resCloudFilter" onchange="filterResources()">
-        <option value="" data-i18n="resource.filter_all">全部</option>
-        <option value="azure">Azure</option>
-        <option value="tencent" data-i18n="resource.filter_tencent">腾讯云</option>
-        <option value="oracle">Oracle</option>
-        <option value="render">Render</option>
-      </select>
-      <select id="resStatusFilter" onchange="filterResources()">
-        <option value="" data-i18n="resource.filter_all">全部</option>
-        <option value="running" data-i18n="resource.status_running">运行中</option>
-        <option value="stopped" data-i18n="resource.status_stopped">已停止</option>
-      </select>
-      <input type="text" id="resSearch" data-i18n="resource.search" placeholder="搜索资源..." oninput="filterResources()">
-      <span id="lastSyncLabel" style="font-size:12px;color:var(--text-secondary);margin-left:8px;white-space:nowrap"></span>
-      <button class="resource-action-btn" onclick="syncResources()" style="margin-left:auto" data-i18n="resource.sync" aria-label="Sync cloud resources">同步</button>
+    <div class="res-toolbar">
+      <div class="res-tabs" id="resTabs">
+        <button class="res-tab active" data-cloud="" onclick="switchResTab(this)">
+          <span class="res-tab-icon">*</span><span data-i18n="resource.filter_all">全部</span><span class="res-tab-count" id="resCountAll">0</span>
+        </button>
+        <button class="res-tab" data-cloud="azure" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#0078d4">A</span><span>Azure</span><span class="res-tab-count" id="resCountAzure">0</span>
+        </button>
+        <button class="res-tab" data-cloud="tencent" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#006eff">T</span><span data-i18n="resource.filter_tencent">腾讯云</span><span class="res-tab-count" id="resCountTencent">0</span>
+        </button>
+        <button class="res-tab" data-cloud="oracle" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#c74634">O</span><span>Oracle</span><span class="res-tab-count" id="resCountOracle">0</span>
+        </button>
+        <button class="res-tab" data-cloud="render" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#46e8b1">R</span><span>Render</span><span class="res-tab-count" id="resCountRender">0</span>
+        </button>
+      </div>
+      <div class="res-actions">
+        <input type="text" id="resSearch" data-i18n="resource.search" placeholder="搜索..." oninput="filterResources()" class="res-search">
+        <span id="lastSyncLabel" class="res-sync-label"></span>
+        <button class="res-sync-btn" onclick="syncResources()" aria-label="Sync cloud resources" data-i18n="resource.sync">同步</button>
+      </div>
     </div>
     <div id="resourcesList"></div>
   </div>
@@ -2568,20 +2604,46 @@ function getMockChatResponse(text) {
   return 'Hello! I am MultiCloud AI Assistant. I can help you:\n\n- View cloud resources\n- Check cloud accounts\n- Create VMs, databases\n- Manage Kubernetes clusters\n\nHow can I help you today?';
 }
 
-/* Resources */
+/* Resources - Platform-specific rendering */
 let cachedResources = null;
+let currentResTab = '';
+
+const PLATFORMS = {
+  azure:   { name: 'Azure',          color: '#0078d4', icon: 'A' },
+  tencent: { name: LOCALE === 'zh' ? '腾讯云' : 'Tencent', color: '#006eff', icon: 'T' },
+  oracle:  { name: 'Oracle Cloud',   color: '#c74634', icon: 'O' },
+  render:  { name: 'Render',         color: '#46e8b1', icon: 'R' },
+};
 
 function normalizeStatus(s) {
-  return (s === 'active' || s === 'Succeeded' || s === 'succeeded' || s === 'Ready') ? 'running' : 
+  return (s === 'active' || s === 'Succeeded' || s === 'succeeded' || s === 'Ready') ? 'running' :
          (s === 'stopped' || s === 'Failed' || s === 'failed') ? 'stopped' : s;
 }
 
 function normalizeResources(list) {
-  return list.map(r => { r.status = normalizeStatus(r.status); return r; });
+  return list.map(function(r) { r.status = normalizeStatus(r.status); return r; });
+}
+
+function escAttr(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function updateResCounts(list) {
+  var counts = { '': list.length, azure: 0, tencent: 0, oracle: 0, render: 0 };
+  list.forEach(function(r) { if (counts[r.cloud_type] !== undefined) counts[r.cloud_type]++; });
+  Object.keys(counts).forEach(function(k) {
+    var el = document.getElementById('resCount' + (k === '' ? 'All' : k.charAt(0).toUpperCase() + k.slice(1)));
+    if (el) el.textContent = counts[k];
+  });
+}
+
+function switchResTab(btn) {
+  document.querySelectorAll('.res-tab').forEach(function(t) { t.classList.remove('active'); });
+  btn.classList.add('active');
+  currentResTab = btn.dataset.cloud || '';
+  filterResources();
 }
 
 async function loadResources() {
-  let data = await apiFetch(API + '/resources');
+  var data = await apiFetch(API + '/resources');
   if (data) {
     cachedResources = normalizeResources(data.resources || []);
     if (data.last_sync) {
@@ -2590,57 +2652,147 @@ async function loadResources() {
   } else {
     cachedResources = [];
   }
+  updateResCounts(cachedResources || []);
   renderResources(cachedResources);
 }
 
 async function syncResources() {
-  const btn = document.getElementById('resourcesList').previousElementSibling.querySelector('button');
+  var btn = document.querySelector('.res-sync-btn');
+  var origText = btn.textContent;
   btn.textContent = t('resource.syncing');
   btn.disabled = true;
-  let data = await apiFetch(API + '/resources/sync', { method: 'POST' });
+  var data = await apiFetch(API + '/resources/sync', { method: 'POST' });
   if (data) {
     cachedResources = normalizeResources(data.resources || []);
     if (data.last_sync) {
       document.getElementById('lastSyncLabel').textContent = t('resource.last_sync') + new Date(data.last_sync).toLocaleTimeString();
     }
   }
+  updateResCounts(cachedResources || []);
   renderResources(cachedResources);
-  btn.textContent = t('resource.sync');
+  btn.textContent = origText;
   btn.disabled = false;
 }
 
+function filterResources() {
+  var search = (document.getElementById('resSearch').value || '').toLowerCase();
+  var list = cachedResources || [];
+  if (currentResTab) list = list.filter(function(r) { return r.cloud_type === currentResTab; });
+  if (search) list = list.filter(function(r) { return r.name.toLowerCase().includes(search) || (r.region || '').toLowerCase().includes(search) || (r.instance_type || '').toLowerCase().includes(search); });
+  renderResources(list);
+}
+
+/* Build a single resource card - platform-aware */
+function buildResourceCard(r) {
+  var s = r.status;
+  var statusLabel = s === 'running' ? t('resource.status_running') : s === 'stopped' ? t('resource.status_stopped') : s === 'pending' ? 'Pending' : s === 'terminated' ? 'Terminated' : s;
+  var spec = r.spec || {};
+  var metaHtml = '';
+
+  // Platform-specific metadata
+  if (r.cloud_type === 'azure') {
+    var azType = spec.type || r.instance_type || '';
+    if (azType.includes('/')) azType = azType.split('/').pop();
+    metaHtml += '<span class="res-card-tag">' + escHtml(azType || 'Resource') + '</span>';
+    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+    if (r.account) metaHtml += '<span class="res-card-tag">' + escHtml(r.account) + '</span>';
+  } else if (r.cloud_type === 'tencent') {
+    metaHtml += '<span class="res-card-tag">' + escHtml(r.instance_type || 'CVM') + '</span>';
+    if (spec.cpu) metaHtml += '<span class="res-card-tag">' + spec.cpu + 'vCPU / ' + (spec.memory || '?') + 'GB</span>';
+    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+  } else if (r.cloud_type === 'oracle') {
+    metaHtml += '<span class="res-card-tag">' + escHtml(spec.shape || r.instance_type || 'Instance') + '</span>';
+    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+    if (r.tags && Object.keys(r.tags).length > 0) {
+      Object.keys(r.tags).slice(0, 2).forEach(function(k) {
+        metaHtml += '<span class="res-card-tag">' + escHtml(k + '=' + r.tags[k]) + '</span>';
+      });
+    }
+  } else if (r.cloud_type === 'render') {
+    var rType = r.instance_type || '';
+    var typeLabel = rType === 'web_service' ? 'Web Service' : rType === 'worker' ? 'Worker' : rType === 'static_site' ? 'Static Site' : rType === 'postgres' ? 'PostgreSQL' : rType === 'key_value' ? 'Key-Value' : rType;
+    metaHtml += '<span class="res-card-tag">' + escHtml(typeLabel) + '</span>';
+    if (spec.plan) metaHtml += '<span class="res-card-tag">' + escHtml(spec.plan) + '</span>';
+    if (spec.version) metaHtml += '<span class="res-card-tag">v' + escHtml(spec.version) + '</span>';
+    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+  } else {
+    metaHtml += '<span class="res-card-tag">' + escHtml(r.instance_type || r.cloud_type) + '</span>';
+    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+  }
+
+  // Render: show URL link
+  var extraHtml = '';
+  if (r.cloud_type === 'render' && spec.url) {
+    extraHtml = '<a class="res-card-link" href="' + escAttr(spec.url) + '" target="_blank" rel="noopener">' + escHtml(spec.url.replace(/^https?:\/\//, '')) + '</a>';
+  }
+
+  // Action buttons
+  var actionsHtml = '';
+  if (s === 'running') {
+    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'stop\')">' + t('resource.stop') + '</button>';
+  } else if (s === 'stopped') {
+    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'start\')">' + t('resource.start') + '</button>';
+  }
+  if (r.cloud_type === 'render' && spec.dashboard_url) {
+    actionsHtml += '<a class="resource-action-btn" href="' + escAttr(spec.dashboard_url) + '" target="_blank" rel="noopener" style="text-decoration:none">Dashboard</a>';
+  }
+
+  return '<div class="resource-card">' +
+    '<div class="res-card-main">' +
+      '<div class="res-card-name">' + escHtml(r.name) + '</div>' +
+      '<div class="res-card-meta">' + metaHtml + '</div>' +
+      (extraHtml ? '<div style="margin-top:2px">' + extraHtml + '</div>' : '') +
+    '</div>' +
+    '<div class="res-card-status"><span class="status-dot ' + s + '"></span><span>' + statusLabel + '</span></div>' +
+    '<div class="res-card-actions">' + actionsHtml + '</div>' +
+  '</div>';
+}
+
 function renderResources(list) {
-  const container = document.getElementById('resourcesList');
+  var container = document.getElementById('resourcesList');
   if (!list || list.length === 0) {
     container.innerHTML = '<div class="empty-state" data-i18n="resource.empty">' + t('resource.empty') + '</div>';
     return;
   }
-  container.innerHTML = list.map(r => {
-    const cloudLabel = cloudLabels[r.cloud_type] || r.cloud_type;
-    const s = r.status === 'active' ? 'running' : r.status;
-    const statusLabel = s === 'running' ? t('resource.status_running') : t('resource.status_stopped');
-    return '<div class="resource-card">' +
-      '<div class="resource-info">' +
-        '<div class="resource-name">' + r.name + '</div>' +
-        '<div class="resource-meta">' + cloudLabel + ' / ' + (r.region || '') + ' / ' + (r.spec || r.type || '') + '</div>' +
-        '<div class="resource-status"><span class="status-dot ' + s + '"></span>' + statusLabel + '</div>' +
-      '</div>' +
-      '<div class="resource-actions">' +
-        (s === 'running' ? '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'stop\')">' + t('resource.stop') + '</button>' : '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'start\')">' + t('resource.start') + '</button>') +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
 
-function filterResources() {
-  const cloud = document.getElementById('resCloudFilter').value;
-  const status = document.getElementById('resStatusFilter').value;
-  const search = document.getElementById('resSearch').value.toLowerCase();
-  let list = cachedResources || [];
-  if (cloud) list = list.filter(r => r.cloud_type === cloud);
-  if (status) list = list.filter(r => r.status === status);
-  if (search) list = list.filter(r => r.name.toLowerCase().includes(search));
-  renderResources(list);
+  // Group by platform
+  var groups = {};
+  list.forEach(function(r) {
+    var ct = r.cloud_type || 'other';
+    if (!groups[ct]) groups[ct] = [];
+    groups[ct].push(r);
+  });
+
+  var html = '';
+  var order = ['azure', 'tencent', 'oracle', 'render'];
+  order.forEach(function(ct) {
+    if (!groups[ct]) return;
+    var p = PLATFORMS[ct] || { name: ct, color: '#888', icon: ct[0].toUpperCase() };
+    var res = groups[ct];
+    var running = res.filter(function(r) { return r.status === 'running'; }).length;
+    var stopped = res.length - running;
+
+    html += '<div class="res-platform">';
+    html += '<div class="res-platform-header">';
+    html += '<div class="res-platform-icon" style="background:' + p.color + '">' + p.icon + '</div>';
+    html += '<span class="res-platform-name">' + p.name + '</span>';
+    html += '<span class="res-platform-count">' + res.length + (LOCALE === 'zh' ? ' 个资源' : ' resources') + '</span>';
+    html += '<div class="res-platform-stats">';
+    html += '<span class="res-stat"><span class="dot run"></span>' + running + ' ' + t('resource.status_running') + '</span>';
+    if (stopped > 0) html += '<span class="res-stat"><span class="dot stop"></span>' + stopped + ' ' + t('resource.status_stopped') + '</span>';
+    html += '</div></div>';
+    res.forEach(function(r) { html += buildResourceCard(r); });
+    html += '</div>';
+  });
+
+  // Any unknown platform
+  if (groups['other']) {
+    html += '<div class="res-platform"><div class="res-platform-header"><div class="res-platform-icon" style="background:#888">?</div><span class="res-platform-name">Other</span><span class="res-platform-count">' + groups['other'].length + '</span></div>';
+    groups['other'].forEach(function(r) { html += buildResourceCard(r); });
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
 }
 
 async function ctrlResource(id, action) {
