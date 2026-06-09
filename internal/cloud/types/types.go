@@ -2,6 +2,13 @@ package types
 
 import "context"
 
+// RawResponse is the result of a DoRawRequest call.
+type RawResponse struct {
+	StatusCode int               `json:"status_code"`
+	Headers    map[string]string `json:"headers"`
+	Body       []byte            `json:"body"`
+}
+
 type Provider interface {
 	GetType() string
 	ListInstances(ctx context.Context, opts ListOptions) ([]Instance, error)
@@ -9,6 +16,7 @@ type Provider interface {
 	StartInstance(ctx context.Context, instanceID string) error
 	StopInstance(ctx context.Context, instanceID string) error
 	RestartInstance(ctx context.Context, instanceID string) error
+	DoRawRequest(ctx context.Context, method, url string, headers map[string]string, body []byte) (*RawResponse, error)
 }
 
 type ListOptions struct {

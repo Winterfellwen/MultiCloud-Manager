@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -281,4 +282,58 @@ func (p *AzureProvider) vmAction(ctx context.Context, resourceID, action string)
 	url := fmt.Sprintf("https://management.azure.com%s/%s?api-version=2023-03-01", resourceID, action)
 	_, err := p.doAPI(ctx, "POST", url, nil)
 	return err
+}
+
+func (p *AzureProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {
+	// Validate URL host — only allow Azure management endpoints
+	if !strings.HasPrefix(reqURL, "https://management.azure.com") &&
+		!strings.HasPrefix(reqURL, "https://graph.microsoft.com") {
+		return nil, fmt.Errorf("azure: URL must start with management.azure.com or graph.microsoft.com")
+	}
+
+	token, err := p.getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("azure auth: %w", err)
+	}
+
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB max
+	if err != nil {
+		return nil, err
+	}
+
+	respHeaders := map[string]string{}
+	for k := range resp.Header {
+		lower := strings.ToLower(k)
+		if lower == "authorization" || lower == "set-cookie" {
+			continue
+		}
+		respHeaders[k] = resp.Header.Get(k)
+	}
+
+	return &types.RawResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       respBody,
+	}, nil
 }

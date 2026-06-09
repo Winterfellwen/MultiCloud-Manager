@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"multicloud/internal/cloud"
 	"multicloud/internal/vault"
@@ -253,4 +254,137 @@ func filterSlice(ss []map[string]interface{}, test func(map[string]interface{}) 
 		}
 	}
 	return filtered
+}
+
+// cloudAPIRequest handles the cloud_api_request tool call.
+// It loads credentials from vault, creates a provider, makes an authenticated
+// HTTP request, and returns a filtered response (secrets removed).
+func (e *Executor) cloudAPIRequest(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	method, _ := args["method"].(string)
+	reqURL, _ := args["url"].(string)
+
+	if accountID == "" || method == "" || reqURL == "" {
+		return "", fmt.Errorf("account_id, method, and url are required")
+	}
+
+	// Load account from DB
+	var cloudType, credJSON, vaultPath string
+	err := e.db.QueryRowContext(ctx,
+		`SELECT cloud_type, credentials, COALESCE(vault_path, '') FROM cloud_accounts WHERE id = $1 AND is_active = true`,
+		accountID).Scan(&cloudType, &credJSON, &vaultPath)
+	if err != nil {
+		return "", fmt.Errorf("account not found: %w", err)
+	}
+
+	// Load credentials from vault (preferred) or DB fallback
+	if vaultPath != "" && e.vault != nil {
+		if secretData, err := e.vault.GetSecret(vaultPath); err == nil {
+			if dataBytes, err := json.Marshal(secretData); err == nil {
+				credJSON = string(dataBytes)
+			}
+		}
+	}
+
+	var creds map[string]string
+	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+		return "", fmt.Errorf("parse credentials: %w", err)
+	}
+
+	// Create provider
+	prov := cloud.NewProvider(cloudType, creds)
+	if prov == nil {
+		return "", fmt.Errorf("unsupported cloud type: %s", cloudType)
+	}
+
+	// Parse optional headers
+	var headers map[string]string
+	if h, ok := args["headers"].(map[string]interface{}); ok {
+		headers = make(map[string]string, len(h))
+		for k, v := range h {
+			headers[k] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	// Parse optional body
+	var body []byte
+	if b, ok := args["body"].(string); ok && b != "" {
+		body = []byte(b)
+	}
+
+	// Execute raw request
+	resp, err := prov.DoRawRequest(ctx, method, reqURL, headers, body)
+	if err != nil {
+		return "", err
+	}
+
+	// Filter sensitive fields and truncate
+	filteredBody := filterSensitiveResponse(resp.Body)
+	truncated := false
+	if len(filteredBody) > 50*1024 {
+		filteredBody = filteredBody[:50*1024]
+		truncated = true
+	}
+
+	result := map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Headers,
+		"body":        string(filteredBody),
+		"truncated":   truncated,
+	}
+	b, _ := json.Marshal(result)
+	return string(b), nil
+}
+
+// sensitiveFieldNames are JSON keys whose values should be redacted.
+var sensitiveFieldNames = []string{
+	"client_secret", "clientSecret",
+	"api_key", "apiKey", "api_keys",
+	"secret_key", "secretKey", "secret_access_key", "secretAccessKey",
+	"access_key_secret", "accessKeySecret",
+	"password", "passwd",
+	"token", "access_token", "accessToken", "refresh_token", "refreshToken",
+	"authorization", "Authorization",
+	"credential", "credentials",
+	"private_key", "privateKey",
+	"connection_string", "connectionString",
+}
+
+// filterSensitiveResponse removes or redacts sensitive fields from a JSON response body.
+func filterSensitiveResponse(body []byte) []byte {
+	var data interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		// Not JSON — return as-is
+		return body
+	}
+	filterValue(data)
+	out, _ := json.Marshal(data)
+	return out
+}
+
+func filterValue(v interface{}) {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		for k, v2 := range val {
+			if isSensitiveField(k) {
+				val[k] = "[REDACTED]"
+			} else {
+				filterValue(v2)
+			}
+		}
+	case []interface{}:
+		for _, item := range val {
+			filterValue(item)
+		}
+	}
+}
+
+func isSensitiveField(name string) bool {
+	lower := strings.ToLower(name)
+	for _, s := range sensitiveFieldNames {
+		if strings.ToLower(s) == lower {
+			return true
+		}
+	}
+	return false
 }

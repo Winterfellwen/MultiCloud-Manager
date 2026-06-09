@@ -177,10 +177,30 @@ Use these for common operations - they handle authentication automatically:
 - list_cloud_accounts - Configured accounts
 - sync_cloud_resources - Sync from cloud providers
 
+### cloud_api_request (PREFERRED for advanced cloud operations)
+Make authenticated HTTP calls to cloud APIs. Credentials stay server-side.
+**Usage pattern:**
+1. Call get_cloud_credentials with the cloud type to get account_id
+2. Call cloud_api_request with account_id, method, url, and optional headers/body
+3. Response is auto-filtered — sensitive fields (secrets, tokens) are redacted
+
+**Examples:**
+- Azure: cloud_api_request(account_id, "GET", "https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01")
+- Tencent: cloud_api_request(account_id, "POST", "https://cvm.tencentcloudapi.com/", headers={"X-TC-Action":"DescribeInstances","X-TC-Region":"ap-guangzhou"})
+- Oracle: cloud_api_request(account_id, "GET", "https://compute.{region}.oraclecloud.com/20160918/instances?compartmentId={ocid}")
+- Render: cloud_api_request(account_id, "GET", "https://api.render.com/v1/services?limit=100")
+
+**Constraints:**
+- URLs are validated against provider-specific allowed domains
+- Response body is capped at 50KB (truncated flag set if exceeded)
+- Sensitive fields in JSON responses are automatically redacted
+- For Tencent Cloud: X-TC-Action header is required
+
 ### When to use which tool:
 - **Built-in tools** for listing resources, starting/stopping VMs (they handle auth)
-- **run_script** for multi-step operations (get token → use token → delete resource)
-- **shell_exec** for one-off curl commands
+- **cloud_api_request** for ANY other cloud API operation (manage resources, check quotas, configure networking, deploy templates, etc.)
+- **run_script** only when cloud_api_request cannot express the operation
+- **shell_exec** for one-off curl commands (non-cloud)
 - Read the REST API docs FIRST to understand the correct endpoints and auth method
 
 ## Operational Modes

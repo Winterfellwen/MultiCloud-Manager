@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -301,4 +302,52 @@ func (p *RenderProvider) StopInstance(ctx context.Context, id string) error {
 
 func (p *RenderProvider) RestartInstance(ctx context.Context, id string) error {
 	return p.renderAction(ctx, fmt.Sprintf("https://api.render.com/v1/services/%s/deploys", id))
+}
+
+func (p *RenderProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {
+	// Validate URL host — only allow Render API
+	if !strings.HasPrefix(reqURL, "https://api.render.com/") {
+		return nil, fmt.Errorf("render: URL must start with https://api.render.com/")
+	}
+
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	respHeaders := map[string]string{}
+	for k := range resp.Header {
+		lower := strings.ToLower(k)
+		if lower == "authorization" || lower == "set-cookie" {
+			continue
+		}
+		respHeaders[k] = resp.Header.Get(k)
+	}
+
+	return &types.RawResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       respBody,
+	}, nil
 }
