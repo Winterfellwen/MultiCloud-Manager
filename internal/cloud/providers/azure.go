@@ -172,6 +172,20 @@ func (p *AzureProvider) ListInstances(ctx context.Context, opts types.ListOption
 			status = p.getVMStatus(ctx, res.ID)
 		}
 
+		// Extract resource group from Azure resource ID
+		resourceGroup := extractResourceGroup(res.ID)
+
+		spec := map[string]interface{}{
+			"type": res.Type,
+		}
+		if resourceGroup != "" {
+			spec["resource_group"] = resourceGroup
+		}
+		// Extract provider namespace for categorization
+		if len(parts) >= 1 {
+			spec["provider_ns"] = parts[0]
+		}
+
 		instances = append(instances, types.Instance{
 			ID:           res.ID,
 			Name:         res.Name,
@@ -179,10 +193,8 @@ func (p *AzureProvider) ListInstances(ctx context.Context, opts types.ListOption
 			Region:       res.Location,
 			Status:       status,
 			InstanceType: resourceType,
-			Spec: map[string]interface{}{
-				"type": res.Type,
-			},
-			Tags: res.Tags,
+			Spec:         spec,
+			Tags:         res.Tags,
 		})
 	}
 
@@ -206,6 +218,19 @@ func splitResourceType(resourceType string) []string {
 		parts = append(parts, current)
 	}
 	return parts
+}
+
+// extractResourceGroup extracts the resource group name from an Azure resource ID.
+// Azure resource IDs have the format:
+// /subscriptions/{sub}/resourceGroups/{rg}/providers/{type}/{name}
+func extractResourceGroup(resourceID string) string {
+	parts := splitResourceType(resourceID)
+	for i, p := range parts {
+		if p == "resourceGroups" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+	return ""
 }
 
 func (p *AzureProvider) getVMStatus(ctx context.Context, resourceID string) string {

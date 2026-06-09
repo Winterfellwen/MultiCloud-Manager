@@ -438,6 +438,24 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .res-sync-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer; transition: all .15s; font-family: inherit; }
 .res-sync-btn:hover { border-color: var(--primary); color: var(--primary); }
 
+
+/* Resource sub-groups */
+.res-subgroup { margin-bottom: 4px; }
+.res-subgroup-header { display: flex; align-items: center; gap: 6px; padding: 6px 8px; cursor: pointer; font-size: 12px; color: var(--text-secondary); user-select: none; border-radius: 4px; transition: background .1s; }
+.res-subgroup-header:hover { background: rgba(255,255,255,.02); }
+.res-subgroup-arrow { width: 0; height: 0; border-left: 4px solid currentColor; border-top: 3px solid transparent; border-bottom: 3px solid transparent; transition: transform .15s; flex-shrink: 0; }
+.res-subgroup.collapsed .res-subgroup-arrow { transform: rotate(-90deg); }
+.res-subgroup-name { font-weight: 600; color: var(--text); flex: 1; }
+.res-subgroup-count { font-size: 10px; padding: 0 5px; border-radius: 8px; background: var(--border); color: var(--text-muted); min-width: 18px; text-align: center; line-height: 16px; }
+.res-subgroup-stat { font-size: 10px; color: var(--text-muted); }
+.res-subgroup-body { padding-left: 8px; }
+.res-subgroup.collapsed .res-subgroup-body { display: none; }
+/* View toggle (Azure) */
+.res-view-toggle { display: flex; gap: 1px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px; margin-left: auto; }
+.res-view-btn { padding: 2px 8px; font-size: 10px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 3px; transition: all .1s; font-family: inherit; }
+.res-view-btn:hover { color: var(--text); }
+.res-view-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+
 /* Platform section */
 .res-platform { margin-bottom: 20px; }
 .res-platform-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
@@ -2609,11 +2627,49 @@ let cachedResources = null;
 let currentResTab = '';
 
 const PLATFORMS = {
-  azure:   { name: 'Azure',          color: '#0078d4', icon: 'A' },
-  tencent: { name: LOCALE === 'zh' ? '腾讯云' : 'Tencent', color: '#006eff', icon: 'T' },
-  oracle:  { name: 'Oracle Cloud',   color: '#c74634', icon: 'O' },
-  render:  { name: 'Render',         color: '#46e8b1', icon: 'R' },
+  azure:   { name: 'Azure',          color: '#0078d4', icon: 'A', views: ['category', 'resource_group'] },
+  tencent: { name: LOCALE === 'zh' ? '腾讯云' : 'Tencent', color: '#006eff', icon: 'T', views: ['category'] },
+  oracle:  { name: 'Oracle Cloud',   color: '#c74634', icon: 'O', views: ['category'] },
+  render:  { name: 'Render',         color: '#46e8b1', icon: 'R', views: ['category'] },
 };
+
+// Azure resource type namespace -> friendly category name
+const AZURE_CATEGORIES = {
+  'Microsoft.Compute': 'Virtual Machines',
+  'Microsoft.Network': 'Networking',
+  'Microsoft.Storage': 'Storage',
+  'Microsoft.Web': 'App Services',
+  'Microsoft.Sql': 'SQL Database',
+  'Microsoft.KeyVault': 'Key Vault',
+  'Microsoft.ContainerService': 'Kubernetes',
+  'Microsoft.CognitiveServices': 'AI + Cognitive',
+  'Microsoft.Insights': 'Monitoring',
+  'Microsoft.Security': 'Security',
+  'Microsoft.Resources': 'Resource Management',
+};
+
+function getCategoryLabel(cloudType, resource) {
+  if (cloudType === 'azure') {
+    var ns = resource.provider_ns || '';
+    if (AZURE_CATEGORIES[ns]) return AZURE_CATEGORIES[ns];
+    // Fallback: use the second part of the type path
+    var t = resource.type || '';
+    if (t.includes('/')) {
+      var parts = t.split('/');
+      return parts[0].replace('Microsoft.', '') + ' / ' + parts[parts.length - 1];
+    }
+    return resource.type || 'Other';
+  }
+  if (cloudType === 'tencent') return resource.instance_type || 'CVM';
+  if (cloudType === 'oracle') return resource.shape || resource.instance_type || 'Instance';
+  if (cloudType === 'render') {
+    var rt = resource.instance_type || '';
+    return rt === 'web_service' ? 'Web Services' : rt === 'worker' ? 'Workers' : rt === 'static_site' ? 'Static Sites' : rt === 'postgres' ? 'PostgreSQL' : rt === 'key_value' ? 'Key-Value' : rt || 'Other';
+  }
+  return resource.type || 'Other';
+}
+
+let azureViewMode = 'category'; // 'category' or 'resource_group'
 
 function normalizeStatus(s) {
   return (s === 'active' || s === 'Succeeded' || s === 'succeeded' || s === 'Ready') ? 'running' :
@@ -2767,10 +2823,26 @@ function renderResources(list) {
   var order = ['azure', 'tencent', 'oracle', 'render'];
   order.forEach(function(ct) {
     if (!groups[ct]) return;
-    var p = PLATFORMS[ct] || { name: ct, color: '#888', icon: ct[0].toUpperCase() };
+    var p = PLATFORMS[ct] || { name: ct, color: '#888', icon: ct[0].toUpperCase(), views: ['category'] };
     var res = groups[ct];
     var running = res.filter(function(r) { return r.status === 'running'; }).length;
     var stopped = res.length - running;
+
+    // Determine grouping: Azure can switch between category and resource_group
+    var viewMode = (ct === 'azure') ? azureViewMode : 'category';
+
+    // Group resources within platform
+    var subGroups = {};
+    res.forEach(function(r) {
+      var key;
+      if (viewMode === 'resource_group' && r.resource_group) {
+        key = r.resource_group;
+      } else {
+        key = getCategoryLabel(ct, r);
+      }
+      if (!subGroups[key]) subGroups[key] = [];
+      subGroups[key].push(r);
+    });
 
     html += '<div class="res-platform">';
     html += '<div class="res-platform-header">';
@@ -2780,12 +2852,39 @@ function renderResources(list) {
     html += '<div class="res-platform-stats">';
     html += '<span class="res-stat"><span class="dot run"></span>' + running + ' ' + t('resource.status_running') + '</span>';
     if (stopped > 0) html += '<span class="res-stat"><span class="dot stop"></span>' + stopped + ' ' + t('resource.status_stopped') + '</span>';
-    html += '</div></div>';
-    res.forEach(function(r) { html += buildResourceCard(r); });
+    html += '</div>';
+
+    // Azure view toggle
+    if (ct === 'azure' && p.views.length > 1) {
+      html += '<div class="res-view-toggle">';
+      html += '<button class="res-view-btn' + (viewMode === 'category' ? ' active' : '') + '" data-view="category" onclick="setAzureView(this.dataset.view)">' + (LOCALE === 'zh' ? '按类型' : 'By Type') + '</button>';
+      html += '<button class="res-view-btn' + (viewMode === 'resource_group' ? ' active' : '') + '" data-view="resource_group" onclick="setAzureView(this.dataset.view)">' + (LOCALE === 'zh' ? '按资源组' : 'By RG') + '</button>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+
+    // Render sub-groups
+    var groupKeys = Object.keys(subGroups).sort();
+    groupKeys.forEach(function(gk) {
+      var items = subGroups[gk];
+      var gRunning = items.filter(function(r) { return r.status === 'running'; }).length;
+      html += '<div class="res-subgroup">';
+      html += '<div class="res-subgroup-header" onclick="toggleSubGroup(this)">';
+      html += '<span class="res-subgroup-arrow"></span>';
+      html += '<span class="res-subgroup-name">' + escHtml(gk) + '</span>';
+      html += '<span class="res-subgroup-count">' + items.length + '</span>';
+      if (gRunning < items.length) html += '<span class="res-subgroup-stat">' + gRunning + '/' + items.length + ' running</span>';
+      html += '</div>';
+      html += '<div class="res-subgroup-body">';
+      items.forEach(function(r) { html += buildResourceCard(r); });
+      html += '</div></div>';
+    });
+
     html += '</div>';
   });
 
-  // Any unknown platform
+  // Unknown platforms
   if (groups['other']) {
     html += '<div class="res-platform"><div class="res-platform-header"><div class="res-platform-icon" style="background:#888">?</div><span class="res-platform-name">Other</span><span class="res-platform-count">' + groups['other'].length + '</span></div>';
     groups['other'].forEach(function(r) { html += buildResourceCard(r); });
@@ -2793,6 +2892,15 @@ function renderResources(list) {
   }
 
   container.innerHTML = html;
+}
+
+function setAzureView(mode) {
+  azureViewMode = mode;
+  filterResources();
+}
+
+function toggleSubGroup(el) {
+  el.parentElement.classList.toggle('collapsed');
 }
 
 async function ctrlResource(id, action) {

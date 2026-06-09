@@ -204,10 +204,10 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
-			rc.spec, ca.cloud_type, ca.name as account_name
+			rc.spec, rc.tags, ca.cloud_type, ca.name as account_name
 		FROM resources_cache rc
 		JOIN cloud_accounts ca ON rc.account_id = ca.id
-		ORDER BY rc.last_synced_at DESC
+		ORDER BY ca.cloud_type, rc.resource_type, rc.name
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query resources: %w", err)
@@ -217,14 +217,18 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 	var resources []map[string]interface{}
 	for rows.Next() {
 		var id, name, resourceType, region, status, cloudType, accountName string
-		var specJSON []byte
-		if err := rows.Scan(&id, &name, &resourceType, &region, &status, &specJSON, &cloudType, &accountName); err != nil {
+		var specJSON, tagsJSON []byte
+		if err := rows.Scan(&id, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName); err != nil {
 			continue
 		}
 
 		var spec map[string]interface{}
 		if len(specJSON) > 0 {
 			json.Unmarshal(specJSON, &spec)
+		}
+		var tags map[string]interface{}
+		if len(tagsJSON) > 0 {
+			json.Unmarshal(tagsJSON, &tags)
 		}
 
 		r := map[string]interface{}{
@@ -240,6 +244,9 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 			for k, v := range spec {
 				r[k] = v
 			}
+		}
+		if tags != nil && len(tags) > 0 {
+			r["tags"] = tags
 		}
 		resources = append(resources, r)
 	}
