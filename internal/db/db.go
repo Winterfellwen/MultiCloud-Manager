@@ -65,7 +65,7 @@ func initPostgres(dsn string) (*Database, error) {
 func (d *Database) Migrate() error {
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	if adminPassword == "" {
-		adminPassword = "test123"
+		adminPassword = "Test.1234"
 	}
 
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
@@ -188,7 +188,7 @@ func (d *Database) Migrate() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
 		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
-		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO NOTHING`, adminHash),
+		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin'`, adminHash),
 		`CREATE TABLE IF NOT EXISTS agent_config (
 			id SERIAL PRIMARY KEY,
 			config_type VARCHAR(50) NOT NULL,

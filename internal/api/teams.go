@@ -210,6 +210,14 @@ func (h *TeamsHandler) UpdateTeamMember(c *gin.Context) {
 		return
 	}
 
+	// Protect built-in admin account
+	var memberUsername sql.NullString
+	h.db.QueryRow(`SELECT u.username FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.id = $1`, memberID).Scan(&memberUsername)
+	if memberUsername.Valid && memberUsername.String == "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "内置管理员账号不可编辑"})
+		return
+	}
+
 	var req struct {
 		Name   string `json:"name"`
 		Email  string `json:"email"`
@@ -328,6 +336,14 @@ func (h *TeamsHandler) RemoveTeamMember(c *gin.Context) {
 	memberID := c.Param("id")
 	if memberID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少成员ID"})
+		return
+	}
+
+	// Protect built-in admin account
+	var memberUsername sql.NullString
+	h.db.QueryRow(`SELECT u.username FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.id = $1`, memberID).Scan(&memberUsername)
+	if memberUsername.Valid && memberUsername.String == "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "内置管理员账号不可删除"})
 		return
 	}
 
