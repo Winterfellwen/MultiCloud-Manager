@@ -273,39 +273,41 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Inline status indicators (Claude Code style) */
 .inline-status { display: inline; color: var(--text-muted); font-size: 12px; }
 
-/* Collapsible tool calls group (for saved/reloaded sessions) */
-.msg.tools { padding: 6px 20px 6px 16px; border-left: 3px solid var(--primary); margin: 0 0 2px 0; }
-.tool-calls-header { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; font-size: 12px; color: var(--text-muted); cursor: pointer; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: all .15s; user-select: none; }
+/* Tool calls - Claude Code style */
+.msg.tools { padding: 4px 20px 4px 16px; margin: 2px 0; }
+.tool-calls-header { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: all .15s; user-select: none; font-family: var(--font-mono); }
 .tool-calls-header:hover { border-color: var(--primary); color: var(--primary); }
-.tool-calls-header::before { content: '\u25B6'; font-size: 10px; margin-right: 4px; }
-.tool-calls-header.expanded::before { content: '\u25BC'; }
-.tool-calls-body { margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
+.tool-calls-header::before { content: ''; display: inline-block; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 3px solid transparent; border-bottom: 3px solid transparent; margin-right: 2px; transition: transform .15s; }
+.tool-calls-header.expanded::before { transform: rotate(90deg); }
+.tool-calls-body { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
 .tool-calls-body .tool-block.done { display: flex; border-radius: 4px; }
 .tool-calls-body .tool-block.done .tool-result { display: none; }
 .tool-calls-body .tool-block.expanded .tool-result { display: block; }
 .tool-result .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; }
 .tool-result .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
 
-/* Inline tool calls inside AI message (bottom) */
+/* Inline tool calls inside AI message */
 .msg.agent .tool-calls-inline { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
 .msg.agent .tool-calls-inline .tool-calls-header { font-size: 11px; }
 
-/* Tool card (card-style layout for each tool call) */
-.tool-card { border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); overflow: hidden; }
-.tool-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text); transition: background .1s; user-select: none; }
-.tool-card-header:hover { background: rgba(255,255,255,.03); }
-.tool-card-header .card-icon { font-size: 14px; }
-.tool-card-header .card-name { color: var(--primary); flex: 1; font-weight: 600; }
-.tool-card-header .card-status { font-size: 9px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; font-weight: 600; }
-.tool-card-header .card-status.done { background: rgba(0,200,83,.12); color: var(--success); }
-.tool-card-header .card-status.error { background: rgba(255,59,48,.12); color: var(--danger); }
-.tool-card-header .expand-arrow { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
+/* Tool card - compact single-level design */
+.tool-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; transition: border-color .15s; }
+.tool-card:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+.tool-card-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; color: var(--text); transition: background .1s; user-select: none; }
+.tool-card-header:hover { background: rgba(255,255,255,.02); }
+.tool-card-header .card-icon { font-size: 12px; opacity: .6; }
+.tool-card-header .card-name { color: var(--primary); font-weight: 600; font-family: var(--font-mono); font-size: 11px; flex: 1; }
+.tool-card-header .card-status { font-size: 9px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; font-weight: 600; letter-spacing: .3px; }
+.tool-card-header .card-status.done { background: rgba(0,200,83,.1); color: var(--success); }
+.tool-card-header .card-status.error { background: rgba(255,59,48,.1); color: var(--danger); }
+.tool-card-header .expand-arrow { width: 12px; height: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: transform .15s; flex-shrink: 0; }
+.tool-card-header .expand-arrow::before { content: ''; display: block; width: 0; height: 0; border-left: 4px solid currentColor; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
 .tool-card-header.expanded .expand-arrow { transform: rotate(90deg); }
-.tool-card-body { display: none; padding: 0 12px 10px 12px; }
+.tool-card-body { display: none; padding: 0 10px 8px 10px; }
 .tool-card-body.expanded { display: block; }
-.tool-card-body .field-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 10px; margin-bottom: 3px; }
-.tool-card-body .field-code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; line-height: 1.4; }
-.tool-card-body .field-result { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow-y: auto; line-height: 1.4; position: relative; }
+.tool-card-body .field-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 8px; margin-bottom: 2px; }
+.tool-card-body .field-code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; line-height: 1.4; }
+.tool-card-body .field-result { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; line-height: 1.4; position: relative; }
 
 /* Files sidebar (right panel) */
 .files-sidebar { width: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--surface); transition: width .25s ease; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -1095,6 +1097,7 @@ function hideStatus() {
 
 var STREAMING_DIV = null;
 var STREAMING_CONTENT = '';
+var PENDING_TOOL_CALLS = [];
 
 function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
@@ -1117,33 +1120,26 @@ function handleTokenEvent(ev) {
 }
 
 function handleToolStartEvent(ev) {
-  var container = document.getElementById('run-' + ev.run_id) || document.getElementById('chatMessages');
-  if (!container) return;
   if (ev.payload && ev.payload.tool_calls) {
     ev.payload.tool_calls.forEach(function(tc) {
       var fn = tc.function || tc;
       var name = fn.name || 'unknown';
       if (ev.session_id === CURRENT_SESSION) showToolRunning(name);
-      var toolDiv = document.createElement('div');
-      toolDiv.className = 'msg tool';
-      toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F527}</span><span class="role-label">' + escHtml(name) + '</span></div>';
-      container.appendChild(toolDiv);
+      PENDING_TOOL_CALLS.push({name: name, params: fn.arguments || '', result: ''});
     });
-    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
   }
 }
 
 function handleToolResultEvent(ev) {
-  var container = document.getElementById('run-' + ev.run_id) || document.getElementById('chatMessages');
-  if (!container) return;
   if (ev.payload) {
     var name = ev.payload.tool_name || 'tool';
     var result = ev.payload.result || ev.payload.error || '';
-    var toolDiv = document.createElement('div');
-    toolDiv.className = 'msg tool-result';
-    toolDiv.innerHTML = '<div class="msg-role"><span class="role-icon">\u{1F4CB}</span><span class="role-label">' + escHtml(name) + '</span></div><div class="msg-content">' + escHtml(result.substring(0, 500)) + '</div>';
-    container.appendChild(toolDiv);
-    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+    for (var i = PENDING_TOOL_CALLS.length - 1; i >= 0; i--) {
+      if (PENDING_TOOL_CALLS[i].name === name && !PENDING_TOOL_CALLS[i].result) {
+        PENDING_TOOL_CALLS[i].result = result;
+        break;
+      }
+    }
   }
 }
 
@@ -1161,6 +1157,12 @@ function handleStateChangeEvent(ev) {
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
+    }
+    // Flush pending tool calls as card group
+    if (PENDING_TOOL_CALLS.length > 0 && STREAMING_DIV) {
+      var container = document.getElementById('chatMessages');
+      renderToolCallsGroup(JSON.stringify(PENDING_TOOL_CALLS), container);
+      PENDING_TOOL_CALLS = [];
     }
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
@@ -1704,34 +1706,7 @@ async function startStream(body) {
       var body = document.createElement('div');
       body.className = 'tool-calls-body';
       body.style.display = 'none';
-      toolCallData.forEach(function(tc) {
-        var card = document.createElement('div');
-        card.className = 'tool-card';
-        var paramsStr = '';
-        try { var p = JSON.parse(tc.params || '{}'); paramsStr = JSON.stringify(p, null, 2); } catch(e) { paramsStr = tc.params || ''; }
-        var resultText = tc.result || '';
-        var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
-        card.innerHTML = '<div class="tool-card-header">' +
-          '<span class="card-icon">\u{1F527}</span>' +
-          '<span class="card-name">' + escHtml(tc.name) + '</span>' +
-          '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
-          '<span class="expand-arrow">\u25B6</span></div>' +
-          '<div class="tool-card-body">' +
-          '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
-      '<div class="field-code">' + escHtml(tc.name) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
-      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
-      '<div class="field-result" data-result="' + escAttr(resultText) + '">' + escHtml(resultText) +
-      '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
-        var cardHeader = card.querySelector('.tool-card-header');
-        var cardBody = card.querySelector('.tool-card-body');
-        cardHeader.onclick = function() {
-          cardHeader.classList.toggle('expanded');
-          cardBody.classList.toggle('expanded');
-        };
-        body.appendChild(card);
-      });
+      toolCallData.forEach(function(tc) { body.appendChild(buildToolCard(tc)); });
       header.onclick = function(e) {
         e.stopPropagation();
         var isCollapsed = body.style.display === 'none';
@@ -2307,77 +2282,64 @@ function buildAgentCopyText(msgEl) {
 }
 
 /* Render tool calls group (from saved session JSON) */
+function buildToolCard(tc) {
+  var card = document.createElement('div');
+  card.className = 'tool-card';
+  var paramsStr = '';
+  try { paramsStr = JSON.stringify(JSON.parse(tc.params || '{}'), null, 2); } catch(e) { paramsStr = tc.params || ''; }
+  var resultText = tc.result || '';
+  var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
+  var loc = LOCALE === 'zh';
+  card.innerHTML =
+    '<div class="tool-card-header">' +
+      '<span class="card-name">' + escHtml(tc.name) + '</span>' +
+      '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
+      '<span class="expand-arrow"></span>' +
+    '</div>' +
+    '<div class="tool-card-body">' +
+      '<div class="field-label">' + (loc ? '参数' : 'Params') + '</div>' +
+      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
+      '<div class="field-label">' + (loc ? '结果' : 'Result') + '</div>' +
+      '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
+        '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (loc ? '复制' : 'Copy') + '</button>' +
+      '</div>' +
+    '</div>';
+  var hdr = card.querySelector('.tool-card-header');
+  var bdy = card.querySelector('.tool-card-body');
+  hdr.onclick = function() { hdr.classList.toggle('expanded'); bdy.classList.toggle('expanded'); };
+  return card;
+}
+
 function renderToolCallsGroup(jsonContent, container) {
   var toolCalls;
   try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
   if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) {
-    // Not JSON — fallback to plain system message
     var div = document.createElement('div');
     div.className = 'msg system';
     div.textContent = jsonContent;
     container.appendChild(div);
     return;
   }
-
-  // Wrap in a msg.tools container for proper chat layout
   var msgDiv = document.createElement('div');
   msgDiv.className = 'msg tools';
-
   var header = document.createElement('div');
   header.className = 'tool-calls-header collapsed';
   header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
-
   var body = document.createElement('div');
   body.className = 'tool-calls-body';
   body.style.display = 'none';
-
-  toolCalls.forEach(function(tc) {
-    var card = document.createElement('div');
-    card.className = 'tool-card';
-
-    var paramsStr = '';
-    try {
-      var p = JSON.parse(tc.params || '{}');
-      paramsStr = JSON.stringify(p, null, 2);
-    } catch(e) { paramsStr = tc.params || ''; }
-    var resultText = tc.result || '';
-    var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
-
-    card.innerHTML = '<div class="tool-card-header">' +
-      '<span class="card-icon">\u{1F527}</span>' +
-      '<span class="card-name">' + escHtml(tc.name) + '</span>' +
-      '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
-      '<span class="expand-arrow">\u25B6</span></div>' +
-      '<div class="tool-card-body">' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
-      '<div class="field-code">' + escHtml(tc.name) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
-      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
-      '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
-      '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
-
-    var cardHeader = card.querySelector('.tool-card-header');
-    var cardBody = card.querySelector('.tool-card-body');
-    cardHeader.onclick = function() {
-      cardHeader.classList.toggle('expanded');
-      cardBody.classList.toggle('expanded');
-    };
-    body.appendChild(card);
-  });
-
-  // Toggle expand/collapse on header click
+  toolCalls.forEach(function(tc) { body.appendChild(buildToolCard(tc)); });
   header.onclick = function(e) {
     e.stopPropagation();
     var isCollapsed = body.style.display === 'none';
     body.style.display = isCollapsed ? 'flex' : 'none';
     header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
   };
-
   msgDiv.appendChild(header);
   msgDiv.appendChild(body);
   container.appendChild(msgDiv);
 }
+
 
 /* Copy tool result text from data attribute */
 function copyToolResult(btn) {
@@ -2396,65 +2358,26 @@ function renderToolCallsInline(jsonContent, agentMsgDiv) {
   var toolCalls;
   try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
   if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) return;
-
-  // Create the inline container
   var inline = document.createElement('div');
   inline.className = 'tool-calls-inline';
-
   var header = document.createElement('div');
   header.className = 'tool-calls-header collapsed';
   header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
-
   var body = document.createElement('div');
   body.className = 'tool-calls-body';
   body.style.display = 'none';
-
-  toolCalls.forEach(function(tc) {
-    var card = document.createElement('div');
-    card.className = 'tool-card';
-
-    var paramsStr = '';
-    try {
-      var p = JSON.parse(tc.params || '{}');
-      paramsStr = JSON.stringify(p, null, 2);
-    } catch(e) { paramsStr = tc.params || ''; }
-    var resultText = tc.result || '';
-    var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
-
-    card.innerHTML = '<div class="tool-card-header">' +
-      '<span class="card-icon">\u{1F527}</span>' +
-      '<span class="card-name">' + escHtml(tc.name) + '</span>' +
-      '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
-      '<span class="expand-arrow">\u25B6</span></div>' +
-      '<div class="tool-card-body">' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '调用名称' : 'Tool Name') + '</div>' +
-      '<div class="field-code">' + escHtml(tc.name) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '完整命令' : 'Command') + '</div>' +
-      '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
-      '<div class="field-label">' + (LOCALE === 'zh' ? '执行结果' : 'Result') + '</div>' +
-      '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
-      '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)">' + (LOCALE === 'zh' ? '复制' : 'Copy') + '</button></div></div>';
-
-    var cardHeader = card.querySelector('.tool-card-header');
-    var cardBody = card.querySelector('.tool-card-body');
-    cardHeader.onclick = function() {
-      cardHeader.classList.toggle('expanded');
-      cardBody.classList.toggle('expanded');
-    };
-    body.appendChild(card);
-  });
-
+  toolCalls.forEach(function(tc) { body.appendChild(buildToolCard(tc)); });
   header.onclick = function(e) {
     e.stopPropagation();
     var isCollapsed = body.style.display === 'none';
     body.style.display = isCollapsed ? 'flex' : 'none';
     header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
   };
-
   inline.appendChild(header);
   inline.appendChild(body);
   agentMsgDiv.appendChild(inline);
 }
+
 
 /* Tool sidebar functions */
 var FILES_SIDEBAR_OPEN = false;
