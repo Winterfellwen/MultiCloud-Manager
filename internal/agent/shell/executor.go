@@ -43,10 +43,52 @@ func NewExecutor(cfg Config) *Executor {
 	return &Executor{workspaceDir: workspace, timeout: timeout}
 }
 
+// blockedPatterns are substrings that indicate a command is trying to access
+// vault secrets or extract credentials from the API. These are blocked to
+// prevent the AI agent from exfiltrating secrets via shell_exec.
+var blockedPatterns = []string{
+	"/api/vault",
+	"/vault/secrets",
+	"/vault/migrate",
+	"client_secret",
+	"CLIENT_SECRET",
+	"clientSecret",
+	"tenant_id",
+	"TENANT_ID",
+	"tenantId",
+	"subscription_id",
+	"SUBSCRIPTION_ID",
+	"api_key",
+	"API_KEY",
+	"apiKey",
+	"credentials",
+	"/api/accounts/",
+	"ENCRYPTION_KEY",
+}
+
+// checkBlocked returns an error if the command attempts to access blocked resources.
+func checkBlocked(command string) error {
+	lower := strings.ToLower(command)
+	for _, pattern := range blockedPatterns {
+		if strings.Contains(lower, strings.ToLower(pattern)) {
+			return fmt.Errorf("BLOCKED: command references restricted resource (%s). Vault credentials cannot be accessed via shell commands", pattern)
+		}
+	}
+	return nil
+}
+
 // Execute runs a single shell command string.
 func (e *Executor) Execute(ctx context.Context, command string, workdir string) (*Result, error) {
 	if command == "" {
 		return nil, fmt.Errorf("empty command")
+	}
+
+	if err := checkBlocked(command); err != nil {
+		return &Result{
+			Stdout:   "",
+			Stderr:   err.Error(),
+			ExitCode: 1,
+		}, nil
 	}
 
 	dir := e.resolveDir(workdir)
@@ -71,6 +113,14 @@ func (e *Executor) Execute(ctx context.Context, command string, workdir string) 
 func (e *Executor) ExecuteScript(ctx context.Context, script string, workdir string) (*Result, error) {
 	if script == "" {
 		return nil, fmt.Errorf("empty script")
+	}
+
+	if err := checkBlocked(script); err != nil {
+		return &Result{
+			Stdout:   "",
+			Stderr:   err.Error(),
+			ExitCode: 1,
+		}, nil
 	}
 
 	dir := e.resolveDir(workdir)
