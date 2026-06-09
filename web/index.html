@@ -625,10 +625,10 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   .cloud-selector { grid-template-columns: 1fr 1fr; }
 }
 
-/* Topology dark tech style */
-#topoGraph { background: #080810; background-image: radial-gradient(circle, #15152a 1px, transparent 1px); background-size: 20px 20px; }
-#topoControls .res-sync-btn { background: rgba(15,15,25,0.8); border-color: #1e293b; color: #94a3b8; }
-#topoControls .res-sync-btn:hover { border-color: #00e5ff; color: #00e5ff; }
+/* Topology light style */
+#topoGraph { background: #f8f9fa; background-image: radial-gradient(circle, #e2e5ea 1px, transparent 1px); background-size: 20px 20px; }
+#topoControls .res-sync-btn { background: rgba(255,255,255,0.9); border-color: #e2e8f0; color: #64748b; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+#topoControls .res-sync-btn:hover { border-color: #3b82f6; color: #3b82f6; }
 </style>
 </head>
 <body>
@@ -2952,8 +2952,8 @@ function getFilteredResources() {
   return list;
 }
 
-var TOPO_COLORS = { compute: {bg:'#162447',border:'#3b82f6',text:'#93c5fd'}, network: {bg:'#1e1533',border:'#8b5cf6',text:'#c4b5fd'}, storage: {bg:'#2a1f0a',border:'#f59e0b',text:'#fcd34d'}, database: {bg:'#0a2718',border:'#10b981',text:'#6ee7b7'}, web: {bg:'#0a2328',border:'#06b6d4',text:'#67e8f9'}, ai: {bg:'#2a0a1e',border:'#ec4899',text:'#f9a8d4'}, other: {bg:'#151520',border:'#475569',text:'#94a3b8'} };
-var PLATFORM_STYLES = { azure: {bg:'#0a1929',border:'#0078d4',text:'#60a5fa'}, tencent: {bg:'#0a1929',border:'#006eff',text:'#60a5fa'}, oracle: {bg:'#1a0a0a',border:'#c74634',text:'#fca5a5'}, render: {bg:'#0a1a15',border:'#46e8b1',text:'#6ee7b7'} };
+var TOPO_COLORS = { compute: {bg:'#dbeafe',border:'#3b82f6',text:'#1e40af'}, network: {bg:'#ede9fe',border:'#8b5cf6',text:'#5b21b6'}, storage: {bg:'#fef3c7',border:'#f59e0b',text:'#92400e'}, database: {bg:'#d1fae5',border:'#10b981',text:'#065f46'}, web: {bg:'#cffafe',border:'#06b6d4',text:'#155e75'}, ai: {bg:'#fce7f3',border:'#ec4899',text:'#9d174d'}, other: {bg:'#f1f5f9',border:'#94a3b8',text:'#475569'} };
+var PLATFORM_STYLES = { azure: {bg:'#dbeafe',border:'#0078d4',text:'#1e3a5f'}, tencent: {bg:'#dbeafe',border:'#006eff',text:'#1e3a5f'}, oracle: {bg:'#fee2e2',border:'#c74634',text:'#7f1d1d'}, render: {bg:'#d1fae5',border:'#46e8b1',text:'#064e3b'} };
 
 function classifyResource(r) {
   var ns = (r.provider_ns || '').toLowerCase(), t = (r.type || r.instance_type || '').toLowerCase();
@@ -2975,19 +2975,19 @@ function buildG6Data(resources) {
     var res = byPlatform[ct], ps = PLATFORM_STYLES[ct] || {bg:'#151520',border:'#475569',text:'#94a3b8'};
     var pid = 'p_' + ct, pName = ct.charAt(0).toUpperCase() + ct.slice(1);
 
-    nodes.push({ id: pid, label: pName + '\n' + res.length + ' resources', type: 'rect', size: [140, 48],
-      style: { fill: ps.bg, stroke: ps.border, lineWidth: 2, radius: 10, shadowColor: ps.border, shadowBlur: 20, shadowOpacity: 0.5, cursor: 'pointer' },
-      labelCfg: { style: { fill: ps.text, fontSize: 12, fontWeight: 'bold' }, position: 'center' } });
+    nodes.push({ id: pid, label: pName + '\n' + res.length + ' resources', type: 'rect', size: [200, 64],
+      style: { fill: ps.bg, stroke: ps.border, lineWidth: 2, radius: 10, shadowColor: 'rgba(0,0,0,0.08)', shadowBlur: 8, shadowOpacity: 1, cursor: 'pointer' },
+      labelCfg: { style: { fill: ps.text, fontSize: 15, fontWeight: 'bold' }, position: 'center' } });
 
     var byGroup = {};
     res.forEach(function(r) { var key = (ct === 'azure' && r.resource_group) ? r.resource_group : (r.region || 'default'); if (!byGroup[key]) byGroup[key] = []; byGroup[key].push(r); });
 
     Object.keys(byGroup).forEach(function(gk) {
       var gid = 'g_' + ct + '_' + gk.replace(/[^a-zA-Z0-9]/g, '_'), items = byGroup[gk];
-      nodes.push({ id: gid, label: gk + '  (' + items.length + ')', type: 'rect', size: [170, 30],
-        style: { fill: '#0d0d14', stroke: ps.border, lineWidth: 1, strokeOpacity: 0.3, lineDash: [4, 3], radius: 6, cursor: 'pointer' },
-        labelCfg: { style: { fill: '#94a3b8', fontSize: 10, fontWeight: '600' }, position: 'center' } });
-      edges.push({ source: pid, target: gid, style: { stroke: ps.border, strokeOpacity: 0.2, lineWidth: 1.5, endArrow: { path: G6.Arrow.triangle(4, 6, 0), fill: ps.border, d: 0, fillOpacity: 0.3 } } });
+      nodes.push({ id: gid, label: gk + '  (' + items.length + ')', type: 'rect', size: [220, 40],
+        style: { fill: '#ffffff', stroke: ps.border, lineWidth: 1.5, strokeOpacity: 0.4, lineDash: [4, 3], radius: 6, cursor: 'pointer' },
+        labelCfg: { style: { fill: '#64748b', fontSize: 12, fontWeight: '600' }, position: 'center' } });
+      edges.push({ source: pid, target: gid, style: { stroke: ps.border, strokeOpacity: 0.5, lineWidth: 1.5, endArrow: { path: G6.Arrow.triangle(4, 6, 0), fill: ps.border, d: 0, fillOpacity: 0.3 } } });
 
       items.forEach(function(r) {
         var rid = 'r_' + (r.id || '').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
@@ -2998,9 +2998,9 @@ function buildG6Data(resources) {
 
         nodes.push({ id: rid, label: label, type: 'rect',
           data: { fullName: r.name, resType: r.type || r.instance_type || '', region: r.region || '', account: r.account || '', status: r.status, cls: cls, tc: tc, statusColor: statusColor },
-          size: [155, 36], style: { fill: tc.bg, stroke: tc.border, lineWidth: 1, radius: 8, cursor: 'pointer', shadowColor: r.status === 'running' ? statusColor : 'transparent', shadowBlur: r.status === 'running' ? 12 : 0, shadowOpacity: 0.6 },
-          labelCfg: { style: { fill: tc.text, fontSize: 10, fontWeight: '500' }, position: 'center' } });
-        edges.push({ source: gid, target: rid, style: { stroke: tc.border, strokeOpacity: 0.15, lineWidth: 1 } });
+          size: [200, 48], style: { fill: tc.bg, stroke: tc.border, lineWidth: 1, radius: 8, cursor: 'pointer', shadowColor: 'rgba(0,0,0,0.06)', shadowBlur: 6, shadowOpacity: 1 },
+          labelCfg: { style: { fill: tc.text, fontSize: 12, fontWeight: '500' }, position: 'center' } });
+        edges.push({ source: gid, target: rid, style: { stroke: tc.border, strokeOpacity: 0.35, lineWidth: 1 } });
       });
     });
   });
@@ -3016,11 +3016,11 @@ function renderTopology(resources) {
 
   topoGraph = new G6.Graph({
     container: 'topoGraph', width: rect.width, height: rect.height,
-    fitView: true, fitViewPadding: [50, 80, 50, 80],
+    fitView: true, fitViewPadding: [60, 100, 60, 100],
     animate: true, animateCfg: { duration: 400, easing: 'easeCubic' },
-    layout: { type: 'dagre', rankdir: 'TB', nodesep: 40, ranksep: 70, controlPoints: true },
-    defaultEdge: { type: 'cubic-vertical', style: { stroke: '#1e293b', lineWidth: 1, endArrow: { path: G6.Arrow.triangle(4, 6, 0), fill: '#1e293b', d: 0 } } },
-    nodeStateStyles: { selected: { stroke: '#00e5ff', lineWidth: 2, shadowColor: '#00e5ff', shadowBlur: 16, shadowOpacity: 0.6 }, hover: { strokeOpacity: 1 } },
+    layout: { type: 'dagre', rankdir: 'TB', nodesep: 50, ranksep: 90, controlPoints: true },
+    defaultEdge: { type: 'cubic-vertical', style: { stroke: '#cbd5e1', lineWidth: 1.5, endArrow: { path: G6.Arrow.triangle(5, 8, 0), fill: '#94a3b8', d: 0 } } },
+    nodeStateStyles: { selected: { stroke: '#3b82f6', lineWidth: 3, shadowColor: '#3b82f6', shadowBlur: 12, shadowOpacity: 0.3 }, hover: { strokeOpacity: 1 } },
     modes: { default: ['drag-canvas', 'zoom-canvas', 'drag-node'] },
     minZoom: 0.3, maxZoom: 4,
   });
@@ -3030,15 +3030,15 @@ function renderTopology(resources) {
     var model = evt.item.getModel(); if (!model.data || !model.data.fullName) return;
     var d = model.data, tc = d.tc || TOPO_COLORS.other;
     var details = document.getElementById('topoDetails'); details.style.display = 'block';
-    details.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><strong style="font-size:13px;color:#e2e8f0">' + escHtml(d.fullName) + '</strong><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:' + tc.bg + ';color:' + tc.text + ';border:1px solid ' + tc.border + '44">' + escHtml(d.resType) + '</span><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#1e293b;color:#94a3b8;border:1px solid #334155">' + escHtml(d.region) + '</span><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#1e293b;color:#94a3b8;border:1px solid #334155">' + escHtml(d.account) + '</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + (d.status === 'running' ? '#4ade80' : '#94a3b8') + '"><span style="width:8px;height:8px;border-radius:50%;background:' + d.statusColor + ';box-shadow:0 0 8px ' + d.statusColor + '88"></span>' + d.status + '</span></div>';
+    details.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><strong style="font-size:13px;color:#1e293b">' + escHtml(d.fullName) + '</strong><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:' + tc.bg + ';color:' + tc.text + ';border:1px solid ' + tc.border + '44">' + escHtml(d.resType) + '</span><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#1e293b;color:#64748b;border:1px solid #e2e8f0">' + escHtml(d.region) + '</span><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:#1e293b;color:#64748b;border:1px solid #e2e8f0">' + escHtml(d.account) + '</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + (d.status === 'running' ? '#4ade80' : '#94a3b8') + '"><span style="width:8px;height:8px;border-radius:50%;background:' + d.statusColor + ';box-shadow:0 0 8px ' + d.statusColor + '88"></span>' + d.status + '</span></div>';
     topoGraph.setItemState(evt.item, 'selected', true);
   });
   topoGraph.on('canvas:click', function() { document.getElementById('topoDetails').style.display = 'none'; topoGraph.getNodes().forEach(function(n) { topoGraph.setItemState(n, 'selected', false); }); });
   topoGraph.on('node:mouseenter', function(evt) { topoGraph.setItemState(evt.item, 'hover', true); });
   topoGraph.on('node:mouseleave', function(evt) { topoGraph.setItemState(evt.item, 'hover', false); });
-  var rt; window.addEventListener('resize', function() { clearTimeout(rt); rt = setTimeout(function() { if (topoGraph) { var r = container.getBoundingClientRect(); topoGraph.changeSize(r.width, r.height); topoGraph.fitView([50, 80, 50, 80]); } }, 200); });
+  var rt; window.addEventListener('resize', function() { clearTimeout(rt); rt = setTimeout(function() { if (topoGraph) { var r = container.getBoundingClientRect(); topoGraph.changeSize(r.width, r.height); topoGraph.fitView([60, 100, 60, 100]); } }, 200); });
 }
-function topoFit() { if (topoGraph) topoGraph.fitView([50, 80, 50, 80]); }
+function topoFit() { if (topoGraph) topoGraph.fitView([60, 100, 60, 100]); }
 function topoZoom(factor) { if (topoGraph) topoGraph.zoom(factor, { x: topoGraph.getWidth() / 2, y: topoGraph.getHeight() / 2 }); }
 
 
