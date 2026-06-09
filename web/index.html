@@ -1143,6 +1143,7 @@ let GLOBAL_EVENT_SOURCE = null;
 let LAST_EVENT_ID = parseInt(localStorage.getItem('last_event_id') || '0', 10);
 const SUBSCRIBED_SESSIONS = new Set();
 let CURRENT_RUN_ID = null;
+const STOPPED_RUNS = new Set(); // Track runs that have been stopped
 
 const EVENT_HANDLERS = {
   token: handleTokenEvent,
@@ -1248,6 +1249,8 @@ var PENDING_TOOL_CALLS = [];
 function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
   if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
+  // Skip token events for runs that have been stopped (e.g. stop summary)
+  if (ev.run_id && STOPPED_RUNS.has(ev.run_id)) return;
   STREAMING_CONTENT += ev.payload.content;
   showGenerating();
   
@@ -1338,6 +1341,7 @@ function handleStateChangeEvent(ev) {
       STREAMING_CONTENT = '';
     }
   } else if (newState === 'stopped') {
+    if (ev.run_id) STOPPED_RUNS.add(ev.run_id);
     if (isCurrentSession) showError(LOCALE === 'zh' ? '已停止' : 'Stopped');
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
@@ -1796,13 +1800,18 @@ function stopChat() {
 
 async function stopActiveSession() {
   if (CURRENT_RUN_ID) {
+    var runId = CURRENT_RUN_ID;
     await apiFetch(API + '/agent/chat/stop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ run_id: CURRENT_RUN_ID })
+      body: JSON.stringify({ run_id: runId })
     });
-    CURRENT_RUN_ID = null;
+    // Don't clear CURRENT_RUN_ID here — let handleStateChangeEvent do it
+    // when the state_change(stopped) event arrives via EventSource.
+    // Directly re-enable UI as a safety net.
     document.getElementById('chatStopBtn').style.display = 'none';
+    document.getElementById('chatSendBtn').disabled = false;
+    CONFIRM_PENDING = false;
   }
   await loadSessions();
 }
