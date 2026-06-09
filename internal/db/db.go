@@ -255,6 +255,26 @@ BEGIN
             FOREIGN KEY (active_run_id) REFERENCES runs(id) ON DELETE SET NULL;
     END IF;
 END $$`,
+		`CREATE TABLE IF NOT EXISTS team_members (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(100) NOT NULL,
+			email VARCHAR(200) UNIQUE NOT NULL,
+			role VARCHAR(20) DEFAULT 'member',
+			status VARCHAR(20) DEFAULT 'active',
+			invited_by VARCHAR(100),
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS terraform_templates (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(200) NOT NULL,
+			content TEXT NOT NULL,
+			version VARCHAR(20) DEFAULT '1.0',
+			status VARCHAR(20) DEFAULT 'draft',
+			last_applied_at TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	for i, q := range queries {

@@ -1,143 +1,217 @@
 package api
 
 import (
-	"net/http"
-
 	"database/sql"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// TeamsHandler struct follows the same pattern as other handlers
 type TeamsHandler struct {
 	db *sql.DB
 }
 
-// NewTeamsHandler creates a new TeamsHandler instance
 func NewTeamsHandler(db *sql.DB) *TeamsHandler {
-	return &TeamsHandler{
-		db: db,
-	}
+	return &TeamsHandler{db: db}
 }
 
-// GetTeams 获取团队列表和成员
+// GetTeams 获取团队概览（成员列表 + 统计）
 func (h *TeamsHandler) GetTeams(c *gin.Context) {
-	// 从Gin context中获取用户ID
-	userIDAny, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+	rows, err := h.db.Query(`SELECT id, name, email, role, status, COALESCE(invited_by,''), created_at, updated_at FROM team_members ORDER BY created_at DESC`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	userID := userIDAny.(string)
-	username := userID // JWT sub 存储的是 username
+	defer rows.Close()
 
-	// 返回固定的团队和当前用户作为成员
-	member := map[string]interface{}{
-		"id":   userID,
-		"name": username,
-		"role": "admin",
+	var members []map[string]interface{}
+	for rows.Next() {
+		var id, name, email, role, status, invitedBy string
+		var createdAt, updatedAt sql.NullTime
+		if err := rows.Scan(&id, &name, &email, &role, &status, &invitedBy, &createdAt, &updatedAt); err != nil {
+			continue
+		}
+		m := map[string]interface{}{
+			"id":         id,
+			"name":       name,
+			"email":      email,
+			"role":       role,
+			"status":     status,
+			"invited_by": invitedBy,
+		}
+		if createdAt.Valid {
+			m["created_at"] = createdAt.Time
+		}
+		if updatedAt.Valid {
+			m["updated_at"] = updatedAt.Time
+		}
+		members = append(members, m)
 	}
-	members := []map[string]interface{}{member}
+	if members == nil {
+		members = []map[string]interface{}{}
+	}
 
-	response := map[string]interface{}{
+	c.JSON(http.StatusOK, gin.H{
 		"teams": []map[string]interface{}{
-			{
-				"id":   1,
-				"name": "默认团队",
-			},
+			{"id": "default", "name": "Default Team"},
 		},
 		"members": members,
-	}
-
-	c.JSON(http.StatusOK, response)
+		"total":   len(members),
+	})
 }
 
-// RemoveTeamMember 删除团队成员
-func (h *TeamsHandler) RemoveTeamMember(c *gin.Context) {
-	// 从Gin context中获取用户ID
-	userIDAny, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+// GetTeamMembers 获取指定团队的成员列表
+func (h *TeamsHandler) GetTeamMembers(c *gin.Context) {
+	rows, err := h.db.Query(`SELECT id, name, email, role, status, COALESCE(invited_by,''), created_at, updated_at FROM team_members ORDER BY created_at DESC`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	userID := userIDAny.(string)
+	defer rows.Close()
 
-	// 解析URL参数
-	teamID := c.Param("teamId")
-	memberID := c.Param("id")
-
-	// 验证参数
-	if teamID == "" || memberID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少团队ID或成员ID"})
-		return
+	var members []map[string]interface{}
+	for rows.Next() {
+		var id, name, email, role, status, invitedBy string
+		var createdAt, updatedAt sql.NullTime
+		if err := rows.Scan(&id, &name, &email, &role, &status, &invitedBy, &createdAt, &updatedAt); err != nil {
+			continue
+		}
+		m := map[string]interface{}{
+			"id":         id,
+			"name":       name,
+			"email":      email,
+			"role":       role,
+			"status":     status,
+			"invited_by": invitedBy,
+		}
+		if createdAt.Valid {
+			m["created_at"] = createdAt.Time
+		}
+		members = append(members, m)
+	}
+	if members == nil {
+		members = []map[string]interface{}{}
 	}
 
-	// 简化实现：只允许用户删除自己（或返回成功）
-	if memberID == userID {
-		// 允许用户删除自己（实际上不删除，只返回成功）
-		c.JSON(http.StatusOK, gin.H{
-			"message": "成员已移除",
-		})
-		return
-	}
-
-	// 对于其他用户，返回错误（简化实现：只允许管理自己的账户）
-	c.JSON(http.StatusForbidden, gin.H{"error": "无权限移除其他成员"})
+	c.JSON(http.StatusOK, gin.H{"members": members})
 }
 
-// AddTeamMember 邀请团队成员
+// AddTeamMember 添加团队成员
 func (h *TeamsHandler) AddTeamMember(c *gin.Context) {
 	if _, exists := c.Get("user_id"); !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 		return
 	}
 
-	teamID := c.Param("teamId")
-	if teamID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少团队ID"})
+	var req struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Role  string `json:"role"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少必要字段"})
+		return
+	}
+	if req.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "邮箱不能为空"})
+		return
+	}
+	// Derive name from email if not provided
+	if req.Name == "" {
+		req.Name = req.Email
+	}
+	if req.Role == "" {
+		req.Role = "member"
+	}
+
+	var id string
+	err := h.db.QueryRow(
+		`INSERT INTO team_members (name, email, role, status) VALUES ($1, $2, $3, 'active') RETURNING id`,
+		req.Name, req.Email, req.Role,
+	).Scan(&id)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "成员已存在或数据无效: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "成员已添加",
+		"member": gin.H{
+			"id":     id,
+			"name":   req.Name,
+			"email":  req.Email,
+			"role":   req.Role,
+			"status": "active",
+		},
+	})
+}
+
+// UpdateTeamMember 更新团队成员信息
+func (h *TeamsHandler) UpdateTeamMember(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	memberID := c.Param("id")
+	if memberID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少成员ID"})
 		return
 	}
 
 	var req struct {
-		Email string `json:"email"`
+		Name   string `json:"name"`
+		Email  string `json:"email"`
+		Role   string `json:"role"`
+		Status string `json:"status"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.Email == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少邮箱或用户名"})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求格式错误"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "邀请已发送",
-		"email":   req.Email,
-		"team_id": teamID,
-	})
+	result, err := h.db.Exec(
+		`UPDATE team_members SET name = COALESCE(NULLIF($1,''), name), email = COALESCE(NULLIF($2,''), email), role = COALESCE(NULLIF($3,''), role), status = COALESCE(NULLIF($4,''), status), updated_at = CURRENT_TIMESTAMP WHERE id = $5`,
+		req.Name, req.Email, req.Role, req.Status, memberID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "成员不存在"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "成员已更新"})
 }
 
-// GetTeamMembers 获取团队成员列表
-func (h *TeamsHandler) GetTeamMembers(c *gin.Context) {
-	// 从Gin context中获取用户ID
-	userIDAny, exists := c.Get("user_id")
-	if !exists {
+// RemoveTeamMember 删除团队成员
+func (h *TeamsHandler) RemoveTeamMember(c *gin.Context) {
+	if _, exists := c.Get("user_id"); !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 		return
 	}
-	userID := userIDAny.(string)
-	username := userID // JWT sub 存储的是 username
 
-	teamID := c.Param("teamId")
-	if teamID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少团队ID"})
+	memberID := c.Param("id")
+	if memberID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少成员ID"})
 		return
 	}
 
-	member := map[string]interface{}{
-		"id":   userID,
-		"name": username,
-		"role": "admin",
+	result, err := h.db.Exec(`DELETE FROM team_members WHERE id = $1`, memberID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	members := []map[string]interface{}{member}
 
-	c.JSON(http.StatusOK, gin.H{
-		"members": members,
-	})
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "成员不存在"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "成员已移除"})
 }
