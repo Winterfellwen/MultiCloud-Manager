@@ -133,7 +133,12 @@ func (h *TeamsHandler) AddTeamMember(c *gin.Context) {
 		req.Name = req.Email
 	}
 	if req.Role == "" {
-		req.Role = "member"
+		req.Role = "user"
+	}
+	// Validate role
+	validRoles := map[string]bool{"admin": true, "user": true, "viewer": true}
+	if !validRoles[req.Role] {
+		req.Role = "user"
 	}
 
 	// Hash password

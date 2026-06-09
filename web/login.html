@@ -157,7 +157,8 @@ async function handleLogin(e) {
     
     // 保存token和用户信息
     localStorage.setItem('token', data.token);
-    localStorage.setItem('userInfo', JSON.stringify(data.user));
+    localStorage.setItem('userRole', data.role || 'viewer');
+    localStorage.setItem('userInfo', JSON.stringify({ user: data.user, role: data.role }));
     
     // 跳转到首页
     window.location.href = embeddedHref('/');

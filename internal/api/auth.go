@@ -35,7 +35,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	var passwordHash string
-	err := h.db.QueryRow(`SELECT password_hash FROM users WHERE username = $1`, req.Username).Scan(&passwordHash)
+	var role string
+	err := h.db.QueryRow(`SELECT password_hash, role FROM users WHERE username = $1`, req.Username).Scan(&passwordHash, &role)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
@@ -47,8 +48,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": req.Username,
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+		"sub":  req.Username,
+		"role": role,
+		"exp":  time.Now().Add(24 * time.Hour).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(h.jwtSecret))
@@ -57,10 +59,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": tokenString})
+	c.JSON(http.StatusOK, gin.H{
+		"token": tokenString,
+		"role":  role,
+		"user":  req.Username,
+	})
 }
 
 func (h *AuthHandler) Profile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
-	c.JSON(http.StatusOK, gin.H{"user": userID})
+	userRole, _ := c.Get("user_role")
+	c.JSON(http.StatusOK, gin.H{
+		"user": userID,
+		"role": userRole,
+	})
 }

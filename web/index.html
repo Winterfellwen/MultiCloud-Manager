@@ -839,8 +839,9 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
       <div class="modal-field">
         <label data-i18n="team.field_role">角色</label>
         <select id="inviteRole" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text)">
-          <option value="member" data-i18n="team.member">成员</option>
-          <option value="admin" data-i18n="team.admin">管理员</option>
+          <option value="user" data-i18n="team.role_user">普通用户</option>
+          <option value="viewer" data-i18n="team.role_viewer">只读用户</option>
+          <option value="admin" data-i18n="team.role_admin">管理员</option>
         </select>
       </div>
       <div class="modal-actions">
@@ -1468,11 +1469,72 @@ function updateUserProfile(user) {
   const name = document.querySelector('.profile-name');
   const email = document.querySelector('.profile-email');
   const topbarAvatar = document.querySelector('.topbar-right .avatar');
-  
+
   if (avatar) avatar.textContent = (user.nickname || user.username || 'U').charAt(0).toUpperCase();
   if (name) name.textContent = user.nickname || user.username || '管理员';
   if (email) email.textContent = user.username ? user.username + '@multicloud.local' : 'admin@multicloud.local';
-  if (topbarAvatar) topbarAvatar.textContent = (user.nickname || user.username || 'U').charAt(0).toUpperCase();
+
+  // Save role from profile response
+  if (user.role) {
+    localStorage.setItem('userRole', user.role);
+  }
+  applyRolePermissions();
+}
+
+/* Role-based access control */
+function getRole() {
+  return localStorage.getItem('userRole') || 'viewer';
+}
+
+function applyRolePermissions() {
+  const role = getRole();
+  const navItems = document.querySelectorAll('.nav-item[data-page]');
+  const roleMap = {
+    chat:     ['admin', 'user'],
+    vault:    ['admin'],
+    team:     ['admin', 'user', 'viewer'],
+    accounts: ['admin', 'user', 'viewer'],
+    terraform:['admin', 'user', 'viewer'],
+    resources:['admin', 'user', 'viewer'],
+    dashboard:['admin', 'user', 'viewer'],
+    profile:  ['admin', 'user', 'viewer'],
+  };
+  navItems.forEach(nav => {
+    const page = nav.dataset.page;
+    const allowed = roleMap[page];
+    if (allowed && !allowed.includes(role)) {
+      nav.style.display = 'none';
+    } else {
+      nav.style.display = '';
+    }
+  });
+
+  // Hide write-action buttons for non-admin on team page
+  document.querySelectorAll('.invite-btn').forEach(el => {
+    el.style.display = role === 'admin' ? '' : 'none';
+  });
+  // Hide write-action buttons for non-admin on accounts page
+  document.querySelectorAll('.add-account-btn').forEach(el => {
+    el.style.display = role === 'admin' ? '' : 'none';
+  });
+  // Show role badge in profile area
+  var roleBadge = document.getElementById('roleBadge');
+  if (!roleBadge) {
+    var profileInfo = document.querySelector('.profile-name');
+    if (profileInfo && profileInfo.parentElement) {
+      roleBadge = document.createElement('span');
+      roleBadge.id = 'roleBadge';
+      roleBadge.style.cssText = 'display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle;font-weight:500';
+      profileInfo.parentElement.appendChild(roleBadge);
+    }
+  }
+  if (roleBadge) {
+    var roleLabels = {admin:'管理员', user:'普通用户', viewer:'只读用户'};
+    var roleColors = {admin:'#ff6b6b', user:'#51cf66', viewer:'#ffd43b'};
+    roleBadge.textContent = roleLabels[role] || role;
+    roleBadge.style.background = roleColors[role] || '#888';
+    roleBadge.style.color = '#000';
+  }
 }
 
 /* Theme */
@@ -1531,6 +1593,7 @@ function showPage(page) {
   if (page === 'team') loadTeam();
   if (page === 'vault') loadVault();
   if (page === 'terraform') loadTerraform();
+  applyRolePermissions();
 }
 
 document.querySelectorAll('.nav-item, .tab-item').forEach(el => {
@@ -3313,21 +3376,23 @@ async function loadTeam() {
   const container = document.getElementById('teamList');
   container.innerHTML = members.map(m => {
     var avatarLetter = (m.name || m.email || 'U').charAt(0).toUpperCase();
-    var isAdmin = (m.role || 'member') === 'admin';
+    var isAdmin = (m.role || 'user') === 'admin';
+    var isViewer = (m.role || 'user') === 'viewer';
+    var roleLabel = isAdmin ? t('team.role_admin') : (isViewer ? t('team.role_viewer') : t('team.role_user'));
     return '<div class="member-card">' +
       '<div class="member-left">' +
         '<div class="member-avatar">' + avatarLetter + '</div>' +
         '<div>' +
           '<div class="member-name">' + (m.name || 'Unknown') + '</div>' +
           '<div style="font-size:11px;color:var(--text-muted)">' + (m.email || '') + '</div>' +
-          '<div class="member-role ' + (m.role || 'member') + '">' + (isAdmin ? t('team.admin') : t('team.member')) +
+          '<div class="member-role ' + (m.role || 'user') + '">' + roleLabel +
             (m.has_account ? ' · <span style="color:var(--primary)">可登录</span>' : ' · <span style="color:var(--warning)">未激活</span>') +
           '</div>' +
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center">' +
-        '<button class="btn-action" onclick="openResetPwModal(\'' + m.id + '\',\'' + (m.name || m.email || '') + '\')" title="' + (t('team.reset_pw') || '重置密码') + '" style="font-size:12px;padding:4px 8px">🔑</button>' +
-        (!isAdmin ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')">' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + t('team.admin') + '</span>') +
+        '<button class="btn-action" onclick="openResetPwModal(\'' + m.id + '\',\'' + (m.name || m.email || '') + '\')" title="' + (t('team.reset_pw') || '重置密码') + '" style="font-size:12px;padding:4px 8px' + (getRole() !== 'admin' ? ';display:none' : '') + '">🔑</button>' +
+        (!isAdmin ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')" ' + (getRole() !== 'admin' ? 'style="display:none"' : '') + '>' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + roleLabel + '</span>') +
       '</div>' +
     '</div>';
   }).join('');
@@ -3561,6 +3626,9 @@ var __ = {
     'team.invite_dev': '邀请功能开发中',
     'team.admin': '管理员',
     'team.member': '成员',
+    'team.role_admin': '管理员',
+    'team.role_user': '普通用户',
+    'team.role_viewer': '只读用户',
     'team.member_remove': '移除',
     'terraform.title': 'Terraform 模板',
     'terraform.upload': '+ 上传模板',
@@ -3702,6 +3770,9 @@ var __ = {
     'team.invite_dev': 'Invite feature in development',
     'team.admin': 'Admin',
     'team.member': 'Member',
+    'team.role_admin': 'Admin',
+    'team.role_user': 'User',
+    'team.role_viewer': 'Viewer',
     'team.member_remove': 'Remove',
     'terraform.title': 'Terraform Templates',
     'terraform.upload': '+ Upload Template',
