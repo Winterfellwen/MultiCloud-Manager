@@ -67,62 +67,72 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	auth := r.Group("/api")
 	auth.Use(AuthMiddleware(jwtSecret))
 	{
+		// Profile & password — all roles
 		auth.GET("/auth/profile", authHandler.Profile)
 		auth.PUT("/auth/password", resourcesHandler.ChangePassword)
-		auth.GET("/agent/config", GetAIConfig)
-		auth.PUT("/agent/config", UpdateAIConfig)
-		auth.POST("/agent/config/test", TestAIConfig)
-		auth.GET("/agent/config/:type", agentConfigHandler.GetConfig)
-		auth.PUT("/agent/config/:type", agentConfigHandler.UpdateConfig)
-		// Chat endpoints
+
+		// AI config — admin only
+		auth.GET("/agent/config", RequireRole("admin"), GetAIConfig)
+		auth.PUT("/agent/config", RequireRole("admin"), UpdateAIConfig)
+		auth.POST("/agent/config/test", RequireRole("admin"), TestAIConfig)
+		auth.GET("/agent/config/:type", RequireRole("admin"), agentConfigHandler.GetConfig)
+		auth.PUT("/agent/config/:type", RequireRole("admin"), agentConfigHandler.UpdateConfig)
+
+		// Chat endpoints — admin + user
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
 		eventsHandler := NewEventsSSEHandler(runMgr)
-		auth.POST("/agent/chat/stream", chatHandler.Stream)
-		auth.POST("/agent/chat/confirm", chatHandler.Confirm)
-		auth.POST("/agent/chat/stop", chatHandler.Stop)
-		auth.GET("/agent/events", eventsHandler.Stream)
-		// Session endpoints
-		auth.GET("/agent/sessions", sessionsHandler.List)
-		auth.POST("/agent/sessions", sessionsHandler.Create)
-		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
-		auth.DELETE("/agent/sessions/:sid", sessionsHandler.Delete)
-		auth.PUT("/agent/sessions/:sid", sessionsHandler.Update)
-		// Cloud accounts
+		auth.POST("/agent/chat/stream", RequireRole("admin", "user"), chatHandler.Stream)
+		auth.POST("/agent/chat/confirm", RequireRole("admin", "user"), chatHandler.Confirm)
+		auth.POST("/agent/chat/stop", RequireRole("admin", "user"), chatHandler.Stop)
+		auth.GET("/agent/events", RequireRole("admin", "user"), eventsHandler.Stream)
+
+		// Session endpoints — admin + user
+		auth.GET("/agent/sessions", RequireRole("admin", "user"), sessionsHandler.List)
+		auth.POST("/agent/sessions", RequireRole("admin", "user"), sessionsHandler.Create)
+		auth.GET("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Get)
+		auth.DELETE("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Delete)
+		auth.PUT("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Update)
+
+		// Cloud accounts — read: all roles; write: admin only
 		auth.GET("/accounts", accountsHandler.List)
 		auth.GET("/accounts/:id", accountsHandler.Get)
-		auth.POST("/accounts", accountsHandler.Create)
-		auth.PUT("/accounts/:id", accountsHandler.Update)
-		auth.DELETE("/accounts/:id", accountsHandler.Delete)
-		// Resources
+		auth.POST("/accounts", RequireRole("admin"), accountsHandler.Create)
+		auth.PUT("/accounts/:id", RequireRole("admin"), accountsHandler.Update)
+		auth.DELETE("/accounts/:id", RequireRole("admin"), accountsHandler.Delete)
+
+		// Resources — read: all roles; sync/action: admin + user
 		auth.GET("/resources", resourcesHandler.List)
-		auth.POST("/resources/sync", resourcesHandler.Sync)
-		auth.POST("/resources/:id/:action", resourcesHandler.Action)
+		auth.POST("/resources/sync", RequireRole("admin", "user"), resourcesHandler.Sync)
+		auth.POST("/resources/:id/:action", RequireRole("admin", "user"), resourcesHandler.Action)
 		auth.GET("/stats", resourcesHandler.Stats)
-		// Team management
+
+		// Team management — read: all roles; write: admin only
 		auth.GET("/teams", teamsHandler.GetTeams)
 		auth.GET("/teams/:teamId/members", teamsHandler.GetTeamMembers)
-		auth.POST("/teams/:teamId/members", teamsHandler.AddTeamMember)
-		auth.PUT("/teams/:teamId/members/:id", teamsHandler.UpdateTeamMember)
-		auth.PUT("/teams/:teamId/members/:id/password", teamsHandler.ResetPassword)
-		auth.DELETE("/teams/:teamId/members/:id", teamsHandler.RemoveTeamMember)
-		// Terraform templates
+		auth.POST("/teams/:teamId/members", RequireRole("admin"), teamsHandler.AddTeamMember)
+		auth.PUT("/teams/:teamId/members/:id", RequireRole("admin"), teamsHandler.UpdateTeamMember)
+		auth.PUT("/teams/:teamId/members/:id/password", RequireRole("admin"), teamsHandler.ResetPassword)
+		auth.DELETE("/teams/:teamId/members/:id", RequireRole("admin"), teamsHandler.RemoveTeamMember)
+
+		// Terraform templates — read: all roles; write: admin + user
 		auth.GET("/terraform/templates", terraformHandler.GetTemplates)
-		auth.POST("/terraform/templates", terraformHandler.CreateTemplate)
+		auth.POST("/terraform/templates", RequireRole("admin", "user"), terraformHandler.CreateTemplate)
 		auth.GET("/terraform/templates/:id", terraformHandler.GetTemplate)
-		auth.PUT("/terraform/templates/:id", terraformHandler.UpdateTemplate)
-		auth.POST("/terraform/templates/:id/plan", terraformHandler.PlanTemplate)
-		auth.POST("/terraform/templates/:id/apply", terraformHandler.ApplyTemplate)
-		auth.DELETE("/terraform/templates/:id", terraformHandler.DeleteTemplate)
-		auth.POST("/terraform/templates/:id/destroy", terraformHandler.DestroyTemplate)
-		// Vault — built-in credential management
-		auth.GET("/vault/health", func(c *gin.Context) {
+		auth.PUT("/terraform/templates/:id", RequireRole("admin", "user"), terraformHandler.UpdateTemplate)
+		auth.POST("/terraform/templates/:id/plan", RequireRole("admin", "user"), terraformHandler.PlanTemplate)
+		auth.POST("/terraform/templates/:id/apply", RequireRole("admin", "user"), terraformHandler.ApplyTemplate)
+		auth.DELETE("/terraform/templates/:id", RequireRole("admin"), terraformHandler.DeleteTemplate)
+		auth.POST("/terraform/templates/:id/destroy", RequireRole("admin", "user"), terraformHandler.DestroyTemplate)
+
+		// Vault — admin only
+		auth.GET("/vault/health", RequireRole("admin"), func(c *gin.Context) {
 			if vaultService == nil {
 				c.JSON(http.StatusOK, gin.H{"status": "error", "message": "Vault not initialized"})
 				return
 			}
 			c.JSON(http.StatusOK, vaultService.Health())
 		})
-		auth.GET("/vault/secrets", func(c *gin.Context) {
+		auth.GET("/vault/secrets", RequireRole("admin"), func(c *gin.Context) {
 			if vaultService == nil {
 				c.JSON(http.StatusOK, gin.H{"secrets": []string{}})
 				return
@@ -135,7 +145,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 			}
 			c.JSON(http.StatusOK, gin.H{"secrets": paths})
 		})
-		auth.GET("/vault/secrets/:path", func(c *gin.Context) {
+		auth.GET("/vault/secrets/:path", RequireRole("admin"), func(c *gin.Context) {
 			if vaultService == nil {
 				c.JSON(http.StatusNotFound, gin.H{"error": "vault not available"})
 				return
@@ -148,7 +158,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 			}
 			c.JSON(http.StatusOK, gin.H{"path": path, "data": data})
 		})
-		auth.PUT("/vault/secrets/:path", func(c *gin.Context) {
+		auth.PUT("/vault/secrets/:path", RequireRole("admin"), func(c *gin.Context) {
 			if vaultService == nil {
 				c.JSON(http.StatusNotFound, gin.H{"error": "vault not available"})
 				return
@@ -167,7 +177,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true})
 		})
-		auth.DELETE("/vault/secrets/:path", func(c *gin.Context) {
+		auth.DELETE("/vault/secrets/:path", RequireRole("admin"), func(c *gin.Context) {
 			if vaultService == nil {
 				c.JSON(http.StatusNotFound, gin.H{"error": "vault not available"})
 				return
@@ -180,7 +190,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 			c.JSON(http.StatusOK, gin.H{"ok": true})
 		})
 		// Migrate existing plaintext credentials to vault
-		auth.POST("/vault/migrate", func(c *gin.Context) {
+		auth.POST("/vault/migrate", RequireRole("admin"), func(c *gin.Context) {
 			if vaultService == nil {
 				c.JSON(http.StatusOK, gin.H{"error": "vault not available", "migrated": 0})
 				return
