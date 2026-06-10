@@ -1044,6 +1044,54 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     </div>
   </div>
 
+  <!-- Notifications Modal -->
+  <div class="modal-overlay" id="notificationsModal" onclick="if(event.target===this)closeNotificationsModal()">
+    <div class="modal-box">
+      <h3 data-i18n="profile.notifications">通知设置</h3>
+      <div class="modal-desc">管理系统通知和提醒设置</div>
+      <div class="settings-list" style="border:1px solid var(--border);border-radius:4px;margin:12px 0">
+        <div class="settings-item">
+          <span class="settings-label">资源异常通知</span>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">费用超支预警</span>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">安全事件提醒</span>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">团队变更通知</span>
+          <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">邮件摘要（每日）</span>
+          <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" onclick="closeNotificationsModal()" data-i18n="config.cancel">取消</button>
+        <button class="modal-btn-primary" onclick="saveNotifications()" data-i18n="config.save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div class="modal-overlay" id="statsModal" onclick="if(event.target===this)closeStatsModal()">
+    <div class="modal-box" style="max-width:420px">
+      <h3 data-i18n="profile.stats">使用统计</h3>
+      <div class="modal-desc">系统资源和使用概览</div>
+      <div id="statsContent" style="padding:12px 0;font-size:13px">
+        <div style="text-align:center;color:var(--text-muted);padding:20px">加载中...</div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-primary" onclick="closeStatsModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Invite Modal -->
   <div class="modal-overlay" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
     <div class="modal-box">
@@ -1269,21 +1317,21 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
           <span class="toggle-slider"></span>
         </label>
       </div>
-      <div class="settings-item">
+      <div class="settings-item" onclick="openNotificationsModal()">
         <span class="settings-label" data-i18n="profile.notifications">通知设置</span>
-        <span class="settings-value" onclick="showToast('功能开发中')">&gt;</span>
+        <span class="settings-value">&gt;</span>
       </div>
-      <div class="settings-item">
+      <div class="settings-item" onclick="openPasswordModal()">
         <span class="settings-label" data-i18n="profile.password">修改密码</span>
-        <span class="settings-value" onclick="openPasswordModal()">&gt;</span>
+        <span class="settings-value">&gt;</span>
       </div>
-      <div class="settings-item">
+      <div class="settings-item" onclick="openStatsModal()">
         <span class="settings-label" data-i18n="profile.stats">使用统计</span>
-        <span class="settings-value" onclick="showToast('功能开发中')">&gt;</span>
+        <span class="settings-value">&gt;</span>
       </div>
-      <div class="settings-item">
+      <div class="settings-item" onclick="toggleLogView()">
         <span class="settings-label" data-i18n="profile.logs">日志</span>
-        <span class="settings-value" onclick="toggleLogView()">&gt;</span>
+        <span class="settings-value">&gt;</span>
       </div>
     </div>
     <div class="profile-logview" id="profileLogView">
@@ -4475,6 +4523,57 @@ async function submitPassword() {
   }
 }
 
+/* Notifications Modal */
+function openNotificationsModal() {
+  document.getElementById('notificationsModal').classList.add('active');
+}
+function closeNotificationsModal() {
+  document.getElementById('notificationsModal').classList.remove('active');
+}
+function saveNotifications() {
+  closeNotificationsModal();
+  showToast('通知设置已保存');
+}
+
+/* Stats Modal */
+function openStatsModal() {
+  document.getElementById('statsModal').classList.add('active');
+  loadStats();
+}
+function closeStatsModal() {
+  document.getElementById('statsModal').classList.remove('active');
+}
+async function loadStats() {
+  var el = document.getElementById('statsContent');
+  el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px">加载中...</div>';
+  try {
+    var resp = await fetch(API + '/stats', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+    var data = await resp.json();
+    var s = data.stats || {};
+    el.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div style="background:var(--surface);padding:12px;border-radius:6px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:600;color:var(--primary)">' + (s.resources || 0) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">云资源</div>' +
+        '</div>' +
+        '<div style="background:var(--surface);padding:12px;border-radius:6px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:600;color:var(--primary)">' + (s.accounts || 0) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">云账户</div>' +
+        '</div>' +
+        '<div style="background:var(--surface);padding:12px;border-radius:6px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:600;color:var(--primary)">' + (s.terraform || 0) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Terraform 模板</div>' +
+        '</div>' +
+        '<div style="background:var(--surface);padding:12px;border-radius:6px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:600;color:var(--primary)">' + (s.members || 0) + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">团队成员</div>' +
+        '</div>' +
+      '</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;color:var(--danger);padding:20px">加载失败</div>';
+  }
+}
+
 /* Invite Modal */
 function openInviteModal() {
   document.getElementById('inviteModal').classList.add('active');
@@ -4618,6 +4717,8 @@ document.addEventListener('keydown', function(e) {
       var id = m.id;
       if (id === 'aiConfigModal') closeAIConfig();
       else if (id === 'passwordModal') closePasswordModal();
+      else if (id === 'notificationsModal') closeNotificationsModal();
+      else if (id === 'statsModal') closeStatsModal();
       else if (id === 'inviteModal') closeInviteModal();
       else if (id === 'resetPwModal') closeResetPwModal();
       else if (id === 'editMemberModal') closeEditMemberModal();
