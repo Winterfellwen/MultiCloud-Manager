@@ -2,35 +2,41 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <script src="/embedded.js"></script>
+<link rel="prefetch" href="/static/icons.svg">
 <title>MultiCloud Manager - 登录</title>
 <style>
 :root {
-  --primary: #6366f1;
-  --primary-hover: #818cf8;
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --border: #2a2d3a;
-  --text: #e1e4ed;
-  --text-secondary: #8b8fa3;
+  --primary: #007aff;
+  --primary-hover: #0056b3;
+  --primary-subtle: rgba(0,122,255,.12);
+  --bg: #0c0c0e;
+  --surface: #161618;
+  --border: #38383a;
+  --text: #ffffff;
+  --text-secondary: #c7c7cc;
+  --text-muted: #a1a1a6;
+  --danger: #ff453a;
+  --success: #30d158;
   --radius-sm: 8px;
   --radius: 12px;
   --shadow: 0 2px 8px rgba(0,0,0,.3);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.5);
 }
 html.light {
-  --bg: #f5f7fa;
-  --surface: #ffffff;
-  --border: #e4e7ed;
-  --text: #1a1a2e;
-  --text-secondary: #666666;
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --border: #d1d1d6;
+  --text: #1d1d1f;
+  --text-secondary: #3a3a3c;
+  --text-muted: #636366;
   --shadow: 0 2px 8px rgba(0,0,0,.08);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+body { font-family: "Berkeley Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 
 .login-container { width: 100%; max-width: 400px; padding: 20px; }
 .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 32px; box-shadow: var(--shadow-lg); }
@@ -40,13 +46,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto
 
 .form-group { margin-bottom: 20px; }
 .form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
-.form-group input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; }
+.form-group input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; color: var(--text); font-size: 16px; outline: none; transition: border-color .2s; }
 .form-group input:focus { border-color: var(--primary); }
 .form-group input::placeholder { color: var(--text-secondary); }
 
-.login-btn { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background .2s; margin-top: 8px; }
+.login-btn { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; min-height: 48px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all .2s; margin-top: 8px; }
 .login-btn:hover { background: var(--primary-hover); }
+.login-btn:active { transform: scale(0.98); }
 .login-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.login-btn.loading { position: relative; color: transparent; pointer-events: none; }
+.login-btn.loading::after { content: ''; position: absolute; width: 20px; height: 20px; top: 50%; left: 50%; margin: -10px 0 0 -10px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+.pw-toggle:hover { color: var(--text); }
+.pw-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0,122,255,.15); border-radius: 4px; }
+
+.form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,122,255,.15); outline: none; }
+
+.skip-link { position: absolute; top: -100%; left: 16px; z-index: 10000; padding: 8px 16px; background: var(--primary); color: #fff; font-weight: 600; font-size: 13px; border-radius: 0 0 8px 8px; text-decoration: none; transition: top 100ms ease; }
+.skip-link:focus { top: 0; }
 
 .login-error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: #ef4444; display: none; }
 .login-error.show { display: block; }
@@ -71,14 +91,15 @@ html.embedded .login-logo h1 { font-size: 22px; letter-spacing: .5px; }
 </style>
 </head>
 <body>
+<a href="#username" class="skip-link">Skip to login form</a>
 <div class="login-container">
   <div class="login-card">
     <div class="login-logo">
-      <h1>☁️ MultiCloud</h1>
+      <h1><svg width="28" height="28" style="vertical-align:middle;margin-right:8px"><use href="/static/icons.svg#icon-cloud-azure"/></svg>MultiCloud</h1>
       <p>统一多云资源管理平台</p>
     </div>
     
-    <div class="login-error" id="errorMsg"></div>
+    <div class="login-error" id="errorMsg" role="alert" aria-live="polite"></div>
     
     <form id="loginForm" onsubmit="return handleLogin(event)">
       <div class="form-group">
@@ -88,7 +109,12 @@ html.embedded .login-logo h1 { font-size: 22px; letter-spacing: .5px; }
 
       <div class="form-group">
         <label for="password">密码</label>
-        <input type="password" id="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="Password">
+        <div style="position:relative">
+          <input type="password" id="password" placeholder="请输入密码" required autocomplete="current-password" aria-label="Password" style="padding-right:44px">
+          <button type="button" class="pw-toggle" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility">
+            <svg width="18" height="18"><use href="/static/icons.svg#icon-eye-off"/></svg>
+          </button>
+        </div>
       </div>
 
       <button type="submit" class="login-btn" id="loginBtn" aria-label="Login">登 录</button>
@@ -139,6 +165,7 @@ async function handleLogin(e) {
   }
   
   loginBtn.disabled = true;
+  loginBtn.classList.add('loading');
   loginBtn.textContent = '登录中...';
   errorMsg.classList.remove('show');
   
@@ -167,16 +194,138 @@ async function handleLogin(e) {
     errorMsg.textContent = err.message || '登录失败，请检查用户名和密码';
     errorMsg.classList.add('show');
     loginBtn.disabled = false;
+    loginBtn.classList.remove('loading');
     loginBtn.textContent = '登 录';
   }
   
   return false;
 }
 
+function togglePasswordVisibility() {
+  const pw = document.getElementById('password');
+  const icon = document.querySelector('.pw-toggle use');
+  if (pw.type === 'password') {
+    pw.type = 'text';
+    icon.setAttribute('href', '/static/icons.svg#icon-eye');
+  } else {
+    icon.setAttribute('href', '/static/icons.svg#icon-eye-off');
+  }
+}
+
 // 回车提交
 document.getElementById('password').addEventListener('keypress', function(e) {
   if (e.key === 'Enter') handleLogin(e);
 });
+</script>
+<script src="/static/anime.min.js"></script>
+<script>
+(function() {
+  'use strict';
+  if (typeof anime === 'undefined') return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  var EASE = 'easeOutCubic';
+  var EASE_BOUNCE = 'easeOutBack';
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Login card entrance
+    var card = document.querySelector('.login-card') || document.querySelector('.login-box') || document.querySelector('form');
+    if (card) {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(30px) scale(0.96)';
+      anime({
+        targets: card,
+        opacity: [0, 1],
+        translateY: [30, 0],
+        scale: [0.96, 1],
+        duration: 600,
+        easing: EASE_BOUNCE,
+        complete: function() {
+          card.style.opacity = '';
+          card.style.transform = '';
+        }
+      });
+    }
+
+    // Input fields stagger
+    var inputs = document.querySelectorAll('input, .input-group, .form-group');
+    if (inputs.length) {
+      anime({
+        targets: inputs,
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 400,
+        delay: anime.stagger(100, { start: 300 }),
+        easing: EASE
+      });
+    }
+
+    // Submit button
+    var btn = document.querySelector('button[type="submit"], .login-btn, .btn-primary');
+    if (btn) {
+      anime({
+        targets: btn,
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 400,
+        delay: 600,
+        easing: EASE
+      });
+    }
+
+    // Logo/header
+    var logo = document.querySelector('.login-logo, .logo, h1, .brand');
+    if (logo) {
+      anime({
+        targets: logo,
+        opacity: [0, 1],
+        translateY: [-20, 0],
+        duration: 500,
+        easing: EASE
+      });
+    }
+
+    // Click feedback on buttons
+    document.querySelectorAll('button, .btn').forEach(function(b) {
+      b.addEventListener('click', function() {
+        anime({
+          targets: b,
+          scale: [1, 0.95, 1],
+          duration: 250,
+          easing: EASE_BOUNCE
+        });
+      });
+    });
+
+    // Input focus effects
+    document.querySelectorAll('input').forEach(function(inp) {
+      inp.addEventListener('focus', function() {
+        var parent = inp.closest('.input-group, .form-group');
+        if (parent) {
+          anime({
+            targets: parent,
+            borderColor: ['var(--border)', 'var(--primary)'],
+            boxShadow: ['0 0 0 rgba(0,122,255,0)', '0 0 0 3px rgba(0,122,255,0.15)'],
+            duration: 300,
+            easing: EASE
+          });
+        }
+      });
+      inp.addEventListener('blur', function() {
+        var parent = inp.closest('.input-group, .form-group');
+        if (parent) {
+          anime({
+            targets: parent,
+            borderColor: ['var(--primary)', 'var(--border)'],
+            boxShadow: ['0 0 0 3px rgba(0,122,255,0.15)', '0 0 0 rgba(0,122,255,0)'],
+            duration: 300,
+            easing: EASE
+          });
+        }
+      });
+    });
+  });
+})();
 </script>
 </body>
 </html>
