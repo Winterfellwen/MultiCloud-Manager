@@ -4153,6 +4153,8 @@ function showToast(msg) {
 function hideToast() {
   var el = document.getElementById('toast');
   el.classList.remove('show');
+  el.style.opacity = '';
+  el.style.transform = '';
   if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
 }
 function toggleErrPanel() {
