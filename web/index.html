@@ -116,6 +116,16 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-new-btn { background: none; border: 1px solid var(--border); border-radius: 2px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all .15s; font-family: inherit; }
 .chat-new-btn:hover { border-color: var(--primary); color: var(--primary); }
 .chat-session-list { flex: 1; overflow-y: auto; padding: 4px; }
+.session-filters { padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+.session-filters input, .session-filters select { font-size: 11px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); width: 100%; }
+.session-filters-row { display: flex; gap: 4px; }
+.session-filters-row > * { flex: 1; min-width: 0; }
+.session-filters-toggle { cursor: pointer; font-size: 10px; color: var(--text-muted); text-align: center; padding: 2px; }
+.session-filters-toggle:hover { color: var(--primary); }
+.session-pagination { padding: 6px 8px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+.session-pagination button { background: none; border: 1px solid var(--border); border-radius: 3px; color: var(--text); padding: 2px 8px; cursor: pointer; font-size: 11px; }
+.session-pagination button:disabled { opacity: 0.4; cursor: default; }
+.session-pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
 .chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; display: flex; align-items: center; gap: 4px; min-width: 0; }
 .chat-session-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .chat-session-item .session-checkbox { display: none; margin: 0; cursor: pointer; flex-shrink: 0; accent-color: var(--primary); }
@@ -699,6 +709,28 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
             <button class="chat-new-btn" id="chatBatchDelBtn" onclick="toggleBatchDelete()" title="Batch Delete" style="font-size:11px">&#9633;</button>
           </div>
         </div>
+        <div class="session-filters" id="sessionFilters" style="display:none">
+          <input type="text" id="sessionSearch" placeholder="搜索对话..." oninput="debounceSessionSearch()" />
+          <div class="session-filters-row">
+            <select id="sessionSort" onchange="loadSessions()">
+              <option value="updated_at">最近更新</option>
+              <option value="created_at">创建时间</option>
+              <option value="title">标题</option>
+            </select>
+            <select id="sessionOrder" onchange="loadSessions()">
+              <option value="desc">降序</option>
+              <option value="asc">升序</option>
+            </select>
+          </div>
+          <div class="session-filters-row">
+            <input type="date" id="sessionDateFrom" onchange="loadSessions()" title="开始日期" />
+            <input type="date" id="sessionDateTo" onchange="loadSessions()" title="结束日期" />
+          </div>
+          <select id="sessionUserFilter" onchange="loadSessions()" style="display:none">
+            <option value="">全部用户</option>
+          </select>
+        </div>
+        <div class="session-filters-toggle" onclick="toggleSessionFilters()">&#9660; 筛选</div>
         <div class="chat-session-list" id="sessionList">
           <div class="chat-session-item" data-sid="loading"><span data-i18n="chat.loading">Loading...</span></div>
         </div>
@@ -706,6 +738,13 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
           <span class="batch-delete-count" id="batchDeleteCount">0 selected</span>
           <button class="batch-delete-cancel" onclick="toggleBatchDelete()">Cancel</button>
           <button class="batch-delete-btn" id="batchDeleteConfirm" onclick="batchDeleteSessions()" disabled>Delete</button>
+        </div>
+        <div class="session-pagination" id="sessionPagination" style="display:none">
+          <span id="sessionPageInfo"></span>
+          <div>
+            <button id="sessionPrevPage" onclick="changeSessionPage(-1)">&#9664;</button>
+            <button id="sessionNextPage" onclick="changeSessionPage(1)">&#9654;</button>
+          </div>
         </div>
       </div>
       <!-- Chat Main -->
@@ -2134,11 +2173,83 @@ function doReject(toolName) {
 }
 
 /* Session Management */
+let SESSION_PAGE = 1;
+let SESSION_LIMIT = 20;
+let SESSION_TOTAL = 0;
+let _searchTimer = null;
+
+function toggleSessionFilters() {
+  var el = document.getElementById('sessionFilters');
+  var toggle = document.querySelector('.session-filters-toggle');
+  if (el.style.display === 'none') {
+    el.style.display = 'flex';
+    toggle.innerHTML = '&#9650; 筛选';
+    // Show admin user filter if admin
+    if (getRole() === 'admin') {
+      document.getElementById('sessionUserFilter').style.display = '';
+      loadSessionUsers();
+    }
+  } else {
+    el.style.display = 'none';
+    toggle.innerHTML = '&#9660; 筛选';
+  }
+}
+
+function debounceSessionSearch() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(function() { SESSION_PAGE = 1; loadSessions(); }, 300);
+}
+
+function changeSessionPage(delta) {
+  SESSION_PAGE += delta;
+  if (SESSION_PAGE < 1) SESSION_PAGE = 1;
+  var maxPage = Math.ceil(SESSION_TOTAL / SESSION_LIMIT) || 1;
+  if (SESSION_PAGE > maxPage) SESSION_PAGE = maxPage;
+  loadSessions();
+}
+
+async function loadSessionUsers() {
+  try {
+    var data = await apiFetch(API + '/teams/1/members');
+    var sel = document.getElementById('sessionUserFilter');
+    sel.innerHTML = '<option value="">全部用户</option>';
+    if (data && data.members) {
+      data.members.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.email || m.name;
+        opt.textContent = m.name || m.email;
+        sel.appendChild(opt);
+      });
+    }
+  } catch(e) { /* ignore */ }
+}
+
 async function loadSessions() {
-  const data = await apiFetch(API + '/agent/sessions');
+  var params = new URLSearchParams();
+  var q = document.getElementById('sessionSearch');
+  if (q && q.value) params.set('q', q.value);
+  var sortEl = document.getElementById('sessionSort');
+  if (sortEl) params.set('sort', sortEl.value);
+  var orderEl = document.getElementById('sessionOrder');
+  if (orderEl) params.set('order', orderEl.value);
+  var fromEl = document.getElementById('sessionDateFrom');
+  if (fromEl && fromEl.value) params.set('from', fromEl.value);
+  var toEl = document.getElementById('sessionDateTo');
+  if (toEl && toEl.value) params.set('to', toEl.value);
+  if (getRole() === 'admin') {
+    var userEl = document.getElementById('sessionUserFilter');
+    if (userEl && userEl.value) params.set('user', userEl.value);
+  }
+  params.set('page', SESSION_PAGE);
+  params.set('limit', SESSION_LIMIT);
+
+  const data = await apiFetch(API + '/agent/sessions?' + params.toString());
   const list = document.getElementById('sessionList');
+  SESSION_TOTAL = (data && data.total) || 0;
+
   if (!data || !data.sessions || data.sessions.length === 0) {
     list.innerHTML = '<div class="chat-session-item" style="cursor:default;color:var(--text-muted);font-size:12px">' + (LOCALE === 'zh' ? '暂无对话' : 'No sessions') + '</div>';
+    document.getElementById('sessionPagination').style.display = 'none';
     return;
   }
   list.innerHTML = '';
@@ -2151,7 +2262,8 @@ async function loadSessions() {
     var statusDot = s.status === 'running'
       ? '<span class="session-status"><span class="running-dot"></span></span>'
       : '<span class="session-status"><span class="done-dot"></span></span>';
-    item.innerHTML = '<input type="checkbox" class="session-checkbox" data-sid="' + s.session_id + '" onclick="event.stopPropagation();updateBatchCount()">' + statusDot + '<span>' + escHtml(title) + '</span><button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    var userTag = (getRole() === 'admin' && s.user_id) ? '<span style="font-size:9px;color:var(--text-muted);margin-left:4px">@' + escHtml(s.user_id) + '</span>' : '';
+    item.innerHTML = '<input type="checkbox" class="session-checkbox" data-sid="' + s.session_id + '" onclick="event.stopPropagation();updateBatchCount()">' + statusDot + '<span>' + escHtml(title) + '</span>' + userTag + '<button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
     // Add state badge
@@ -2170,6 +2282,19 @@ async function loadSessions() {
     }
     if (badge.textContent) item.appendChild(badge);
   });
+  // Pagination
+  var total = SESSION_TOTAL;
+  var maxPage = Math.ceil(total / SESSION_LIMIT) || 1;
+  var pagEl = document.getElementById('sessionPagination');
+  var infoEl = document.getElementById('sessionPageInfo');
+  if (total > SESSION_LIMIT) {
+    pagEl.style.display = 'flex';
+    infoEl.textContent = (LOCALE === 'zh' ? '第' : 'Page ') + SESSION_PAGE + '/' + maxPage + (LOCALE === 'zh' ? ' 共' : ' · ') + total + (LOCALE === 'zh' ? '条' : '');
+    document.getElementById('sessionPrevPage').disabled = SESSION_PAGE <= 1;
+    document.getElementById('sessionNextPage').disabled = SESSION_PAGE >= maxPage;
+  } else {
+    pagEl.style.display = 'none';
+  }
   var hadNew = false;
   data.sessions.forEach(function(s) {
     if (!SUBSCRIBED_SESSIONS.has(s.session_id)) hadNew = true;
