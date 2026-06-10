@@ -2,7 +2,7 @@
 
 统一管理 Azure、腾讯云、Oracle Cloud、Render 资源的 Web 平台，内置 AI 云助手，支持自然语言操作云资源。
 
-**生产地址**: https://multicloud-backend-qw9d.onrender.com
+**生产地址**: https://multicloud-backend-58m7.onrender.com/
 
 ## 功能
 
