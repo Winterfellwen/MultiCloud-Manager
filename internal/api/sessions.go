@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,35 +28,129 @@ func newSessionID() string {
 }
 
 func (h *SessionsHandler) List(c *gin.Context) {
-	query := `
+	username, _ := c.Get("user_id")
+	role, _ := c.Get("user_role")
+	isAdmin := role == "admin"
+
+	// Build dynamic WHERE conditions
+	var conditions []string
+	var args []interface{}
+	argIdx := 1
+
+	// Non-admin: only see own sessions
+	if !isAdmin {
+		conditions = append(conditions, fmt.Sprintf("s.user_id = $%d", argIdx))
+		args = append(args, username)
+		argIdx++
+	}
+
+	// Admin: optional ?user= filter
+	if filterUser := c.Query("user"); filterUser != "" && isAdmin {
+		conditions = append(conditions, fmt.Sprintf("s.user_id = $%d", argIdx))
+		args = append(args, filterUser)
+		argIdx++
+	}
+
+	// Search by title
+	if q := c.Query("q"); q != "" {
+		conditions = append(conditions, fmt.Sprintf("s.title ILIKE $%d", argIdx))
+		args = append(args, "%"+q+"%")
+		argIdx++
+	}
+
+	// Date range
+	if from := c.Query("from"); from != "" {
+		conditions = append(conditions, fmt.Sprintf("s.created_at >= $%d", argIdx))
+		args = append(args, from)
+		argIdx++
+	}
+	if to := c.Query("to"); to != "" {
+		conditions = append(conditions, fmt.Sprintf("s.created_at < ($%d::date + INTERVAL '1 day')", argIdx))
+		args = append(args, to)
+		argIdx++
+	}
+
+	where := ""
+	if len(conditions) > 0 {
+		where = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Sort
+	sortField := "s.updated_at"
+	allowedSorts := map[string]string{
+		"created_at": "s.created_at",
+		"updated_at": "s.updated_at",
+		"title":      "s.title",
+	}
+	if sf, ok := allowedSorts[c.Query("sort")]; ok {
+		sortField = sf
+	}
+	order := "DESC"
+	if strings.ToLower(c.Query("order")) == "asc" {
+		order = "ASC"
+	}
+
+	// Pagination
+	page := 1
+	limit := 20
+	if p := c.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+		if page < 1 {
+			page = 1
+		}
+	}
+	if l := c.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+		if limit < 1 {
+			limit = 1
+		}
+		if limit > 100 {
+			limit = 100
+		}
+	}
+	offset := (page - 1) * limit
+
+	// Count total
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM sessions s %s", where)
+	var total int
+	h.db.QueryRow(countQuery, args...).Scan(&total)
+
+	// Main query — build args for the data query (append limit/offset)
+	dataArgs := make([]interface{}, len(args))
+	copy(dataArgs, args)
+	dataArgs = append(dataArgs, limit, offset)
+
+	query := fmt.Sprintf(`
 		WITH session_runs AS (
 		    SELECT s.id, s.session_id, s.title, s.status, s.mode, s.created_at, s.updated_at,
-		           s.last_viewed_at,
+		           s.last_viewed_at, s.user_id,
 		           (SELECT state FROM runs WHERE session_id = s.id AND state IN ('running','waiting_confirm') ORDER BY created_at DESC LIMIT 1) AS active_state,
 		           (SELECT COUNT(*) FROM runs WHERE session_id = s.id AND state = 'pending') AS queue_depth,
 		           (SELECT MAX(terminal_at) FROM runs WHERE session_id = s.id AND state = 'done') AS last_done_at
 		    FROM sessions s
-		    ORDER BY s.updated_at DESC
-		    LIMIT 50
+		    %s
+		    ORDER BY %s %s
+		    LIMIT $%d OFFSET $%d
 		)
-		SELECT session_id, title, status, mode, created_at, updated_at, last_viewed_at, active_state, queue_depth, last_done_at
+		SELECT session_id, title, status, mode, created_at, updated_at, last_viewed_at, user_id, active_state, queue_depth, last_done_at
 		FROM session_runs
-	`
-	rows, err := h.db.Query(query)
+	`, where, sortField, order, argIdx, argIdx+1)
+
+	rows, err := h.db.Query(query, dataArgs...)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"sessions": []interface{}{}})
+		c.JSON(http.StatusOK, gin.H{"sessions": []interface{}{}, "total": 0, "page": page, "limit": limit})
 		return
 	}
 	defer rows.Close()
 
 	var sessions []map[string]interface{}
 	for rows.Next() {
-		var sessionID, title, status, mode string
+		var sessionID, title, status, mode, userID string
 		var createdAt, updatedAt sql.NullTime
 		var lastViewedAt, lastDoneAt sql.NullTime
 		var activeState sql.NullString
 		var queueDepth int
-		if err := rows.Scan(&sessionID, &title, &status, &mode, &createdAt, &updatedAt, &lastViewedAt, &activeState, &queueDepth, &lastDoneAt); err != nil {
+		if err := rows.Scan(&sessionID, &title, &status, &mode, &createdAt, &updatedAt, &lastViewedAt, &userID, &activeState, &queueDepth, &lastDoneAt); err != nil {
 			continue
 		}
 		state := "idle"
@@ -79,6 +174,7 @@ func (h *SessionsHandler) List(c *gin.Context) {
 			"title":       title,
 			"status":      status,
 			"mode":        mode,
+			"user_id":     userID,
 			"created_at":  createdAt.Time,
 			"updated_at":  updatedAt.Time,
 			"state":       state,
@@ -89,7 +185,12 @@ func (h *SessionsHandler) List(c *gin.Context) {
 	if sessions == nil {
 		sessions = []map[string]interface{}{}
 	}
-	c.JSON(http.StatusOK, gin.H{"sessions": sessions})
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": sessions,
+		"total":    total,
+		"page":     page,
+		"limit":    limit,
+	})
 }
 
 func (h *SessionsHandler) loadMessages(sessionInternalID string) []map[string]interface{} {
@@ -136,11 +237,23 @@ func (h *SessionsHandler) Get(c *gin.Context) {
 		return
 	}
 
+	username, _ := c.Get("user_id")
+	role, _ := c.Get("user_role")
+
 	var internalID, sid, title, status, mode string
 	var createdAt, updatedAt sql.NullTime
+
 	query := `SELECT id, session_id, title, status, mode, created_at, updated_at
-	          FROM sessions WHERE session_id = $1 OR id::text = $1`
-	err := h.db.QueryRow(query, sessionID).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt)
+	          FROM sessions WHERE (session_id = $1 OR id::text = $1)`
+	args := []interface{}{sessionID}
+
+	// Non-admin: only access own sessions
+	if role != "admin" {
+		query += ` AND user_id = $2`
+		args = append(args, username)
+	}
+
+	err := h.db.QueryRow(query, args...).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
@@ -303,9 +416,23 @@ func (h *SessionsHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	_, err := h.db.Exec(`DELETE FROM sessions WHERE session_id = $1`, sessionID)
+	username, _ := c.Get("user_id")
+	role, _ := c.Get("user_role")
+
+	var result sql.Result
+	var err error
+	if role == "admin" {
+		result, err = h.db.Exec(`DELETE FROM sessions WHERE session_id = $1`, sessionID)
+	} else {
+		result, err = h.db.Exec(`DELETE FROM sessions WHERE session_id = $1 AND user_id = $2`, sessionID, username)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete session"})
+		return
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
 
@@ -334,6 +461,8 @@ func (h *SessionsHandler) Update(c *gin.Context) {
 }
 
 func (h *SessionsHandler) Create(c *gin.Context) {
+	username, _ := c.Get("user_id")
+
 	var req struct {
 		Title string `json:"title"`
 		Mode  string `json:"mode"`
@@ -347,10 +476,10 @@ func (h *SessionsHandler) Create(c *gin.Context) {
 
 	var sessionID string
 
-	insertQuery := `INSERT INTO sessions (session_id, title, status, mode) 
-	                VALUES (gen_random_uuid()::text, $1, 'idle', $2) 
+	insertQuery := `INSERT INTO sessions (session_id, title, status, mode, user_id)
+	                VALUES (gen_random_uuid()::text, $1, 'idle', $2, $3)
 	                RETURNING session_id`
-	err := h.db.QueryRow(insertQuery, req.Title, req.Mode).Scan(&sessionID)
+	err := h.db.QueryRow(insertQuery, req.Title, req.Mode, username).Scan(&sessionID)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
@@ -362,5 +491,6 @@ func (h *SessionsHandler) Create(c *gin.Context) {
 		"title":      req.Title,
 		"status":     "idle",
 		"mode":       req.Mode,
+		"user_id":    username,
 	})
 }

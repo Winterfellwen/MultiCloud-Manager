@@ -904,7 +904,8 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 		return
 	}
 
-	sessionID, internalID, _, err := h.resolveSession(req.SessionID, req.Message)
+	currentUser, _ := c.Get("user_id")
+	sessionID, internalID, _, err := h.resolveSession(req.SessionID, req.Message, fmt.Sprintf("%v", currentUser))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -937,7 +938,7 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 
 // resolveSession returns (sessionID_uuid, internalID, isNew, error).
 // sessionID_uuid is sessions.session_id (UUID), internalID is sessions.id (integer string).
-func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (string, string, bool, error) {
+func (h *ChatStreamHandler) resolveSession(externalID, firstMessage, userID string) (string, string, bool, error) {
 	if externalID == "" {
 		title := "新对话"
 		if firstMessage != "" {
@@ -950,8 +951,8 @@ func (h *ChatStreamHandler) resolveSession(externalID, firstMessage string) (str
 		}
 		var sessionID, internalID string
 		err := h.db.QueryRow(
-			`INSERT INTO sessions (session_id, title) VALUES (gen_random_uuid()::text, $1) RETURNING session_id, id`,
-			title).Scan(&sessionID, &internalID)
+			`INSERT INTO sessions (session_id, title, user_id) VALUES (gen_random_uuid()::text, $1, $2) RETURNING session_id, id`,
+			title, userID).Scan(&sessionID, &internalID)
 		return sessionID, internalID, true, err
 	}
 	var sessionID, internalID string

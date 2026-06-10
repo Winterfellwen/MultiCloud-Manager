@@ -243,6 +243,9 @@ BEGIN
 END $$`,
 		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMP`,
 		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS active_run_id UUID`,
+		`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id VARCHAR(100) DEFAULT ''`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at)`,
 		`DO $$
 BEGIN
     IF NOT EXISTS (
