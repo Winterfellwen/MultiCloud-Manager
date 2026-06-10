@@ -5,7 +5,7 @@ services:
     dockerfilePath: ./Dockerfile
     plan: starter
     region: singapore
-    branch: claude/trusting-ishizaka-0c25f1
+    branch: main
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     numInstances: 1
