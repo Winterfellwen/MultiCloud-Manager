@@ -240,10 +240,10 @@ func (h *SessionsHandler) Get(c *gin.Context) {
 	username, _ := c.Get("user_id")
 	role, _ := c.Get("user_role")
 
-	var internalID, sid, title, status, mode string
+	var internalID, sid, title, status, mode, userID string
 	var createdAt, updatedAt sql.NullTime
 
-	query := `SELECT id, session_id, title, status, mode, created_at, updated_at
+	query := `SELECT id, session_id, title, status, mode, created_at, updated_at, user_id
 	          FROM sessions WHERE (session_id = $1 OR id::text = $1)`
 	args := []interface{}{sessionID}
 
@@ -253,7 +253,7 @@ func (h *SessionsHandler) Get(c *gin.Context) {
 		args = append(args, username)
 	}
 
-	err := h.db.QueryRow(query, args...).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt)
+	err := h.db.QueryRow(query, args...).Scan(&internalID, &sid, &title, &status, &mode, &createdAt, &updatedAt, &userID)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
@@ -325,6 +325,7 @@ func (h *SessionsHandler) Get(c *gin.Context) {
 		"title":             title,
 		"status":            status,
 		"mode":              mode,
+		"user_id":           userID,
 		"created_at":        createdAt.Time,
 		"updated_at":        updatedAt.Time,
 		"active_run_id":     activeRunID.String,

@@ -76,6 +76,32 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .topbar-theme-btn { width: 28px; height: 28px; }
 .topbar-action-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; cursor: pointer; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 3px; padding: 0 8px; transition: all .15s; font-family: inherit; }
 .topbar-action-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--primary); }
+.err-btn { position: relative; }
+.err-btn .badge { position: absolute; top: -4px; right: -4px; background: var(--danger); color: #fff; font-size: 9px; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 3px; font-weight: 600; line-height: 1; pointer-events: none; }
+.err-panel { position: fixed; top: 48px; right: 12px; width: 320px; max-height: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; box-shadow: var(--shadow-lg); z-index: 2000; display: none; flex-direction: column; }
+.err-panel.show { display: flex; }
+.err-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.err-panel-clear { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 11px; font-family: inherit; padding: 0; opacity: .6; transition: opacity .15s; }
+.err-panel-clear:hover { opacity: 1; }
+.err-panel-list { flex: 1; overflow-y: auto; padding: 4px 0; max-height: 260px; }
+.err-panel-item { display: flex; align-items: flex-start; gap: 6px; padding: 6px 12px; font-size: 12px; color: var(--text); line-height: 1.4; border-bottom: 1px solid var(--border-light); }
+.err-panel-item:last-child { border-bottom: none; }
+.err-panel-item .err-time { flex-shrink: 0; font-size: 10px; color: var(--text-muted); min-width: 42px; padding-top: 1px; }
+.err-panel-item .err-text { flex: 1; word-break: break-word; }
+.err-panel-item .err-dismiss { flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 0 2px; font-family: inherit; opacity: .4; transition: opacity .15s; line-height: 1; }
+.err-panel-item .err-dismiss:hover { opacity: 1; }
+.err-panel-empty { padding: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
+.profile-logview { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
+.profile-logview.show { display: block; }
+.profile-logview-header { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.profile-logview-header button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 11px; font-family: inherit; padding: 0; opacity: .6; transition: opacity .15s; }
+.profile-logview-header button:hover { opacity: 1; }
+.profile-logview-list { max-height: 300px; overflow-y: auto; }
+.profile-logview-item { display: flex; align-items: flex-start; gap: 6px; padding: 5px 0; font-size: 12px; color: var(--text); line-height: 1.4; border-bottom: 1px solid var(--border-light); }
+.profile-logview-item:last-child { border-bottom: none; }
+.profile-logview-item .lv-time { flex-shrink: 0; font-size: 10px; color: var(--text-muted); min-width: 50px; padding-top: 1px; }
+.profile-logview-item .lv-msg { flex: 1; word-break: break-word; }
+.profile-logview-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
 .lang-label { font-size: 11px; font-weight: 500; }
 .avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0; position: relative; z-index: 1; }
 
@@ -109,7 +135,11 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Chat - OpenCode terminal style */
 .chat-layout { display: flex; flex: 1; gap: 0; min-height: 0; }
 #page-chat { height: 100%; }
-.chat-sidebar { width: 280px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
+.chat-sidebar { width: var(--chat-sidebar-width, 280px); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; position: relative; }
+.chat-sidebar-resizer { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 50; background: transparent; transition: background .15s; }
+.chat-sidebar-resizer:hover, .chat-sidebar-resizer.active { background: var(--primary); opacity: .35; }
+.chat-sidebar-resizer::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 32px; border-radius: 1px; background: var(--border); transition: background .15s; }
+.chat-sidebar-resizer:hover::after, .chat-sidebar-resizer.active::after { background: var(--primary); }
 .chat-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .chat-sidebar-header h3 { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin: 0; }
 .chat-sidebar-actions { display: flex; align-items: center; gap: 4px; }
@@ -127,13 +157,13 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .session-pagination button:disabled { opacity: 0.4; cursor: default; }
 .session-pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
 .chat-session-item { padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all .1s; display: flex; align-items: center; gap: 4px; min-width: 0; }
-.chat-session-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.chat-session-item .session-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 .chat-session-item .session-checkbox { display: none; margin: 0; cursor: pointer; flex-shrink: 0; accent-color: var(--primary); }
 .chat-sidebar.batch-mode .session-checkbox { display: inline-flex; }
 .chat-session-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
 .chat-session-item.active { background: rgba(0,122,255,.1); color: var(--primary); }
 .chat-session-item.running { border-left: 2px solid var(--success); }
-.session-status { font-size: 10px; flex-shrink: 0; display: flex; align-items: center; }
+.session-status { font-size: 10px; flex: 0 0 auto; display: flex; align-items: center; }
 .session-status .running-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s ease-in-out infinite; }
 .session-status .done-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
 @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
@@ -589,8 +619,11 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .btn-logout:hover { background: var(--danger); color: #fff; }
 
 /* Toast */
-.toast { position: fixed; top: 56px; right: 16px; background: var(--surface); border: 1px solid var(--border); border-left: 2px solid var(--primary); border-radius: 2px; padding: 8px 16px; font-size: 12px; color: var(--text); z-index: 2000; box-shadow: var(--shadow-lg); opacity: 0; transform: translateX(16px); transition: all .2s; pointer-events: none; }
+.toast { position: fixed; top: 56px; right: 16px; background: var(--surface); border: 1px solid var(--border); border-left: 2px solid var(--primary); border-radius: 2px; padding: 8px 12px; font-size: 12px; color: var(--text); z-index: 2000; box-shadow: var(--shadow-lg); opacity: 0; transform: translateX(16px); transition: all .2s; pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 360px; }
 .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.toast-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.toast-close { flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; font-family: inherit; line-height: 1; opacity: .5; transition: opacity .15s; }
+.toast-close:hover { opacity: 1; }
 
 /* Delete button */
 .btn-delete { background: none; border: 1px solid var(--border); border-radius: 2px; padding: 3px 10px; font-size: 11px; color: var(--danger); cursor: pointer; transition: all .15s; font-family: var(--font-mono); }
@@ -668,6 +701,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   <div class="topbar-right">
     <button class="topbar-action-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English"><span style="font-size:14px">🌐</span> <span class="lang-label">EN</span></button>
     <button class="topbar-action-btn" onclick="toggleTheme()" title="切换主题"><span class="theme-icon" style="font-size:14px">☾</span></button>
+    <button class="topbar-action-btn err-btn" id="errBtn" onclick="toggleErrPanel()" title="错误记录"><span style="font-size:14px">⚠</span><span class="badge" id="errBadge" style="display:none">0</span></button>
     <div class="avatar" onclick="showPage('profile')">U</div>
   </div>
 </header>
@@ -746,6 +780,7 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
             <button id="sessionNextPage" onclick="changeSessionPage(1)">&#9654;</button>
           </div>
         </div>
+        <div class="chat-sidebar-resizer" id="chatSidebarResizer"></div>
       </div>
       <!-- Chat Main -->
       <div class="chat-main">
@@ -957,7 +992,12 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
   </div>
 
   <!-- Toast -->
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast"><span class="toast-msg" id="toastMsg"></span><button class="toast-close" id="toastClose" onclick="hideToast()">&#10005;</button></div>
+  <!-- Error History -->
+  <div class="err-panel" id="errPanel">
+    <div class="err-panel-header"><span>错误记录</span><button class="err-panel-clear" onclick="clearErrHistory()">清除全部</button></div>
+    <div class="err-panel-list" id="errList"></div>
+  </div>
 
   <!-- Resources -->
   <div id="page-resources" class="page">
@@ -1093,9 +1133,13 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
         <span class="settings-value" onclick="showToast('功能开发中')">&gt;</span>
       </div>
       <div class="settings-item">
-        <span class="settings-label" data-i18n="profile.logs">操作日志</span>
-        <span class="settings-value" onclick="showToast('功能开发中')">&gt;</span>
+        <span class="settings-label" data-i18n="profile.logs">日志</span>
+        <span class="settings-value" onclick="toggleLogView()">&gt;</span>
       </div>
+    </div>
+    <div class="profile-logview" id="profileLogView">
+      <div class="profile-logview-header"><span>全部日志</span><button onclick="clearAllLogs()">清除全部</button></div>
+      <div class="profile-logview-list" id="profileLogList"></div>
     </div>
     <button class="btn-logout" onclick="doLogout()" data-i18n="profile.logout">退出登录</button>
   </div>
@@ -1735,6 +1779,7 @@ async function loadDashboard() {
 /* Chat */
 let CURRENT_MODE = 'plan';
 let CURRENT_SESSION = null;
+let CURRENT_SESSION_USER = null;
 let STREAMING_MSG = null;
 let CONFIRM_PENDING = false;
 
@@ -1758,6 +1803,7 @@ function setChatMode(mode) {
     };
     hint.innerHTML = msgs[mode] || msgs.plan;
   }
+  updateSendButtonState();
 }
 
 function handleChatKey(e) {
@@ -1770,7 +1816,28 @@ function handleChatKey(e) {
 function autoResizeTextarea(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 160) + 'px';
-  document.getElementById('chatSendBtn').disabled = el.value.trim().length === 0 || CONFIRM_PENDING;
+  var hasText = el.value.trim().length > 0;
+  var isOwner = !CURRENT_SESSION || !CURRENT_SESSION_USER || CURRENT_SESSION_USER === getCurrentUser();
+  document.getElementById('chatSendBtn').disabled = !hasText || CONFIRM_PENDING || !isOwner;
+}
+
+function updateSendButtonState() {
+  var btn = document.getElementById('chatSendBtn');
+  var input = document.getElementById('chatInput');
+  if (!btn || !input) return;
+  var isOwner = !CURRENT_SESSION || !CURRENT_SESSION_USER || CURRENT_SESSION_USER === getCurrentUser();
+  btn.disabled = !isOwner || input.value.trim().length === 0 || CONFIRM_PENDING;
+  var hint = document.getElementById('chatHint');
+  if (hint && CURRENT_SESSION && CURRENT_SESSION_USER && !isOwner) {
+    hint.innerHTML = '此对话由 ' + escHtml(CURRENT_SESSION_USER) + ' 创建，只有创建者可以发送消息';
+  }
+}
+
+function getCurrentUser() {
+  try {
+    var info = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    return info.username || info.user || '';
+  } catch(e) { return ''; }
 }
 
 /* Background AI Runs */
@@ -1778,6 +1845,9 @@ async function sendChat() {
   var input = document.getElementById('chatInput');
   var text = input.value.trim();
   if (!text) return;
+  if (CURRENT_SESSION && CURRENT_SESSION_USER && CURRENT_SESSION_USER !== getCurrentUser()) {
+    return;
+  }
   input.value = '';
   autoResizeTextarea(input);
   STREAMING_DIV = null;
@@ -2262,8 +2332,8 @@ async function loadSessions() {
     var statusDot = s.status === 'running'
       ? '<span class="session-status"><span class="running-dot"></span></span>'
       : '<span class="session-status"><span class="done-dot"></span></span>';
-    var userTag = (getRole() === 'admin' && s.user_id) ? '<span style="font-size:9px;color:var(--text-muted);margin-left:4px">@' + escHtml(s.user_id) + '</span>' : '';
-    item.innerHTML = '<input type="checkbox" class="session-checkbox" data-sid="' + s.session_id + '" onclick="event.stopPropagation();updateBatchCount()">' + statusDot + '<span>' + escHtml(title) + '</span>' + userTag + '<button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
+    var userTag = s.user_id ? '<span style="font-size:9px;color:var(--text-muted);margin-left:4px">@' + escHtml(s.user_id) + '</span>' : '';
+    item.innerHTML = '<input type="checkbox" class="session-checkbox" data-sid="' + s.session_id + '" onclick="event.stopPropagation();updateBatchCount()">' + statusDot + '<span class="session-title">' + escHtml(title) + '</span>' + userTag + '<button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete">&#10005;</button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
     // Add state badge
@@ -2408,6 +2478,8 @@ async function switchSession(sid) {
 
   // Fetch full session data from API (includes active_run_events, etc.)
   var sessData = await apiFetch(API + '/agent/sessions/' + sid);
+  CURRENT_SESSION_USER = (sessData && sessData.user_id) ? sessData.user_id : null;
+  updateSendButtonState();
   if (sessData) {
     // Render active run events as live continuation
     if (sessData.active_run_id && sessData.active_run_events && sessData.active_run_events.length > 0) {
@@ -2472,6 +2544,8 @@ async function newSession() {
     body: JSON.stringify({ title: LOCALE === 'zh' ? '新对话' : 'New Session' })
   });
   CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
+  CURRENT_SESSION_USER = null;
+  updateSendButtonState();
   hideStatus();
   document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon">◉</span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
   closeChatSessions();
@@ -3209,8 +3283,12 @@ function toggleSubGroup(el) {
 }
 
 async function ctrlResource(id, action) {
-  await apiFetch(API + '/resources/' + id + '/' + action, { method: 'POST' });
-  await syncResources();
+  try {
+    await apiFetch(API + '/resources/' + id + '/' + action, { method: 'POST' });
+    await syncResources();
+  } catch (e) {
+    showToast((LOCALE === 'zh' ? '操作失败: ' : 'Action failed: ') + (e.message || e));
+  }
 }
 
 
@@ -3852,8 +3930,8 @@ var __ = {
     'profile.password_dev': '修改密码开发中',
     'profile.stats': '使用统计',
     'profile.stats_dev': '使用统计开发中',
-    'profile.logs': '操作日志',
-    'profile.logs_dev': '操作日志开发中',
+    'profile.logs': '日志',
+    'profile.logs_dev': '日志开发中',
     'profile.logout': '退出登录',
     'mock.account_list': '已获取账户列表：\n- Azure 生产环境\n- 腾讯云开发环境\n\n共 2 个云账户，全部运行正常。',
     'mock.resource_list': '当前共有 2 个云资源：\n1. prod-web-01 (Azure, Standard_D2s_v3, 运行中)\n2. db-mysql-01 (腾讯云, 2C4G 50GB, 运行中)',
@@ -3996,8 +4074,8 @@ var __ = {
     'profile.password_dev': 'Change password in development',
     'profile.stats': 'Usage Stats',
     'profile.stats_dev': 'Usage stats in development',
-    'profile.logs': 'Activity Logs',
-    'profile.logs_dev': 'Activity logs in development',
+    'profile.logs': 'Logs',
+    'profile.logs_dev': 'Logs in development',
     'profile.logout': 'Log Out',
     'mock.account_list': 'Account list:\n- Azure Production\n- Tencent Cloud Dev\n\n2 accounts, all running normally.',
     'mock.resource_list': 'Current resources:\n1. prod-web-01 (Azure, Standard_D2s_v3, Running)\n2. db-mysql-01 (Tencent Cloud, 2C4G 50GB, Running)',
@@ -4057,17 +4135,104 @@ function switchLang(locale) {
 }
 
 /* Toast */
+var _toastTimer = null;
+var _errHistory = [];
 function showToast(msg) {
   var el = document.getElementById('toast');
-  el.textContent = msg;
+  var msgEl = document.getElementById('toastMsg');
+  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+  msgEl.textContent = msg;
   el.classList.add('show');
-  setTimeout(function() { el.classList.remove('show'); }, 2500);
+  _toastTimer = setTimeout(hideToast, 3000);
+  /* Record in error history */
+  _errHistory.push({ msg: msg, time: Date.now() });
+  if (_errHistory.length > 50) _errHistory.shift();
+  renderErrBadge();
+  renderErrList();
 }
+function hideToast() {
+  var el = document.getElementById('toast');
+  el.classList.remove('show');
+  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
+}
+function toggleErrPanel() {
+  var panel = document.getElementById('errPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) renderErrList();
+}
+function renderErrBadge() {
+  var badge = document.getElementById('errBadge');
+  var count = _errHistory.length;
+  if (count > 0) { badge.style.display = 'flex'; badge.textContent = count > 99 ? '99+' : count; }
+  else { badge.style.display = 'none'; }
+}
+function renderErrList() {
+  var list = document.getElementById('errList');
+  if (_errHistory.length === 0) {
+    list.innerHTML = '<div class="err-panel-empty">暂无错误记录</div>';
+    return;
+  }
+  var html = '';
+  for (var i = _errHistory.length - 1; i >= 0; i--) {
+    var e = _errHistory[i];
+    var t = new Date(e.time);
+    var ts = pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+    html += '<div class="err-panel-item" data-idx="' + i + '"><span class="err-time">' + ts + '</span><span class="err-text">' + escHtml(e.msg) + '</span><button class="err-dismiss" onclick="dismissErr(' + i + ');event.stopPropagation()">&#10005;</button></div>';
+  }
+  list.innerHTML = html;
+}
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function dismissErr(idx) {
+  _errHistory.splice(idx, 1);
+  renderErrBadge();
+  renderErrList();
+}
+function clearErrHistory() {
+  _errHistory = [];
+  renderErrBadge();
+  renderErrList();
+}
+/* Close panel on outside click */
+document.addEventListener('click', function(e) {
+  var panel = document.getElementById('errPanel');
+  var btn = document.getElementById('errBtn');
+  if (panel && panel.classList.contains('show') && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.classList.remove('show');
+  }
+});
 
 /* Auth helper */
 function getAuthHeaders() {
   var token = localStorage.getItem('token') || '';
   return token ? { 'Authorization': 'Bearer ' + token } : {};
+}
+
+/* Profile log viewer */
+function toggleLogView() {
+  var el = document.getElementById('profileLogView');
+  el.classList.toggle('show');
+  if (el.classList.contains('show')) renderProfileLogs();
+}
+function renderProfileLogs() {
+  var list = document.getElementById('profileLogList');
+  if (_errHistory.length === 0) {
+    list.innerHTML = '<div class="profile-logview-empty">' + (LOCALE === 'zh' ? '暂无日志' : 'No logs') + '</div>';
+    return;
+  }
+  var html = '';
+  for (var i = _errHistory.length - 1; i >= 0; i--) {
+    var e = _errHistory[i];
+    var t = new Date(e.time);
+    var ts = pad(t.getFullYear()) + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()) + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+    html += '<div class="profile-logview-item"><span class="lv-time">' + ts + '</span><span class="lv-msg">' + escHtml(e.msg) + '</span></div>';
+  }
+  list.innerHTML = html;
+}
+function clearAllLogs() {
+  _errHistory = [];
+  renderErrBadge();
+  renderErrList();
+  renderProfileLogs();
 }
 
 /* Override apiFetch to include auth headers */
@@ -4349,6 +4514,53 @@ function stopSessionPoll() {
   }
   lastSyncedMsgCount = 0;
 }
+
+/* Resizable sidebar */
+function makeResizable(id, cssVar, opts) {
+  var handle = document.getElementById(id);
+  if (!handle) return;
+  var minW = opts.min || 160;
+  var maxW = opts.max || 400;
+  var isResizing = false;
+  handle.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    handle.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    var w = opts.getWidth(e);
+    w = Math.max(minW, Math.min(maxW, w));
+    document.documentElement.style.setProperty(cssVar, w + 'px');
+    try { localStorage.setItem('sidebarWidth_' + id, w); } catch(ex) {}
+  });
+  document.addEventListener('mouseup', function() {
+    if (!isResizing) return;
+    isResizing = false;
+    handle.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+  /* Restore saved width */
+  try {
+    var saved = localStorage.getItem('sidebarWidth_' + id);
+    if (saved) {
+      var v = parseInt(saved, 10);
+      if (v >= minW && v <= maxW) {
+        document.documentElement.style.setProperty(cssVar, v + 'px');
+      }
+    }
+  } catch(ex) {}
+}
+makeResizable('chatSidebarResizer', '--chat-sidebar-width', { min: 200, max: 400, getWidth: function(e) {
+  var sidebar = document.querySelector('.chat-sidebar');
+  if (!sidebar) return 280;
+  return e.clientX - sidebar.getBoundingClientRect().left;
+} });
 </script>
+<script src="/static/anime.min.js"></script>
+<script src="/static/animations.js"></script>
 </body>
 </html>

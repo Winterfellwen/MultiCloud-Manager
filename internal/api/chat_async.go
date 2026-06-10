@@ -129,11 +129,15 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		}
 
 		iterCount = i + 1
+		toolDefs := h.runtime.GetToolDefinitions()
+		if r.UserRole == "viewer" {
+			toolDefs = filterReadOnlyTools(toolDefs)
+		}
 		body := map[string]interface{}{
 			"model":      cfg.Model,
 			"messages":   messages,
 			"stream":     true,
-			"tools":      h.runtime.GetToolDefinitions(),
+			"tools":      toolDefs,
 			"max_tokens": 8192,
 		}
 
@@ -260,7 +264,22 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 				}
 			}
 
-			var toolArgs map[string]interface{}
+				// Viewers are blocked from executing non-read-only tools
+			if r.UserRole == "viewer" && !agent.ReadOnlyTools[toolName] {
+				h.rm.persistEvent(r, EventToolResult, map[string]interface{}{
+					"tool_name": toolName,
+					"result":    "",
+					"error":     "BLOCKED: This tool requires higher permissions than viewer.",
+				})
+				messages = append(messages, map[string]interface{}{
+					"role":         "tool",
+					"tool_call_id": toolID,
+					"content":      "BLOCKED: You do not have permission to use this tool. As a read-only user, you can only use read-only tools like list_cloud_resources, get_cloud_stats, list_cloud_accounts, and get_cloud_credentials.",
+				})
+				continue
+			}
+
+		var toolArgs map[string]interface{}
 			if err := json.Unmarshal([]byte(toolArgsStr), &toolArgs); err != nil {
 				toolArgs = map[string]interface{}{}
 			}
@@ -905,14 +924,21 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	}
 
 	currentUser, _ := c.Get("user_id")
-	sessionID, internalID, _, err := h.resolveSession(req.SessionID, req.Message, fmt.Sprintf("%v", currentUser))
+	currentUserStr := fmt.Sprintf("%v", currentUser)
+	sessionID, internalID, sessionUserID, isNew, err := h.resolveSession(req.SessionID, req.Message, currentUserStr)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	if !isNew && sessionUserID != currentUserStr {
+		c.JSON(http.StatusForbidden, gin.H{"error": "只有对话创建者才能发送消息"})
 		return
 	}
 	req.SessionID = sessionID
 
-	r := NewRun(req.SessionID, req.Mode, req.Message)
+	roleStr, _ := c.Get("user_role")
+	userRole, _ := roleStr.(string)
+	r := NewRun(req.SessionID, req.Mode, req.Message, userRole)
 	r.InternalID = internalID
 	if h.db != nil {
 		_, err := h.db.Exec(
@@ -936,9 +962,10 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	})
 }
 
-// resolveSession returns (sessionID_uuid, internalID, isNew, error).
+// resolveSession returns (sessionID_uuid, internalID, sessionUserID, isNew, error).
 // sessionID_uuid is sessions.session_id (UUID), internalID is sessions.id (integer string).
-func (h *ChatStreamHandler) resolveSession(externalID, firstMessage, userID string) (string, string, bool, error) {
+// sessionUserID is the user_id of the session creator (empty for isNew).
+func (h *ChatStreamHandler) resolveSession(externalID, firstMessage, userID string) (string, string, string, bool, error) {
 	if externalID == "" {
 		title := "新对话"
 		if firstMessage != "" {
@@ -953,14 +980,14 @@ func (h *ChatStreamHandler) resolveSession(externalID, firstMessage, userID stri
 		err := h.db.QueryRow(
 			`INSERT INTO sessions (session_id, title, user_id) VALUES (gen_random_uuid()::text, $1, $2) RETURNING session_id, id`,
 			title, userID).Scan(&sessionID, &internalID)
-		return sessionID, internalID, true, err
+		return sessionID, internalID, userID, true, err
 	}
-	var sessionID, internalID string
-	err := h.db.QueryRow(`SELECT session_id, id::text FROM sessions WHERE session_id = $1 OR id::text = $1`, externalID).Scan(&sessionID, &internalID)
+	var sessionID, internalID, sessionUserID string
+	err := h.db.QueryRow(`SELECT session_id, id::text, user_id FROM sessions WHERE session_id = $1 OR id::text = $1`, externalID).Scan(&sessionID, &internalID, &sessionUserID)
 	if err == sql.ErrNoRows {
-		return externalID, externalID, false, nil
+		return "", "", "", false, fmt.Errorf("session not found")
 	}
-	return sessionID, internalID, false, err
+	return sessionID, internalID, sessionUserID, false, err
 }
 
 func (h *ChatStreamHandler) Confirm(c *gin.Context) {
@@ -1078,4 +1105,23 @@ func compactMessages(msgs []map[string]interface{}) []map[string]interface{} {
 		}
 	}
 	return msgs
+}
+
+// filterReadOnlyTools strips tool definitions to only those permitted for viewer users.
+func filterReadOnlyTools(defs []map[string]interface{}) []map[string]interface{} {
+	var filtered []map[string]interface{}
+	for _, d := range defs {
+		fn, ok := d["function"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name, ok := fn["name"].(string)
+		if !ok {
+			continue
+		}
+		if agent.ReadOnlyTools[name] {
+			filtered = append(filtered, d)
+		}
+	}
+	return filtered
 }
