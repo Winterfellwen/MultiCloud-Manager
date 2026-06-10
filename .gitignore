@@ -33,10 +33,19 @@ ai_config.json
 # Node
 node_modules/
 
-# Test results
+# Test results & scripts
 test-results/
 playwright-report/
 test-local/
+tests/
+check*.py
+_test*.py
+_inspect.py
+verify_*.py
+test_*.py
+stagehand-test.mjs
+test-automation.js
+test-web.js
 
 # Playwright
 playwright/.cache/
