@@ -5,6 +5,14 @@ import (
 	"encoding/json"
 )
 
+// ReadOnlyTools defines the set of tools that are safe for viewer/read-only users.
+var ReadOnlyTools = map[string]bool{
+	"list_cloud_resources":  true,
+	"get_cloud_stats":       true,
+	"list_cloud_accounts":   true,
+	"get_cloud_credentials": true,
+}
+
 // BuiltInTool is a convenience implementation of Tool backed by a function.
 type BuiltInTool struct {
 	name        string

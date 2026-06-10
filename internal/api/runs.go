@@ -54,6 +54,7 @@ type Run struct {
 	State        State
 	Mode         string
 	UserMessage  string
+	UserRole     string
 	Final        string
 	ErrorMessage string
 
@@ -71,7 +72,7 @@ type confirmReply struct {
 }
 
 // NewRun constructs a Run in the pending state.
-func NewRun(sessionID, mode, userMessage string) *Run {
+func NewRun(sessionID, mode, userMessage, userRole string) *Run {
 	ctx, cancel := context.WithCancel(context.Background())
 	_ = ctx // used by goroutine later
 	return &Run{
@@ -80,6 +81,7 @@ func NewRun(sessionID, mode, userMessage string) *Run {
 		State:       StatePending,
 		Mode:        mode,
 		UserMessage: userMessage,
+		UserRole:    userRole,
 		confirmCh:   make(chan confirmReply, 1),
 		cancelFn:    cancel,
 	}

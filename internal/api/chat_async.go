@@ -129,11 +129,15 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		}
 
 		iterCount = i + 1
+		toolDefs := h.runtime.GetToolDefinitions()
+		if r.UserRole == "viewer" {
+			toolDefs = filterReadOnlyTools(toolDefs)
+		}
 		body := map[string]interface{}{
 			"model":      cfg.Model,
 			"messages":   messages,
 			"stream":     true,
-			"tools":      h.runtime.GetToolDefinitions(),
+			"tools":      toolDefs,
 			"max_tokens": 8192,
 		}
 
@@ -260,7 +264,22 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 				}
 			}
 
-			var toolArgs map[string]interface{}
+				// Viewers are blocked from executing non-read-only tools
+			if r.UserRole == "viewer" && !agent.ReadOnlyTools[toolName] {
+				h.rm.persistEvent(r, EventToolResult, map[string]interface{}{
+					"tool_name": toolName,
+					"result":    "",
+					"error":     "BLOCKED: This tool requires higher permissions than viewer.",
+				})
+				messages = append(messages, map[string]interface{}{
+					"role":         "tool",
+					"tool_call_id": toolID,
+					"content":      "BLOCKED: You do not have permission to use this tool. As a read-only user, you can only use read-only tools like list_cloud_resources, get_cloud_stats, list_cloud_accounts, and get_cloud_credentials.",
+				})
+				continue
+			}
+
+		var toolArgs map[string]interface{}
 			if err := json.Unmarshal([]byte(toolArgsStr), &toolArgs); err != nil {
 				toolArgs = map[string]interface{}{}
 			}
@@ -912,7 +931,9 @@ func (h *ChatStreamHandler) Stream(c *gin.Context) {
 	}
 	req.SessionID = sessionID
 
-	r := NewRun(req.SessionID, req.Mode, req.Message)
+	roleStr, _ := c.Get("user_role")
+	userRole, _ := roleStr.(string)
+	r := NewRun(req.SessionID, req.Mode, req.Message, userRole)
 	r.InternalID = internalID
 	if h.db != nil {
 		_, err := h.db.Exec(
@@ -1078,4 +1099,23 @@ func compactMessages(msgs []map[string]interface{}) []map[string]interface{} {
 		}
 	}
 	return msgs
+}
+
+// filterReadOnlyTools strips tool definitions to only those permitted for viewer users.
+func filterReadOnlyTools(defs []map[string]interface{}) []map[string]interface{} {
+	var filtered []map[string]interface{}
+	for _, d := range defs {
+		fn, ok := d["function"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name, ok := fn["name"].(string)
+		if !ok {
+			continue
+		}
+		if agent.ReadOnlyTools[name] {
+			filtered = append(filtered, d)
+		}
+	}
+	return filtered
 }

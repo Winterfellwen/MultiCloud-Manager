@@ -7,7 +7,7 @@ import (
 
 func TestRunManager_EmitBroadcastsToSubscribers(t *testing.T) {
 	m := NewRunManager()
-	r := NewRun("s1", "plan", "hi")
+	r := NewRun("s1", "plan", "hi", "admin")
 	m.Start(r)
 	defer m.Stop(r.ID)
 
@@ -33,7 +33,7 @@ func TestRunManager_EmitBroadcastsToSubscribers(t *testing.T) {
 
 func TestRunManager_UnsubscribeStopsDelivery(t *testing.T) {
 	m := NewRunManager()
-	r := NewRun("s2", "plan", "hi")
+	r := NewRun("s2", "plan", "hi", "admin")
 	m.Start(r)
 
 	ch, unsub := m.Subscribe([]string{"s2"}, 0)
@@ -65,7 +65,7 @@ func TestRunManager_SubscribeReplaysFromID(t *testing.T) {
 }
 
 func TestNewRun_HasPendingState(t *testing.T) {
-	r := NewRun("session-1", "plan", "hello")
+	r := NewRun("session-1", "plan", "hello", "admin")
 	if r.State != StatePending {
 		t.Fatalf("expected state=pending, got %s", r.State)
 	}
@@ -100,7 +100,7 @@ func TestEventTypes_AreDistinct(t *testing.T) {
 
 func TestRunManager_StartAndGet(t *testing.T) {
 	m := NewRunManager()
-	r := NewRun("s1", "plan", "hi")
+	r := NewRun("s1", "plan", "hi", "admin")
 	if err := m.Start(r); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
