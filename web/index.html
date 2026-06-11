@@ -1472,6 +1472,7 @@ let LAST_EVENT_ID = parseInt(localStorage.getItem('last_event_id') || '0', 10);
 const SUBSCRIBED_SESSIONS = new Set();
 let CURRENT_RUN_ID = null;
 const STOPPED_RUNS = new Set(); // Track runs that have been stopped
+var _pendingStopSession = null; // Session ID that user just requested to stop
 
 const EVENT_HANDLERS = {
   token: handleTokenEvent,
@@ -1675,6 +1676,7 @@ function handleStateChangeEvent(ev) {
     }
   } else if (newState === 'stopped') {
     if (ev.run_id) STOPPED_RUNS.add(ev.run_id);
+    _pendingStopSession = null;
     if (isCurrentSession) showError(LOCALE === 'zh' ? '已停止' : 'Stopped');
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
@@ -2318,6 +2320,7 @@ async function stopActiveSession() {
     } catch(e) { /* ignore */ }
     CURRENT_RUN_ID = null;
     // Directly re-enable UI as a safety net.
+    _pendingStopSession = CURRENT_SESSION;
     hideStatus();
     document.getElementById('chatStopBtn').style.display = 'none';
     document.getElementById('chatSendBtn').disabled = false;
@@ -2967,8 +2970,9 @@ async function switchSession(sid) {
         container.appendChild(runDiv);
         CURRENT_RUN_ID = sessData.active_run_id;
         // Reset streaming state so SSE events create a fresh streaming div
-        STREAMING_DIV = null;
-        STREAMING_CONTENT = '';
+  STREAMING_DIV = null;
+  STREAMING_CONTENT = '';
+  _pendingStopSession = null;
     }
     // Render pending queue indicator
     if (sessData.pending_runs && sessData.pending_runs.length > 0) {
@@ -4981,6 +4985,7 @@ function startSessionPoll() {
       }
       // Hide status bar if session finished
       if (data.status !== 'running') {
+        if (_pendingStopSession === CURRENT_SESSION) _pendingStopSession = null;
         var workIndicator = document.querySelector('.streaming-work');
         if (workIndicator) workIndicator.remove();
         document.getElementById('chatStopBtn').style.display = 'none';
@@ -5019,8 +5024,8 @@ function startSessionPoll() {
             lastSyncedMsgCount++;
           }
         });
-        // If still running, show status indicator
-        if (data.status === 'running') {
+        // If still running, show status indicator (but not if user just clicked stop)
+        if (data.status === 'running' && _pendingStopSession !== CURRENT_SESSION) {
           showThinking();
           document.getElementById('chatStopBtn').style.display = '';
         }
