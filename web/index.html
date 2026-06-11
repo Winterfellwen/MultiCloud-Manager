@@ -3924,15 +3924,9 @@ async function editAccount(id) {
   editingAccountId = id;
   selectCloud(full.cloud_type);
   document.getElementById('field-name').value = full.name || '';
-  // prefill credential fields if parseable JSON
-  try {
-    var creds = JSON.parse(full.credentials || '{}');
-    var config = cloudConfigs[full.cloud_type] || [];
-    config.forEach(function(f) {
-      var el = document.getElementById('field-' + f.key);
-      if (el && creds[f.key] !== undefined && creds[f.key] !== null) el.value = creds[f.key];
-    });
-  } catch(e) { /* credentials not JSON, leave blank */ }
+  // Credentials are masked in API responses; show hint if available
+  var hintEl = document.getElementById('credentialHint');
+  if (hintEl) hintEl.textContent = full.credential_hint ? t('account.credential_hint') + full.credential_hint : '';
   if (!accountFormVisible) toggleAccountForm();
 }
 
