@@ -442,7 +442,6 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 	if len(final) == 0 {
 		final = []map[string]interface{}{{"role": "user", "content": r.UserMessage}}
 	}
-	historyJSON, _ := json.Marshal(final)
 	var sessionInternalID string
 	if err := m.db.QueryRow(`SELECT id FROM sessions WHERE session_id=$1`, r.SessionID).Scan(&sessionInternalID); err != nil {
 		m.db.QueryRow(`SELECT id FROM sessions WHERE id::text=$1`, r.SessionID).Scan(&sessionInternalID)
@@ -451,8 +450,18 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 		return
 	}
 	m.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, r.UserMessage, sessionInternalID)
+
+	// Load existing history and append new messages from this run
+	var existingHistory []map[string]interface{}
+	var historyJSON string
+	err = m.db.QueryRow(`SELECT content FROM messages WHERE session_id = $1 AND role = 'history' ORDER BY created_at DESC LIMIT 1`, sessionInternalID).Scan(&historyJSON)
+	if err == nil && historyJSON != "" {
+		_ = json.Unmarshal([]byte(historyJSON), &existingHistory)
+	}
+	combined := append(existingHistory, final...)
+	combinedJSON, _ := json.Marshal(combined)
 	m.db.Exec(`DELETE FROM messages WHERE session_id = $1`, sessionInternalID)
-	m.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, sessionInternalID, string(historyJSON))
+	m.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, sessionInternalID, string(combinedJSON))
 	// Events cleanup: deferred to a background goroutine to avoid race conditions
 	// with the broadcast channel. Events for done runs are harmless — the session
 	// Get endpoint caps incomplete_runs to 5 runs × 200 events.

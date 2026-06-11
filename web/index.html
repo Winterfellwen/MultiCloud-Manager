@@ -2318,6 +2318,7 @@ async function stopActiveSession() {
     } catch(e) { /* ignore */ }
     CURRENT_RUN_ID = null;
     // Directly re-enable UI as a safety net.
+    hideStatus();
     document.getElementById('chatStopBtn').style.display = 'none';
     document.getElementById('chatSendBtn').disabled = false;
     CONFIRM_PENDING = false;
