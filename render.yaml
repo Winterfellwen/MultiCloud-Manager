@@ -32,6 +32,8 @@ services:
           name: multicloud-redis
           type: redis
           property: connectionString
+      - key: ENCRYPTION_KEY
+        generateValue: true
 
 databases:
   - name: multicloud-db

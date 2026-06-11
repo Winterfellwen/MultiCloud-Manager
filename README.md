@@ -50,12 +50,29 @@ open http://localhost:8099
 
 ### Render 部署
 
-Push 到 `main` 分支自动部署。Render 通过 `render.yaml` 配置：
+#### 首次部署（手动创建服务）
 
-- `JWT_SECRET` / `ADMIN_PASSWORD`：自动生成（`generateValue: true`）
-- `DATABASE_URL`：从 Render PostgreSQL 注入
-- `REDIS_URL`：从 Render Redis 注入
-- 无需手动配置环境变量
+1. **Fork/推送仓库到 GitHub**
+
+2. **在 Render Dashboard 依次创建**：
+   - **PostgreSQL**：Name `multicloud-db`，Region Singapore，Plan Free
+   - **Redis**：Name `multicloud-redis`，Region Singapore，Plan Free
+   - **Web Service**：连接 GitHub 仓库，Runtime `Docker`，Dockerfile `./Dockerfile`，Region Singapore，Plan Starter
+
+   > `render.yaml` 会自动关联上述服务名，无需手动填环境变量。
+
+3. **关键环境变量**（`render.yaml` 已配置自动生成）：
+   - `JWT_SECRET` / `ADMIN_PASSWORD` / `ENCRYPTION_KEY`：`generateValue: true`
+   - `DATABASE_URL` / `REDIS_URL`：从关联服务自动注入
+   - `ENVIRONMENT=production`、`GIN_MODE=release`
+
+4. **首次部署后验证**：
+   - 访问 `https://your-app.onrender.com/api/health` 返回 `{"status":"ok"}`
+   - 管理员密码：Web Service 环境变量中查看 `ADMIN_PASSWORD`
+
+#### 后续部署
+
+Push 到 `main` 分支自动触发构建部署（`autoDeployTrigger: commit`）。
 
 ## 环境变量
 
@@ -67,7 +84,7 @@ Push 到 `main` 分支自动部署。Render 通过 `render.yaml` 配置：
 | `ADMIN_PASSWORD` | 管理员密码 | `test123` | 自动生成 |
 | `ENVIRONMENT` | 运行环境 | `development` | `production` |
 | `PORT` | 监听端口 | `8099` | `8099` |
-| `ENCRYPTION_KEY` | Vault 加密密钥（64 位 hex） | 未设置 | 未设置 |
+| `ENCRYPTION_KEY` | Vault 加密密钥（64 位 hex） | 未设置（开发自动生成） | 自动生成（`generateValue: true`） |
 
 > 生产环境如果 `JWT_SECRET` 为默认值，服务会启动失败（安全保护）。
 
