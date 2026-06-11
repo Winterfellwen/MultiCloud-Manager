@@ -890,16 +890,34 @@ func isDestructiveCommand(cmd string) bool {
 		"cat /proc",
 	}
 	cmdLower := strings.ToLower(strings.TrimSpace(cmd))
-	for _, ro := range readOnly {
-		if strings.HasPrefix(cmdLower, ro+" ") || cmdLower == ro {
-			return false
+
+	// Split by pipe and check each segment independently
+	segments := strings.Split(cmdLower, "|")
+	for _, seg := range segments {
+		seg = strings.TrimSpace(seg)
+		if seg == "" {
+			continue
+		}
+
+		// Check if this segment matches any read-only prefix
+		isReadOnly := false
+		for _, ro := range readOnly {
+			if strings.HasPrefix(seg, ro+" ") || seg == ro {
+				isReadOnly = true
+				break
+			}
+		}
+
+		// If not read-only, check if it's destructive
+		if !isReadOnly {
+			for _, d := range destructive {
+				if strings.Contains(seg, d) {
+					return true
+				}
+			}
 		}
 	}
-	for _, d := range destructive {
-		if strings.Contains(cmdLower, d) {
-			return true
-		}
-	}
+
 	return false
 }
 
@@ -1005,6 +1023,18 @@ func (h *ChatStreamHandler) Confirm(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
 		return
 	}
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+	if role != "admin" {
+		var dbOwnerID string
+		err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, run.SessionID).Scan(&dbOwnerID)
+		if err != nil || dbOwnerID != ownerID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
 	run.mu.Lock()
 	state := run.State
 	run.mu.Unlock()
@@ -1031,6 +1061,18 @@ func (h *ChatStreamHandler) Stop(c *gin.Context) {
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
 		return
+	}
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+	if role != "admin" {
+		var dbOwnerID string
+		err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, run.SessionID).Scan(&dbOwnerID)
+		if err != nil || dbOwnerID != ownerID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
 	}
 	run.mu.Lock()
 	state := run.State
