@@ -254,6 +254,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	r.StaticFile("/static/login.html", filepath.Join(webDir, "login.html"))
 	r.StaticFile("/static/index.html", filepath.Join(webDir, "index.html"))
 	r.StaticFile("/static/embedded.js", filepath.Join(webDir, "embedded.js"))
+	r.StaticFile("/static/icons.svg", filepath.Join(webDir, "icons.svg"))
+	r.StaticFile("/static/favicon.svg", filepath.Join(webDir, "favicon.svg"))
+	r.StaticFile("/static/anime.min.js", filepath.Join(webDir, "anime.min.js"))
+	r.StaticFile("/static/animations.js", filepath.Join(webDir, "animations.js"))
 	r.Static("/static/js", filepath.Join(webDir, "js"))
 
 	r.GET("/embedded.js", func(c *gin.Context) {
