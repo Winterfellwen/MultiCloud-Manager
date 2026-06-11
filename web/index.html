@@ -3358,7 +3358,8 @@ function downloadFileContent(name, pre) {
 
 /* Markdown rendering with download buttons */
 function renderMarkdown(text) {
-  var html = text
+  var safe = escHtml(text);
+  var html = safe
     .replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
       const ext = {'bash':'sh','shell':'sh','python':'py','javascript':'js','typescript':'ts','yaml':'yaml','yml':'yml','json':'json','terraform':'tf','hcl':'tf','sql':'sql','dockerfile':'Dockerfile','go':'go','rust':'rs','ruby':'rb','php':'php','java':'java','c':'c','cpp':'cpp','css':'css','html':'html','xml':'xml','toml':'toml','ini':'ini','cfg':'cfg','md':'md','markdown':'md','text':'txt','plain':'txt'}[lang] || lang || 'txt';
       return '<div style="position:relative"><pre><code class="language-' + lang + '">' + code + '</code><button class="dl-btn" onclick="downloadCode(\'' + escHtml(ext) + '\',this)"><svg width="14" height="14"><use href="/static/icons.svg#icon-download"/></svg></button></pre></div>';
