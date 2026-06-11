@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,11 +13,12 @@ import (
 )
 
 type EventsSSEHandler struct {
+	db *sql.DB
 	rm *RunManager
 }
 
-func NewEventsSSEHandler(rm *RunManager) *EventsSSEHandler {
-	return &EventsSSEHandler{rm: rm}
+func NewEventsSSEHandler(db *sql.DB, rm *RunManager) *EventsSSEHandler {
+	return &EventsSSEHandler{db: db, rm: rm}
 }
 
 func (h *EventsSSEHandler) Stream(c *gin.Context) {
@@ -40,6 +42,37 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 	sessionIDs := strings.Split(sessionIDsParam, ",")
 	for i := range sessionIDs {
 		sessionIDs[i] = strings.TrimSpace(sessionIDs[i])
+	}
+
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+
+	if role != "admin" {
+		for _, sid := range sessionIDs {
+			sid = strings.TrimSpace(sid)
+			if sid == "" {
+				continue
+			}
+			var dbOwnerID string
+			err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, sid).Scan(&dbOwnerID)
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+				c.Abort()
+				return
+			}
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.Abort()
+				return
+			}
+			if dbOwnerID != ownerID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+				c.Abort()
+				return
+			}
+		}
 	}
 
 	var fromID int64

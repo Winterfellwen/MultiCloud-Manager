@@ -99,7 +99,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 		// Chat endpoints — all roles (viewer: plan only, enforced in handler)
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
-		eventsHandler := NewEventsSSEHandler(runMgr)
+		eventsHandler := NewEventsSSEHandler(db, runMgr)
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
 		auth.POST("/agent/chat/confirm", RequireRole("admin", "user"), chatHandler.Confirm)
 		auth.POST("/agent/chat/stop", chatHandler.Stop)
