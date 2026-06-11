@@ -178,7 +178,13 @@ func (m *RunManager) Confirm(id, action string) bool {
 	m.mu.RLock()
 	r, ok := m.runs[id]
 	m.mu.RUnlock()
-	if !ok || r.State != StateWaitingConfirm {
+	if !ok {
+		return false
+	}
+	r.mu.Lock()
+	state := r.State
+	r.mu.Unlock()
+	if state != StateWaitingConfirm {
 		return false
 	}
 	r.SendConfirm(action)
@@ -233,7 +239,9 @@ func (m *RunManager) cleanup(r *Run) {
 	delete(m.runs, r.ID)
 	m.mu.Unlock()
 	if m.db != nil {
-		m.db.Exec(`UPDATE runs SET state=$1, terminal_at=CURRENT_TIMESTAMP WHERE id=$2`, string(r.State), r.ID)
+		if _, err := m.db.Exec(`UPDATE runs SET state=$1, terminal_at=CURRENT_TIMESTAMP WHERE id=$2`, string(r.State), r.ID); err != nil {
+			log.Printf("WARNING: failed to persist terminal state for run %s: %v", r.ID, err)
+		}
 	}
 }
 
@@ -249,6 +257,11 @@ func (m *RunManager) Subscribe(sessionIDs []string, fromID int64) (<-chan Event,
 	ch := make(chan Event, 256)
 	for _, sid := range sessionIDs {
 		m.subMu.Lock()
+		if len(m.subs[sid]) >= 100 {
+			m.subMu.Unlock()
+			close(ch)
+			return ch, func() {}
+		}
 		m.subs[sid] = append(m.subs[sid], ch)
 		m.subMu.Unlock()
 	}
@@ -449,7 +462,9 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 	if sessionInternalID == "" {
 		return
 	}
-	m.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, r.UserMessage, sessionInternalID)
+	if _, err := m.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, r.UserMessage, sessionInternalID); err != nil {
+		log.Printf("WARNING: failed to update session title for run %s: %v", r.ID, err)
+	}
 
 	// Load existing history and append new messages from this run
 	var existingHistory []map[string]interface{}
@@ -460,15 +475,15 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 	}
 	combined := append(existingHistory, final...)
 	combinedJSON, _ := json.Marshal(combined)
-	m.db.Exec(`DELETE FROM messages WHERE session_id = $1`, sessionInternalID)
-	m.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, sessionInternalID, string(combinedJSON))
-	// Events cleanup: deferred to a background goroutine to avoid race conditions
-	// with the broadcast channel. Events for done runs are harmless — the session
-	// Get endpoint caps incomplete_runs to 5 runs × 200 events.
-	go func() {
-		time.Sleep(2 * time.Second)
-		m.db.Exec(`DELETE FROM run_events WHERE run_id = $1 AND EXISTS (SELECT 1 FROM runs WHERE id = $1 AND state = 'done')`, r.ID)
-	}()
+	if _, err := m.db.Exec(`DELETE FROM messages WHERE session_id = $1`, sessionInternalID); err != nil {
+		log.Printf("WARNING: failed to delete old messages for session %s: %v", sessionInternalID, err)
+	}
+	if _, err := m.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, sessionInternalID, string(combinedJSON)); err != nil {
+		log.Printf("WARNING: failed to insert history for session %s: %v", sessionInternalID, err)
+	}
+	if _, err := m.db.Exec(`DELETE FROM run_events WHERE run_id = $1 AND EXISTS (SELECT 1 FROM runs WHERE id = $1 AND state = 'done')`, r.ID); err != nil {
+		log.Printf("WARNING: failed to cleanup events for run %s: %v", r.ID, err)
+	}
 }
 
 // RecoverFromRestart marks any runs that were in-progress when the backend
