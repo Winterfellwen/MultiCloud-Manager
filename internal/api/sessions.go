@@ -446,6 +446,12 @@ func (h *SessionsHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing session id"})
 		return
 	}
+
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+
 	var req struct {
 		Status string `json:"status"`
 	}
@@ -453,9 +459,25 @@ func (h *SessionsHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	_, err := h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2`, req.Status, sessionID)
+	if req.Status == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required"})
+		return
+	}
+
+	var result sql.Result
+	var err error
+	if role == "admin" {
+		result, err = h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2`, req.Status, sessionID)
+	} else {
+		result, err = h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2 AND user_id = $3`, req.Status, sessionID, ownerID)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update session"})
+		return
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "session updated"})
