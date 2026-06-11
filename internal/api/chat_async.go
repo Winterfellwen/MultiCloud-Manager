@@ -48,7 +48,9 @@ func (h *ChatStreamHandler) setRunState(r *Run, s State, errMsg string) {
 	}
 	r.mu.Unlock()
 	if h.db != nil {
-		h.db.Exec(`UPDATE runs SET state=$1, error_message=$2, started_at=CASE WHEN $3 AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END, terminal_at=CASE WHEN $4 THEN CURRENT_TIMESTAMP ELSE terminal_at END WHERE id=$5`, string(s), errMsg, s == StateRunning, s == StateDone || s == StateError || s == StateStopped, r.ID)
+		if _, err := h.db.Exec(`UPDATE runs SET state=$1, error_message=$2, started_at=CASE WHEN $3 AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END, terminal_at=CASE WHEN $4 THEN CURRENT_TIMESTAMP ELSE terminal_at END WHERE id=$5`, string(s), errMsg, s == StateRunning, s == StateDone || s == StateError || s == StateStopped, r.ID); err != nil {
+			log.Printf("WARNING: failed to update run state: %v", err)
+		}
 	}
 	h.rm.persistEvent(r, EventStateChange, map[string]interface{}{
 		"state": string(s), "error_message": errMsg,
@@ -98,7 +100,9 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 	if r.SessionID != "" && h.db != nil {
 		var sid string
 		if h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, r.SessionID).Scan(&sid) == nil {
-			h.db.Exec(`UPDATE sessions SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid)
+			if _, err := h.db.Exec(`UPDATE sessions SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid); err != nil {
+				log.Printf("WARNING: failed to update session status to running: %v", err)
+			}
 		}
 	}
 
@@ -389,7 +393,9 @@ done:
 	if r.SessionID != "" && h.db != nil {
 		var sid string
 		if h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, r.SessionID).Scan(&sid) == nil {
-			h.db.Exec(`UPDATE sessions SET status = 'idle', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid)
+			if _, err := h.db.Exec(`UPDATE sessions SET status = 'idle', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid); err != nil {
+				log.Printf("WARNING: failed to update session status to idle: %v", err)
+			}
 		}
 	}
 
@@ -665,13 +671,19 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		return
 	}
 
-	h.db.Exec(`DELETE FROM messages WHERE session_id = $1`, internalID)
-	h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, internalID, string(historyJSON))
+	if _, err := h.db.Exec(`DELETE FROM messages WHERE session_id = $1`, internalID); err != nil {
+		log.Printf("WARNING: failed to delete messages: %v", err)
+	}
+	if _, err := h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, internalID, string(historyJSON)); err != nil {
+		log.Printf("WARNING: failed to insert history: %v", err)
+	}
 
 	for _, m := range saveMsgs {
 		if m["role"] == "user" {
 			if title, ok := m["content"].(string); ok && title != "" {
-				h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, title, internalID)
+				if _, err := h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, title, internalID); err != nil {
+				log.Printf("WARNING: failed to update session title: %v", err)
+			}
 			}
 			break
 		}
