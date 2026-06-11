@@ -15,6 +15,7 @@ WORKDIR /app
 COPY --from=go-builder /out/multicloud /app/multicloud
 COPY web /app/web
 USER app
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -qO- http://localhost:8099/api/health || exit 1
 EXPOSE 8099
 ENV PORT=8099 \
     GIN_MODE=release \

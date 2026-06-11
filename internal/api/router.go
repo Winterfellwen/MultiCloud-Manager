@@ -20,6 +20,9 @@ import (
 )
 
 func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) (*gin.Engine, func()) {
+	loginLimiter := NewRateLimiter(10, time.Minute)
+	chatLimiter := NewRateLimiter(30, time.Minute)
+
 	r := gin.Default()
 
 	// Health check endpoint for Render
@@ -57,7 +60,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		c.Next()
 	})
 
-	r.POST("/api/auth/login", authHandler.Login)
+	r.POST("/api/auth/login", RateLimitMiddleware(loginLimiter), authHandler.Login)
 
 	// Built-in vault — no external dependency
 	vaultService, err := vault.NewService(db)
@@ -103,7 +106,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 		// Chat endpoints — all roles (viewer: plan only, enforced in handler)
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
-		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.POST("/agent/chat/stream", RateLimitMiddleware(chatLimiter), chatHandler.Stream)
 		auth.POST("/agent/chat/confirm", RequireRole("admin", "user"), chatHandler.Confirm)
 		auth.POST("/agent/chat/stop", chatHandler.Stop)
 
