@@ -411,6 +411,7 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 
 	var final []map[string]interface{}
 	userMsgAdded := false
+	now := time.Now().UTC().Format(time.RFC3339)
 	for _, m := range msgs {
 		if m["role"] == "tool-calls-stub" {
 			var stubInfos []map[string]interface{}
@@ -425,16 +426,17 @@ func (m *RunManager) AggregateOnDone(r *Run) {
 			}
 			b, _ := json.Marshal(real)
 			if !userMsgAdded {
-				final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage})
+				final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage, "created_at": now})
 				userMsgAdded = true
 			}
-			final = append(final, map[string]interface{}{"role": "tool-calls", "content": string(b)})
+			final = append(final, map[string]interface{}{"role": "tool-calls", "content": string(b), "created_at": now})
 			continue
 		}
 		if !userMsgAdded {
-			final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage})
+			final = append(final, map[string]interface{}{"role": "user", "content": r.UserMessage, "created_at": now})
 			userMsgAdded = true
 		}
+		m["created_at"] = now
 		final = append(final, m)
 	}
 	if len(final) == 0 {

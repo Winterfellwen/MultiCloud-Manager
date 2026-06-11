@@ -90,7 +90,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
 		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
-		auth.DELETE("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Delete)
+		auth.DELETE("/agent/sessions/:sid", sessionsHandler.Delete)
 		auth.PUT("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Update)
 
 		// Cloud accounts — read: all roles; write: admin only

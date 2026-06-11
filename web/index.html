@@ -246,6 +246,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .session-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-top: 1px; }
 .session-time { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
 .session-provider { font-size: 9px; padding: 1px 4px; border-radius: 3px; background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: .3px; }
+.session-user-badge { font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(0,122,255,.1); color: var(--primary); border: 1px solid rgba(0,122,255,.2); white-space: nowrap; }
 .session-status { flex-shrink: 0; display: flex; align-items: center; }
 .session-status .running-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 1.5s ease-in-out infinite; }
 .session-status .done-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
@@ -359,6 +360,8 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg-agent-copy.error { color: #dc2626; border-color: #dc2626; opacity: 1; min-height: auto; }
 .msg-agent-copy .icon { font-size: 11px; line-height: 1; display: inline-flex; align-items: center; }
 
+.msg-time { font-size: 12px; color: var(--text-muted); margin-top: 5px; opacity: 0.85; min-height: auto; }
+.msg.user .msg-time { text-align: right; }
 .msg-content { color: var(--text); min-height: auto; }
 .msg-content p { margin: 2px 0; min-height: auto; }
 .msg-content p:first-child { margin-top: 0; min-height: auto; }
@@ -422,7 +425,8 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-calls-body .tool-block.done { display: flex; border-radius: 4px; min-height: auto; }
 .tool-calls-body .tool-block.done .tool-result { display: none; min-height: auto; }
 .tool-calls-body .tool-block.expanded .tool-result { display: block; min-height: auto; }
-.tool-result .copy-btn { float: right; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 1px 6px; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; min-height: auto; min-width: auto; display: flex; align-items: center; }
+.tool-result .copy-btn { position: absolute; top: 4px; right: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 3px; color: var(--text-muted); cursor: pointer; transition: all .15s; min-height: auto; min-width: auto; display: flex; align-items: center; justify-content: center; }
+.tool-result .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
 .tool-result .copy-btn svg { vertical-align: middle; }
 .tool-result .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
 
@@ -447,7 +451,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-card-body.expanded { display: block; }
 .tool-card-body .field-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 8px; margin-bottom: 2px; min-height: auto; }
 .tool-card-body .field-code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; line-height: 1.4; min-height: auto; }
-.tool-card-body .field-result { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; line-height: 1.4; position: relative; min-height: auto; }
+.tool-card-body .field-result { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 5px 24px 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; line-height: 1.4; position: relative; min-height: auto; }
 
 /* Files sidebar (right panel) */
 .files-sidebar { width: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--surface); transition: width .25s ease; display: flex; flex-direction: column; flex-shrink: 0; min-height: auto; }
@@ -776,6 +780,45 @@ html.mobile-layout .chat-layout.sessions-open .chat-sessions-backdrop { display:
 #topoControls .res-sync-btn { background: rgba(255,255,255,0.9); border-color: #e2e8f0; color: #64748b; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 #topoControls .res-sync-btn:hover { border-color: #3b82f6; color: #3b82f6; }
 
+/* Role-restricted buttons */
+.role-restricted {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: auto !important;
+  position: relative;
+}
+.role-restricted:hover {
+  opacity: 0.5 !important;
+}
+.role-restricted::after {
+  content: attr(data-restrict-reason);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1e;
+  color: #fff;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.role-restricted:hover::after {
+  opacity: 1;
+}
+.role-restricted.nav-item::after {
+  left: 100%;
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 8px;
+}
+
 /* Button improvements */
 button, [role="button"] { min-height: 44px; min-width: 44px; }
 button:active:not(:disabled) { transform: scale(0.97); }
@@ -835,6 +878,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
   <div class="topbar-right">
     <button class="topbar-action-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English" aria-label="Switch language"><svg width="16" height="16"><use href="/static/icons.svg#icon-language"/></svg> <span class="lang-label">EN</span></button>
     <button class="topbar-action-btn" onclick="toggleTheme()" title="切换主题" aria-label="Toggle theme"><span class="theme-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-moon"/></svg></span></button>
+    <button class="topbar-action-btn err-btn" onclick="toggleErrPanel()" title="错误记录" aria-label="Error history"><svg width="16" height="16"><use href="/static/icons.svg#icon-warning"/></svg><span class="badge" id="errBadge" style="display:none">0</span></button>
     <button class="avatar" onclick="showPage('profile')" aria-label="Profile settings">U</button>
   </div>
 </header>
@@ -1194,7 +1238,11 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
   </div>
 
   <!-- Toast -->
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span></div>
+  <div class="err-panel" id="errPanel">
+    <div class="err-panel-header"><span>错误记录</span><button class="err-panel-clear" onclick="clearErrHistory()">清除全部</button></div>
+    <div class="err-panel-list" id="errList"></div>
+  </div>
 
   <!-- Resources -->
   <div id="page-resources" class="page">
@@ -1493,6 +1541,7 @@ function showThinking() { showStatus('thinking', '<svg width="16" height="16"><u
 function showToolRunning(name) { showStatus('tool', '<svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg>', (LOCALE === 'zh' ? '执行 ' : 'Running ') + name); }
 function showDone() { showStatus('done', '<svg width="16" height="16"><use href="/static/icons.svg#icon-check"/></svg>', LOCALE === 'zh' ? '完成' : 'Done'); }
 function showError(msg) { showStatus('error', '<svg width="16" height="16"><use href="/static/icons.svg#icon-error"/></svg>', msg || (LOCALE === 'zh' ? '出错了' : 'Error')); }
+function showGenerating() { showStatus('thinking', '<svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg>', LOCALE === 'zh' ? '生成中' : 'Generating'); }
 
 function showStatus(state, icon, text) {
   var bar = _getStatusBar();
@@ -1537,7 +1586,7 @@ function handleTokenEvent(ev) {
     var container = document.getElementById('chatMessages');
     STREAMING_DIV = document.createElement('div');
     STREAMING_DIV.className = 'msg agent streaming';
-    STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor"></div>' + buildAgentCopyButton();
+    STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor"></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
     container.appendChild(STREAMING_DIV);
   }
   var contentEl = STREAMING_DIV.querySelector('.msg-content');
@@ -1600,6 +1649,11 @@ function handleStateChangeEvent(ev) {
       if (contentEl) {
         contentEl.classList.remove('streaming-cursor');
         contentEl.innerHTML = renderMarkdown(STREAMING_CONTENT);
+      }
+      // Save to in-memory cache
+      if (ev.session_id && STREAMING_CONTENT) {
+        if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
+        SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString()});
       }
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
@@ -1802,6 +1856,28 @@ function getRole() {
   return localStorage.getItem('userRole') || 'viewer';
 }
 
+function showPermissionDenied(reason) {
+  showToast(reason || '权限不足');
+}
+
+function markRestricted(el, reason) {
+  if (el.classList.contains('role-restricted')) return;
+  el.classList.add('role-restricted');
+  el.setAttribute('data-restrict-reason', reason || '权限不足');
+  el.removeAttribute('onclick');
+  el.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    showPermissionDenied(el.getAttribute('data-restrict-reason'));
+  }, true);
+}
+
+function clearRestricted(el) {
+  if (!el.classList.contains('role-restricted')) return;
+  el.classList.remove('role-restricted');
+  el.removeAttribute('data-restrict-reason');
+}
+
 function applyRolePermissions() {
   const role = getRole();
   const navItems = document.querySelectorAll('.nav-item[data-page]');
@@ -1819,20 +1895,41 @@ function applyRolePermissions() {
     const page = nav.dataset.page;
     const allowed = roleMap[page];
     if (allowed && !allowed.includes(role)) {
-      nav.style.display = 'none';
+      markRestricted(nav, 'Vault 仅管理员可访问');
     } else {
+      clearRestricted(nav);
       nav.style.display = '';
     }
   });
 
-  // Hide write-action buttons for non-admin on team page
+  // Team invite button
   document.querySelectorAll('.invite-btn').forEach(el => {
-    el.style.display = role === 'admin' ? '' : 'none';
+    if (role === 'admin') {
+      clearRestricted(el);
+      el.style.display = '';
+    } else {
+      markRestricted(el, '仅管理员可邀请成员');
+    }
   });
-  // Hide write-action buttons for non-admin on accounts page
+  // Account add button
   document.querySelectorAll('.add-account-btn').forEach(el => {
-    el.style.display = role === 'admin' ? '' : 'none';
+    if (role === 'admin') {
+      clearRestricted(el);
+      el.style.display = '';
+    } else {
+      markRestricted(el, '仅管理员可添加账户');
+    }
   });
+  // Session user filter
+  var sessionUserFilter = document.getElementById('sessionUserFilter');
+  if (sessionUserFilter) {
+    if (role === 'admin') {
+      clearRestricted(sessionUserFilter);
+      sessionUserFilter.style.display = '';
+    } else {
+      markRestricted(sessionUserFilter, '仅管理员可筛选用户');
+    }
+  }
   // Show role badge in profile area
   var roleBadge = document.getElementById('roleBadge');
   if (!roleBadge) {
@@ -1852,17 +1949,119 @@ function applyRolePermissions() {
     roleBadge.style.color = '#000';
   }
 
-  // Viewer: force plan mode, hide build/confirm buttons
+  // Viewer: force plan mode, gray out build/confirm buttons
   document.querySelectorAll('.mode-btn').forEach(btn => {
     if (role === 'viewer' && btn.dataset.mode !== 'plan') {
-      btn.style.display = 'none';
-    } else {
+      markRestricted(btn, '只读用户仅可使用 Plan 模式');
+    } else if (role !== 'viewer') {
+      clearRestricted(btn);
       btn.style.display = '';
     }
   });
   if (role === 'viewer' && typeof CURRENT_MODE !== 'undefined' && CURRENT_MODE !== 'plan') {
     setChatMode('plan');
   }
+
+  // AI config modal buttons
+  var aiConfigSaveBtn = document.querySelector('#aiConfigModal .modal-btn-primary');
+  var aiConfigTestBtn = document.querySelector('#aiConfigModal .modal-btn-secondary');
+  if (aiConfigSaveBtn) {
+    if (role === 'admin') { clearRestricted(aiConfigSaveBtn); }
+    else { markRestricted(aiConfigSaveBtn, '仅管理员可保存 AI 配置'); }
+  }
+  if (aiConfigTestBtn) {
+    if (role === 'admin') { clearRestricted(aiConfigTestBtn); }
+    else { markRestricted(aiConfigTestBtn, '仅管理员可测试 AI 配置'); }
+  }
+
+  // Apply page-specific restrictions
+  applyPageRestrictions();
+}
+
+function applyPageRestrictions() {
+  var role = getRole();
+  applyResourceRestrictions(role);
+  applyAccountRestrictions(role);
+  applyTerraformRestrictions(role);
+  applyTeamRestrictions(role);
+  applyChatRestrictions(role);
+}
+
+function applyResourceRestrictions(role) {
+  document.querySelectorAll('#resourcesList .resource-action-btn').forEach(el => {
+    if (role === 'viewer') {
+      markRestricted(el, '只读用户不可操作资源');
+    } else {
+      clearRestricted(el);
+    }
+  });
+  document.querySelectorAll('.res-sync-btn').forEach(el => {
+    if (role === 'viewer') {
+      markRestricted(el, '只读用户不可同步资源');
+    } else {
+      clearRestricted(el);
+    }
+  });
+}
+
+function applyAccountRestrictions(role) {
+  document.querySelectorAll('#accountsList .btn-secondary, #accountsList .btn-delete').forEach(el => {
+    if (role === 'admin') {
+      clearRestricted(el);
+    } else {
+      markRestricted(el, role === 'viewer' ? '只读用户不可编辑账户' : '仅管理员可编辑账户');
+    }
+  });
+}
+
+function applyTerraformRestrictions(role) {
+  document.querySelectorAll('#terraformList .tf-action-btn').forEach(el => {
+    if (role === 'viewer') {
+      markRestricted(el, '只读用户不可执行 Terraform');
+    } else {
+      clearRestricted(el);
+    }
+  });
+  document.querySelectorAll('.upload-btn').forEach(el => {
+    if (role === 'admin') {
+      clearRestricted(el);
+    } else {
+      markRestricted(el, role === 'viewer' ? '只读用户不可上传模板' : '仅管理员可上传模板');
+    }
+  });
+}
+
+function applyTeamRestrictions(role) {
+  document.querySelectorAll('.member-card .btn-action, .member-card .btn-delete').forEach(el => {
+    if (role === 'admin') {
+      clearRestricted(el);
+      el.style.display = '';
+    } else {
+      markRestricted(el, role === 'viewer' ? '只读用户不可管理成员' : '仅管理员可管理成员');
+    }
+  });
+}
+
+function applyChatRestrictions(role) {
+  var batchDelBtn = document.getElementById('chatBatchDelBtn');
+  if (batchDelBtn) {
+    if (role === 'viewer') {
+      markRestricted(batchDelBtn, '只读用户不可批量删除');
+    } else {
+      clearRestricted(batchDelBtn);
+    }
+  }
+  var currentUser = '';
+  try { currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}').user || ''; } catch(e) {}
+  document.querySelectorAll('.session-del-btn').forEach(el => {
+    var sessionItem = el.closest('.chat-session-item');
+    var sessionUserId = sessionItem ? (sessionItem.dataset.userId || '') : '';
+    if (role === 'viewer' && sessionUserId !== currentUser) {
+      markRestricted(el, '只读用户不可删除他人会话');
+    } else {
+      clearRestricted(el);
+    }
+  });
 }
 
 /* Theme */
@@ -2048,7 +2247,8 @@ async function sendChat() {
   autoResizeTextarea(input);
   STREAMING_DIV = null;
   STREAMING_CONTENT = '';
-  appendMessage('user', escHtml(text));
+  var userTs = new Date().toISOString();
+  appendMessage('user', escHtml(text), userTs);
   showThinking();
 
   // Create session if needed
@@ -2062,10 +2262,11 @@ async function sendChat() {
     if (sessData && sessData.session_id) {
       sessionId = sessData.session_id;
       CURRENT_SESSION = sessionId;
+      SESSION_MESSAGES[sessionId] = [{role: 'user', content: text, created_at: userTs}];
     }
   } else {
     if (!SESSION_MESSAGES[CURRENT_SESSION]) SESSION_MESSAGES[CURRENT_SESSION] = [];
-    SESSION_MESSAGES[CURRENT_SESSION].push({role: 'user', content: text});
+    SESSION_MESSAGES[CURRENT_SESSION].push({role: 'user', content: text, created_at: userTs});
   }
 
   // Send via new run-based API
@@ -2192,10 +2393,10 @@ async function startStream(body) {
   } catch(e) {
     if (e.name === 'AbortError') {
       // User stopped manually
-      appendMessage('agent', '⏹ ' + (LOCALE === 'zh' ? 'AI 已被手动停止。' : 'AI was manually stopped.'));
+      appendMessage('agent', '⏹ ' + (LOCALE === 'zh' ? 'AI 已被手动停止。' : 'AI was manually stopped.'), new Date().toISOString());
     } else {
       console.error('Stream error:', e);
-      appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'));
+      appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'), new Date().toISOString());
     }
   } finally {
     clearTimeout(streamTimeout);
@@ -2410,7 +2611,7 @@ function handleSSEEvent(data) {
         streamingMsg.classList.remove('streaming');
       }
       // Show error message in chat
-      appendMessage('agent', (LOCALE === 'zh' ? '错误：' : 'Error: ') + escHtml(data.message || ''));
+      appendMessage('agent', (LOCALE === 'zh' ? '错误：' : 'Error: ') + escHtml(data.message || ''), new Date().toISOString());
       break;
   }
 }
@@ -2545,11 +2746,13 @@ async function loadSessions() {
     item.className = 'chat-session-item' + (s.session_id === CURRENT_SESSION ? ' active' : '') + (s.status === 'running' ? ' running' : '');
     item.dataset.sid = s.session_id;
     item.dataset.status = s.status;
+    item.dataset.userId = s.user_id || '';
 
     var title = s.title && s.title.length > 40 ? escHtml(s.title.slice(0, 40)) + '...' : escHtml(s.title || 'Session');
     var preview = s.last_message ? (s.last_message.length > 60 ? escHtml(s.last_message.slice(0, 60)) + '...' : escHtml(s.last_message)) : '';
     var timeStr = formatSessionTime(s.updated_at || s.created_at);
     var providerBadge = s.provider ? '<span class="session-provider">' + escHtml(s.provider) + '</span>' : '';
+    var userBadge = s.user_id ? '<span class="session-user-badge">' + escHtml(s.user_id) + '</span>' : '';
     var statusDot = s.status === 'running'
       ? '<span class="session-status"><span class="running-dot" role="img" aria-label="Running"></span></span>'
       : '<span class="session-status"><span class="done-dot" role="img" aria-label="Idle"></span></span>';
@@ -2561,6 +2764,7 @@ async function loadSessions() {
         (preview ? '<div class="session-preview">' + preview + '</div>' : '') +
         '<div class="session-meta">' +
           '<span class="session-time">' + timeStr + '</span>' +
+          userBadge +
           providerBadge +
           statusDot +
         '</div>' +
@@ -2603,6 +2807,7 @@ async function loadSessions() {
     if (!SUBSCRIBED_SESSIONS.has(s.session_id)) hadNew = true;
     subscribeToSession(s.session_id);
   });
+  applyChatRestrictions(getRole());
 }
 
 /* Batch delete operations */
@@ -2644,6 +2849,8 @@ async function batchDeleteSessions() {
 
 async function switchSession(sid) {
   CURRENT_SESSION = sid;
+  STREAMING_DIV = null;
+  STREAMING_CONTENT = '';
   hideStatus();
   closeChatSessions();
   // Update sidebar
@@ -2663,18 +2870,18 @@ async function switchSession(sid) {
   if (liveMsgs && liveMsgs.length > 0) {
     // Render from live memory (has streaming data)
     liveMsgs.forEach(function(m) {
+      var ts = m.created_at || '';
       if (m.role === 'user') {
-        appendMessage('user', escHtml(m.content));
+        appendMessage('user', escHtml(m.content), ts);
         msgCount++;
       } else if (m.role === 'agent' || m.role === 'assistant') {
         if (m.streaming) {
-          // Currently streaming — create streaming div
           var div = document.createElement('div');
           div.className = 'msg agent streaming';
           div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton();
           container.appendChild(div);
         } else {
-          appendMessage('agent', renderMarkdown(m.content));
+          appendMessage('agent', renderMarkdown(m.content), ts);
         }
         msgCount++;
       } else if (m.role === 'tool-calls') {
@@ -2710,17 +2917,17 @@ async function switchSession(sid) {
     if (data && data.messages && data.messages.length > 0) {
       // Store DB messages in global cache
       SESSION_MESSAGES[sid] = data.messages.map(function(m) {
-        return {role: m.role, content: m.content};
+        return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
       });
       data.messages.forEach(function(m) {
+        var ts = m.created_at || m.timestamp || '';
         if (m.role === 'user') {
-          appendMessage('user', escHtml(m.content));
+          appendMessage('user', escHtml(m.content), ts);
           msgCount++;
         } else if (m.role === 'agent' || m.role === 'assistant') {
-          appendMessage('agent', renderMarkdown(m.content));
+          appendMessage('agent', renderMarkdown(m.content), ts);
           msgCount++;
         } else if (m.role === 'tool-calls') {
-          // Attach to the preceding AI message
           var prevAgent = container.querySelector('.msg.agent:last-of-type');
           if (prevAgent) {
             renderToolCallsInline(m.content, prevAgent);
@@ -2741,7 +2948,7 @@ async function switchSession(sid) {
   }
 
   if (msgCount === 0) {
-    appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>');
+    appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>', new Date().toISOString());
     lastSyncedMsgCount = 1;
   }
 
@@ -2788,16 +2995,17 @@ async function switchSession(sid) {
     if (sessData.messages && sessData.messages.length > lastSyncedMsgCount) {
       for (var i = lastSyncedMsgCount; i < sessData.messages.length; i++) {
         var m = sessData.messages[i];
+        var ts = m.created_at || m.timestamp || '';
         if (m.role === 'user') {
-          appendMessage('user', escHtml(m.content));
+          appendMessage('user', escHtml(m.content), ts);
         } else if (m.role === 'agent' || m.role === 'assistant') {
-          appendMessage('agent', renderMarkdown(m.content));
+          appendMessage('agent', renderMarkdown(m.content), ts);
         } else if (m.role === 'tool-calls') {
           renderToolCallsGroup(m.content, container);
         }
       }
       SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
-        return {role: m.role, content: m.content};
+        return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
       });
       lastSyncedMsgCount = sessData.messages.length;
     }
@@ -2833,16 +3041,27 @@ async function deleteSession(sid) {
 }
 
 /* Append message (for loading history) */
-function appendMessage(type, html) {
+function formatMsgTime(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  var hh = String(d.getHours()).padStart(2, '0');
+  var mm = String(d.getMinutes()).padStart(2, '0');
+  return hh + ':' + mm;
+}
+
+function appendMessage(type, html, timestamp) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg ' + type;
+  var timeStr = formatMsgTime(timestamp);
+  var timeHtml = timeStr ? '<div class="msg-time">' + timeStr + '</div>' : '';
   if (type === 'user') {
-    div.innerHTML = '<div class="msg-bubble">' + html + '</div>';
+    div.innerHTML = '<div class="msg-bubble">' + html + '</div>' + timeHtml;
   } else if (type === 'agent') {
-    div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>' + buildAgentCopyButton();
+    div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>' + timeHtml + buildAgentCopyButton();
   } else {
-    div.innerHTML = '<div class="msg-content">' + html + '</div>';
+    div.innerHTML = '<div class="msg-content">' + html + '</div>' + timeHtml;
   }
   container.appendChild(div);
   smartScrollBottom(container);
@@ -2967,6 +3186,7 @@ function buildToolCard(tc) {
   var paramsStr = '';
   try { paramsStr = JSON.stringify(JSON.parse(tc.params || '{}'), null, 2); } catch(e) { paramsStr = tc.params || ''; }
   var resultText = tc.result || '';
+  try { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } catch(e) {}
   var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
   var loc = LOCALE === 'zh';
   card.innerHTML =
@@ -2980,7 +3200,7 @@ function buildToolCard(tc) {
       '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
       '<div class="field-label">' + (loc ? '结果' : 'Result') + '</div>' +
       '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
-        '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)"><svg width="14" height="14" style="vertical-align:middle;margin-right:2px"><use href="/static/icons.svg#icon-copy"/></svg>' + (loc ? '复制' : 'Copy') + '</button>' +
+        '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)" title="' + (loc ? '复制' : 'Copy') + '"><svg width="12" height="12"><use href="/static/icons.svg#icon-copy"/></svg></button>' +
       '</div>' +
     '</div>';
   var hdr = card.querySelector('.tool-card-header');
@@ -3328,6 +3548,7 @@ async function loadResources() {
   }
   updateResCounts(cachedResources || []);
   renderResources(cachedResources);
+  applyPageRestrictions();
 }
 
 async function syncResources() {
@@ -3346,6 +3567,7 @@ async function syncResources() {
   renderResources(cachedResources);
   btn.textContent = origText;
   btn.disabled = false;
+  applyPageRestrictions();
 }
 
 function filterResources() {
@@ -3652,6 +3874,7 @@ async function loadAccounts() {
   if (data && data.accounts) cachedAccounts = data.accounts;
   else cachedAccounts = [];
   renderAccounts(cachedAccounts);
+  applyPageRestrictions();
 }
 
 function renderAccounts(list) {
@@ -3895,12 +4118,13 @@ async function loadTeam() {
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center">' +
-        '<button class="btn-action" onclick="openEditMemberModal(\'' + m.id + '\',\'' + (m.name || '').replace(/'/g,"\\'") + '\',\'' + (m.email || '') + '\',\'' + (m.role || 'user') + '\')" title="' + (t('team.edit') || '编辑') + '" style="font-size:12px;padding:6px 10px' + (getRole() !== 'admin' ? ';display:none' : '') + '"><svg width="14" height="14"><use href="/static/icons.svg#icon-edit"/></svg></button>' +
-        '<button class="btn-action" onclick="openResetPwModal(\'' + m.id + '\',\'' + (m.name || m.email || '') + '\')" title="' + (t('team.reset_pw') || '重置密码') + '" style="font-size:12px;padding:6px 10px' + (getRole() !== 'admin' ? ';display:none' : '') + '"><svg width="14" height="14"><use href="/static/icons.svg#icon-key"/></svg></button>' +
-        (!isAdmin ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')" ' + (getRole() !== 'admin' ? 'style="display:none"' : '') + '>' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + roleLabel + '</span>') +
+        '<button class="btn-action" onclick="openEditMemberModal(\'' + m.id + '\',\'' + (m.name || '').replace(/'/g,"\\'") + '\',\'' + (m.email || '') + '\',\'' + (m.role || 'user') + '\')" title="' + (t('team.edit') || '编辑') + '" style="font-size:12px;padding:6px 10px"><svg width="14" height="14"><use href="/static/icons.svg#icon-edit"/></svg></button>' +
+        '<button class="btn-action" onclick="openResetPwModal(\'' + m.id + '\',\'' + (m.name || m.email || '') + '\')" title="' + (t('team.reset_pw') || '重置密码') + '" style="font-size:12px;padding:6px 10px"><svg width="14" height="14"><use href="/static/icons.svg#icon-key"/></svg></button>' +
+        (!isAdmin ? '<button class="btn-delete" onclick="removeMember(\'' + m.id + '\')">' + t('team.member_remove') + '</button>' : '<span style="font-size:12px;color:var(--text-secondary)">' + roleLabel + '</span>') +
       '</div>' +
     '</div>';
   }).join('');
+  applyPageRestrictions();
 }
 
 async function removeMember(id) {
@@ -3938,6 +4162,7 @@ async function loadTerraform() {
       '</div>' +
     '</div>'
   ).join('');
+  applyPageRestrictions();
 }
 
 async function planTemplate(id) {
@@ -4762,18 +4987,19 @@ function startSessionPoll() {
       if (data.messages.length !== lastSyncedMsgCount) {
         // Merge DB data into global store (DB is source of truth after stream ends)
         SESSION_MESSAGES[CURRENT_SESSION] = data.messages.map(function(m) {
-          return {role: m.role, content: m.content};
+          return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
         });
         // Re-render messages
         var container = document.getElementById('chatMessages');
         container.innerHTML = '';
         lastSyncedMsgCount = 0;
         data.messages.forEach(function(m) {
+          var ts = m.created_at || m.timestamp || '';
           if (m.role === 'user') {
-            appendMessage('user', escHtml(m.content));
+            appendMessage('user', escHtml(m.content), ts);
             lastSyncedMsgCount++;
           } else if (m.role === 'agent' || m.role === 'assistant') {
-            appendMessage('agent', renderMarkdown(m.content));
+            appendMessage('agent', renderMarkdown(m.content), ts);
             lastSyncedMsgCount++;
           } else if (m.role === 'tool-calls') {
             // Attach tool-calls to the preceding AI message instead of rendering as plain text

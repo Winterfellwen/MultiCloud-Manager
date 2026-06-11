@@ -607,6 +607,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 			continue
 		}
 		content, _ := m["content"].(string)
+		ts := time.Now().UTC().Format(time.RFC3339)
 
 		if role == "assistant" {
 			var toolCallsAsMaps []map[string]interface{}
@@ -622,7 +623,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 			}
 			if content != "" {
 				saveMsgs = append(saveMsgs, map[string]interface{}{
-					"role": "agent", "content": content,
+					"role": "agent", "content": content, "created_at": ts,
 				})
 			}
 			if len(toolCallsAsMaps) > 0 {
@@ -642,7 +643,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 				if len(callInfos) > 0 {
 					jsonBytes, _ := json.Marshal(callInfos)
 					saveMsgs = append(saveMsgs, map[string]interface{}{
-						"role": "tool-calls", "content": string(jsonBytes),
+						"role": "tool-calls", "content": string(jsonBytes), "created_at": ts,
 					})
 				}
 			}
@@ -650,7 +651,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		}
 		if role == "user" {
 			saveMsgs = append(saveMsgs, map[string]interface{}{
-				"role": "user", "content": content,
+				"role": "user", "content": content, "created_at": ts,
 			})
 		}
 	}
