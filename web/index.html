@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; script-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <script src="/embedded.js"></script>
 <script src="/static/js/g6.min.js"></script>
@@ -26,7 +26,9 @@
   --text-secondary: #c7c7cc;
   --text-muted: #a1a1a6;
   --azure: #0078d4;
+  --aws: #ff9900;
   --tencent: #00a4ff;
+  --alicloud: #ff6a00;
   --oracle: #f80000;
   --render: #46e3b7;
   --radius-sm: 4px;
@@ -652,7 +654,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .account-left { display: flex; align-items: center; gap: 10px; min-height: auto; }
 .account-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; min-height: auto; min-width: auto; }
 .account-icon.azure { background: var(--azure); }
+.account-icon.aws { background: var(--aws); color: #000; }
 .account-icon.tencent { background: var(--tencent); }
+.account-icon.alicloud { background: var(--alicloud); }
 .account-icon.oracle { background: var(--oracle); }
 .account-icon.render { background: var(--render); color: #000; }
 .account-name { font-weight: 500; font-size: 13px; min-height: auto; }
@@ -674,6 +678,16 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .form-fields input:focus { border-color: var(--primary); min-height: auto; }
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; min-height: auto; }
 .form-actions button { padding: 6px 16px; border-radius: 2px; font-size: 12px; cursor: pointer; border: none; transition: all .15s; font-family: var(--font-mono); min-height: auto; }
+
+/* Cloud credential guidance */
+.cloud-guide { margin-top: 12px; padding: 10px 12px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+.cloud-guide-title { font-weight: 600; color: var(--text); margin-bottom: 6px; font-size: 12px; }
+.cloud-guide-steps { margin: 0; padding-left: 18px; }
+.cloud-guide-steps li { margin-bottom: 2px; }
+.cloud-guide-steps a { color: var(--primary); text-decoration: none; }
+.cloud-guide-steps a:hover { text-decoration: underline; }
+.cloud-guide-link { display: inline-block; margin-top: 6px; color: var(--primary); font-size: 11px; text-decoration: none; }
+.cloud-guide-link:hover { text-decoration: underline; }
 .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); min-height: auto; }
 .btn-cancel:hover { background: var(--surface-hover); min-height: auto; }
 .btn-submit { background: var(--primary); color: #fff; min-height: auto; }
@@ -1255,7 +1269,15 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
         <button class="res-tab" data-cloud="azure" onclick="switchResTab(this)">
           <span class="res-tab-icon" style="color:#0078d4">A</span><span>Azure</span><span class="res-tab-count" id="resCountAzure">0</span>
         </button>
+        <button class="res-tab" data-cloud="aws" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#ff9900">Aw</span><span>AWS</span><span class="res-tab-count" id="resCountAws">0</span>
+        </button>
         <button class="res-tab" data-cloud="tencent" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#006eff">T</span><span data-i18n="resource.filter_tencent">腾讯云</span><span class="res-tab-count" id="resCountTencent">0</span>
+        </button>
+        <button class="res-tab" data-cloud="alicloud" onclick="switchResTab(this)">
+          <span class="res-tab-icon" style="color:#ff6a00">Al</span><span>阿里云</span><span class="res-tab-count" id="resCountAlicloud">0</span>
+        </button>
           <span class="res-tab-icon" style="color:#006eff">T</span><span data-i18n="resource.filter_tencent">腾讯云</span><span class="res-tab-count" id="resCountTencent">0</span>
         </button>
         <button class="res-tab" data-cloud="oracle" onclick="switchResTab(this)">
@@ -1294,7 +1316,9 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     <div class="account-form" id="accountForm">
       <div class="cloud-selector" id="cloudSelector">
         <div class="cloud-option" data-cloud="azure" onclick="selectCloud('azure')">Microsoft Azure</div>
+        <div class="cloud-option" data-cloud="aws" onclick="selectCloud('aws')">Amazon AWS</div>
         <div class="cloud-option" data-cloud="tencent" onclick="selectCloud('tencent')">腾讯云</div>
+        <div class="cloud-option" data-cloud="alicloud" onclick="selectCloud('alicloud')">阿里云</div>
         <div class="cloud-option" data-cloud="oracle" onclick="selectCloud('oracle')">Oracle Cloud</div>
         <div class="cloud-option" data-cloud="render" onclick="selectCloud('render')">Render</div>
       </div>
@@ -1332,7 +1356,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
       <div style="margin-bottom:8px">
         <textarea id="newSecretData" rows="3" placeholder='{"username":"xxx","password":"yyy"}' style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--font-mono);resize:vertical"></textarea>
       </div>
-      <button onclick="addVaultSecret()" style="background:var(--primary);color:#fff;border:none;border-radius:2px;padding:6px 16px;font-size:12px;cursor:pointer;font-family:inherit;min-height:auto">Save Secret</button>
+      <button onclick="addVaultSecret()" id="vaultSaveBtn" style="background:var(--primary);color:#fff;border:none;border-radius:2px;padding:6px 16px;font-size:12px;cursor:pointer;font-family:inherit;min-height:auto">Save Secret</button>
     </div>
     <div>
       <div style="font-size:13px;font-weight:500;margin-bottom:8px">Stored Secrets</div>
@@ -1437,8 +1461,8 @@ const mockData = {
   ]
 };
 
-const cloudLabels = { azure: 'Azure', tencent: '腾讯云', oracle: 'Oracle', render: 'Render' };
-const cloudShorts = { azure: 'Az', tencent: 'Tc', oracle: 'Oc', render: 'Rd' };
+const cloudLabels = { azure: 'Azure', aws: 'AWS', tencent: '腾讯云', alicloud: '阿里云', oracle: 'Oracle', render: 'Render' };
+const cloudShorts = { azure: 'Az', aws: 'Aw', tencent: 'Tc', alicloud: 'Al', oracle: 'Oc', render: 'Rd' };
 const cloudConfigs = {
   azure: [
     { key: 'subscription_id', label: 'Subscription ID', type: 'text' },
@@ -1446,9 +1470,19 @@ const cloudConfigs = {
     { key: 'client_id', label: 'Client ID', type: 'text' },
     { key: 'client_secret', label: 'Client Secret', type: 'password' }
   ],
+  aws: [
+    { key: 'access_key_id', label: 'Access Key ID', type: 'text' },
+    { key: 'secret_access_key', label: 'Secret Access Key', type: 'password' },
+    { key: 'region', label: 'Region', type: 'text', default: 'us-east-1' }
+  ],
   tencent: [
     { key: 'secret_id', label: 'Secret ID', type: 'text' },
     { key: 'secret_key', label: 'Secret Key', type: 'password' }
+  ],
+  alicloud: [
+    { key: 'access_key_id', label: 'Access Key ID', type: 'text' },
+    { key: 'access_key_secret', label: 'Access Key Secret', type: 'password' },
+    { key: 'region', label: 'Region', type: 'text', default: 'cn-hangzhou' }
   ],
   oracle: [
     { key: 'user_ocid', label: 'User OCID', type: 'text' },
@@ -1886,7 +1920,7 @@ function applyRolePermissions() {
   const navItems = document.querySelectorAll('.nav-item[data-page]');
   const roleMap = {
     chat:     ['admin', 'user', 'viewer'],
-    vault:    ['admin'],
+    vault:    ['admin', 'user', 'viewer'],
     team:     ['admin', 'user', 'viewer'],
     accounts: ['admin', 'user', 'viewer'],
     terraform:['admin', 'user', 'viewer'],
@@ -1988,6 +2022,7 @@ function applyPageRestrictions() {
   applyTerraformRestrictions(role);
   applyTeamRestrictions(role);
   applyChatRestrictions(role);
+  applyVaultRestrictions(role);
 }
 
 function applyResourceRestrictions(role) {
@@ -2064,6 +2099,23 @@ function applyChatRestrictions(role) {
     } else {
       clearRestricted(el);
     }
+  });
+}
+
+function applyVaultRestrictions(role) {
+  var vaultSaveBtn = document.getElementById('vaultSaveBtn');
+  if (vaultSaveBtn) {
+    if (role === 'admin') { clearRestricted(vaultSaveBtn); }
+    else { markRestricted(vaultSaveBtn, '需要管理员权限'); }
+  }
+  var vaultMigrateBtn = document.getElementById('vaultMigrateBtn');
+  if (vaultMigrateBtn) {
+    if (role === 'admin') { clearRestricted(vaultMigrateBtn); }
+    else { markRestricted(vaultMigrateBtn, '需要管理员权限'); }
+  }
+  document.querySelectorAll('.vault-del-btn').forEach(function(el) {
+    if (role === 'admin') { clearRestricted(el); }
+    else { markRestricted(el, '需要管理员权限'); }
   });
 }
 
@@ -3472,10 +3524,12 @@ let cachedResources = null;
 let currentResTab = '';
 
 const PLATFORMS = {
-  azure:   { name: 'Azure',          color: '#0078d4', icon: 'A', views: ['category', 'resource_group'] },
-  tencent: { name: LOCALE === 'zh' ? '腾讯云' : 'Tencent', color: '#006eff', icon: 'T', views: ['category'] },
-  oracle:  { name: 'Oracle Cloud',   color: '#c74634', icon: 'O', views: ['category'] },
-  render:  { name: 'Render',         color: '#46e8b1', icon: 'R', views: ['category'] },
+  azure:    { name: 'Azure',          color: '#0078d4', icon: 'A', views: ['category', 'resource_group'] },
+  aws:      { name: 'AWS',            color: '#ff9900', icon: 'Aw', views: ['category'] },
+  tencent:  { name: LOCALE === 'zh' ? '腾讯云' : 'Tencent', color: '#006eff', icon: 'T', views: ['category'] },
+  alicloud: { name: LOCALE === 'zh' ? '阿里云' : 'Alibaba Cloud', color: '#ff6a00', icon: 'Al', views: ['category'] },
+  oracle:   { name: 'Oracle Cloud',   color: '#c74634', icon: 'O', views: ['category'] },
+  render:   { name: 'Render',         color: '#46e8b1', icon: 'R', views: ['category'] },
 };
 
 // Azure resource type namespace -> friendly category name
@@ -3506,6 +3560,8 @@ function getCategoryLabel(cloudType, resource) {
     return resource.type || 'Other';
   }
   if (cloudType === 'tencent') return resource.instance_type || 'CVM';
+  if (cloudType === 'alicloud') return resource.instance_type || 'ECS';
+  if (cloudType === 'aws') return resource.instance_type || 'EC2';
   if (cloudType === 'oracle') return resource.shape || resource.instance_type || 'Instance';
   if (cloudType === 'render') {
     var rt = resource.instance_type || '';
@@ -3951,16 +4007,69 @@ function selectCloud(cloud) {
   const fields = document.getElementById('formFields');
   const config = cloudConfigs[cloud];
   if (!config) { fields.innerHTML = ''; return; }
-  fields.innerHTML = 
+  fields.innerHTML =
     '<label for="field-name">' + (t('account.name') || '账户名称') + '</label>' +
     '<input type="text" id="field-name" placeholder="' + (t('account.name_placeholder') || '请输入账户名称') + '">' +
     config.map(f =>
     '<label for="field-' + f.key + '">' + f.label + '</label>' +
     (f.type === 'textarea'
       ? '<textarea rows="3" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit" id="field-' + f.key + '"></textarea>'
-      : '<input type="' + f.type + '" id="field-' + f.key + '" placeholder="' + f.label + '">')
+      : '<input type="' + f.type + '" id="field-' + f.key + '" placeholder="' + f.label + '"' + (f.default ? ' value="' + f.default + '"' : '') + '>')
   ).join('');
+  var guide = CLOUD_GUIDES[cloud];
+  if (guide) {
+    fields.innerHTML += '<div class="cloud-guide">' +
+      '<div class="cloud-guide-title">' + guide.title + '</div>' +
+      '<ol class="cloud-guide-steps">' + guide.steps.map(function(s) { return '<li>' + s + '</li>'; }).join('') + '</ol>' +
+      '<a class="cloud-guide-link" href="' + guide.doc + '" target="_blank">' + (LOCALE === 'zh' ? '查看官方文档' : 'View official docs') + ' →</a>' +
+    '</div>';
+  }
 }
+
+var CLOUD_GUIDES = {
+  azure: {
+    title: LOCALE === 'zh' ? '如何获取 Azure 凭证' : 'How to get Azure credentials',
+    steps: LOCALE === 'zh'
+      ? ['登录 <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → Azure Active Directory → 应用注册', '创建应用注册，获取 Application (client) ID 和 Directory (tenant) ID', '在"证书和密码"中创建 Client Secret', '在订阅中授予应用"参与者"角色']
+      : ['Sign in to <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → Azure AD → App registrations', 'Create an app registration, copy Application (client) ID and Directory (tenant) ID', 'Create a Client Secret under "Certificates & secrets"', 'Assign "Contributor" role to the app in your subscription'],
+    doc: 'https://learn.microsoft.com/azure/active-directory/develop/howto-create-service-principal-portal'
+  },
+  aws: {
+    title: LOCALE === 'zh' ? '如何获取 AWS 凭证' : 'How to get AWS credentials',
+    steps: LOCALE === 'zh'
+      ? ['登录 <a href="https://console.aws.amazon.com" target="_blank">AWS Console</a> → IAM → 用户', '选择用户 → 安全凭证 → 创建访问密钥', '选择使用案例（CLI）→ 创建 → 复制 Access Key ID 和 Secret Access Key', '输入资源所在区域，如 us-east-1, ap-northeast-1']
+      : ['Sign in to <a href="https://console.aws.amazon.com" target="_blank">AWS Console</a> → IAM → Users', 'Select a user → Security credentials → Create access key', 'Choose a use case (CLI) → Create → copy Access Key ID and Secret Access Key', 'Enter the region where your resources are located, e.g. us-east-1, ap-northeast-1'],
+    doc: 'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html'
+  },
+  tencent: {
+    title: LOCALE === 'zh' ? '如何获取腾讯云凭证' : 'How to get Tencent Cloud credentials',
+    steps: LOCALE === 'zh'
+      ? ['登录 <a href="https://console.cloud.tencent.com" target="_blank">腾讯云控制台</a> → CAM → API密钥', '点击"新建密钥" → 复制 SecretId 和 SecretKey', '推荐使用子账号密钥并通过 CAM 进行访问控制']
+      : ['Sign in to <a href="https://console.cloud.tencent.com" target="_blank">Tencent Cloud Console</a> → CAM → API Keys', 'Click "Create SecretKey" → copy SecretId and SecretKey', 'Recommended: use sub-account keys with CAM for access control'],
+    doc: 'https://cloud.tencent.com/document/product/598/34213'
+  },
+  alicloud: {
+    title: LOCALE === 'zh' ? '如何获取阿里云凭证' : 'How to get Alibaba Cloud credentials',
+    steps: LOCALE === 'zh'
+      ? ['登录 <a href="https://www.aliyun.com" target="_blank">阿里云控制台</a> → 右上角头像 → AccessKey 管理', '点击"创建 AccessKey" → 验证身份 → 保存 AccessKey ID 和 Secret', '⚠️ AccessKey Secret 仅显示一次，请立即保存', '推荐使用 RAM 用户的 AccessKey 而非主账号']
+      : ['Sign in to <a href="https://www.aliyun.com" target="_blank">Alibaba Cloud Console</a> → profile menu → AccessKey Management', 'Click "Create AccessKey" → verify identity → save AccessKey ID and Secret', '⚠️ AccessKey Secret is shown only once — save it immediately', 'Recommended: use a RAM user AccessKey instead of the main account'],
+    doc: 'https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair'
+  },
+  oracle: {
+    title: LOCALE === 'zh' ? '如何获取 Oracle Cloud 凭证' : 'How to get Oracle Cloud credentials',
+    steps: LOCALE === 'zh'
+      ? ['登录 <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', '选择用户 → API Keys → 添加 API Key', '下载生成的私钥文件，将内容粘贴到 Private Key', '复制 Tenancy OCID、User OCID 和 Fingerprint']
+      : ['Sign in to <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', 'Select a user → API Keys → Add API Key', 'Download the generated private key file, paste its content into Private Key', 'Copy Tenancy OCID, User OCID, and Fingerprint'],
+    doc: 'https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/managingcredentials.htm'
+  },
+  render: {
+    title: LOCALE === 'zh' ? '如何获取 Render API Key' : 'How to get a Render API Key',
+    steps: LOCALE === 'zh'
+      ? ['登录 <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a> → Account → API Keys', '点击"Create API Key" → 复制生成的密钥']
+      : ['Sign in to <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a> → Account → API Keys', 'Click "Create API Key" → copy the generated key'],
+    doc: 'https://render.com/docs/api'
+  }
+};
 
 async function submitAccount() {
   if (!selectedCloud) { alert(t('account.select_cloud')); return; }
@@ -4063,8 +4172,9 @@ async function loadVaultSecrets() {
       return;
     }
     el.innerHTML = secrets.map(function(s) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-mono);font-size:12px;flex:1">' + escHtml(s) + '</span><button onclick="deleteVaultSecret(\'' + escHtml(s) + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px">Delete</button></div>';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-mono);font-size:12px;flex:1">' + escHtml(s) + '</span><button class="vault-del-btn" onclick="deleteVaultSecret(\'' + escHtml(s) + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px">Delete</button></div>';
     }).join('');
+    applyVaultRestrictions(getRole());
   } catch(e) {}
 }
 
@@ -4237,8 +4347,7 @@ async function saveAIConfig() {
     body: JSON.stringify(body)
   });
   if (result && !result.error) {
-    closeAIConfig();
-    alert(t('config.saved'));
+    showToast(t('config.saved'));
   } else if (result && result.error) {
     alert('保存失败: ' + result.error);
   }

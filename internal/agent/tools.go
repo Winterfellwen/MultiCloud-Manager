@@ -49,7 +49,7 @@ func RegisterBuiltInTools(registry *ToolRegistry, executor *Executor) {
 			"cloud_type": map[string]interface{}{
 				"type":        "string",
 				"description": "Cloud platform type",
-				"enum":        []string{"azure", "tencent", "oracle", "render"},
+				"enum":        []string{"azure", "tencent", "oracle", "render", "aws", "alicloud"},
 			},
 			"region": map[string]interface{}{
 				"type":        "string",
@@ -228,7 +228,7 @@ func GetToolDefinitions() []map[string]interface{} {
 						"cloud_type": map[string]interface{}{
 							"type":        "string",
 							"description": "Cloud platform type",
-							"enum":        []string{"azure", "tencent", "oracle", "render"},
+							"enum":        []string{"azure", "tencent", "oracle", "render", "aws", "alicloud"},
 						},
 						"region": map[string]interface{}{
 							"type":        "string",
