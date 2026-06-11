@@ -1465,34 +1465,34 @@ const cloudLabels = { azure: 'Azure', aws: 'AWS', tencent: '腾讯云', alicloud
 const cloudShorts = { azure: 'Az', aws: 'Aw', tencent: 'Tc', alicloud: 'Al', oracle: 'Oc', render: 'Rd' };
 const cloudConfigs = {
   azure: [
-    { key: 'subscription_id', label: 'Subscription ID', type: 'text' },
-    { key: 'tenant_id', label: 'Tenant ID', type: 'text' },
-    { key: 'client_id', label: 'Client ID', type: 'text' },
-    { key: 'client_secret', label: 'Client Secret', type: 'password' }
+    { key: 'subscription_id', label: 'Subscription ID', type: 'text', required: true },
+    { key: 'tenant_id', label: 'Tenant ID', type: 'text', required: true },
+    { key: 'client_id', label: 'Client ID', type: 'text', required: true },
+    { key: 'client_secret', label: 'Client Secret', type: 'password', required: true }
   ],
   aws: [
-    { key: 'access_key_id', label: 'Access Key ID', type: 'text' },
-    { key: 'secret_access_key', label: 'Secret Access Key', type: 'password' },
+    { key: 'access_key_id', label: 'Access Key ID', type: 'text', required: true },
+    { key: 'secret_access_key', label: 'Secret Access Key', type: 'password', required: true },
     { key: 'region', label: 'Region', type: 'text', default: 'us-east-1' }
   ],
   tencent: [
-    { key: 'secret_id', label: 'Secret ID', type: 'text' },
-    { key: 'secret_key', label: 'Secret Key', type: 'password' }
+    { key: 'secret_id', label: 'Secret ID', type: 'text', required: true },
+    { key: 'secret_key', label: 'Secret Key', type: 'password', required: true }
   ],
   alicloud: [
-    { key: 'access_key_id', label: 'Access Key ID', type: 'text' },
-    { key: 'access_key_secret', label: 'Access Key Secret', type: 'password' },
+    { key: 'access_key_id', label: 'Access Key ID', type: 'text', required: true },
+    { key: 'access_key_secret', label: 'Access Key Secret', type: 'password', required: true },
     { key: 'region', label: 'Region', type: 'text', default: 'cn-hangzhou' }
   ],
   oracle: [
-    { key: 'user_ocid', label: 'User OCID', type: 'text' },
-    { key: 'tenancy_ocid', label: 'Tenancy OCID', type: 'text' },
-    { key: 'fingerprint', label: 'Fingerprint', type: 'text' },
-    { key: 'region', label: 'Region', type: 'text' },
-    { key: 'private_key', label: 'Private Key', type: 'textarea' }
+    { key: 'user_ocid', label: 'User OCID', type: 'text', required: true },
+    { key: 'tenancy_ocid', label: 'Tenancy OCID', type: 'text', required: true },
+    { key: 'fingerprint', label: 'Fingerprint', type: 'text', required: true },
+    { key: 'region', label: 'Region', type: 'text', required: true },
+    { key: 'private_key', label: 'Private Key', type: 'textarea', required: true }
   ],
   render: [
-    { key: 'api_key', label: 'API Key', type: 'password' }
+    { key: 'api_key', label: 'API Key', type: 'password', required: true }
   ]
 };
 
@@ -3985,7 +3985,12 @@ async function editAccount(id) {
   document.getElementById('field-name').value = full.name || '';
   // Credentials are masked in API responses; show hint if available
   var hintEl = document.getElementById('credentialHint');
-  if (hintEl) hintEl.textContent = full.credential_hint ? t('account.credential_hint') + full.credential_hint : '';
+  if (hintEl && full.credential_hint) {
+    hintEl.textContent = (t('account.credential_hint') || 'Current credentials: ') + full.credential_hint;
+    hintEl.style.display = 'block';
+  } else if (hintEl) {
+    hintEl.style.display = 'none';
+  }
   if (!accountFormVisible) toggleAccountForm();
 }
 
@@ -4008,9 +4013,22 @@ function selectCloud(cloud) {
   const fields = document.getElementById('formFields');
   const config = cloudConfigs[cloud];
   if (!config) { fields.innerHTML = ''; return; }
+  
+  // Show credential hint when editing
+  var hintHtml = '';
+  if (editingAccountId) {
+    hintHtml = '<div id="credentialHint" style="margin:8px 0;padding:8px 12px;background:var(--color-info-subtle);border:1px solid var(--color-info);border-radius:var(--radius-sm);font-size:12px;color:var(--color-info);display:none"></div>' +
+               '<div style="margin:8px 0;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted)">' +
+               (LOCALE === 'zh' 
+                 ? '💡 凭证已安全存储在 Vault 中。<strong>留空即保留原值</strong>，只需填写要修改的字段。' 
+                 : '💡 Credentials are securely stored in Vault. <strong>Leave empty to keep current values</strong> — only fill fields you want to change.') +
+               '</div>';
+  }
+  
   fields.innerHTML =
     '<label for="field-name">' + (t('account.name') || '账户名称') + '</label>' +
     '<input type="text" id="field-name" placeholder="' + (t('account.name_placeholder') || '请输入账户名称') + '">' +
+    hintHtml +
     config.map(f =>
     '<label for="field-' + f.key + '">' + f.label + '</label>' +
     (f.type === 'textarea'
@@ -4076,23 +4094,39 @@ async function submitAccount() {
   if (!selectedCloud) { alert(t('account.select_cloud')); return; }
   const config = cloudConfigs[selectedCloud];
   const formData = {};
-  var allFilled = true;
+  var anyFilled = false;
   config.forEach(f => {
     var val = document.getElementById('field-' + f.key).value;
     formData[f.key] = val;
-    if (!val) allFilled = false;
+    if (val) anyFilled = true;
   });
-  if (!allFilled && !confirm('某些凭证字段为空，确定要提交吗？')) return;
+  
   const accountName = document.getElementById('field-name').value.trim() || selectedCloud + ' 账户';
   const url = editingAccountId ? (API + '/accounts/' + editingAccountId) : (API + '/accounts');
   const method = editingAccountId ? 'PUT' : 'POST';
+  
+  // When editing: if no credential fields filled, send empty string to keep existing
+  // When creating: must have all required fields
+  var credentialsJson;
+  if (editingAccountId && !anyFilled) {
+    credentialsJson = '';
+  } else {
+    // Validate required fields for new accounts or when updating credentials
+    var missing = config.filter(f => f.required && !formData[f.key]).map(f => f.label);
+    if (missing.length > 0) {
+      alert((LOCALE === 'zh' ? '必填字段缺失: ' : 'Missing required fields: ') + missing.join(', '));
+      return;
+    }
+    credentialsJson = JSON.stringify(formData);
+  }
+  
   await apiFetch(url, {
     method: method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: accountName,
       cloud_type: selectedCloud,
-      credentials: JSON.stringify(formData)
+      credentials: credentialsJson
     })
   });
   editingAccountId = null;
