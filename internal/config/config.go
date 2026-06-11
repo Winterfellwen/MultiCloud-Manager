@@ -28,11 +28,11 @@ func Load() *Config {
 	}
 
 	if env == "production" {
-		if cfg.JWTSecret == "dev-secret-change-in-production" {
+		if cfg.JWTSecret == "dev-secret-change-in-production" || cfg.JWTSecret == "" {
 			log.Fatal("FATAL: JWT_SECRET must be set in production")
 		}
-		if cfg.AdminPassword == "Test.1234" || cfg.AdminPassword == "test123" {
-			log.Println("WARNING: Using default ADMIN_PASSWORD in production, consider changing it")
+		if cfg.AdminPassword == "Test.1234" || cfg.AdminPassword == "test123" || cfg.AdminPassword == "" {
+			log.Fatal("FATAL: ADMIN_PASSWORD must be set in production")
 		}
 	}
 
