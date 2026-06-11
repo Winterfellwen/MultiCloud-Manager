@@ -155,6 +155,7 @@ func (d *Database) Migrate() error {
 		)`,
 		`INSERT INTO ai_config (id, api_endpoint, model) VALUES (1, 'https://api.openai.com/v1', 'gpt-4o-mini') ON CONFLICT (id) DO NOTHING`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_session_role ON messages(session_id, role, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_parts_message ON parts(message_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_calls_part ON tool_calls(part_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id, created_at)`,
