@@ -48,7 +48,9 @@ func (h *ChatStreamHandler) setRunState(r *Run, s State, errMsg string) {
 	}
 	r.mu.Unlock()
 	if h.db != nil {
-		h.db.Exec(`UPDATE runs SET state=$1, error_message=$2, started_at=CASE WHEN $3 AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END, terminal_at=CASE WHEN $4 THEN CURRENT_TIMESTAMP ELSE terminal_at END WHERE id=$5`, string(s), errMsg, s == StateRunning, s == StateDone || s == StateError || s == StateStopped, r.ID)
+		if _, err := h.db.Exec(`UPDATE runs SET state=$1, error_message=$2, started_at=CASE WHEN $3 AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END, terminal_at=CASE WHEN $4 THEN CURRENT_TIMESTAMP ELSE terminal_at END WHERE id=$5`, string(s), errMsg, s == StateRunning, s == StateDone || s == StateError || s == StateStopped, r.ID); err != nil {
+			log.Printf("WARNING: failed to update run state: %v", err)
+		}
 	}
 	h.rm.persistEvent(r, EventStateChange, map[string]interface{}{
 		"state": string(s), "error_message": errMsg,
@@ -98,7 +100,9 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 	if r.SessionID != "" && h.db != nil {
 		var sid string
 		if h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, r.SessionID).Scan(&sid) == nil {
-			h.db.Exec(`UPDATE sessions SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid)
+			if _, err := h.db.Exec(`UPDATE sessions SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid); err != nil {
+				log.Printf("WARNING: failed to update session status to running: %v", err)
+			}
 		}
 	}
 
@@ -148,7 +152,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		baseURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions")
 		apiURL := baseURL + "/chat/completions"
 		bodyBytes, _ := json.Marshal(body)
-		httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(bodyBytes))
+		httpReq, err := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
 		if err != nil {
 			stopReason = "failed to create request: " + err.Error()
 			break
@@ -183,7 +187,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			break
 		}
 
-		fullContent, toolCalls, _ := h.collectStreamResponseWithCallback(ctx, resp.Body, nil, nil, func(chunk string) {
+		fullContent, toolCalls, _ := h.collectStreamResponseWithCallback(resp.Body, nil, nil, func(chunk string) {
 			h.rm.persistEvent(r, EventToken, map[string]interface{}{
 				"content": chunk,
 			})
@@ -365,7 +369,7 @@ done:
 			finalReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 			finalResp, ferr := httpClient.Do(finalReq)
 			if ferr == nil && finalResp.StatusCode == 200 {
-				finalContent, _, _ := h.collectStreamResponse(ctx, finalResp.Body, nil, nil)
+				finalContent, _, _ := h.collectStreamResponse(finalResp.Body, nil, nil)
 				lastTurnContent = finalContent
 				if finalContent != "" {
 					h.rm.persistEvent(r, EventToken, map[string]interface{}{
@@ -389,7 +393,9 @@ done:
 	if r.SessionID != "" && h.db != nil {
 		var sid string
 		if h.db.QueryRow(`SELECT id FROM sessions WHERE session_id = $1`, r.SessionID).Scan(&sid) == nil {
-			h.db.Exec(`UPDATE sessions SET status = 'idle', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid)
+			if _, err := h.db.Exec(`UPDATE sessions SET status = 'idle', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, sid); err != nil {
+				log.Printf("WARNING: failed to update session status to idle: %v", err)
+			}
 		}
 	}
 
@@ -439,11 +445,11 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 	return resp, lastErr
 }
 
-func (h *ChatStreamHandler) collectStreamResponse(ctx context.Context, body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
-	return h.collectStreamResponseWithCallback(ctx, body, c, flusher, nil)
+func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
+	return h.collectStreamResponseWithCallback(body, c, flusher, nil)
 }
 
-func (h *ChatStreamHandler) collectStreamResponseWithCallback(ctx context.Context, body io.ReadCloser, c *gin.Context, flusher http.Flusher, onToken func(string)) (string, []map[string]interface{}, string) {
+func (h *ChatStreamHandler) collectStreamResponseWithCallback(body io.ReadCloser, c *gin.Context, flusher http.Flusher, onToken func(string)) (string, []map[string]interface{}, string) {
 	defer body.Close()
 
 	var fullContent strings.Builder
@@ -453,11 +459,6 @@ func (h *ChatStreamHandler) collectStreamResponseWithCallback(ctx context.Contex
 
 	reader := bufio.NewReader(body)
 	for {
-		select {
-		case <-ctx.Done():
-			return fullContent.String(), toolCalls, "interrupted"
-		default:
-		}
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -612,6 +613,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 			continue
 		}
 		content, _ := m["content"].(string)
+		ts := time.Now().UTC().Format(time.RFC3339)
 
 		if role == "assistant" {
 			var toolCallsAsMaps []map[string]interface{}
@@ -627,7 +629,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 			}
 			if content != "" {
 				saveMsgs = append(saveMsgs, map[string]interface{}{
-					"role": "agent", "content": content,
+					"role": "agent", "content": content, "created_at": ts,
 				})
 			}
 			if len(toolCallsAsMaps) > 0 {
@@ -647,7 +649,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 				if len(callInfos) > 0 {
 					jsonBytes, _ := json.Marshal(callInfos)
 					saveMsgs = append(saveMsgs, map[string]interface{}{
-						"role": "tool-calls", "content": string(jsonBytes),
+						"role": "tool-calls", "content": string(jsonBytes), "created_at": ts,
 					})
 				}
 			}
@@ -655,7 +657,7 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		}
 		if role == "user" {
 			saveMsgs = append(saveMsgs, map[string]interface{}{
-				"role": "user", "content": content,
+				"role": "user", "content": content, "created_at": ts,
 			})
 		}
 	}
@@ -669,13 +671,19 @@ func (h *ChatStreamHandler) saveSessionMessages(sessionID string, messages []map
 		return
 	}
 
-	h.db.Exec(`DELETE FROM messages WHERE session_id = $1`, internalID)
-	h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, internalID, string(historyJSON))
+	if _, err := h.db.Exec(`DELETE FROM messages WHERE session_id = $1`, internalID); err != nil {
+		log.Printf("WARNING: failed to delete messages: %v", err)
+	}
+	if _, err := h.db.Exec(`INSERT INTO messages (session_id, role, content) VALUES ($1, 'history', $2)`, internalID, string(historyJSON)); err != nil {
+		log.Printf("WARNING: failed to insert history: %v", err)
+	}
 
 	for _, m := range saveMsgs {
 		if m["role"] == "user" {
 			if title, ok := m["content"].(string); ok && title != "" {
-				h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, title, internalID)
+				if _, err := h.db.Exec(`UPDATE sessions SET title = LEFT($1, 100), updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND title = '新对话'`, title, internalID); err != nil {
+				log.Printf("WARNING: failed to update session title: %v", err)
+			}
 			}
 			break
 		}
@@ -894,16 +902,34 @@ func isDestructiveCommand(cmd string) bool {
 		"cat /proc",
 	}
 	cmdLower := strings.ToLower(strings.TrimSpace(cmd))
-	for _, ro := range readOnly {
-		if strings.HasPrefix(cmdLower, ro+" ") || cmdLower == ro {
-			return false
+
+	// Split by pipe and check each segment independently
+	segments := strings.Split(cmdLower, "|")
+	for _, seg := range segments {
+		seg = strings.TrimSpace(seg)
+		if seg == "" {
+			continue
+		}
+
+		// Check if this segment matches any read-only prefix
+		isReadOnly := false
+		for _, ro := range readOnly {
+			if strings.HasPrefix(seg, ro+" ") || seg == ro {
+				isReadOnly = true
+				break
+			}
+		}
+
+		// If not read-only, check if it's destructive
+		if !isReadOnly {
+			for _, d := range destructive {
+				if strings.Contains(seg, d) {
+					return true
+				}
+			}
 		}
 	}
-	for _, d := range destructive {
-		if strings.Contains(cmdLower, d) {
-			return true
-		}
-	}
+
 	return false
 }
 
@@ -1009,6 +1035,18 @@ func (h *ChatStreamHandler) Confirm(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
 		return
 	}
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+	if role != "admin" {
+		var dbOwnerID string
+		err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, run.SessionID).Scan(&dbOwnerID)
+		if err != nil || dbOwnerID != ownerID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
 	run.mu.Lock()
 	state := run.State
 	run.mu.Unlock()
@@ -1035,6 +1073,18 @@ func (h *ChatStreamHandler) Stop(c *gin.Context) {
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
 		return
+	}
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+	if role != "admin" {
+		var dbOwnerID string
+		err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, run.SessionID).Scan(&dbOwnerID)
+		if err != nil || dbOwnerID != ownerID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
 	}
 	run.mu.Lock()
 	state := run.State

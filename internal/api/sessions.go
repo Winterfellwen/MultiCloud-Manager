@@ -144,6 +144,7 @@ func (h *SessionsHandler) List(c *gin.Context) {
 	defer rows.Close()
 
 	var sessions []map[string]interface{}
+	var pendingState []int
 	for rows.Next() {
 		var sessionID, title, status, mode, userID string
 		var createdAt, updatedAt sql.NullTime
@@ -162,11 +163,7 @@ func (h *SessionsHandler) List(c *gin.Context) {
 		case lastDoneAt.Valid && (!lastViewedAt.Valid || lastDoneAt.Time.After(lastViewedAt.Time)):
 			state = "done"
 		default:
-			var lastTerminal sql.NullString
-			h.db.QueryRow(`SELECT state FROM runs WHERE session_id = (SELECT id FROM sessions WHERE session_id = $1) AND state IN ('error','stopped') ORDER BY terminal_at DESC LIMIT 1`, sessionID).Scan(&lastTerminal)
-			if lastTerminal.Valid {
-				state = lastTerminal.String
-			}
+			pendingState = append(pendingState, len(sessions))
 		}
 		hasUnread := state == "done" || state == "error" || state == "stopped"
 		sessions = append(sessions, map[string]interface{}{
@@ -181,6 +178,37 @@ func (h *SessionsHandler) List(c *gin.Context) {
 			"queue_depth": queueDepth,
 			"has_unread":  hasUnread,
 		})
+	}
+	if len(pendingState) > 0 {
+		ids := make([]string, len(pendingState))
+		for i, idx := range pendingState {
+			ids[i] = sessions[idx]["session_id"].(string)
+		}
+		placeholders := make([]string, len(ids))
+		args := make([]interface{}, len(ids))
+		for i, sid := range ids {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = sid
+		}
+		rows, err := h.db.Query(`SELECT s.session_id, r.state FROM runs r JOIN sessions s ON r.session_id = s.id WHERE s.session_id IN (`+strings.Join(placeholders, ",")+`) AND r.state IN ('error','stopped') ORDER BY r.terminal_at DESC`, args...)
+		if err == nil {
+			defer rows.Close()
+			stateMap := make(map[string]string)
+			for rows.Next() {
+				var sid, st string
+				rows.Scan(&sid, &st)
+				if _, ok := stateMap[sid]; !ok {
+					stateMap[sid] = st
+				}
+			}
+			for _, idx := range pendingState {
+				sid := sessions[idx]["session_id"].(string)
+				if st, ok := stateMap[sid]; ok {
+					sessions[idx]["state"] = st
+					sessions[idx]["has_unread"] = true
+				}
+			}
+		}
 	}
 	if sessions == nil {
 		sessions = []map[string]interface{}{}
@@ -446,6 +474,12 @@ func (h *SessionsHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing session id"})
 		return
 	}
+
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ := userRole.(string)
+
 	var req struct {
 		Status string `json:"status"`
 	}
@@ -453,9 +487,25 @@ func (h *SessionsHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
-	_, err := h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2`, req.Status, sessionID)
+	if req.Status == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "status is required"})
+		return
+	}
+
+	var result sql.Result
+	var err error
+	if role == "admin" {
+		result, err = h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2`, req.Status, sessionID)
+	} else {
+		result, err = h.db.Exec(`UPDATE sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE session_id = $2 AND user_id = $3`, req.Status, sessionID, ownerID)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update session"})
+		return
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "session updated"})

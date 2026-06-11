@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"multicloud/internal/agent"
@@ -19,7 +19,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) *gin.Engine {
+func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) (*gin.Engine, func()) {
+	loginLimiter := NewRateLimiter(10, time.Minute)
+	chatLimiter := NewRateLimiter(30, time.Minute)
+
 	r := gin.Default()
 
 	// Health check endpoint for Render
@@ -28,7 +31,16 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	})
 
 	r.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := c.Request.Header.Get("Origin")
+		allowedOrigins := getEnv("ALLOWED_ORIGINS", "http://localhost:8099,http://127.0.0.1:8099")
+		for _, o := range strings.Split(allowedOrigins, ",") {
+			o = strings.TrimSpace(o)
+			if o == origin {
+				c.Header("Access-Control-Allow-Origin", origin)
+				c.Header("Vary", "Origin")
+				break
+			}
+		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		if c.Request.Method == "OPTIONS" {
@@ -38,7 +50,17 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		c.Next()
 	})
 
-	r.POST("/api/auth/login", authHandler.Login)
+	r.Use(func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		if os.Getenv("ENVIRONMENT") == "production" {
+			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		c.Next()
+	})
+
+	r.POST("/api/auth/login", RateLimitMiddleware(loginLimiter), authHandler.Login)
 
 	// Built-in vault — no external dependency
 	vaultService, err := vault.NewService(db)
@@ -62,7 +84,11 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	terraformHandler := NewTerraformHandler(db)
 	sessionsHandler := NewSessionsHandler(db, runMgr)
 
-	syncer.Start(context.Background(), 5*time.Minute)
+	eventsHandler := NewEventsSSEHandler(db, runMgr, jwtSecret)
+	r.GET("/api/agent/events", eventsHandler.Stream)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	syncer.Start(ctx, 5*time.Minute)
 
 	auth := r.Group("/api")
 	auth.Use(AuthMiddleware(jwtSecret))
@@ -80,17 +106,15 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 		// Chat endpoints — all roles (viewer: plan only, enforced in handler)
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
-		eventsHandler := NewEventsSSEHandler(runMgr)
-		auth.POST("/agent/chat/stream", chatHandler.Stream)
+		auth.POST("/agent/chat/stream", RateLimitMiddleware(chatLimiter), chatHandler.Stream)
 		auth.POST("/agent/chat/confirm", RequireRole("admin", "user"), chatHandler.Confirm)
 		auth.POST("/agent/chat/stop", chatHandler.Stop)
-		auth.GET("/agent/events", eventsHandler.Stream)
 
 		// Session endpoints — all roles (viewer can view history)
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
 		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
-		auth.DELETE("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Delete)
+		auth.DELETE("/agent/sessions/:sid", sessionsHandler.Delete)
 		auth.PUT("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Update)
 
 		// Cloud accounts — read: all roles; write: admin only
@@ -217,7 +241,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 					continue
 				}
 				// Set vault_path and clear plaintext credentials
-				db.Exec(`UPDATE cloud_accounts SET vault_path = $1, credentials = '' WHERE id = $2`, vaultPath, id)
+				if _, err := db.Exec(`UPDATE cloud_accounts SET vault_path = $1, credentials = '' WHERE id = $2`, vaultPath, id); err != nil {
+					log.Printf("WARNING: vault migration update failed for %s: %v", id, err)
+				}
 				migrated++
 			}
 			c.JSON(http.StatusOK, gin.H{"migrated": migrated})
@@ -225,7 +251,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	}
 
 	webDir := getWebDir()
-	r.Static("/static", webDir)
+	r.StaticFile("/static/login.html", filepath.Join(webDir, "login.html"))
+	r.StaticFile("/static/index.html", filepath.Join(webDir, "index.html"))
+	r.StaticFile("/static/embedded.js", filepath.Join(webDir, "embedded.js"))
+	r.Static("/static/js", filepath.Join(webDir, "js"))
 
 	r.GET("/embedded.js", func(c *gin.Context) {
 		serveFileWithType(c, filepath.Join(webDir, "embedded.js"), "application/javascript; charset=utf-8")
@@ -240,7 +269,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		serveFile(c, filepath.Join(webDir, "index.html"))
 	})
 
-	return r
+	return r, func() {
+		syncer.Stop()
+		cancel()
+	}
 }
 
 func serveFile(c *gin.Context, filePath string) {
@@ -248,7 +280,7 @@ func serveFile(c *gin.Context, filePath string) {
 }
 
 func serveFileWithType(c *gin.Context, filePath string, contentType string) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 		return
@@ -269,4 +301,11 @@ func getWebDir() string {
 		}
 	}
 	return "web"
+}
+
+func getEnv(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
 }

@@ -5,6 +5,11 @@ import (
 	"os"
 )
 
+const (
+	defaultJWTSecret     = "dev-secret-change-in-production"
+	defaultAdminPassword = "Test.1234"
+)
+
 type Config struct {
 	Port          string
 	DBPath        string
@@ -22,17 +27,21 @@ func Load() *Config {
 		DBPath:        getEnv("DB_PATH", "multicloud.db"),
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		RedisURL:      getEnv("REDIS_URL", ""),
-		JWTSecret:     getEnv("JWT_SECRET", "dev-secret-change-in-production"),
-		AdminPassword: getEnv("ADMIN_PASSWORD", "Test.1234"),
+		JWTSecret:     getEnv("JWT_SECRET", defaultJWTSecret),
+		AdminPassword: getEnv("ADMIN_PASSWORD", defaultAdminPassword),
 		Environment:   env,
 	}
 
 	if env == "production" {
-		if cfg.JWTSecret == "dev-secret-change-in-production" {
+		if cfg.JWTSecret == defaultJWTSecret || cfg.JWTSecret == "" {
 			log.Fatal("FATAL: JWT_SECRET must be set in production")
 		}
-		if cfg.AdminPassword == "Test.1234" || cfg.AdminPassword == "test123" {
-			log.Println("WARNING: Using default ADMIN_PASSWORD in production, consider changing it")
+		// Check default values from multiple sources:
+		// - Go default (Test.1234) from getEnv fallback
+		// - docker-compose default (test123) from compose file
+		// - empty string for explicit unset
+		if cfg.AdminPassword == defaultAdminPassword || cfg.AdminPassword == "test123" || cfg.AdminPassword == "" {
+			log.Fatal("FATAL: ADMIN_PASSWORD must be set in production")
 		}
 	}
 

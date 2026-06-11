@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,14 +10,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type EventsSSEHandler struct {
-	rm *RunManager
+	db        *sql.DB
+	rm        *RunManager
+	jwtSecret string
 }
 
-func NewEventsSSEHandler(rm *RunManager) *EventsSSEHandler {
-	return &EventsSSEHandler{rm: rm}
+func NewEventsSSEHandler(db *sql.DB, rm *RunManager, jwtSecret string) *EventsSSEHandler {
+	return &EventsSSEHandler{db: db, rm: rm, jwtSecret: jwtSecret}
 }
 
 func (h *EventsSSEHandler) Stream(c *gin.Context) {
@@ -32,6 +36,34 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 		return
 	}
 
+	// Auth: accept token from query param (EventSource can't set request headers)
+	tokenStr := c.Query("token")
+	if tokenStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+		return
+	}
+
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return []byte(h.jwtSecret), nil
+	}, jwt.WithValidMethods([]string{"HS256"}))
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid claims"})
+		return
+	}
+
+	c.Set("user_id", claims["sub"])
+	role := "viewer"
+	if r, ok := claims["role"].(string); ok && r != "" {
+		role = r
+	}
+	c.Set("user_role", role)
+
 	sessionIDsParam := c.Query("session_ids")
 	if sessionIDsParam == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "session_ids required"})
@@ -40,6 +72,37 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 	sessionIDs := strings.Split(sessionIDsParam, ",")
 	for i := range sessionIDs {
 		sessionIDs[i] = strings.TrimSpace(sessionIDs[i])
+	}
+
+	userID, _ := c.Get("user_id")
+	userRole, _ := c.Get("user_role")
+	ownerID, _ := userID.(string)
+	role, _ = userRole.(string)
+
+	if role != "admin" {
+		for _, sid := range sessionIDs {
+			sid = strings.TrimSpace(sid)
+			if sid == "" {
+				continue
+			}
+			var dbOwnerID string
+			err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, sid).Scan(&dbOwnerID)
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+				c.Abort()
+				return
+			}
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.Abort()
+				return
+			}
+			if dbOwnerID != ownerID {
+				c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+				c.Abort()
+				return
+			}
+		}
 	}
 
 	var fromID int64

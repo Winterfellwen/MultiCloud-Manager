@@ -10,17 +10,9 @@ import (
 
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Support both Authorization header and ?token= query param (for EventSource).
-		authHeader := c.GetHeader("Authorization")
 		tokenStr := ""
-		if authHeader != "" {
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) == 2 && parts[0] == "Bearer" {
-				tokenStr = parts[1]
-			}
-		}
-		if tokenStr == "" {
-			tokenStr = c.Query("token")
+		if auth := c.GetHeader("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+			tokenStr = strings.TrimPrefix(auth, "Bearer ")
 		}
 		if tokenStr == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization"})

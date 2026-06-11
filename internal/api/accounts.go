@@ -21,6 +21,31 @@ func NewAccountsHandler(db *sql.DB, v vault.Service) *AccountsHandler {
 	return &AccountsHandler{db: db, vault: v}
 }
 
+func maskCredential(cloudType string, creds map[string]interface{}) string {
+	if creds == nil {
+		return ""
+	}
+	for _, key := range []string{"api_key", "apikey", "secret", "secret_key", "access_key", "app_secret", "token", "password", "client_secret"} {
+		if v, ok := creds[key]; ok {
+			s := fmt.Sprint(v)
+			if len(s) > 8 {
+				return s[:4] + "****" + s[len(s)-4:]
+			}
+			return "****"
+		}
+	}
+	for _, v := range creds {
+		s := fmt.Sprint(v)
+		if s != "" {
+			if len(s) > 8 {
+				return s[:4] + "****" + s[len(s)-4:]
+			}
+			return "****"
+		}
+	}
+	return ""
+}
+
 func (h *AccountsHandler) List(c *gin.Context) {
 	rows, err := h.db.Query(`SELECT id, name, cloud_type, is_active, last_sync_at, vault_path FROM cloud_accounts ORDER BY created_at DESC`)
 	if err != nil {
@@ -83,16 +108,25 @@ func (h *AccountsHandler) Get(c *gin.Context) {
 			}
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"id":           id,
-		"name":         name,
-		"cloud_type":   cloudType,
-		"credentials":  credentials,
-		"is_active":    isActive,
-		"vault_path":   vaultPath,
-		"vault_secured": vaultPath != "",
-		"_warning":     "credentials are returned in plaintext for this endpoint; restrict via auth",
-	})
+	// Parse credentials for hint only — never return plaintext
+	var credMap map[string]interface{}
+	if credentials != "" {
+		json.Unmarshal([]byte(credentials), &credMap)
+	}
+	credHint := maskCredential(cloudType, credMap)
+	resp := gin.H{
+		"id":              id,
+		"name":            name,
+		"cloud_type":      cloudType,
+		"credential_hint": credHint,
+		"is_active":       isActive,
+		"vault_secured":   vaultPath != "",
+		"vault_path":      vaultPath,
+	}
+	if lastSync.Valid {
+		resp["last_sync_at"] = lastSync.Time.Format("2006-01-02 15:04:05")
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *AccountsHandler) Create(c *gin.Context) {
