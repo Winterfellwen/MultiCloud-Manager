@@ -22,6 +22,28 @@ type BuiltinVault struct {
 	token string
 }
 
+// getVaultKey loads the AES-GCM encryption key from ENCRYPTION_KEY env var.
+// In production, ENCRYPTION_KEY must be set. In development, a random key is generated.
+func getVaultKey() ([]byte, error) {
+	keyHex := os.Getenv("ENCRYPTION_KEY")
+	if keyHex == "" {
+		env := os.Getenv("ENVIRONMENT")
+		if env == "production" {
+			return nil, fmt.Errorf("ENCRYPTION_KEY must be set in production")
+		}
+		key := make([]byte, 32)
+		if _, err := rand.Read(key); err != nil {
+			return nil, fmt.Errorf("failed to generate dev encryption key: %w", err)
+		}
+		return key, nil
+	}
+	key, err := hex.DecodeString(keyHex)
+	if err != nil || len(key) != 32 {
+		return nil, fmt.Errorf("ENCRYPTION_KEY must be 64 hex chars (32 bytes), got %d chars", len(keyHex))
+	}
+	return key, nil
+}
+
 // NewBuiltinVault creates a new built-in vault with AES encryption.
 func NewBuiltinVault(db *sql.DB) (*BuiltinVault, error) {
 	// Ensure vault_secrets table exists
@@ -39,17 +61,9 @@ func NewBuiltinVault(db *sql.DB) (*BuiltinVault, error) {
 		return nil, fmt.Errorf("creating vault_secrets table: %w", err)
 	}
 
-	// Get encryption key from env
-	keyHex := os.Getenv("ENCRYPTION_KEY")
-	if keyHex == "" {
-		// Development default — NOT secure for production
-		// In production, set ENCRYPTION_KEY=64 hex chars
-		keyHex = "0000000000000000000000000000000000000000000000000000000000000000"
-	}
-
-	key, err := hex.DecodeString(keyHex)
-	if err != nil || len(key) != 32 {
-		return nil, fmt.Errorf("ENCRYPTION_KEY must be 64 hex chars (32 bytes)")
+	key, err := getVaultKey()
+	if err != nil {
+		return nil, fmt.Errorf("vault key init: %w", err)
 	}
 
 	return &BuiltinVault{db: db, key: key}, nil
