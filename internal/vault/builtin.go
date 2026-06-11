@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -23,7 +24,8 @@ type BuiltinVault struct {
 }
 
 // getVaultKey loads the AES-GCM encryption key from ENCRYPTION_KEY env var.
-// In production, ENCRYPTION_KEY must be set. In development, a random key is generated.
+// In production, ENCRYPTION_KEY must be set. In development, a stable key is derived from a fixed seed
+// to persist secrets across restarts.
 func getVaultKey() ([]byte, error) {
 	keyHex := os.Getenv("ENCRYPTION_KEY")
 	if keyHex == "" {
@@ -31,11 +33,10 @@ func getVaultKey() ([]byte, error) {
 		if env == "production" {
 			return nil, fmt.Errorf("ENCRYPTION_KEY must be set in production")
 		}
-		key := make([]byte, 32)
-		if _, err := rand.Read(key); err != nil {
-			return nil, fmt.Errorf("failed to generate dev encryption key: %w", err)
-		}
-		return key, nil
+		// Development: derive stable key from fixed seed (persists across restarts)
+		seed := []byte("multicloud-dev-seed-v1")
+		hash := sha256.Sum256(seed)
+		return hash[:], nil
 	}
 	key, err := hex.DecodeString(keyHex)
 	if err != nil || len(key) != 32 {

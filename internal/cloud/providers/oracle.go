@@ -58,7 +58,7 @@ func NewOracleProvider(creds map[string]string) *OracleProvider {
 func (p *OracleProvider) GetType() string { return "oracle" }
 
 func (p *OracleProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
-	endpoint := fmt.Sprintf("https://compute.%s.oraclecloud.com/20160918/instances?compartmentId=%s&limit=100", p.region, p.tenancyOCID)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/instances?compartmentId=%s&limit=100", p.region, p.tenancyOCID)
 
 	resp, err := p.ociRequest(ctx, "GET", endpoint, nil)
 	if err != nil {
@@ -118,7 +118,7 @@ func (p *OracleProvider) GetInstance(ctx context.Context, id string) (*types.Ins
 func (p *OracleProvider) StartInstance(ctx context.Context, id string) error {
 	body := map[string]string{"action": "START"}
 	data, _ := json.Marshal(body)
-	endpoint := fmt.Sprintf("https://compute.%s.oraclecloud.com/20160918/instances/%s", p.region, id)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/instances/%s", p.region, id)
 	_, err := p.ociRequest(ctx, "POST", endpoint, data)
 	return err
 }
@@ -126,7 +126,7 @@ func (p *OracleProvider) StartInstance(ctx context.Context, id string) error {
 func (p *OracleProvider) StopInstance(ctx context.Context, id string) error {
 	body := map[string]string{"action": "STOP"}
 	data, _ := json.Marshal(body)
-	endpoint := fmt.Sprintf("https://compute.%s.oraclecloud.com/20160918/instances/%s", p.region, id)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/instances/%s", p.region, id)
 	_, err := p.ociRequest(ctx, "POST", endpoint, data)
 	return err
 }
@@ -134,7 +134,7 @@ func (p *OracleProvider) StopInstance(ctx context.Context, id string) error {
 func (p *OracleProvider) RestartInstance(ctx context.Context, id string) error {
 	body := map[string]string{"action": "SOFTRESET"}
 	data, _ := json.Marshal(body)
-	endpoint := fmt.Sprintf("https://compute.%s.oraclecloud.com/20160918/instances/%s", p.region, id)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/instances/%s", p.region, id)
 	_, err := p.ociRequest(ctx, "POST", endpoint, data)
 	return err
 }

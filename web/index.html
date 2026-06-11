@@ -3636,7 +3636,8 @@ async function syncResources() {
 function filterResources() {
   var list = getFilteredResources();
   if (currentResView === 'topo') {
-    renderTopology(list);
+    // Topology always shows all resources; only list view is filtered
+    renderTopology(cachedResources);
   } else {
     renderResources(list);
   }
@@ -3828,7 +3829,7 @@ function switchResView(view) {
   document.querySelectorAll('#resViewToggle .res-view-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.view === view); });
   var listEl = document.getElementById('resourcesList');
   var topoEl = document.getElementById('topologyContainer');
-  if (view === 'topo') { listEl.style.display = 'none'; topoEl.style.display = 'block'; renderTopology(getFilteredResources()); }
+  if (view === 'topo') { listEl.style.display = 'none'; topoEl.style.display = 'block'; renderTopology(cachedResources); }
   else { listEl.style.display = ''; topoEl.style.display = 'none'; if (topoGraph) { topoGraph.destroy(); topoGraph = null; } filterResources(); }
 }
 
