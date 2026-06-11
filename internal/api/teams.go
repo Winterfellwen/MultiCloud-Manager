@@ -229,6 +229,15 @@ func (h *TeamsHandler) UpdateTeamMember(c *gin.Context) {
 		return
 	}
 
+	// Validate role
+	if req.Role != "" {
+		validRoles := map[string]bool{"admin": true, "user": true, "viewer": true}
+		if !validRoles[req.Role] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid role, must be admin/user/viewer"})
+			return
+		}
+	}
+
 	result, err := h.db.Exec(
 		`UPDATE team_members SET name = COALESCE(NULLIF($1,''), name), email = COALESCE(NULLIF($2,''), email), role = COALESCE(NULLIF($3,''), role), status = COALESCE(NULLIF($4,''), status), updated_at = CURRENT_TIMESTAMP WHERE id = $5`,
 		req.Name, req.Email, req.Role, req.Status, memberID,
