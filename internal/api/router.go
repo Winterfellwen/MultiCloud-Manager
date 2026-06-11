@@ -19,7 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) *gin.Engine {
+func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) (*gin.Engine, func()) {
 	r := gin.Default()
 
 	// Health check endpoint for Render
@@ -81,7 +81,8 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	terraformHandler := NewTerraformHandler(db)
 	sessionsHandler := NewSessionsHandler(db, runMgr)
 
-	syncer.Start(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithCancel(context.Background())
+	syncer.Start(ctx, 5*time.Minute)
 
 	auth := r.Group("/api")
 	auth.Use(AuthMiddleware(jwtSecret))
@@ -236,7 +237,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 					continue
 				}
 				// Set vault_path and clear plaintext credentials
-				db.Exec(`UPDATE cloud_accounts SET vault_path = $1, credentials = '' WHERE id = $2`, vaultPath, id)
+				if _, err := db.Exec(`UPDATE cloud_accounts SET vault_path = $1, credentials = '' WHERE id = $2`, vaultPath, id); err != nil {
+					log.Printf("WARNING: vault migration update failed for %s: %v", id, err)
+				}
 				migrated++
 			}
 			c.JSON(http.StatusOK, gin.H{"migrated": migrated})
@@ -262,7 +265,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		serveFile(c, filepath.Join(webDir, "index.html"))
 	})
 
-	return r
+	return r, func() {
+		syncer.Stop()
+		cancel()
+	}
 }
 
 func serveFile(c *gin.Context, filePath string) {

@@ -39,7 +39,7 @@ func main() {
 	runMgr.RecoverFromRestart()
 
 	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB)
-	router := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, runMgr)
+	router, shutdown := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, runMgr)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.Port),
@@ -68,5 +68,6 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced shutdown: %v", err)
 	}
+	shutdown()
 	log.Println("Server stopped")
 }
