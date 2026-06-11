@@ -244,7 +244,10 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	}
 
 	webDir := getWebDir()
-	r.Static("/static", webDir)
+	r.StaticFile("/static/login.html", filepath.Join(webDir, "login.html"))
+	r.StaticFile("/static/index.html", filepath.Join(webDir, "index.html"))
+	r.StaticFile("/static/embedded.js", filepath.Join(webDir, "embedded.js"))
+	r.Static("/static/js", filepath.Join(webDir, "js"))
 
 	r.GET("/embedded.js", func(c *gin.Context) {
 		serveFileWithType(c, filepath.Join(webDir, "embedded.js"), "application/javascript; charset=utf-8")
