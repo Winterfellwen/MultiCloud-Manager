@@ -81,6 +81,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	terraformHandler := NewTerraformHandler(db)
 	sessionsHandler := NewSessionsHandler(db, runMgr)
 
+	eventsHandler := NewEventsSSEHandler(db, runMgr, jwtSecret)
+	r.GET("/api/agent/events", eventsHandler.Stream)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	syncer.Start(ctx, 5*time.Minute)
 
@@ -100,11 +103,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 		// Chat endpoints — all roles (viewer: plan only, enforced in handler)
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
-		eventsHandler := NewEventsSSEHandler(db, runMgr)
 		auth.POST("/agent/chat/stream", chatHandler.Stream)
 		auth.POST("/agent/chat/confirm", RequireRole("admin", "user"), chatHandler.Confirm)
 		auth.POST("/agent/chat/stop", chatHandler.Stop)
-		auth.GET("/agent/events", eventsHandler.Stream)
 
 		// Session endpoints — all roles (viewer can view history)
 		auth.GET("/agent/sessions", sessionsHandler.List)
