@@ -188,7 +188,6 @@ func (d *Database) Migrate() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
 		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
-		fmt.Sprintf(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '%s', 'admin') ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin'`, adminHash),
 		`CREATE TABLE IF NOT EXISTS agent_config (
 			id SERIAL PRIMARY KEY,
 			config_type VARCHAR(50) NOT NULL,
@@ -286,6 +285,11 @@ END $$`,
 		if _, err := d.Exec(q); err != nil {
 			return fmt.Errorf("PostgreSQL migration %d failed: %v", i+1, err)
 		}
+	}
+
+	// Seed admin user with parameterized query
+	if _, err := d.Exec(`INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin'`, "admin", adminHash, "admin"); err != nil {
+		return fmt.Errorf("admin seed migration failed: %v", err)
 	}
 
 	log.Println("PostgreSQL migrations completed")
