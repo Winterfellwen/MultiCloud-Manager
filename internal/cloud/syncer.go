@@ -311,6 +311,10 @@ func NewProvider(cloudType string, creds map[string]string) types.Provider {
 		return providers.NewOracleProvider(creds)
 	case "render":
 		return providers.NewRenderProvider(creds)
+	case "aws":
+		return providers.NewAWSProvider(creds)
+	case "alicloud":
+		return providers.NewAlicloudProvider(creds)
 	default:
 		return nil
 	}

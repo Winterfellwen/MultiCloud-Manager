@@ -148,7 +148,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		baseURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions")
 		apiURL := baseURL + "/chat/completions"
 		bodyBytes, _ := json.Marshal(body)
-		httpReq, err := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
+		httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(bodyBytes))
 		if err != nil {
 			stopReason = "failed to create request: " + err.Error()
 			break
@@ -183,7 +183,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			break
 		}
 
-		fullContent, toolCalls, _ := h.collectStreamResponseWithCallback(resp.Body, nil, nil, func(chunk string) {
+		fullContent, toolCalls, _ := h.collectStreamResponseWithCallback(ctx, resp.Body, nil, nil, func(chunk string) {
 			h.rm.persistEvent(r, EventToken, map[string]interface{}{
 				"content": chunk,
 			})
@@ -365,7 +365,7 @@ done:
 			finalReq.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 			finalResp, ferr := httpClient.Do(finalReq)
 			if ferr == nil && finalResp.StatusCode == 200 {
-				finalContent, _, _ := h.collectStreamResponse(finalResp.Body, nil, nil)
+				finalContent, _, _ := h.collectStreamResponse(ctx, finalResp.Body, nil, nil)
 				lastTurnContent = finalContent
 				if finalContent != "" {
 					h.rm.persistEvent(r, EventToken, map[string]interface{}{
@@ -439,11 +439,11 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 	return resp, lastErr
 }
 
-func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
-	return h.collectStreamResponseWithCallback(body, c, flusher, nil)
+func (h *ChatStreamHandler) collectStreamResponse(ctx context.Context, body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
+	return h.collectStreamResponseWithCallback(ctx, body, c, flusher, nil)
 }
 
-func (h *ChatStreamHandler) collectStreamResponseWithCallback(body io.ReadCloser, c *gin.Context, flusher http.Flusher, onToken func(string)) (string, []map[string]interface{}, string) {
+func (h *ChatStreamHandler) collectStreamResponseWithCallback(ctx context.Context, body io.ReadCloser, c *gin.Context, flusher http.Flusher, onToken func(string)) (string, []map[string]interface{}, string) {
 	defer body.Close()
 
 	var fullContent strings.Builder
@@ -453,6 +453,11 @@ func (h *ChatStreamHandler) collectStreamResponseWithCallback(body io.ReadCloser
 
 	reader := bufio.NewReader(body)
 	for {
+		select {
+		case <-ctx.Done():
+			return fullContent.String(), toolCalls, "interrupted"
+		default:
+		}
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
