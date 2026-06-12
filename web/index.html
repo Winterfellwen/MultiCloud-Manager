@@ -137,8 +137,10 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .theme-btn:hover { background: var(--surface-hover); color: var(--text); }
 .sidebar-theme-btn { width: auto; padding: 0 10px; gap: 4px; min-height: auto; }
 .topbar-theme-btn { width: 28px; height: 28px; min-height: auto; min-width: auto; }
-.topbar-action-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; cursor: pointer; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 3px; padding: 0 8px; transition: all .15s; font-family: inherit; min-height: auto; }
-.topbar-action-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--primary); }
+.topbar-action-btn { background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 3px; padding: 0 8px; transition: all .15s; font-family: inherit; min-height: auto; }
+.topbar-action-btn:hover { background: var(--surface-hover); color: var(--text); }
+.page-action-btn { background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; height: 28px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; transition: all .15s; font-family: inherit; min-height: auto; }
+.page-action-btn:hover { background: var(--surface-hover); color: var(--text); }
 .err-btn { position: relative; }
 .err-btn .badge { position: absolute; top: -4px; right: -4px; background: var(--danger); color: #fff; font-size: 9px; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 3px; font-weight: 600; line-height: 1; pointer-events: none; }
 .err-panel { position: fixed; top: 48px; right: 12px; width: 320px; max-height: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; box-shadow: var(--shadow-lg); z-index: 2000; display: none; flex-direction: column; }
@@ -166,7 +168,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .profile-logview-item .lv-msg { flex: 1; word-break: break-word; }
 .profile-logview-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
 .lang-label { font-size: 11px; font-weight: 500; }
-.avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0; position: relative; z-index: 1; min-height: auto; min-width: auto; }
+.avatar { width: 26px; height: 26px; background: none; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: none; flex-shrink: 0; position: relative; z-index: 1; min-height: auto; min-width: auto; }
 
 /* Content */
 .content { margin-left: var(--sidebar-width); margin-top: 44px; flex: 1; padding: 20px; height: calc(100vh - 44px); overflow: hidden; display: flex; flex-direction: column; }
@@ -1378,8 +1380,6 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
         </button>
         <button class="res-tab" data-cloud="alicloud" onclick="switchResTab(this)">
           <span class="res-tab-icon" style="color:#ff6a00">Al</span><span>阿里云</span><span class="res-tab-count" id="resCountAlicloud">0</span>
-        </button>
-          <span class="res-tab-icon" style="color:#006eff">T</span><span data-i18n="resource.filter_tencent">腾讯云</span><span class="res-tab-count" id="resCountTencent">0</span>
         </button>
         <button class="res-tab" data-cloud="oracle" onclick="switchResTab(this)">
           <span class="res-tab-icon" style="color:#c74634">O</span><span>Oracle</span><span class="res-tab-count" id="resCountOracle">0</span>
@@ -3729,7 +3729,7 @@ function normalizeResources(list) {
 function escAttr(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
 function updateResCounts(list) {
-  var counts = { '': list.length, azure: 0, tencent: 0, oracle: 0, render: 0 };
+  var counts = { '': list.length, azure: 0, aws: 0, tencent: 0, alicloud: 0, oracle: 0, render: 0 };
   list.forEach(function(r) { if (counts[r.cloud_type] !== undefined) counts[r.cloud_type]++; });
   Object.keys(counts).forEach(function(k) {
     var el = document.getElementById('resCount' + (k === '' ? 'All' : k.charAt(0).toUpperCase() + k.slice(1)));
@@ -3772,7 +3772,7 @@ async function syncResources() {
     }
   }
   updateResCounts(cachedResources || []);
-  renderResources(cachedResources);
+  filterResources();
   btn.textContent = origText;
   btn.disabled = false;
   applyPageRestrictions();
@@ -3781,8 +3781,7 @@ async function syncResources() {
 function filterResources() {
   var list = getFilteredResources();
   if (currentResView === 'topo') {
-    // Topology always shows all resources; only list view is filtered
-    renderTopology(cachedResources);
+    renderTopology(list);
   } else {
     renderResources(list);
   }
@@ -3870,7 +3869,7 @@ function renderResources(list) {
   });
 
   var html = '';
-  var order = ['azure', 'tencent', 'oracle', 'render'];
+  var order = ['azure', 'aws', 'tencent', 'alicloud', 'oracle', 'render'];
   order.forEach(function(ct) {
     if (!groups[ct]) return;
     var p = PLATFORMS[ct] || { name: ct, color: '#888', icon: ct[0].toUpperCase(), views: ['category'] };
@@ -3974,7 +3973,7 @@ function switchResView(view) {
   document.querySelectorAll('#resViewToggle .res-view-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.view === view); });
   var listEl = document.getElementById('resourcesList');
   var topoEl = document.getElementById('topologyContainer');
-  if (view === 'topo') { listEl.style.display = 'none'; topoEl.style.display = 'block'; renderTopology(cachedResources); }
+  if (view === 'topo') { listEl.style.display = 'none'; topoEl.style.display = 'block'; filterResources(); }
   else { listEl.style.display = ''; topoEl.style.display = 'none'; if (topoGraph) { topoGraph.destroy(); topoGraph = null; } filterResources(); }
 }
 
@@ -4042,10 +4041,32 @@ function buildG6Data(resources) {
 }
 
 function renderTopology(resources) {
-  var container = document.getElementById('topoGraph'); container.innerHTML = '';
+  var container = document.getElementById('topoGraph');
   document.getElementById('topoDetails').style.display = 'none';
-  if (!resources || resources.length === 0) { container.innerHTML = '<div class="empty-state">No resources</div>'; return; }
-  if (topoGraph) { topoGraph.destroy(); topoGraph = null; }
+  
+  // Clean up old graph and resize listener
+  if (topoGraph) {
+    try { topoGraph.destroy(); } catch (e) {}
+    topoGraph = null;
+  }
+  if (window._topoResizeHandler) {
+    window.removeEventListener('resize', window._topoResizeHandler);
+    window._topoResizeHandler = null;
+  }
+  
+  if (!resources || resources.length === 0) { 
+    container.innerHTML = '<div class="empty-state">No resources</div>'; 
+    return; 
+  }
+  
+  // Ensure container is visible and has dimensions
+  var topoContainer = document.getElementById('topologyContainer');
+  if (topoContainer.style.display === 'none' || container.offsetWidth === 0) {
+    container.innerHTML = '<div class="empty-state">Container not ready</div>';
+    return;
+  }
+  
+  container.innerHTML = '';
   var data = buildG6Data(resources), rect = container.getBoundingClientRect();
 
   topoGraph = new G6.Graph({
@@ -4070,7 +4091,22 @@ function renderTopology(resources) {
   topoGraph.on('canvas:click', function() { document.getElementById('topoDetails').style.display = 'none'; topoGraph.getNodes().forEach(function(n) { topoGraph.setItemState(n, 'selected', false); }); });
   topoGraph.on('node:mouseenter', function(evt) { topoGraph.setItemState(evt.item, 'hover', true); });
   topoGraph.on('node:mouseleave', function(evt) { topoGraph.setItemState(evt.item, 'hover', false); });
-  var rt; window.addEventListener('resize', function() { clearTimeout(rt); rt = setTimeout(function() { if (topoGraph) { var r = container.getBoundingClientRect(); topoGraph.changeSize(r.width, r.height); topoGraph.fitView([60, 100, 60, 100]); } }, 200); });
+  
+  // Add resize handler with cleanup reference
+  var rt;
+  window._topoResizeHandler = function() { 
+    clearTimeout(rt); 
+    rt = setTimeout(function() { 
+      if (topoGraph) { 
+        var r = container.getBoundingClientRect(); 
+        if (r.width > 0 && r.height > 0) {
+          topoGraph.changeSize(r.width, r.height); 
+          topoGraph.fitView([60, 100, 60, 100]); 
+        }
+      } 
+    }, 200); 
+  };
+  window.addEventListener('resize', window._topoResizeHandler);
 }
 function topoFit() { if (topoGraph) topoGraph.fitView([60, 100, 60, 100]); }
 function topoZoom(factor) { if (topoGraph) topoGraph.zoom(factor, { x: topoGraph.getWidth() / 2, y: topoGraph.getHeight() / 2 }); }
