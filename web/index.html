@@ -442,6 +442,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Tool card - compact single-level design */
 .tool-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; transition: border-color .15s; min-height: auto; }
 .tool-card:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); min-height: auto; }
+.tool-card.running { border-color: var(--warning); opacity: 0.8; }
+.tool-card.running .tool-card-header .card-status { background: rgba(255,159,10,.1); color: var(--warning); }
+.tool-card.done .tool-card-header .card-status { background: rgba(0,200,83,.1); color: var(--success); }
 .tool-card-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; color: var(--text); transition: background .1s; user-select: none; min-height: auto; }
 .tool-card-header:hover { background: rgba(255,255,255,.02); min-height: auto; }
 .tool-card-header .card-icon { font-size: 12px; opacity: .6; min-height: auto; }
@@ -1774,6 +1777,35 @@ function handleToolStartEvent(ev) {
       var name = fn.name || 'unknown';
       if (ev.session_id === CURRENT_SESSION) showToolRunning(name);
       PENDING_TOOL_CALLS.push({name: name, params: fn.arguments || '', result: ''});
+      // Add tool call card to streaming AI message
+      if (STREAMING_DIV && STREAMING_DIV.isConnected) {
+        var toolCallsContainer = STREAMING_DIV.querySelector('.tool-calls-inline');
+        if (!toolCallsContainer) {
+          toolCallsContainer = document.createElement('div');
+          toolCallsContainer.className = 'tool-calls-inline';
+          var header = document.createElement('div');
+          header.className = 'tool-calls-header expanded';
+          header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + PENDING_TOOL_CALLS.length + ')';
+          var body = document.createElement('div');
+          body.className = 'tool-calls-body';
+          body.style.display = 'flex';
+          toolCallsContainer.appendChild(header);
+          toolCallsContainer.appendChild(body);
+          STREAMING_DIV.appendChild(toolCallsContainer);
+        } else {
+          // Update count
+          var h = toolCallsContainer.querySelector('.tool-calls-header');
+          if (h) h.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + PENDING_TOOL_CALLS.length + ')';
+        }
+        // Add tool card
+        var body = toolCallsContainer.querySelector('.tool-calls-body');
+        if (body) {
+          var card = buildToolCard({name: name, params: fn.arguments || '', result: ''});
+          card.classList.add('running');
+          body.appendChild(card);
+        }
+        smartScrollBottom();
+      }
     });
   }
 }
@@ -1786,6 +1818,35 @@ function handleToolResultEvent(ev) {
       if (PENDING_TOOL_CALLS[i].name === name && !PENDING_TOOL_CALLS[i].result) {
         PENDING_TOOL_CALLS[i].result = result;
         break;
+      }
+    }
+    // Update tool card in streaming AI message
+    if (STREAMING_DIV && STREAMING_DIV.isConnected) {
+      var toolCallsContainer = STREAMING_DIV.querySelector('.tool-calls-inline');
+      if (toolCallsContainer) {
+        var cards = toolCallsContainer.querySelectorAll('.tool-card.running');
+        cards.forEach(function(card) {
+          var nameEl = card.querySelector('.tool-card-name');
+          if (nameEl && nameEl.textContent === name) {
+            card.classList.remove('running');
+            card.classList.add('done');
+            var resultEl = card.querySelector('.tool-card-result');
+            if (resultEl) {
+              resultEl.textContent = result;
+              resultEl.style.display = 'block';
+            }
+            var toggle = card.querySelector('.tool-card-toggle');
+            if (toggle) toggle.textContent = '▼';
+            card.classList.add('expanded');
+          }
+        });
+        // Update header count
+        var header = toolCallsContainer.querySelector('.tool-calls-header');
+        if (header) {
+          var doneCount = toolCallsContainer.querySelectorAll('.tool-card.done').length;
+          header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + doneCount + '/' + PENDING_TOOL_CALLS.length + ')';
+        }
+        smartScrollBottom();
       }
     }
   }
@@ -1808,12 +1869,8 @@ function handleStateChangeEvent(ev) {
       document.getElementById('chatSendBtn').disabled = false;
       CONFIRM_PENDING = false;
     }
-    // Flush pending tool calls as card group
-    if (PENDING_TOOL_CALLS.length > 0 && STREAMING_DIV) {
-      var container = document.getElementById('chatMessages');
-      renderToolCallsGroup(JSON.stringify(PENDING_TOOL_CALLS), container);
-      PENDING_TOOL_CALLS = [];
-    }
+    // Tool calls are already rendered inline in STREAMING_DIV during execution.
+    // No need to render a separate group.
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
@@ -1826,9 +1883,11 @@ function handleStateChangeEvent(ev) {
         if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
         SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString()});
       }
+      smartScrollBottom();
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
+    PENDING_TOOL_CALLS = [];
   } else if (newState === 'error') {
     if (isCurrentSession) showError(ev.payload.error_message);
     if (ev.run_id === CURRENT_RUN_ID) {
