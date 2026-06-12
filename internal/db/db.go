@@ -189,6 +189,16 @@ func (d *Database) Migrate() error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
 		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
+		`CREATE TABLE IF NOT EXISTS sync_logs (
+			id BIGSERIAL PRIMARY KEY,
+			account_id UUID REFERENCES cloud_accounts(id) ON DELETE SET NULL,
+			cloud_type VARCHAR(50),
+			status VARCHAR(20) NOT NULL,
+			message TEXT,
+			resource_count INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_sync_logs_account ON sync_logs(account_id, created_at DESC)`,
 		`CREATE TABLE IF NOT EXISTS agent_config (
 			id SERIAL PRIMARY KEY,
 			config_type VARCHAR(50) NOT NULL,

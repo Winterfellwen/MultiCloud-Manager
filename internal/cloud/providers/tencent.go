@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -125,6 +128,1300 @@ func (p *TencentProvider) RestartInstance(ctx context.Context, id string) error 
 	body, _ := json.Marshal(payload)
 	_, err := p.tencentRequest(ctx, "cvm", "RebootInstances", "2017-03-12", "", body)
 	return err
+}
+
+// ---- CBS (Cloud Block Storage) ----
+
+func (p *TencentProvider) ListVolumes(ctx context.Context, opts types.ListOptions) ([]types.Volume, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "cbs", "DescribeDisks", "2017-03-12", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			DiskSet    []struct {
+				DiskId     string `json:"DiskId"`
+				DiskName   string `json:"DiskName"`
+				DiskSize   int    `json:"DiskSize"`
+				DiskType   string `json:"DiskType"`
+				DiskState  string `json:"DiskState"`
+				Attached   bool   `json:"Attached"`
+				Placement  struct {
+					Zone string `json:"Zone"`
+				} `json:"Placement"`
+				Encrypt    bool   `json:"Encrypt"`
+				InstanceId string `json:"InstanceId"`
+				Tags       []struct {
+					Key   string `json:"Key"`
+					Value string `json:"Value"`
+				} `json:"Tags"`
+			} `json:"DiskSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var volumes []types.Volume
+	for _, d := range result.Response.DiskSet {
+		status := "available"
+		switch d.DiskState {
+		case "ATTACHED":
+			status = "in-use"
+		case "UNATTACHED":
+			status = "available"
+		case "CREATING":
+			status = "creating"
+		case "EXPIRED":
+			status = "expired"
+		default:
+			status = strings.ToLower(d.DiskState)
+		}
+		tags := make(map[string]string)
+		for _, t := range d.Tags {
+			tags[t.Key] = t.Value
+		}
+		volumes = append(volumes, types.Volume{
+			ID:         d.DiskId,
+			Name:       d.DiskName,
+			CloudType:  "tencent",
+			Region:     region,
+			Status:     status,
+			VolumeType: d.DiskType,
+			SizeGB:     d.DiskSize,
+			AttachedTo: d.InstanceId,
+			Encrypted:  d.Encrypt,
+			Spec: map[string]interface{}{
+				"disk_type": d.DiskType,
+				"disk_size": d.DiskSize,
+				"zone":      d.Placement.Zone,
+				"attached":  d.Attached,
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent CBS: listed %d volumes in %s", len(volumes), region)
+	return volumes, nil
+}
+
+func (p *TencentProvider) GetVolume(ctx context.Context, volumeID string) (*types.Volume, error) {
+	payload := map[string]interface{}{
+		"DiskIds": []string{volumeID},
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "cbs", "DescribeDisks", "2017-03-12", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			DiskSet []struct {
+				DiskId     string `json:"DiskId"`
+				DiskName   string `json:"DiskName"`
+				DiskSize   int    `json:"DiskSize"`
+				DiskType   string `json:"DiskType"`
+				DiskState  string `json:"DiskState"`
+				Attached   bool   `json:"Attached"`
+				Placement  struct {
+					Zone string `json:"Zone"`
+				} `json:"Placement"`
+				Encrypt    bool   `json:"Encrypt"`
+				InstanceId string `json:"InstanceId"`
+				Tags       []struct {
+					Key   string `json:"Key"`
+					Value string `json:"Value"`
+				} `json:"Tags"`
+			} `json:"DiskSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+	if len(result.Response.DiskSet) == 0 {
+		return nil, fmt.Errorf("tencent: volume %s not found", volumeID)
+	}
+	d := result.Response.DiskSet[0]
+	status := "available"
+	switch d.DiskState {
+	case "ATTACHED":
+		status = "in-use"
+	case "UNATTACHED":
+		status = "available"
+	case "CREATING":
+		status = "creating"
+	default:
+		status = strings.ToLower(d.DiskState)
+	}
+	tags := make(map[string]string)
+	for _, t := range d.Tags {
+		tags[t.Key] = t.Value
+	}
+	return &types.Volume{
+		ID:         d.DiskId,
+		Name:       d.DiskName,
+		CloudType:  "tencent",
+		Status:     status,
+		VolumeType: d.DiskType,
+		SizeGB:     d.DiskSize,
+		AttachedTo: d.InstanceId,
+		Encrypted:  d.Encrypt,
+		Spec: map[string]interface{}{
+			"disk_type": d.DiskType,
+			"disk_size": d.DiskSize,
+			"zone":      d.Placement.Zone,
+			"attached":  d.Attached,
+		},
+		Tags: tags,
+	}, nil
+}
+
+// ---- VPC (Virtual Private Cloud) ----
+
+func (p *TencentProvider) ListNetworks(ctx context.Context, opts types.ListOptions) ([]types.Network, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	vpcResp, err := p.tencentRequest(ctx, "vpc", "DescribeVpcs", "2017-03-12", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var vpcResult struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			VpcSet     []struct {
+				VpcId      string `json:"VpcId"`
+				VpcName    string `json:"VpcName"`
+				CidrBlock  string `json:"CidrBlock"`
+				State      string `json:"State"`
+				IsDefault  bool   `json:"IsDefault"`
+				CreateTime string `json:"CreateTime"`
+				Tags       []struct {
+					Key   string `json:"Key"`
+					Value string `json:"Value"`
+				} `json:"Tags"`
+			} `json:"VpcSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(vpcResp, &vpcResult); err != nil {
+		return nil, err
+	}
+
+	subnetResp, err := p.tencentRequest(ctx, "vpc", "DescribeSubnets", "2017-03-12", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var subnetResult struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			SubnetSet  []struct {
+				SubnetId   string `json:"SubnetId"`
+				SubnetName string `json:"SubnetName"`
+				CidrBlock  string `json:"CidrBlock"`
+				Zone       string `json:"Zone"`
+				State      string `json:"State"`
+				Tags       []struct {
+					Key   string `json:"Key"`
+					Value string `json:"Value"`
+				} `json:"Tags"`
+				VpcId string `json:"VpcId"`
+			} `json:"SubnetSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(subnetResp, &subnetResult); err != nil {
+		return nil, err
+	}
+
+	var networks []types.Network
+
+	for _, v := range vpcResult.Response.VpcSet {
+		status := "available"
+		switch v.State {
+		case "AVAILABLE":
+			status = "available"
+		case "PENDING":
+			status = "pending"
+		default:
+			status = strings.ToLower(v.State)
+		}
+		tags := make(map[string]string)
+		for _, t := range v.Tags {
+			tags[t.Key] = t.Value
+		}
+		networks = append(networks, types.Network{
+			ID:          v.VpcId,
+			Name:        v.VpcName,
+			CloudType:   "tencent",
+			Region:      region,
+			Status:      status,
+			NetworkType: "vpc",
+			CIDR:        v.CidrBlock,
+			Spec: map[string]interface{}{
+				"is_default":  v.IsDefault,
+				"create_time": v.CreateTime,
+				"type":        "vpc",
+			},
+			Tags: tags,
+		})
+	}
+
+	for _, s := range subnetResult.Response.SubnetSet {
+		status := "available"
+		switch s.State {
+		case "AVAILABLE":
+			status = "available"
+		case "PENDING":
+			status = "pending"
+		default:
+			status = strings.ToLower(s.State)
+		}
+		tags := make(map[string]string)
+		for _, t := range s.Tags {
+			tags[t.Key] = t.Value
+		}
+		networks = append(networks, types.Network{
+			ID:          s.SubnetId,
+			Name:        s.SubnetName,
+			CloudType:   "tencent",
+			Region:      region,
+			Status:      status,
+			NetworkType: "subnet",
+			CIDR:        s.CidrBlock,
+			Spec: map[string]interface{}{
+				"zone":   s.Zone,
+				"vpc_id": s.VpcId,
+				"type":   "subnet",
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent VPC: listed %d networks (%d VPCs, %d subnets) in %s", len(networks), len(vpcResult.Response.VpcSet), len(subnetResult.Response.SubnetSet), region)
+	return networks, nil
+}
+
+func (p *TencentProvider) GetNetwork(ctx context.Context, networkID string) (*types.Network, error) {
+	vpcPayload := map[string]interface{}{
+		"VpcIds": []string{networkID},
+	}
+	bodyBytes, _ := json.Marshal(vpcPayload)
+
+	vpcResp, err := p.tencentRequest(ctx, "vpc", "DescribeVpcs", "2017-03-12", "", bodyBytes)
+	if err == nil {
+		var vpcResult struct {
+			Response struct {
+				VpcSet []struct {
+					VpcId      string `json:"VpcId"`
+					VpcName    string `json:"VpcName"`
+					CidrBlock  string `json:"CidrBlock"`
+					State      string `json:"State"`
+					IsDefault  bool   `json:"IsDefault"`
+					CreateTime string `json:"CreateTime"`
+					Tags       []struct {
+						Key   string `json:"Key"`
+						Value string `json:"Value"`
+					} `json:"Tags"`
+				} `json:"VpcSet"`
+			} `json:"Response"`
+		}
+		if err := json.Unmarshal(vpcResp, &vpcResult); err == nil && len(vpcResult.Response.VpcSet) > 0 {
+			v := vpcResult.Response.VpcSet[0]
+			status := "available"
+			switch v.State {
+			case "AVAILABLE":
+				status = "available"
+			case "PENDING":
+				status = "pending"
+			default:
+				status = strings.ToLower(v.State)
+			}
+			tags := make(map[string]string)
+			for _, t := range v.Tags {
+				tags[t.Key] = t.Value
+			}
+			return &types.Network{
+				ID:          v.VpcId,
+				Name:        v.VpcName,
+				CloudType:   "tencent",
+				Status:      status,
+				NetworkType: "vpc",
+				CIDR:        v.CidrBlock,
+				Spec: map[string]interface{}{
+					"is_default":  v.IsDefault,
+					"create_time": v.CreateTime,
+					"type":        "vpc",
+				},
+				Tags: tags,
+			}, nil
+		}
+	}
+
+	subnetPayload := map[string]interface{}{
+		"SubnetIds": []string{networkID},
+	}
+	bodyBytes, _ = json.Marshal(subnetPayload)
+
+	subnetResp, err := p.tencentRequest(ctx, "vpc", "DescribeSubnets", "2017-03-12", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var subnetResult struct {
+		Response struct {
+			SubnetSet []struct {
+				SubnetId   string `json:"SubnetId"`
+				SubnetName string `json:"SubnetName"`
+				CidrBlock  string `json:"CidrBlock"`
+				Zone       string `json:"Zone"`
+				State      string `json:"State"`
+				Tags       []struct {
+					Key   string `json:"Key"`
+					Value string `json:"Value"`
+				} `json:"Tags"`
+				VpcId string `json:"VpcId"`
+			} `json:"SubnetSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(subnetResp, &subnetResult); err != nil {
+		return nil, err
+	}
+	if len(subnetResult.Response.SubnetSet) == 0 {
+		return nil, fmt.Errorf("tencent: network %s not found", networkID)
+	}
+	s := subnetResult.Response.SubnetSet[0]
+	status := "available"
+	switch s.State {
+	case "AVAILABLE":
+		status = "available"
+	case "PENDING":
+		status = "pending"
+	default:
+		status = strings.ToLower(s.State)
+	}
+	tags := make(map[string]string)
+	for _, t := range s.Tags {
+		tags[t.Key] = t.Value
+	}
+	return &types.Network{
+		ID:          s.SubnetId,
+		Name:        s.SubnetName,
+		CloudType:   "tencent",
+		Status:      status,
+		NetworkType: "subnet",
+		CIDR:        s.CidrBlock,
+		Spec: map[string]interface{}{
+			"zone":   s.Zone,
+			"vpc_id": s.VpcId,
+			"type":   "subnet",
+		},
+		Tags: tags,
+	}, nil
+}
+
+// ---- CDB (Cloud Database) ----
+
+func (p *TencentProvider) ListDatabases(ctx context.Context, opts types.ListOptions) ([]types.Database, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "cdb", "DescribeDBInstances", "2017-03-20", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			Items      []struct {
+				InstanceId    string `json:"InstanceId"`
+				InstanceName  string `json:"InstanceName"`
+				Cpu           int    `json:"Cpu"`
+				Memory        int    `json:"Memory"`
+				EngineVersion string `json:"EngineVersion"`
+				Status        int    `json:"Status"`
+				DeviceType    string `json:"DeviceType"`
+				ResourceTags  []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"ResourceTags"`
+			} `json:"Items"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var databases []types.Database
+	for _, db := range result.Response.Items {
+		status := "running"
+		switch db.Status {
+		case 0:
+			status = "creating"
+		case 1:
+			status = "running"
+		case 4:
+			status = "isolated"
+		case 5:
+			status = "deleting"
+		case -2:
+			status = "stopped"
+		default:
+			status = fmt.Sprintf("unknown-%d", db.Status)
+		}
+		tags := make(map[string]string)
+		for _, t := range db.ResourceTags {
+			tags[t.TagKey] = t.TagValue
+		}
+		databases = append(databases, types.Database{
+			ID:          db.InstanceId,
+			Name:        db.InstanceName,
+			CloudType:   "tencent",
+			Region:      region,
+			Status:      status,
+			Engine:      "MySQL",
+			EngineVer:   db.EngineVersion,
+			InstanceCls: db.DeviceType,
+			Spec: map[string]interface{}{
+				"cpu":         db.Cpu,
+				"memory_mb":   db.Memory,
+				"device_type": db.DeviceType,
+				"engine":      "MySQL",
+				"engine_ver":  db.EngineVersion,
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent CDB: listed %d databases in %s", len(databases), region)
+	return databases, nil
+}
+
+func (p *TencentProvider) GetDatabase(ctx context.Context, databaseID string) (*types.Database, error) {
+	payload := map[string]interface{}{
+		"InstanceIds": []string{databaseID},
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "cdb", "DescribeDBInstances", "2017-03-20", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			Items []struct {
+				InstanceId    string `json:"InstanceId"`
+				InstanceName  string `json:"InstanceName"`
+				Cpu           int    `json:"Cpu"`
+				Memory        int    `json:"Memory"`
+				EngineVersion string `json:"EngineVersion"`
+				Status        int    `json:"Status"`
+				DeviceType    string `json:"DeviceType"`
+				ResourceTags  []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"ResourceTags"`
+			} `json:"Items"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+	if len(result.Response.Items) == 0 {
+		return nil, fmt.Errorf("tencent: database %s not found", databaseID)
+	}
+	db := result.Response.Items[0]
+	status := "running"
+	switch db.Status {
+	case 0:
+		status = "creating"
+	case 1:
+		status = "running"
+	case 4:
+		status = "isolated"
+	case -2:
+		status = "stopped"
+	default:
+		status = fmt.Sprintf("unknown-%d", db.Status)
+	}
+	tags := make(map[string]string)
+	for _, t := range db.ResourceTags {
+		tags[t.TagKey] = t.TagValue
+	}
+	return &types.Database{
+		ID:          db.InstanceId,
+		Name:        db.InstanceName,
+		CloudType:   "tencent",
+		Status:      status,
+		Engine:      "MySQL",
+		EngineVer:   db.EngineVersion,
+		InstanceCls: db.DeviceType,
+		Spec: map[string]interface{}{
+			"cpu":         db.Cpu,
+			"memory_mb":   db.Memory,
+			"device_type": db.DeviceType,
+			"engine":      "MySQL",
+			"engine_ver":  db.EngineVersion,
+		},
+		Tags: tags,
+	}, nil
+}
+
+// ---- CLB (Cloud Load Balancer) ----
+
+func (p *TencentProvider) ListLoadBalancers(ctx context.Context, opts types.ListOptions) ([]types.LoadBalancer, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "clb", "DescribeLoadBalancers", "2017-03-12", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount      int `json:"TotalCount"`
+			LoadBalancerSet []struct {
+				LoadBalancerId   string   `json:"LoadBalancerId"`
+				LoadBalancerName string   `json:"LoadBalancerName"`
+				LoadBalancerType string   `json:"LoadBalancerType"`
+				LoadBalancerVips []string `json:"LoadBalancerVips"`
+				Status           int      `json:"Status"`
+				Region           string   `json:"Region"`
+				CreateTime       string   `json:"CreateTime"`
+				Tags             []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"Tags"`
+			} `json:"LoadBalancerSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var lbs []types.LoadBalancer
+	for _, lb := range result.Response.LoadBalancerSet {
+		status := "running"
+		switch lb.Status {
+		case 0:
+			status = "creating"
+		case 1:
+			status = "running"
+		case 3:
+			status = "stopped"
+		default:
+			status = fmt.Sprintf("unknown-%d", lb.Status)
+		}
+		tags := make(map[string]string)
+		for _, t := range lb.Tags {
+			tags[t.TagKey] = t.TagValue
+		}
+		lbs = append(lbs, types.LoadBalancer{
+			ID:        lb.LoadBalancerId,
+			Name:      lb.LoadBalancerName,
+			CloudType: "tencent",
+			Region:    lb.Region,
+			Status:    status,
+			LBType:    lb.LoadBalancerType,
+			Spec: map[string]interface{}{
+				"lb_type":    lb.LoadBalancerType,
+				"vips":       lb.LoadBalancerVips,
+				"create_time": lb.CreateTime,
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent CLB: listed %d load balancers in %s", len(lbs), region)
+	return lbs, nil
+}
+
+func (p *TencentProvider) GetLoadBalancer(ctx context.Context, lbID string) (*types.LoadBalancer, error) {
+	payload := map[string]interface{}{
+		"LoadBalancerIds": []string{lbID},
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "clb", "DescribeLoadBalancers", "2017-03-12", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			LoadBalancerSet []struct {
+				LoadBalancerId   string   `json:"LoadBalancerId"`
+				LoadBalancerName string   `json:"LoadBalancerName"`
+				LoadBalancerType string   `json:"LoadBalancerType"`
+				LoadBalancerVips []string `json:"LoadBalancerVips"`
+				Status           int      `json:"Status"`
+				Region           string   `json:"Region"`
+				CreateTime       string   `json:"CreateTime"`
+				Tags             []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"Tags"`
+			} `json:"LoadBalancerSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+	if len(result.Response.LoadBalancerSet) == 0 {
+		return nil, fmt.Errorf("tencent: load balancer %s not found", lbID)
+	}
+	lb := result.Response.LoadBalancerSet[0]
+	status := "running"
+	switch lb.Status {
+	case 0:
+		status = "creating"
+	case 1:
+		status = "running"
+	case 3:
+		status = "stopped"
+	default:
+		status = fmt.Sprintf("unknown-%d", lb.Status)
+	}
+	tags := make(map[string]string)
+	for _, t := range lb.Tags {
+		tags[t.TagKey] = t.TagValue
+	}
+	return &types.LoadBalancer{
+		ID:        lb.LoadBalancerId,
+		Name:      lb.LoadBalancerName,
+		CloudType: "tencent",
+		Region:    lb.Region,
+		Status:    status,
+		LBType:    lb.LoadBalancerType,
+		Spec: map[string]interface{}{
+			"lb_type":    lb.LoadBalancerType,
+			"vips":       lb.LoadBalancerVips,
+			"create_time": lb.CreateTime,
+		},
+		Tags: tags,
+	}, nil
+}
+
+// ---- COS (Cloud Object Storage) ----
+
+type cosListBucketsResult struct {
+	Buckets struct {
+		Bucket []struct {
+			Name         string `xml:"Name"`
+			Location     string `xml:"Location"`
+			CreationDate string `xml:"CreationDate"`
+		} `xml:"Bucket"`
+	} `xml:"Buckets"`
+}
+
+func (p *TencentProvider) ListBuckets(ctx context.Context, opts types.ListOptions) ([]types.Bucket, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+
+	respBody, err := p.cosRequest(ctx, "GET", fmt.Sprintf("https://cos.%s.myqcloud.com/", region), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result cosListBucketsResult
+	if err := xml.Unmarshal(respBody, &result); err != nil {
+		return nil, err
+	}
+
+	var buckets []types.Bucket
+	for _, b := range result.Buckets.Bucket {
+		buckets = append(buckets, types.Bucket{
+			ID:        b.Name,
+			Name:      b.Name,
+			CloudType: "tencent",
+			Region:    b.Location,
+			Status:    "active",
+			Spec: map[string]interface{}{
+				"location":       b.Location,
+				"creation_date":  b.CreationDate,
+			},
+		})
+	}
+
+	log.Printf("Tencent COS: listed %d buckets", len(buckets))
+	return buckets, nil
+}
+
+func (p *TencentProvider) GetBucket(ctx context.Context, bucketID string) (*types.Bucket, error) {
+	buckets, err := p.ListBuckets(ctx, types.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, b := range buckets {
+		if b.ID == bucketID || b.Name == bucketID {
+			return &b, nil
+		}
+	}
+	return nil, fmt.Errorf("tencent: bucket %s not found", bucketID)
+}
+
+// ---- TKE (Tencent Kubernetes Engine) ----
+
+func (p *TencentProvider) ListClusters(ctx context.Context, opts types.ListOptions) ([]types.Cluster, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "tke", "DescribeClusters", "2018-05-25", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			Clusters   []struct {
+				ClusterId          string `json:"ClusterId"`
+				ClusterName        string `json:"ClusterName"`
+				ClusterStatus      string `json:"ClusterStatus"`
+				ClusterVersion     string `json:"ClusterVersion"`
+				ClusterNodeNum     int    `json:"ClusterNodeNum"`
+				ClusterDescription string `json:"ClusterDescription"`
+				TagSpecification   []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"TagSpecification"`
+			} `json:"Clusters"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var clusters []types.Cluster
+	for _, c := range result.Response.Clusters {
+		status := "running"
+		switch c.ClusterStatus {
+		case "Running":
+			status = "running"
+		case "Creating":
+			status = "creating"
+		case "Idling":
+			status = "idling"
+		case "Scaling":
+			status = "scaling"
+		case "Upgrading":
+			status = "upgrading"
+		case "Abnormal":
+			status = "abnormal"
+		default:
+			status = strings.ToLower(c.ClusterStatus)
+		}
+		tags := make(map[string]string)
+		for _, t := range c.TagSpecification {
+			tags[t.TagKey] = t.TagValue
+		}
+		clusters = append(clusters, types.Cluster{
+			ID:          c.ClusterId,
+			Name:        c.ClusterName,
+			CloudType:   "tencent",
+			Region:      region,
+			Status:      status,
+			ClusterType: "tke",
+			Version:     c.ClusterVersion,
+			NodeCount:   c.ClusterNodeNum,
+			Spec: map[string]interface{}{
+				"cluster_version": c.ClusterVersion,
+				"node_count":      c.ClusterNodeNum,
+				"description":     c.ClusterDescription,
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent TKE: listed %d clusters in %s", len(clusters), region)
+	return clusters, nil
+}
+
+func (p *TencentProvider) GetCluster(ctx context.Context, clusterID string) (*types.Cluster, error) {
+	payload := map[string]interface{}{
+		"ClusterIds": []string{clusterID},
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "tke", "DescribeClusters", "2018-05-25", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			Clusters []struct {
+				ClusterId          string `json:"ClusterId"`
+				ClusterName        string `json:"ClusterName"`
+				ClusterStatus      string `json:"ClusterStatus"`
+				ClusterVersion     string `json:"ClusterVersion"`
+				ClusterNodeNum     int    `json:"ClusterNodeNum"`
+				ClusterDescription string `json:"ClusterDescription"`
+				TagSpecification   []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"TagSpecification"`
+			} `json:"Clusters"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+	if len(result.Response.Clusters) == 0 {
+		return nil, fmt.Errorf("tencent: cluster %s not found", clusterID)
+	}
+	c := result.Response.Clusters[0]
+	status := "running"
+	switch c.ClusterStatus {
+	case "Running":
+		status = "running"
+	case "Creating":
+		status = "creating"
+	case "Idling":
+		status = "idling"
+	default:
+		status = strings.ToLower(c.ClusterStatus)
+	}
+	tags := make(map[string]string)
+	for _, t := range c.TagSpecification {
+		tags[t.TagKey] = t.TagValue
+	}
+	return &types.Cluster{
+		ID:          c.ClusterId,
+		Name:        c.ClusterName,
+		CloudType:   "tencent",
+		Status:      status,
+		ClusterType: "tke",
+		Version:     c.ClusterVersion,
+		NodeCount:   c.ClusterNodeNum,
+		Spec: map[string]interface{}{
+			"cluster_version": c.ClusterVersion,
+			"node_count":      c.ClusterNodeNum,
+			"description":     c.ClusterDescription,
+		},
+		Tags: tags,
+	}, nil
+}
+
+// ---- SCF (Serverless Cloud Function) ----
+
+func (p *TencentProvider) ListFunctions(ctx context.Context, opts types.ListOptions) ([]types.Function, error) {
+	region := opts.Region
+	if region == "" {
+		region = "ap-guangzhou"
+	}
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "scf", "ListFunctions", "2018-04-16", region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			Functions  []struct {
+				FunctionId   string `json:"FunctionId"`
+				FunctionName string `json:"FunctionName"`
+				Runtime      string `json:"Runtime"`
+				Handler      string `json:"Handler"`
+				Timeout      int    `json:"Timeout"`
+				MemorySize   int    `json:"MemorySize"`
+				Status       string `json:"Status"`
+				AddTime      string `json:"AddTime"`
+				ModTime      string `json:"ModTime"`
+				Tags         []struct {
+					Key   string `json:"Key"`
+					Value string `json:"Value"`
+				} `json:"Tags"`
+			} `json:"Functions"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var functions []types.Function
+	for _, fn := range result.Response.Functions {
+		status := "active"
+		switch fn.Status {
+		case "Active":
+			status = "active"
+		case "Creating":
+			status = "creating"
+		case "Updating":
+			status = "updating"
+		case "UpdateFailed", "CreateFailed":
+			status = "error"
+		default:
+			status = strings.ToLower(fn.Status)
+		}
+		tags := make(map[string]string)
+		for _, t := range fn.Tags {
+			tags[t.Key] = t.Value
+		}
+		functions = append(functions, types.Function{
+			ID:         fn.FunctionId,
+			Name:       fn.FunctionName,
+			CloudType:  "tencent",
+			Region:     region,
+			Status:     status,
+			Runtime:    fn.Runtime,
+			Handler:    fn.Handler,
+			Timeout:    fn.Timeout,
+			MemorySize: fn.MemorySize,
+			Spec: map[string]interface{}{
+				"runtime":     fn.Runtime,
+				"handler":     fn.Handler,
+				"timeout":     fn.Timeout,
+				"memory_size": fn.MemorySize,
+				"add_time":    fn.AddTime,
+				"mod_time":    fn.ModTime,
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent SCF: listed %d functions in %s", len(functions), region)
+	return functions, nil
+}
+
+func (p *TencentProvider) GetFunction(ctx context.Context, functionID string) (*types.Function, error) {
+	payload := map[string]interface{}{
+		"FunctionName": functionID,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "scf", "GetFunction", "2018-04-16", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			FunctionId   string `json:"FunctionId"`
+			FunctionName string `json:"FunctionName"`
+			Runtime      string `json:"Runtime"`
+			Handler      string `json:"Handler"`
+			Timeout      int    `json:"Timeout"`
+			MemorySize   int    `json:"MemorySize"`
+			Status       string `json:"Status"`
+			AddTime      string `json:"AddTime"`
+			ModTime      string `json:"ModTime"`
+			Tags         []struct {
+				Key   string `json:"Key"`
+				Value string `json:"Value"`
+			} `json:"Tags"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	fn := result.Response
+	status := "active"
+	switch fn.Status {
+	case "Active":
+		status = "active"
+	case "Creating":
+		status = "creating"
+	default:
+		status = strings.ToLower(fn.Status)
+	}
+	tags := make(map[string]string)
+	for _, t := range fn.Tags {
+		tags[t.Key] = t.Value
+	}
+	return &types.Function{
+		ID:         fn.FunctionId,
+		Name:       fn.FunctionName,
+		CloudType:  "tencent",
+		Status:     status,
+		Runtime:    fn.Runtime,
+		Handler:    fn.Handler,
+		Timeout:    fn.Timeout,
+		MemorySize: fn.MemorySize,
+		Spec: map[string]interface{}{
+			"runtime":     fn.Runtime,
+			"handler":     fn.Handler,
+			"timeout":     fn.Timeout,
+			"memory_size": fn.MemorySize,
+			"add_time":    fn.AddTime,
+			"mod_time":    fn.ModTime,
+		},
+		Tags: tags,
+	}, nil
+}
+
+// ---- DNSPod ----
+
+func (p *TencentProvider) ListDNSZones(ctx context.Context, opts types.ListOptions) ([]types.DNSZone, error) {
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "dnspod", "DescribeDomainList", "2021-03-23", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount int `json:"TotalCount"`
+			DomainList []struct {
+				DomainId    int    `json:"DomainId"`
+				Domain      string `json:"Domain"`
+				Status      string `json:"Status"`
+				RecordCount int    `json:"RecordCount"`
+				CreatedOn   string `json:"CreatedOn"`
+				GroupId     int    `json:"GroupId"`
+			} `json:"DomainList"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var zones []types.DNSZone
+	for _, z := range result.Response.DomainList {
+		status := "active"
+		switch z.Status {
+		case "ENABLE":
+			status = "active"
+		case "DISABLE":
+			status = "disabled"
+		case "SPAM":
+			status = "spam"
+		case "LOCK":
+			status = "locked"
+		default:
+			status = strings.ToLower(z.Status)
+		}
+		zones = append(zones, types.DNSZone{
+			ID:          fmt.Sprintf("%d", z.DomainId),
+			Name:        z.Domain,
+			CloudType:   "tencent",
+			Status:      status,
+			ZoneType:    "public",
+			RecordCount: z.RecordCount,
+			Spec: map[string]interface{}{
+				"domain_id":   z.DomainId,
+				"domain":      z.Domain,
+				"group_id":    z.GroupId,
+				"created_on":  z.CreatedOn,
+			},
+		})
+	}
+
+	log.Printf("Tencent DNSPod: listed %d zones", len(zones))
+	return zones, nil
+}
+
+func (p *TencentProvider) GetDNSZone(ctx context.Context, zoneID string) (*types.DNSZone, error) {
+	zones, err := p.ListDNSZones(ctx, types.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, z := range zones {
+		if z.ID == zoneID || z.Name == zoneID {
+			return &z, nil
+		}
+	}
+	return nil, fmt.Errorf("tencent: DNS zone %s not found", zoneID)
+}
+
+// ---- SSL Certificates ----
+
+func (p *TencentProvider) ListCertificates(ctx context.Context, opts types.ListOptions) ([]types.Certificate, error) {
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "ssl", "DescribeCertificates", "2019-12-05", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount   int `json:"TotalCount"`
+			Certificates []struct {
+				CertificateId    string `json:"CertificateId"`
+				CertificateAlias string `json:"CertificateAlias"`
+				Domain           string `json:"Domain"`
+				CertBeginTime    string `json:"CertBeginTime"`
+				CertEndTime      string `json:"CertEndTime"`
+				Status           int    `json:"Status"`
+				Tags             []struct {
+					TagKey   string `json:"TagKey"`
+					TagValue string `json:"TagValue"`
+				} `json:"Tags"`
+			} `json:"Certificates"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var certs []types.Certificate
+	for _, c := range result.Response.Certificates {
+		status := "active"
+		switch c.Status {
+		case 1:
+			status = "pending"
+		case 2:
+			status = "active"
+		case 3:
+			status = "expired"
+		case 4:
+			status = "revoked"
+		case 5:
+			status = "deleted"
+		default:
+			status = fmt.Sprintf("unknown-%d", c.Status)
+		}
+		tags := make(map[string]string)
+		for _, t := range c.Tags {
+			tags[t.TagKey] = t.TagValue
+		}
+		certs = append(certs, types.Certificate{
+			ID:        c.CertificateId,
+			Name:      c.CertificateAlias,
+			CloudType: "tencent",
+			Status:    status,
+			Domain:    c.Domain,
+			NotBefore: c.CertBeginTime,
+			NotAfter:  c.CertEndTime,
+			Spec: map[string]interface{}{
+				"domain":          c.Domain,
+				"cert_begin_time": c.CertBeginTime,
+				"cert_end_time":   c.CertEndTime,
+			},
+			Tags: tags,
+		})
+	}
+
+	log.Printf("Tencent SSL: listed %d certificates", len(certs))
+	return certs, nil
+}
+
+func (p *TencentProvider) GetCertificate(ctx context.Context, certID string) (*types.Certificate, error) {
+	payload := map[string]interface{}{
+		"CertificateId": certID,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, "ssl", "DescribeCertificate", "2019-12-05", "", bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			CertificateId    string `json:"CertificateId"`
+			CertificateAlias string `json:"CertificateAlias"`
+			Domain           string `json:"Domain"`
+			CertBeginTime    string `json:"CertBeginTime"`
+			CertEndTime      string `json:"CertEndTime"`
+			Status           int    `json:"Status"`
+			Tags             []struct {
+				TagKey   string `json:"TagKey"`
+				TagValue string `json:"TagValue"`
+			} `json:"Tags"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	status := "active"
+	switch result.Response.Status {
+	case 1:
+		status = "pending"
+	case 2:
+		status = "active"
+	case 3:
+		status = "expired"
+	case 4:
+		status = "revoked"
+	default:
+		status = fmt.Sprintf("unknown-%d", result.Response.Status)
+	}
+	tags := make(map[string]string)
+	for _, t := range result.Response.Tags {
+		tags[t.TagKey] = t.TagValue
+	}
+	return &types.Certificate{
+		ID:        result.Response.CertificateId,
+		Name:      result.Response.CertificateAlias,
+		CloudType: "tencent",
+		Status:    status,
+		Domain:    result.Response.Domain,
+		NotBefore: result.Response.CertBeginTime,
+		NotAfter:  result.Response.CertEndTime,
+		Spec: map[string]interface{}{
+			"domain":          result.Response.Domain,
+			"cert_begin_time": result.Response.CertBeginTime,
+			"cert_end_time":   result.Response.CertEndTime,
+		},
+		Tags: tags,
+	}, nil
 }
 
 func (p *TencentProvider) tencentRequest(ctx context.Context, service, action, version, region string, body []byte) ([]byte, error) {
@@ -283,4 +1580,62 @@ func hmacSHA256(key, data []byte) []byte {
 	h := hmac.New(sha256.New, key)
 	h.Write(data)
 	return h.Sum(nil)
+}
+
+func hmacSHA1(key, data []byte) []byte {
+	h := hmac.New(sha1.New, key)
+	h.Write(data)
+	return h.Sum(nil)
+}
+
+func (p *TencentProvider) cosRequest(ctx context.Context, method, endpoint string, body []byte) ([]byte, error) {
+	host := strings.TrimPrefix(endpoint, "https://")
+	host = strings.Split(host, "/")[0]
+
+	startTime := time.Now().Unix()
+	endTime := startTime + 3600
+	keyTime := fmt.Sprintf("%d;%d", startTime, endTime)
+
+	httpMethod := strings.ToLower(method)
+	canonicalURI := "/"
+	canonicalQueryString := ""
+	canonicalHeaders := fmt.Sprintf("host=%s\n", strings.ToLower(host))
+	signedHeaders := "host"
+
+	signKey := hmacSHA1([]byte(p.secretKey), []byte(keyTime))
+
+	stringToSign := fmt.Sprintf("sha1\n%s\n%s\n%s\n%s\n%s\n%s",
+		keyTime, httpMethod, canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders)
+
+	signature := hex.EncodeToString(hmacSHA1(signKey, []byte(stringToSign)))
+
+	auth := fmt.Sprintf("q-sign-algorithm=sha1&q-ak=%s&q-sign-time=%s&q-key-time=%s&q-header-list=%s&q-url-param-list=&q-signature=%s",
+		p.secretID, keyTime, keyTime, signedHeaders, signature)
+
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", auth)
+	req.Header.Set("Host", strings.ToLower(host))
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("tencent COS error %d: %s", resp.StatusCode, string(respBody))
+	}
+	return respBody, nil
 }

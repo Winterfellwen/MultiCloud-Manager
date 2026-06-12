@@ -209,22 +209,40 @@ func (h *AccountsHandler) Update(c *gin.Context) {
 	if req.CloudType == "" {
 		req.CloudType = existing.CloudType
 	}
-	// Credentials: only overwrite if the client actually sent non-empty content.
-	// Empty string means "keep what we have", so a prefilled-then-resubmitted
-	// form doesn't wipe stored secrets.
+	// Credentials: merge partial update with existing vault data
+	// Empty string means "keep all existing"
+	// Non-empty JSON means merge provided fields with existing
 	if req.Credentials == "" {
 		req.Credentials = existing.Credentials
 	} else {
-		// Update credentials in vault
+		// Load existing credentials from vault
+		var existingCreds map[string]interface{}
+		if existing.VaultPath != "" && h.vault != nil {
+			if sec, err := h.vault.GetSecret(existing.VaultPath); err == nil && sec != nil {
+				existingCreds = sec
+			}
+		}
+		if existingCreds == nil {
+			existingCreds = make(map[string]interface{})
+		}
+		
+		// Parse incoming partial credentials
+		var partialCreds map[string]interface{}
+		if err := json.Unmarshal([]byte(req.Credentials), &partialCreds); err != nil {
+			partialCreds = map[string]interface{}{"raw": req.Credentials}
+		}
+		
+		// Merge: provided fields override existing, missing fields keep existing
+		for k, v := range partialCreds {
+			existingCreds[k] = v
+		}
+		
+		// Update vault with merged credentials
 		if h.vault != nil {
 			if existing.VaultPath == "" {
 				existing.VaultPath = fmt.Sprintf("cloud/%s/%s", req.CloudType, id)
 			}
-			var credData map[string]interface{}
-			if err := json.Unmarshal([]byte(req.Credentials), &credData); err != nil {
-				credData = map[string]interface{}{"raw": req.Credentials}
-			}
-			if err := h.vault.SetSecret(existing.VaultPath, credData); err != nil {
+			if err := h.vault.SetSecret(existing.VaultPath, existingCreds); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update vault: " + err.Error()})
 				return
 			}

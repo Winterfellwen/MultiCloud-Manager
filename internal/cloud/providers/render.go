@@ -268,7 +268,64 @@ func (p *RenderProvider) doGet(ctx context.Context, url string) ([]byte, error) 
 }
 
 func (p *RenderProvider) GetInstance(ctx context.Context, id string) (*types.Instance, error) {
-	return nil, fmt.Errorf("not implemented")
+	body, err := p.doGet(ctx, fmt.Sprintf("https://api.render.com/v1/services/%s", id))
+	if err != nil {
+		return nil, fmt.Errorf("render: get service: %w", err)
+	}
+
+	var wrapped map[string]json.RawMessage
+	if err := json.Unmarshal(body, &wrapped); err != nil {
+		return nil, fmt.Errorf("render: unmarshal service: %w", err)
+	}
+
+	srvData, ok := wrapped["service"]
+	if !ok {
+		return nil, fmt.Errorf("render: response missing service key")
+	}
+
+	var s struct {
+		ID             string `json:"id"`
+		Name           string `json:"name"`
+		Slug           string `json:"slug"`
+		Type           string `json:"type"`
+		State          string `json:"state"`
+		Suspended      string `json:"suspended"`
+		CreatedAt      string `json:"createdAt"`
+		ServiceDetails struct {
+			Region string `json:"region"`
+			Plan   string `json:"plan"`
+			URL    string `json:"url"`
+		} `json:"serviceDetails"`
+		DashboardUrl string `json:"dashboardUrl"`
+	}
+	if err := json.Unmarshal(srvData, &s); err != nil {
+		return nil, fmt.Errorf("render: unmarshal service details: %w", err)
+	}
+
+	status := "running"
+	if s.State == "suspended" || s.State == "deactivated" || s.Suspended != "not_suspended" {
+		status = "stopped"
+	}
+
+	region := s.ServiceDetails.Region
+	if region == "" {
+		region = "singapore"
+	}
+
+	return &types.Instance{
+		ID:           s.ID,
+		Name:         s.Name,
+		CloudType:    "render",
+		Region:       region,
+		Status:       status,
+		InstanceType: s.Type,
+		Spec: map[string]interface{}{
+			"plan":          s.ServiceDetails.Plan,
+			"url":           s.ServiceDetails.URL,
+			"slug":          s.Slug,
+			"dashboard_url": s.DashboardUrl,
+		},
+	}, nil
 }
 
 func (p *RenderProvider) renderAction(ctx context.Context, actionURL string) error {
@@ -350,4 +407,379 @@ func (p *RenderProvider) DoRawRequest(ctx context.Context, method, reqURL string
 		Headers:    respHeaders,
 		Body:       respBody,
 	}, nil
+}
+
+func (p *RenderProvider) ListVolumes(ctx context.Context, opts types.ListOptions) ([]types.Volume, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) ListNetworks(ctx context.Context, opts types.ListOptions) ([]types.Network, error) {
+	body, err := p.doGet(ctx, "https://api.render.com/v1/private-networks?limit=100")
+	if err != nil {
+		log.Printf("render: list private networks: %v", err)
+		return nil, nil
+	}
+
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, nil
+	}
+
+	var networks []types.Network
+	for _, item := range raw {
+		netData, ok := item["privateNetwork"]
+		if !ok {
+			continue
+		}
+		var net struct {
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Region    string `json:"region"`
+			OwnerID   string `json:"ownerId"`
+			EnvID     string `json:"environmentId"`
+			CIDRBlock string `json:"cidrBlock"`
+			CreatedOn string `json:"createdOn"`
+		}
+		if err := json.Unmarshal(netData, &net); err != nil {
+			continue
+		}
+		networks = append(networks, types.Network{
+			ID:          net.ID,
+			Name:        net.Name,
+			CloudType:   "render",
+			Region:      net.Region,
+			Status:      "active",
+			NetworkType: "private_network",
+			CIDR:        net.CIDRBlock,
+			Spec: map[string]interface{}{
+				"owner_id": net.OwnerID,
+				"env_id":   net.EnvID,
+			},
+		})
+	}
+	return networks, nil
+}
+
+func (p *RenderProvider) listPostgresAsDBs(ctx context.Context) ([]types.Database, error) {
+	body, err := p.doGet(ctx, "https://api.render.com/v1/postgres?limit=100")
+	if err != nil {
+		return nil, err
+	}
+
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("postgres unmarshal: %w", err)
+	}
+
+	var databases []types.Database
+	for _, item := range raw {
+		pgData, ok := item["postgres"]
+		if !ok {
+			continue
+		}
+		var pg struct {
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Region    string `json:"region"`
+			Status    string `json:"status"`
+			Plan      string `json:"plan"`
+			Version   string `json:"version"`
+			Suspended string `json:"suspended"`
+			CreatedAt string `json:"createdAt"`
+		}
+		if err := json.Unmarshal(pgData, &pg); err != nil {
+			continue
+		}
+
+		status := "running"
+		if pg.Status != "available" || pg.Suspended != "not_suspended" {
+			status = "stopped"
+		}
+
+		region := pg.Region
+		if region == "" {
+			region = "singapore"
+		}
+
+		databases = append(databases, types.Database{
+			ID:          pg.ID,
+			Name:        pg.Name,
+			CloudType:   "render",
+			Region:      region,
+			Status:      status,
+			Engine:      "postgres",
+			EngineVer:   pg.Version,
+			InstanceCls: pg.Plan,
+			Spec: map[string]interface{}{
+				"plan":    pg.Plan,
+				"version": pg.Version,
+			},
+		})
+	}
+	return databases, nil
+}
+
+func (p *RenderProvider) listKeyValueAsDBs(ctx context.Context) ([]types.Database, error) {
+	body, err := p.doGet(ctx, "https://api.render.com/v1/key-value?limit=100")
+	if err != nil {
+		return nil, err
+	}
+
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("key-value unmarshal: %w", err)
+	}
+
+	var databases []types.Database
+	for _, item := range raw {
+		kvData, ok := item["keyValue"]
+		if !ok {
+			continue
+		}
+		var kv struct {
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Region    string `json:"region"`
+			Status    string `json:"status"`
+			Plan      string `json:"plan"`
+			Version   string `json:"version"`
+			Suspended string `json:"suspended"`
+			CreatedAt string `json:"createdAt"`
+		}
+		if err := json.Unmarshal(kvData, &kv); err != nil {
+			continue
+		}
+
+		status := "running"
+		if kv.Status != "available" {
+			status = "stopped"
+		}
+
+		region := kv.Region
+		if region == "" {
+			region = "singapore"
+		}
+
+		databases = append(databases, types.Database{
+			ID:          kv.ID,
+			Name:        kv.Name,
+			CloudType:   "render",
+			Region:      region,
+			Status:      status,
+			Engine:      "redis",
+			EngineVer:   kv.Version,
+			InstanceCls: kv.Plan,
+			Spec: map[string]interface{}{
+				"plan":    kv.Plan,
+				"version": kv.Version,
+			},
+		})
+	}
+	return databases, nil
+}
+
+func (p *RenderProvider) ListDatabases(ctx context.Context, opts types.ListOptions) ([]types.Database, error) {
+	var databases []types.Database
+
+	pgs, err := p.listPostgresAsDBs(ctx)
+	if err != nil {
+		log.Printf("render: list postgres databases: %v", err)
+	} else {
+		databases = append(databases, pgs...)
+	}
+
+	kvs, err := p.listKeyValueAsDBs(ctx)
+	if err != nil {
+		log.Printf("render: list key-value databases: %v", err)
+	} else {
+		databases = append(databases, kvs...)
+	}
+
+	return databases, nil
+}
+
+func (p *RenderProvider) ListLoadBalancers(ctx context.Context, opts types.ListOptions) ([]types.LoadBalancer, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) ListBuckets(ctx context.Context, opts types.ListOptions) ([]types.Bucket, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) ListClusters(ctx context.Context, opts types.ListOptions) ([]types.Cluster, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) ListFunctions(ctx context.Context, opts types.ListOptions) ([]types.Function, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) ListDNSZones(ctx context.Context, opts types.ListOptions) ([]types.DNSZone, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) ListCertificates(ctx context.Context, opts types.ListOptions) ([]types.Certificate, error) {
+	return nil, nil
+}
+
+func (p *RenderProvider) GetVolume(ctx context.Context, volumeID string) (*types.Volume, error) {
+	return nil, fmt.Errorf("render: volumes not supported")
+}
+
+func (p *RenderProvider) GetNetwork(ctx context.Context, networkID string) (*types.Network, error) {
+	body, err := p.doGet(ctx, fmt.Sprintf("https://api.render.com/v1/private-networks/%s", networkID))
+	if err != nil {
+		return nil, fmt.Errorf("render: get private network: %w", err)
+	}
+
+	var wrapped map[string]json.RawMessage
+	if err := json.Unmarshal(body, &wrapped); err != nil {
+		return nil, fmt.Errorf("render: unmarshal private network: %w", err)
+	}
+
+	netData, ok := wrapped["privateNetwork"]
+	if !ok {
+		return nil, fmt.Errorf("render: response missing privateNetwork key")
+	}
+
+	var net struct {
+		ID        string `json:"id"`
+		Name      string `json:"name"`
+		Region    string `json:"region"`
+		OwnerID   string `json:"ownerId"`
+		EnvID     string `json:"environmentId"`
+		CIDRBlock string `json:"cidrBlock"`
+		CreatedOn string `json:"createdOn"`
+	}
+	if err := json.Unmarshal(netData, &net); err != nil {
+		return nil, fmt.Errorf("render: unmarshal network details: %w", err)
+	}
+
+	return &types.Network{
+		ID:          net.ID,
+		Name:        net.Name,
+		CloudType:   "render",
+		Region:      net.Region,
+		Status:      "active",
+		NetworkType: "private_network",
+		CIDR:        net.CIDRBlock,
+		Spec: map[string]interface{}{
+			"owner_id": net.OwnerID,
+			"env_id":   net.EnvID,
+		},
+	}, nil
+}
+
+func (p *RenderProvider) GetDatabase(ctx context.Context, databaseID string) (*types.Database, error) {
+	body, err := p.doGet(ctx, fmt.Sprintf("https://api.render.com/v1/postgres/%s", databaseID))
+	if err == nil {
+		var wrapped map[string]json.RawMessage
+		if err := json.Unmarshal(body, &wrapped); err == nil {
+			pgData, ok := wrapped["postgres"]
+			if ok {
+				var pg struct {
+					ID        string `json:"id"`
+					Name      string `json:"name"`
+					Region    string `json:"region"`
+					Status    string `json:"status"`
+					Plan      string `json:"plan"`
+					Version   string `json:"version"`
+					Suspended string `json:"suspended"`
+				}
+				if err := json.Unmarshal(pgData, &pg); err == nil {
+					status := "running"
+					if pg.Status != "available" || pg.Suspended != "not_suspended" {
+						status = "stopped"
+					}
+					region := pg.Region
+					if region == "" {
+						region = "singapore"
+					}
+					return &types.Database{
+						ID:          pg.ID,
+						Name:        pg.Name,
+						CloudType:   "render",
+						Region:      region,
+						Status:      status,
+						Engine:      "postgres",
+						EngineVer:   pg.Version,
+						InstanceCls: pg.Plan,
+						Spec: map[string]interface{}{
+							"plan":    pg.Plan,
+							"version": pg.Version,
+						},
+					}, nil
+				}
+			}
+		}
+	}
+
+	body, err = p.doGet(ctx, fmt.Sprintf("https://api.render.com/v1/key-value/%s", databaseID))
+	if err == nil {
+		var wrapped map[string]json.RawMessage
+		if err := json.Unmarshal(body, &wrapped); err == nil {
+			kvData, ok := wrapped["keyValue"]
+			if ok {
+				var kv struct {
+					ID        string `json:"id"`
+					Name      string `json:"name"`
+					Region    string `json:"region"`
+					Status    string `json:"status"`
+					Plan      string `json:"plan"`
+					Version   string `json:"version"`
+					Suspended string `json:"suspended"`
+				}
+				if err := json.Unmarshal(kvData, &kv); err == nil {
+					status := "running"
+					if kv.Status != "available" {
+						status = "stopped"
+					}
+					region := kv.Region
+					if region == "" {
+						region = "singapore"
+					}
+					return &types.Database{
+						ID:          kv.ID,
+						Name:        kv.Name,
+						CloudType:   "render",
+						Region:      region,
+						Status:      status,
+						Engine:      "redis",
+						EngineVer:   kv.Version,
+						InstanceCls: kv.Plan,
+						Spec: map[string]interface{}{
+							"plan":    kv.Plan,
+							"version": kv.Version,
+						},
+					}, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("render: database %s not found", databaseID)
+}
+
+func (p *RenderProvider) GetLoadBalancer(ctx context.Context, lbID string) (*types.LoadBalancer, error) {
+	return nil, fmt.Errorf("render: load balancers not supported")
+}
+
+func (p *RenderProvider) GetBucket(ctx context.Context, bucketID string) (*types.Bucket, error) {
+	return nil, fmt.Errorf("render: buckets not supported")
+}
+
+func (p *RenderProvider) GetCluster(ctx context.Context, clusterID string) (*types.Cluster, error) {
+	return nil, fmt.Errorf("render: clusters not supported")
+}
+
+func (p *RenderProvider) GetFunction(ctx context.Context, functionID string) (*types.Function, error) {
+	return nil, fmt.Errorf("render: functions not supported")
+}
+
+func (p *RenderProvider) GetDNSZone(ctx context.Context, zoneID string) (*types.DNSZone, error) {
+	return nil, fmt.Errorf("render: dns zones not supported")
+}
+
+func (p *RenderProvider) GetCertificate(ctx context.Context, certID string) (*types.Certificate, error) {
+	return nil, fmt.Errorf("render: certificates not supported")
 }

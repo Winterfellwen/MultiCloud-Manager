@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -40,10 +41,24 @@ func (h *ResourcesHandler) List(c *gin.Context) {
 
 func (h *ResourcesHandler) Sync(c *gin.Context) {
 	ctx := c.Request.Context()
-	if err := h.syncer.SyncAll(ctx); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	
+	var req struct {
+		AccountID string `json:"account_id"`
 	}
+	c.ShouldBindJSON(&req)
+	
+	var syncResults []cloud.SyncResult
+	var syncErr error
+	
+	if req.AccountID != "" {
+		err := h.syncer.SyncAccountByID(ctx, req.AccountID)
+		if err != nil {
+			syncErr = err
+		}
+	} else {
+		syncResults, syncErr = h.syncer.SyncAll(ctx)
+	}
+	
 	resources, err := h.syncer.GetResources(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -56,6 +71,13 @@ func (h *ResourcesHandler) Sync(c *gin.Context) {
 	}
 	if !lastSync.IsZero() {
 		resp["last_sync"] = lastSync.Format(time.RFC3339)
+	}
+	if len(syncResults) > 0 {
+		resp["sync_results"] = syncResults
+	}
+	if syncErr != nil {
+		// Partial failure - still return 200 but include error info
+		resp["warning"] = syncErr.Error()
 	}
 	c.JSON(http.StatusOK, resp)
 }
@@ -152,4 +174,50 @@ func (h *ResourcesHandler) ChangePassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *ResourcesHandler) SyncLogs(c *gin.Context) {
+	ctx := c.Request.Context()
+	accountID := c.Query("account_id")
+	
+	query := `SELECT id, account_id, cloud_type, status, message, resource_count, created_at 
+		FROM sync_logs WHERE 1=1`
+	args := []interface{}{}
+	argIdx := 1
+	
+	if accountID != "" {
+		query += fmt.Sprintf(" AND account_id = $%d", argIdx)
+		args = append(args, accountID)
+		argIdx++
+	}
+	
+	query += " ORDER BY created_at DESC LIMIT 100"
+	
+	rows, err := h.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+	
+	var logs []map[string]interface{}
+	for rows.Next() {
+		var id int64
+		var accID, cloudType, status, message string
+		var resourceCount int
+		var createdAt time.Time
+		if err := rows.Scan(&id, &accID, &cloudType, &status, &message, &resourceCount, &createdAt); err != nil {
+			continue
+		}
+		logs = append(logs, map[string]interface{}{
+			"id":             id,
+			"account_id":     accID,
+			"cloud_type":     cloudType,
+			"status":         status,
+			"message":        message,
+			"resource_count": resourceCount,
+			"created_at":     createdAt.Format(time.RFC3339),
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"logs": logs})
 }

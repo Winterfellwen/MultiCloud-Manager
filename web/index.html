@@ -744,10 +744,83 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Toast */
 .toast { position: fixed; top: 56px; right: 16px; background: var(--surface); border: 1px solid var(--border); border-left: 2px solid var(--primary); border-radius: 2px; padding: 8px 16px; font-size: 12px; color: var(--text); z-index: 2000; box-shadow: var(--shadow-lg); opacity: 0; transform: translateX(16px); transition: all .2s; pointer-events: none; min-height: auto; }
 .toast.show { opacity: 1; transform: translateX(0); pointer-events: auto; min-height: auto; }
+.toast-success { border-left-color: var(--success); }
+.toast-error { border-left-color: var(--danger); }
+.toast-info { border-left-color: var(--info); }
 
 /* Delete button */
 .btn-delete { background: none; border: 1px solid var(--border); border-radius: 2px; padding: 3px 10px; font-size: 11px; color: var(--danger); cursor: pointer; transition: all .15s; font-family: var(--font-mono); min-height: auto; }
 .btn-delete:hover { border-color: var(--danger); min-height: auto; }
+
+/* Account action buttons */
+.account-actions { display: flex; gap: 4px; }
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.action-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.action-btn:active { transform: scale(0.95); }
+
+/* Sync all button */
+.sync-all-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s ease;
+  font-family: inherit;
+}
+.sync-all-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+.sync-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Sync button spinning animation */
+.sync-btn.syncing svg {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Message panel item types */
+.err-panel-item { padding: 10px 12px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; transition: background .15s; }
+.err-panel-item:last-child { border-bottom: none; }
+.err-panel-item:hover { background: var(--surface-hover); }
+.err-type-icon { flex-shrink: 0; color: var(--text-muted); }
+.err-type-error .err-type-icon { color: var(--danger); }
+.err-type-success .err-type-icon { color: var(--success); }
+.err-type-info .err-type-icon { color: var(--info); }
+.err-time { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); min-width: 64px; }
+.err-text { flex: 1; font-size: 12px; color: var(--text); word-break: break-word; }
+.err-dismiss { flex-shrink: 0; width: 20px; height: 20px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; line-height: 1; cursor: pointer; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
+.err-dismiss:hover { background: var(--surface-hover); color: var(--danger); }
 
 /* Mobile bottom tabs */
 .mobile-tabs { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 48px; background: var(--surface); border-top: 1px solid var(--border); z-index: 100; }
@@ -920,7 +993,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
   <div class="topbar-right">
     <button class="topbar-action-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English" aria-label="Switch language"><svg width="16" height="16"><use href="/static/icons.svg#icon-language"/></svg> <span class="lang-label">EN</span></button>
     <button class="topbar-action-btn" onclick="toggleTheme()" title="切换主题" aria-label="Toggle theme"><span class="theme-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-moon"/></svg></span></button>
-    <button class="topbar-action-btn err-btn" onclick="toggleErrPanel()" title="错误记录" aria-label="Error history"><svg width="16" height="16"><use href="/static/icons.svg#icon-warning"/></svg><span class="badge" id="errBadge" style="display:none">0</span></button>
+    <button class="topbar-action-btn err-btn" onclick="toggleErrPanel()" title="消息" aria-label="Messages"><svg width="16" height="16"><use href="/static/icons.svg#icon-bell"/></svg><span class="badge" id="errBadge" style="display:none">0</span></button>
     <button class="avatar" onclick="showPage('profile')" aria-label="Profile settings">U</button>
   </div>
 </header>
@@ -1283,7 +1356,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
   <!-- Toast -->
   <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span></div>
   <div class="err-panel" id="errPanel">
-    <div class="err-panel-header"><span>错误记录</span><button class="err-panel-clear" onclick="clearErrHistory()">清除全部</button></div>
+    <div class="err-panel-header"><span>消息</span><button class="err-panel-clear" onclick="clearErrHistory()">清除全部</button></div>
     <div class="err-panel-list" id="errList"></div>
   </div>
 
@@ -1548,6 +1621,7 @@ const cloudConfigs = {
   oracle: [
     { key: 'user_ocid', label: 'User OCID', type: 'text', required: true },
     { key: 'tenancy_ocid', label: 'Tenancy OCID', type: 'text', required: true },
+    { key: 'compartment_ocid', label: 'Compartment OCID (可选，默认根)', type: 'text' },
     { key: 'fingerprint', label: 'Fingerprint', type: 'text', required: true },
     { key: 'region', label: 'Region', type: 'text', required: true },
     { key: 'private_key', label: 'Private Key', type: 'textarea', required: true }
@@ -1947,6 +2021,15 @@ function updateUserProfile(user) {
     localStorage.setItem('userRole', user.role);
   }
   applyRolePermissions();
+  
+  // Auto-sync every 10 minutes
+  if (!window._autoSyncInterval) {
+    window._autoSyncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncAllAccounts();
+      }
+    }, 10 * 60 * 1000);
+  }
 }
 
 /* Role-based access control */
@@ -4009,23 +4092,41 @@ function renderAccounts(list) {
     container.innerHTML = '<div class="empty-state">' + t('account.empty') + '</div>';
     return;
   }
-  container.innerHTML = list.map(a => {
-    const cloudLabel = cloudLabels[a.cloud_type] || a.cloud_type;
-    const statusLabel = a.is_active ? t('account.normal') : t('account.error');
-    const vaultBadge = a.vault_secured ? ' <span style="color:var(--success);font-size:10px"><svg width="14" height="14" style="vertical-align:middle"><use href="/static/icons.svg#icon-lock"/></svg></span>' : '';
-    return '<div class="account-card">' +
-      '<div class="account-left">' +
-        '<div class="account-icon ' + a.cloud_type + '">' + (cloudShorts[a.cloud_type] || '??') + '</div>' +
-        '<div>' +
-          '<div class="account-name">' + a.name + vaultBadge + '</div>' +
-          '<div class="account-meta">' + cloudLabel + ' / ' + statusLabel + ' / ' + t('account.sync_time') + (a.last_sync_at || a.last_sync || t('account.unknown')) + '</div>' +
+  container.innerHTML = '<div class="accounts-header">' +
+    '<div class="accounts-header-left">' +
+      '<h3 style="margin:0">' + t('account.list') + '</h3>' +
+    '</div>' +
+    '<div class="accounts-header-right">' +
+      '<button class="sync-all-btn" onclick="syncAllAccounts()" id="syncAllAccountsBtn" data-i18n="account.sync_all">' +
+        '<svg width="16" height="16" style="margin-right:6px"><use href="/static/icons.svg#icon-sync"/></svg>' +
+        t('account.sync_all') +
+      '</button>' +
+    '</div>' +
+    list.map(a => {
+      const cloudLabel = cloudLabels[a.cloud_type] || a.cloud_type;
+      const statusLabel = a.is_active ? t('account.normal') : t('account.error');
+      const vaultBadge = a.vault_secured ? ' <span style="color:var(--success);font-size:10px"><svg width="14" height="14" style="vertical-align:middle"><use href="/static/icons.svg#icon-lock"/></svg></span>' : '';
+      const lastSync = a.last_sync_at || a.last_sync || t('account.unknown');
+      return '<div class="account-card">' +
+        '<div class="account-left">' +
+          '<div class="account-icon ' + a.cloud_type + '">' + (cloudShorts[a.cloud_type] || '??') + '</div>' +
+          '<div>' +
+            '<div class="account-name">' + a.name + vaultBadge + '</div>' +
+            '<div class="account-meta">' + cloudLabel + ' / ' + statusLabel + ' / ' + t('account.sync_time') + lastSync + '</div>' +
+          '</div>' +
         '</div>' +
-      '</div>' +
-      '<div class="account-actions">' +
-        '<button class="btn-secondary" onclick="editAccount(\'' + a.id + '\')" style="margin-right:6px">' + t('account.edit') + '</button>' +
-        '<button class="btn-delete" onclick="deleteAccount(\'' + a.id + '\')">' + t('account.delete') + '</button>' +
-      '</div>' +
-    '</div>';
+        '<div class="account-actions">' +
+          '<button class="action-btn edit-btn" onclick="editAccount(\'' + a.id + '\')" title="' + t('account.edit') + '">' +
+            '<svg width="16" height="16"><use href="/static/icons.svg#icon-edit"/></svg>' +
+          '</button>' +
+          '<button class="action-btn sync-btn" onclick="syncSingleAccount(\'' + a.id + '\')" title="' + t('account.sync') + '">' +
+            '<svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg>' +
+          '</button>' +
+          '<button class="action-btn delete-btn" onclick="deleteAccount(\'' + a.id + '\')" title="' + t('account.delete') + '">' +
+            '<svg width="16" height="16"><use href="/static/icons.svg#icon-trash"/></svg>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
   }).join('');
 }
 
@@ -4139,8 +4240,8 @@ var CLOUD_GUIDES = {
   oracle: {
     title: LOCALE === 'zh' ? '如何获取 Oracle Cloud 凭证' : 'How to get Oracle Cloud credentials',
     steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', '选择用户 → API Keys → 添加 API Key', '下载生成的私钥文件，将内容粘贴到 Private Key', '复制 Tenancy OCID、User OCID 和 Fingerprint']
-      : ['Sign in to <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', 'Select a user → API Keys → Add API Key', 'Download the generated private key file, paste its content into Private Key', 'Copy Tenancy OCID, User OCID, and Fingerprint'],
+      ? ['登录 <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', '选择用户 → API Keys → 添加 API Key', '下载生成的私钥文件，将内容粘贴到 Private Key', '复制 Tenancy OCID、User OCID 和 Fingerprint', '如实例不在根 compartment，前往 Identity → Compartments 复制目标 Compartment OCID']
+      : ['Sign in to <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', 'Select a user → API Keys → Add API Key', 'Download the generated private key file, paste its content into Private Key', 'Copy Tenancy OCID, User OCID, and Fingerprint', 'If instances are not in root compartment, go to Identity → Compartments and copy target Compartment OCID'],
     doc: 'https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/managingcredentials.htm'
   },
   render: {
@@ -4167,13 +4268,23 @@ async function submitAccount() {
   const url = editingAccountId ? (API + '/accounts/' + editingAccountId) : (API + '/accounts');
   const method = editingAccountId ? 'PUT' : 'POST';
   
-  // When editing: if no credential fields filled, send empty string to keep existing
-  // When creating: must have all required fields
   var credentialsJson;
-  if (editingAccountId && !anyFilled) {
-    credentialsJson = '';
+  if (editingAccountId) {
+    // Editing: only send fields that user actually filled
+    // Empty fields = keep existing value (backend handles this)
+    const partialData = {};
+    config.forEach(f => {
+      var val = formData[f.key];
+      if (val) partialData[f.key] = val;
+    });
+    if (Object.keys(partialData).length === 0) {
+      // No fields filled at all - keep all existing
+      credentialsJson = '';
+    } else {
+      credentialsJson = JSON.stringify(partialData);
+    }
   } else {
-    // Validate required fields for new accounts or when updating credentials
+    // Creating new account: all required fields must be filled
     var missing = config.filter(f => f.required && !formData[f.key]).map(f => f.label);
     if (missing.length > 0) {
       alert((LOCALE === 'zh' ? '必填字段缺失: ' : 'Missing required fields: ') + missing.join(', '));
@@ -4197,6 +4308,29 @@ async function submitAccount() {
   document.querySelectorAll('.cloud-option').forEach(o => o.classList.remove('selected'));
   document.getElementById('formFields').innerHTML = '';
   loadAccounts();
+  syncAllAccounts(); // Auto-sync after add/edit
+}
+
+async function syncAllAccounts() {
+  const btn = document.getElementById('syncAllAccountsBtn');
+  if (btn) { btn.disabled = true; }
+  var data = await apiFetch(API + '/resources/sync', { method: 'POST' });
+  if (btn) { btn.disabled = false; }
+  if (data) {
+    loadAccounts();
+    showToast(t('account.sync_success') || '同步完成');
+  }
+}
+
+async function syncSingleAccount(id) {
+  const btn = document.querySelector('.sync-btn[onclick*="' + id + '"]');
+  if (btn) { btn.classList.add('syncing'); btn.disabled = true; }
+  var data = await apiFetch(API + '/resources/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account_id: id }) });
+  if (btn) { btn.classList.remove('syncing'); btn.disabled = false; }
+  if (data) {
+    loadAccounts();
+    showToast(t('account.sync_success') || '同步完成');
+  }
 }
 
 /* Team */
@@ -4647,6 +4781,10 @@ var __ = {
     'account.delete': '删除',
     'account.edit': '编辑',
     'account.select_cloud': '请选择云平台',
+    'account.sync': '同步',
+    'account.sync_all': '全部同步',
+    'account.syncing': '同步中...',
+    'account.sync_success': '同步完成',
     'team.title': '开发团队',
     'team.invite': '+ 邀请',
     'team.invite_dev': '邀请功能开发中',
@@ -4808,6 +4946,10 @@ var __ = {
     'account.delete': 'Delete',
     'account.edit': 'Edit',
     'account.select_cloud': 'Please select a cloud platform',
+    'account.sync': 'Sync',
+    'account.sync_all': 'Sync All',
+    'account.syncing': 'Syncing...',
+    'account.sync_success': 'Sync completed',
     'team.title': 'Development Team',
     'team.invite': '+ Invite',
     'team.invite_dev': 'Invite feature in development',
@@ -4928,20 +5070,23 @@ function switchLang(locale) {
 
 /* Toast */
 var _toastTimer = null;
-var _errHistory = [];
-function showToast(msg) {
+var _msgHistory = [];
+function showToast(msg, type) {
   var el = document.getElementById('toast');
   var msgEl = document.getElementById('toastMsg');
   if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
   msgEl.textContent = msg;
-  el.classList.add('show');
+  el.className = 'toast show toast-' + (type || 'info');
   _toastTimer = setTimeout(hideToast, 3000);
-  /* Record in error history */
-  _errHistory.push({ msg: msg, time: Date.now() });
-  if (_errHistory.length > 50) _errHistory.shift();
-  renderErrBadge();
-  renderErrList();
+  /* Record in message history */
+  _msgHistory.push({ msg: msg, time: Date.now(), type: type || 'info' });
+  if (_msgHistory.length > 50) _msgHistory.shift();
+  renderMsgBadge();
+  renderMsgList();
 }
+function showError(msg) { showToast(msg, 'error'); }
+function showSuccess(msg) { showToast(msg, 'success'); }
+function showInfo(msg) { showToast(msg, 'info'); }
 function hideToast() {
   var el = document.getElementById('toast');
   el.classList.remove('show');
@@ -4952,39 +5097,42 @@ function hideToast() {
 function toggleErrPanel() {
   var panel = document.getElementById('errPanel');
   panel.classList.toggle('show');
-  if (panel.classList.contains('show')) renderErrList();
+  if (panel.classList.contains('show')) renderMsgList();
 }
-function renderErrBadge() {
+function renderMsgBadge() {
   var badge = document.getElementById('errBadge');
-  var count = _errHistory.length;
-  if (count > 0) { badge.style.display = 'flex'; badge.textContent = count > 99 ? '99+' : count; }
+  // Only count errors for red badge
+  var errorCount = _msgHistory.filter(function(e) { return e.type === 'error'; }).length;
+  if (errorCount > 0) { badge.style.display = 'flex'; badge.textContent = errorCount > 99 ? '99+' : errorCount; }
   else { badge.style.display = 'none'; }
 }
-function renderErrList() {
+function renderMsgList() {
   var list = document.getElementById('errList');
-  if (_errHistory.length === 0) {
-    list.innerHTML = '<div class="err-panel-empty">暂无错误记录</div>';
+  if (_msgHistory.length === 0) {
+    list.innerHTML = '<div class="err-panel-empty">暂无消息</div>';
     return;
   }
   var html = '';
-  for (var i = _errHistory.length - 1; i >= 0; i--) {
-    var e = _errHistory[i];
+  for (var i = _msgHistory.length - 1; i >= 0; i--) {
+    var e = _msgHistory[i];
     var t = new Date(e.time);
     var ts = pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
-    html += '<div class="err-panel-item" data-idx="' + i + '"><span class="err-time">' + ts + '</span><span class="err-text">' + escHtml(e.msg) + '</span><button class="err-dismiss" onclick="dismissErr(' + i + ');event.stopPropagation()">&#10005;</button></div>';
+    var typeClass = e.type === 'error' ? 'err-type-error' : (e.type === 'success' ? 'err-type-success' : 'err-type-info');
+    var typeIcon = e.type === 'error' ? 'icon-error' : (e.type === 'success' ? 'icon-check' : 'icon-info');
+    html += '<div class="err-panel-item ' + typeClass + '" data-idx="' + i + '"><span class="err-time">' + ts + '</span><svg class="err-type-icon" width="14" height="14"><use href="/static/icons.svg#' + typeIcon + '"/></svg><span class="err-text">' + escHtml(e.msg) + '</span><button class="err-dismiss" onclick="dismissMsg(' + i + ');event.stopPropagation()">&#10005;</button></div>';
   }
   list.innerHTML = html;
 }
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
-function dismissErr(idx) {
-  _errHistory.splice(idx, 1);
-  renderErrBadge();
-  renderErrList();
+function dismissMsg(idx) {
+  _msgHistory.splice(idx, 1);
+  renderMsgBadge();
+  renderMsgList();
 }
 function clearErrHistory() {
-  _errHistory = [];
-  renderErrBadge();
-  renderErrList();
+  _msgHistory = [];
+  renderMsgBadge();
+  renderMsgList();
 }
 /* Close panel on outside click */
 document.addEventListener('click', function(e) {

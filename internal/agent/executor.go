@@ -132,7 +132,7 @@ func (e *Executor) instanceAction(ctx context.Context, args map[string]interface
 }
 
 func (e *Executor) syncResources(ctx context.Context) (string, error) {
-	err := e.syncer.SyncAll(ctx)
+	_, err := e.syncer.SyncAll(ctx)
 	if err != nil {
 		return "", fmt.Errorf("sync failed: %w", err)
 	}

@@ -134,6 +134,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		// Resources — read: all roles; sync/action: admin + user
 		auth.GET("/resources", resourcesHandler.List)
 		auth.POST("/resources/sync", RequireRole("admin", "user"), resourcesHandler.Sync)
+		auth.GET("/resources/sync-logs", RequireRole("admin", "user"), resourcesHandler.SyncLogs)
 		auth.POST("/resources/:id/:action", RequireRole("admin", "user"), resourcesHandler.Action)
 		auth.GET("/stats", resourcesHandler.Stats)
 

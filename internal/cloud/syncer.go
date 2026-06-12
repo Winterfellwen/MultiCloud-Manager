@@ -69,18 +69,28 @@ func (s *Syncer) GetLastSync() time.Time {
 	return s.lastSyncAt
 }
 
-func (s *Syncer) SyncAll(ctx context.Context) error {
+type SyncResult struct {
+	AccountID    string
+	CloudType    string
+	Status       string // "success" or "error"
+	Message      string
+	ResourceCount int
+}
+
+func (s *Syncer) SyncAll(ctx context.Context) ([]SyncResult, error) {
 	if s.db == nil {
-		return nil
+		return nil, nil
 	}
 
 	rows, err := s.db.QueryContext(ctx, `SELECT id, cloud_type, credentials, COALESCE(vault_path, '') FROM cloud_accounts WHERE is_active = true`)
 	if err != nil {
-		return fmt.Errorf("syncer: query accounts: %w", err)
+		return nil, fmt.Errorf("syncer: query accounts: %w", err)
 	}
 	defer rows.Close()
 
+	var results []SyncResult
 	var syncErrors []string
+
 	for rows.Next() {
 		var id, cloudType string
 		var credJSON string
@@ -101,10 +111,24 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 			}
 		}
 
-		if err := s.syncAccount(ctx, id, cloudType, credJSON); err != nil {
+		count, err := s.syncAccount(ctx, id, cloudType, credJSON)
+		var res SyncResult
+		res.AccountID = id
+		res.CloudType = cloudType
+		res.ResourceCount = count
+		if err != nil {
+			res.Status = "error"
+			res.Message = err.Error()
 			log.Printf("syncer: sync account %s (%s): %v", id, cloudType, err)
 			syncErrors = append(syncErrors, fmt.Sprintf("%s: %v", cloudType, err))
+		} else {
+			res.Status = "success"
+			res.Message = "OK"
 		}
+		results = append(results, res)
+		
+		// Log to database
+		s.logSyncResult(ctx, res)
 	}
 
 	s.mu.Lock()
@@ -112,63 +136,123 @@ func (s *Syncer) SyncAll(ctx context.Context) error {
 	s.lastErrors = syncErrors
 	s.mu.Unlock()
 
-	if len(syncErrors) > 0 {
-		return fmt.Errorf("sync errors: %s", strings.Join(syncErrors, "; "))
+	// Return results instead of error for partial failures
+	// Only return error if ALL accounts failed (critical failure)
+	if len(results) > 0 && len(syncErrors) == len(results) {
+		return results, fmt.Errorf("all accounts failed: %s", strings.Join(syncErrors, "; "))
 	}
-	return nil
+	return results, nil
 }
 
-func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON string) error {
+func (s *Syncer) logSyncResult(ctx context.Context, res SyncResult) {
+	if s.db == nil {
+		return
+	}
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO sync_logs (account_id, cloud_type, status, message, resource_count) VALUES ($1, $2, $3, $4, $5)`,
+		res.AccountID, res.CloudType, res.Status, res.Message, res.ResourceCount)
+	if err != nil {
+		log.Printf("syncer: failed to log sync result: %v", err)
+	}
+}
+
+func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON string) (int, error) {
 	var creds map[string]string
 
-	// Try to load credentials from vault first (if vault_path is set)
-	// The caller should pass vault_path; for now, try parsing credJSON directly
 	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
-		return fmt.Errorf("parse credentials: %w", err)
+		return 0, fmt.Errorf("parse credentials: %w", err)
 	}
 
 	prov := NewProvider(cloudType, creds)
 	if prov == nil {
-		return nil
+		log.Printf("syncer: no provider for %s", cloudType)
+		return 0, nil
 	}
 
-	instances, err := prov.ListInstances(ctx, types.ListOptions{Limit: 100})
-	if err != nil {
-		return fmt.Errorf("list instances: %w", err)
+	opts := types.ListOptions{Limit: 100}
+	totalCount := 0
+	allLiveIDs := make(map[string]bool)
+
+	type syncJob struct {
+		name     string
+		listFn   func() ([]map[string]interface{}, error)
 	}
 
-	liveIDs := make(map[string]bool, len(instances))
-	for _, inst := range instances {
-		liveIDs[inst.ID] = true
-		specJSON, err := json.Marshal(inst.Spec)
-		if err != nil {
-			log.Printf("syncer: marshal spec for %s: %v", inst.ID, err)
-			specJSON = []byte("{}")
-		}
-		tagsJSON, err := json.Marshal(inst.Tags)
-		if err != nil {
-			log.Printf("syncer: marshal tags for %s: %v", inst.ID, err)
-			tagsJSON = []byte("{}")
-		}
+	jobs := []syncJob{
+		{"instance", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListInstances(ctx, opts)) }},
+		{"volume", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListVolumes(ctx, opts)) }},
+		{"network", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListNetworks(ctx, opts)) }},
+		{"database", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListDatabases(ctx, opts)) }},
+		{"loadbalancer", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListLoadBalancers(ctx, opts)) }},
+		{"bucket", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListBuckets(ctx, opts)) }},
+		{"cluster", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListClusters(ctx, opts)) }},
+		{"function", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListFunctions(ctx, opts)) }},
+		{"dns_zone", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListDNSZones(ctx, opts)) }},
+		{"certificate", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListCertificates(ctx, opts)) }},
+	}
 
-		_, err = s.db.Exec(`
-			INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
-			VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-			ON CONFLICT (account_id, cloud_resource_id)
-			DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
-		`, accountID, inst.ID, inst.InstanceType, inst.Region, inst.Name, inst.Status, string(specJSON), string(tagsJSON))
+	for _, j := range jobs {
+		resources, err := j.listFn()
 		if err != nil {
-			log.Printf("syncer: upsert resource %s: %v", inst.Name, err)
+			log.Printf("syncer: list %s for %s (%s): %v", j.name, cloudType, accountID, err)
+			continue
+		}
+		for _, res := range resources {
+			id, _ := res["id"].(string)
+			if id == "" {
+				continue
+			}
+			allLiveIDs[id] = true
+			name, _ := res["name"].(string)
+			region, _ := res["region"].(string)
+			status, _ := res["status"].(string)
+
+			spec, _ := res["spec"].(map[string]interface{})
+			specJSON, _ := json.Marshal(spec)
+			if len(specJSON) == 0 {
+				specJSON = []byte("{}")
+			}
+
+			tagsRaw, _ := res["tags"].(map[string]interface{})
+			tagsJSON, _ := json.Marshal(tagsRaw)
+			if len(tagsJSON) == 0 {
+				tagsJSON = []byte("{}")
+			}
+
+			_, err := s.db.Exec(`
+				INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
+				VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+				ON CONFLICT (account_id, cloud_resource_id)
+				DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
+			`, accountID, id, j.name, region, name, status, string(specJSON), string(tagsJSON))
+			if err != nil {
+				log.Printf("syncer: upsert %s %s: %v", j.name, name, err)
+			}
+			totalCount++
 		}
 	}
 
-	s.detectDeletedResources(ctx, accountID, liveIDs)
+	s.detectDeletedResources(ctx, accountID, allLiveIDs)
 
-	_, err = s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
+	_, err := s.db.Exec(`UPDATE cloud_accounts SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1`, accountID)
 	if err != nil {
 		log.Printf("syncer: update last_sync_at for %s: %v", accountID, err)
 	}
-	return nil
+	return totalCount, nil
+}
+
+// listToMaps converts any List* result to []map[string]interface{} via JSON.
+func (s *Syncer) listToMaps(data interface{}, err error) ([]map[string]interface{}, error) {
+	if err != nil {
+		return nil, err
+	}
+	raw, _ := json.Marshal(data)
+	var result []map[string]interface{}
+	json.Unmarshal(raw, &result)
+	if result == nil {
+		result = []map[string]interface{}{}
+	}
+	return result, nil
 }
 
 func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, liveIDs map[string]bool) {
@@ -257,7 +341,32 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 }
 
 func (s *Syncer) SyncAccount(ctx context.Context, accountID, cloudType, credJSON string) error {
-	return s.syncAccount(ctx, accountID, cloudType, credJSON)
+	_, err := s.syncAccount(ctx, accountID, cloudType, credJSON)
+	return err
+}
+
+func (s *Syncer) SyncAccountByID(ctx context.Context, accountID string) error {
+	if s.db == nil {
+		return fmt.Errorf("no database")
+	}
+	var cloudType, credJSON, vaultPath string
+	err := s.db.QueryRowContext(ctx, `SELECT cloud_type, credentials, COALESCE(vault_path, '') FROM cloud_accounts WHERE id = $1 AND is_active = true`, accountID).
+		Scan(&cloudType, &credJSON, &vaultPath)
+	if err != nil {
+		return fmt.Errorf("account not found: %w", err)
+	}
+	
+	// Prefer vault credentials
+	if vaultPath != "" && s.vault != nil {
+		if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
+			if dataBytes, err := json.Marshal(secretData); err == nil {
+				credJSON = string(dataBytes)
+			}
+		}
+	}
+	
+	_, err = s.syncAccount(ctx, accountID, cloudType, credJSON)
+	return err
 }
 
 func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) (types.Provider, string, error) {
