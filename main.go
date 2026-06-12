@@ -12,6 +12,7 @@ import (
 
 	"multicloud/internal/api"
 	"multicloud/internal/config"
+	"multicloud/internal/cost"
 	"multicloud/internal/db"
 )
 
@@ -39,7 +40,14 @@ func main() {
 	runMgr.RecoverFromRestart()
 
 	authHandler := api.NewAuthHandler(cfg.JWTSecret, database.DB)
-	router, shutdown := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, runMgr)
+
+	costEngine := cost.NewCostEngine(database.DB)
+	costEngine.Start(context.Background())
+	if err := cost.InsertSeedPricing(context.Background(), database.DB); err != nil {
+		log.Printf("WARNING: pricing seed failed: %v", err)
+	}
+
+	router, shutdown := api.SetupRouter(authHandler, cfg.JWTSecret, database.DB, runMgr, costEngine)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", cfg.Port),
@@ -69,5 +77,6 @@ func main() {
 		log.Fatalf("Server forced shutdown: %v", err)
 	}
 	shutdown()
+	costEngine.Stop()
 	log.Println("Server stopped")
 }

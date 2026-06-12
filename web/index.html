@@ -202,8 +202,8 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .chat-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); }
 .chat-sidebar-header h3 { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin: 0; }
 .chat-sidebar-actions { display: flex; align-items: center; gap: 4px; }
-.chat-new-btn { background: none; border: 1px solid var(--border); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all .15s; font-family: inherit; }
-.chat-new-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,122,255,.06); }
+.chat-new-btn { background: none; border: none; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all .15s; font-family: inherit; }
+.chat-new-btn:hover { color: var(--primary); background: rgba(0,122,255,.06); }
 .chat-session-list { flex: 1; overflow-y: auto; padding: 6px; }
 .session-filters { padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
 .session-filters input, .session-filters select { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); width: 100%; }
@@ -464,9 +464,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .files-sidebar-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; line-height: 1; min-height: auto; min-width: auto; display: flex; align-items: center; justify-content: center; }
 .files-sidebar-close:hover { color: var(--text); min-height: auto; }
 .files-sidebar-body { flex: 1; overflow-y: auto; padding: 10px; min-height: auto; }
-.files-toggle { background: none; border: 1px solid var(--border); border-radius: 2px; padding: 2px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 4px; min-height: auto; min-width: auto; }
-.files-toggle:hover { border-color: var(--primary); color: var(--primary); min-height: auto; }
-.files-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); min-height: auto; }
+.files-toggle { background: none; border: none; padding: 2px 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; gap: 4px; min-height: auto; min-width: auto; }
+.files-toggle:hover { color: var(--primary); min-height: auto; }
+.files-toggle.active { background: var(--primary); color: #fff; min-height: auto; }
 
 /* File card */
 .file-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface2); overflow: hidden; min-height: auto; }
@@ -862,6 +862,32 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 /* Session pagination button improvements */
 .session-pagination button { min-height: auto; min-width: auto; transition: all var(--transition-fast); }
 .session-pagination button:hover:not(:disabled) { background: var(--primary-subtle); }
+
+/* Cost Management */
+.cost-grid { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.cost-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; flex: 1; min-width: 200px; }
+.cost-card-label { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+.cost-card-value { font-size: 28px; font-weight: 700; color: var(--text); }
+.cost-card-change { font-size: 12px; margin-top: 4px; }
+.cost-card-change.up { color: var(--danger); }
+.cost-card-change.down { color: var(--success); }
+.cost-section { margin: 24px 0; }
+.cost-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary); }
+.cost-provider-list { display: flex; gap: 12px; flex-wrap: wrap; }
+.cost-provider-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; flex: 1; min-width: 140px; }
+.cost-provider-name { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+.cost-provider-amount { font-size: 18px; font-weight: 600; }
+.cost-optim-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.cost-optim-info { flex: 1; }
+.cost-optim-title { font-weight: 600; font-size: 14px; }
+.cost-optim-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.cost-optim-savings { font-size: 14px; font-weight: 600; color: var(--success); margin-right: 12px; }
+.cost-trend-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; overflow-x: auto; }
+.cost-trend-chart { display: flex; align-items: flex-end; gap: 2px; min-height: 150px; }
+.cost-trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 20px; }
+.cost-trend-bar { width: 100%; max-width: 24px; background: var(--primary); border-radius: 2px 2px 0 0; min-height: 1px; opacity: 0.7; }
+.cost-trend-bar:hover { opacity: 1; }
+.cost-trend-label { font-size: 9px; color: var(--text-muted); margin-top: 4px; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -878,6 +904,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     <div class="nav-item" data-page="accounts" role="button" aria-label="Cloud Accounts"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-accounts"/></svg></span> <span data-i18n="nav.accounts_short">账户</span></div>
     <div class="nav-item" data-page="team" role="button" aria-label="Team Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-team"/></svg></span> <span data-i18n="nav.team_short">团队</span></div>
     <div class="nav-item" data-page="vault" role="button" aria-label="Credential Vault"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-vault"/></svg></span> <span>Vault</span></div>
+    <div class="nav-item" data-page="cost" role="button" aria-label="Cost Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-dollar"/></svg></span> <span data-i18n="cost.nav">成本</span></div>
     <div class="nav-item" data-page="terraform" role="button" aria-label="Terraform Templates"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-terraform"/></svg></span> <span data-i18n="quick.terraform">Terraform</span></div>
     <div class="nav-item" data-page="profile" role="button" aria-label="Profile Settings"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-profile"/></svg></span> <span data-i18n="nav.profile_short">我的</span></div>
   </nav>
@@ -915,6 +942,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
       <div class="quick-card" onclick="showPage('resources')" role="button" aria-label="资源列表"><div class="quick-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="10" y1="6" x2="18" y2="6"/><line x1="10" y1="18" x2="18" y2="18"/></svg></div><div class="quick-label" data-i18n="quick.resources">资源列表</div></div>
       <div class="quick-card" onclick="showPage('accounts')" role="button" aria-label="添加账户"><div class="quick-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div><div class="quick-label" data-i18n="quick.add_account">添加账户</div></div>
       <div class="quick-card" onclick="showPage('terraform')" role="button" aria-label="Terraform 模板"><div class="quick-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><div class="quick-label" data-i18n="quick.terraform">Terraform</div></div>
+      <div class="quick-card" onclick="showPage('cost')" role="button" aria-label="成本管理"><div class="quick-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="quick-label" data-i18n="cost.nav">成本</div></div>
       <div class="quick-card" onclick="showPage('team')" role="button" aria-label="团队成员"><div class="quick-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="quick-label" data-i18n="quick.team">团队成员</div></div>
     </div>
 
@@ -1368,6 +1396,38 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     </div>
   </div>
 
+  <!-- Cost Management -->
+  <div id="page-cost" class="page">
+    <div class="page-header">
+      <h2 data-i18n="cost.title">成本管理</h2>
+      <div class="page-actions">
+        <button class="page-action-btn" onclick="refreshCostData()">
+          <svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg>
+          <span data-i18n="cost.refresh">刷新</span>
+        </button>
+      </div>
+    </div>
+    <div class="cost-grid">
+      <div class="cost-card" id="costTotalCard">
+        <div class="cost-card-label" data-i18n="cost.total">本月总成本</div>
+        <div class="cost-card-value" id="costTotalValue">--</div>
+        <div class="cost-card-change" id="costTotalChange"></div>
+      </div>
+    </div>
+    <div class="cost-section">
+      <h3 data-i18n="cost.by_provider">按云厂商</h3>
+      <div class="cost-provider-list" id="costProviderList"></div>
+    </div>
+    <div class="cost-section">
+      <h3 data-i18n="cost.trend">成本趋势</h3>
+      <div class="cost-trend-container" id="costTrendContainer"></div>
+    </div>
+    <div class="cost-section">
+      <h3 data-i18n="cost.optimizations">优化建议</h3>
+      <div id="costOptimizationList"></div>
+    </div>
+  </div>
+
   <!-- Terraform -->
   <div id="page-terraform" class="page">
     <h2 style="font-size:18px;margin-bottom:16px;" data-i18n="terraform.title">Terraform 模板</h2>
@@ -1438,6 +1498,7 @@ const pageTitles = {
   accounts: 'page.accounts',
   team: 'page.team',
   vault: 'Vault',
+  cost: 'cost.title',
   terraform: 'page.terraform',
   profile: 'page.profile'
 };
@@ -2175,6 +2236,7 @@ function showPage(page) {
   if (page === 'team') loadTeam();
   if (page === 'vault') loadVault();
   if (page === 'terraform') loadTerraform();
+  if (page === 'cost') loadCostData();
   applyRolePermissions();
 }
 
@@ -4285,6 +4347,95 @@ async function removeMember(id) {
 }
 
 /* Terraform */
+/* Cost Management */
+async function loadCostData() {
+  await Promise.all([refreshCostOverview(), refreshCostTrend(), refreshCostOptimizations()]);
+}
+async function refreshCostData() {
+  showToast(t('cost.refreshing') || '刷新中...');
+  await Promise.all([refreshCostOverview(), refreshCostTrend(), refreshCostOptimizations()]);
+  showToast(t('cost.updated') || '已更新');
+}
+async function refreshCostOverview() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const end = now.toISOString().slice(0,10);
+  let data;
+  try { data = await apiFetch(API + '/cost/overview?start=' + start + '&end=' + end); } catch(e) {}
+  if (!data) {
+    document.getElementById('costTotalValue').textContent = '--';
+    return;
+  }
+  document.getElementById('costTotalValue').textContent = '$' + (data.total_amount || 0).toFixed(2);
+  const changeEl = document.getElementById('costTotalChange');
+  if (data.change_percent !== undefined) {
+    const sign = data.change_percent >= 0 ? '+' : '';
+    changeEl.textContent = sign + data.change_percent.toFixed(1) + (t('cost.vs_last_month') || '% vs 上月');
+    changeEl.className = 'cost-card-change ' + (data.change_percent > 0 ? 'up' : 'down');
+  }
+  const list = document.getElementById('costProviderList');
+  if (data.by_provider && data.by_provider.length > 0) {
+    list.innerHTML = data.by_provider.map(p =>
+      '<div class="cost-provider-item">' +
+        '<div class="cost-provider-name">' + (p.provider || '').toUpperCase() + '</div>' +
+        '<div class="cost-provider-amount">$' + (p.amount || 0).toFixed(2) + '</div>' +
+      '</div>'
+    ).join('');
+  } else {
+    list.innerHTML = '<div class="empty-state">' + (t('cost.no_data') || '暂无成本数据') + '</div>';
+  }
+}
+async function refreshCostTrend() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const end = now.toISOString().slice(0,10);
+  let data;
+  try { data = await apiFetch(API + '/cost/trend?start=' + start + '&end=' + end + '&interval=day'); } catch(e) {}
+  const container = document.getElementById('costTrendContainer');
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty-state">' + (t('cost.no_data') || '暂无成本数据') + '</div>';
+    return;
+  }
+  const maxVal = Math.max(...data.map(d => d.amount || 0), 0.01);
+  const maxBars = 31;
+  const visible = data.slice(-maxBars);
+  container.innerHTML = '<div class="cost-trend-chart">' +
+    visible.map(d => {
+      const h = ((d.amount || 0) / maxVal * 120);
+      return '<div class="cost-trend-bar-wrap" title="$' + (d.amount || 0).toFixed(2) + '">' +
+        '<div class="cost-trend-bar" style="height:' + h + 'px"></div>' +
+        '<div class="cost-trend-label">' + (d.date ? d.date.slice(5,10) : '') + '</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+async function refreshCostOptimizations() {
+  let data;
+  try { data = await apiFetch(API + '/cost/optimizations?status=pending'); } catch(e) {}
+  const list = document.getElementById('costOptimizationList');
+  if (!data || data.length === 0) {
+    list.innerHTML = '<div class="empty-state">' + (t('cost.no_optimizations') || '暂无优化建议') + '</div>';
+    return;
+  }
+  list.innerHTML = data.map(s =>
+    '<div class="cost-optim-item">' +
+      '<div class="cost-optim-info">' +
+        '<div class="cost-optim-title">' + s.title + '</div>' +
+        '<div class="cost-optim-desc">' + (s.description || '') + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="cost-optim-savings">-$' + (s.estimated_savings || 0).toFixed(2) + '</span>' +
+        '<button class="btn-action" onclick="applyOptimization(\'' + s.id + '\')" style="font-size:12px;padding:6px 10px">' + (t('cost.apply') || '应用') + '</button>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+}
+async function applyOptimization(id) {
+  if (!confirm((t('cost.confirm_apply') || '确定应用此优化建议？'))) return;
+  await apiFetch(API + '/cost/optimizations/' + id + '/apply', { method: 'POST' });
+  showToast((t('cost.applied') || '已应用'));
+  refreshCostOptimizations();
+}
 async function loadTerraform() {
   let data = await apiFetch(API + '/terraform/templates');
   let templates;
@@ -4555,6 +4706,21 @@ var __ = {
     'mock.fallback': '收到你的消息：%s\n\n我是 AI 云助手，正在处理你的请求。如需操作账户、查看资源或创建实例，可以直接点击快捷按钮。',
     'exec.submitted': '方案已提交执行',
     'config.saved': '配置已保存',
+    'cost.nav': '成本',
+    'cost.title': '成本管理',
+    'cost.total': '本月总成本',
+    'cost.by_provider': '按云厂商',
+    'cost.trend': '成本趋势',
+    'cost.optimizations': '优化建议',
+    'cost.no_data': '暂无成本数据，请先同步',
+    'cost.no_optimizations': '暂无优化建议',
+    'cost.refresh': '刷新',
+    'cost.refreshing': '刷新中...',
+    'cost.apply': '应用',
+    'cost.applied': '已应用',
+    'cost.confirm_apply': '确定要应用此优化建议吗？',
+    'cost.updated': '已更新',
+    'cost.vs_last_month': '% vs 上月',
   },
   en: {
     'nav.dashboard': 'Dashboard',
@@ -4699,6 +4865,21 @@ var __ = {
     'mock.fallback': 'Got your message: %s\n\nI am the AI assistant. Click the quick action buttons for accounts, resources, or creating instances.',
     'exec.submitted': 'Plan submitted for execution',
     'config.saved': 'Config saved',
+    'cost.nav': 'Costs',
+    'cost.title': 'Cost Management',
+    'cost.total': 'Monthly Total',
+    'cost.by_provider': 'By Provider',
+    'cost.trend': 'Cost Trend',
+    'cost.optimizations': 'Optimizations',
+    'cost.no_data': 'No cost data yet, sync first',
+    'cost.no_optimizations': 'No optimizations',
+    'cost.refresh': 'Refresh',
+    'cost.refreshing': 'Refreshing...',
+    'cost.apply': 'Apply',
+    'cost.applied': 'Applied',
+    'cost.confirm_apply': 'Apply this optimization?',
+    'cost.updated': 'Updated',
+    'cost.vs_last_month': '% vs last month',
   }
 };
 

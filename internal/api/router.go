@@ -14,12 +14,13 @@ import (
 
 	"multicloud/internal/agent"
 	"multicloud/internal/cloud"
+	"multicloud/internal/cost"
 	"multicloud/internal/vault"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager) (*gin.Engine, func()) {
+func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr *RunManager, costEngine *cost.CostEngine) (*gin.Engine, func()) {
 	loginLimiter := NewRateLimiter(10, time.Minute)
 	chatLimiter := NewRateLimiter(30, time.Minute)
 
@@ -70,12 +71,18 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 	syncer := cloud.NewSyncer(db, vaultService)
 	executor := agent.NewExecutor(syncer, db, vaultService)
+	if costEngine != nil {
+		executor.SetCostEngine(costEngine)
+	}
 
 	runtime := agent.NewRuntime(agent.RuntimeConfig{
 		DB:     db,
 		Syncer: syncer,
 		Vault:  vaultService,
 	})
+	if costEngine != nil {
+		agent.RegisterCostTools(runtime.Registry(), executor)
+	}
 
 	accountsHandler := NewAccountsHandler(db, vaultService)
 	agentConfigHandler := NewAgentConfigHandler(db)
@@ -250,6 +257,27 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		})
 	}
 
+	// Cost management routes
+	costAPI := NewCostAPI(costEngine)
+
+	costGroup := auth.Group("/cost")
+	{
+		costGroup.GET("/overview", costAPI.GetOverview)
+		costGroup.GET("/breakdown", costAPI.GetBreakdown)
+		costGroup.GET("/trend", costAPI.GetTrend)
+		costGroup.GET("/compare", costAPI.CompareCrossCloud)
+		costGroup.GET("/forecast", costAPI.Forecast)
+		costGroup.POST("/sync", RequireRole("admin"), costAPI.SyncCost)
+		costGroup.GET("/optimizations", costAPI.ListOptimizations)
+		costGroup.PUT("/optimizations/:id/status", costAPI.UpdateOptimizationStatus)
+		costGroup.POST("/optimizations/:id/apply", RequireRole("admin"), costAPI.ApplyOptimization)
+		costGroup.GET("/rules", costAPI.ListRules)
+		costGroup.POST("/rules", RequireRole("admin"), costAPI.CreateRule)
+		costGroup.PUT("/rules/:id", RequireRole("admin"), costAPI.UpdateRule)
+		costGroup.DELETE("/rules/:id", RequireRole("admin"), costAPI.DeleteRule)
+		costGroup.PUT("/rules/:id/toggle", RequireRole("admin"), costAPI.ToggleRule)
+	}
+
 	webDir := getWebDir()
 	r.StaticFile("/static/login.html", filepath.Join(webDir, "login.html"))
 	r.StaticFile("/static/index.html", filepath.Join(webDir, "index.html"))
@@ -275,6 +303,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 	return r, func() {
 		syncer.Stop()
+		if costEngine != nil {
+			costEngine.Stop()
+		}
 		cancel()
 	}
 }

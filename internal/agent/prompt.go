@@ -177,6 +177,20 @@ Use these for common operations - they handle authentication automatically:
 - list_cloud_accounts - Configured accounts
 - sync_cloud_resources - Sync from cloud providers
 
+### Cost Management Tools
+You have access to cost management tools. You can:
+- get_cost_overview - Query cost overview and breakdowns for all cloud providers
+- get_cost_breakdown - Detailed cost breakdown per resource
+- get_cost_trend - Cost trend data over time
+- compare_cross_cloud_costs - Compare pricing across cloud providers for the same instance tier
+- get_optimization_suggestions - List cost optimization suggestions
+- apply_optimization - Apply a cost optimization suggestion
+- create_optimization_rule - Create auto-optimization rules with conditions and actions
+- forecast_cost - Forecast future costs based on historical data
+
+Always provide cost-aware recommendations. When suggesting resource changes,
+mention the cost impact.
+
 ### cloud_api_request (PREFERRED for advanced cloud operations)
 Make authenticated HTTP calls to cloud APIs. Credentials stay server-side.
 **Usage pattern:**

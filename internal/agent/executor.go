@@ -6,16 +6,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"multicloud/internal/cloud"
+	"multicloud/internal/cost"
 	"multicloud/internal/vault"
 )
 
 // Executor handles tool call execution by dispatching to cloud providers.
 type Executor struct {
-	syncer *cloud.Syncer
-	db     *sql.DB
-	vault  vault.Service
+	syncer      *cloud.Syncer
+	db          *sql.DB
+	vault       vault.Service
+	costEngine  *cost.CostEngine
+}
+
+func (e *Executor) SetCostEngine(ce *cost.CostEngine) {
+	e.costEngine = ce
 }
 
 // NewExecutor creates a new tool executor.
@@ -387,4 +394,171 @@ func isSensitiveField(name string) bool {
 		}
 	}
 	return false
+}
+
+// --- Cost tool handlers ---
+
+func (e *Executor) getCostOverview(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	providers := parseStringArray(args["providers"])
+	start := parseTimeArg(args["start"], time.Now().AddDate(0, -1, 0))
+	end := parseTimeArg(args["end"], time.Now())
+	overview, err := e.costEngine.Aggregator().Overview(ctx, providers, start, end)
+	if err != nil {
+		return "", fmt.Errorf("get_cost_overview failed: %w", err)
+	}
+	b, _ := json.Marshal(overview)
+	return string(b), nil
+}
+
+func (e *Executor) getCostBreakdown(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	providers := parseStringArray(args["providers"])
+	start := parseTimeArg(args["start"], time.Now().AddDate(0, -1, 0))
+	end := parseTimeArg(args["end"], time.Now())
+	breakdown, err := e.costEngine.Aggregator().Breakdown(ctx, providers, start, end)
+	if err != nil {
+		return "", fmt.Errorf("get_cost_breakdown failed: %w", err)
+	}
+	b, _ := json.Marshal(breakdown)
+	return string(b), nil
+}
+
+func (e *Executor) getCostTrend(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	providers := parseStringArray(args["providers"])
+	start := parseTimeArg(args["start"], time.Now().AddDate(0, -30, 0))
+	end := parseTimeArg(args["end"], time.Now())
+	interval, _ := args["interval"].(string)
+	if interval == "" {
+		interval = "day"
+	}
+	trend, err := e.costEngine.Aggregator().Trend(ctx, providers, start, end, interval)
+	if err != nil {
+		return "", fmt.Errorf("get_cost_trend failed: %w", err)
+	}
+	b, _ := json.Marshal(trend)
+	return string(b), nil
+}
+
+func (e *Executor) compareCrossCloud(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	tier, _ := args["tier"].(string)
+	region, _ := args["region"].(string)
+	result, err := e.costEngine.Aggregator().CompareCrossCloud(ctx, tier, region)
+	if err != nil {
+		return "", fmt.Errorf("compare_cross_cloud_costs failed: %w", err)
+	}
+	b, _ := json.Marshal(result)
+	return string(b), nil
+}
+
+func (e *Executor) getOptimizationSuggestions(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	status, _ := args["status"].(string)
+	suggestions, err := e.costEngine.Optimizer().ListSuggestions(ctx, status)
+	if err != nil {
+		return "", fmt.Errorf("get_optimization_suggestions failed: %w", err)
+	}
+	b, _ := json.Marshal(suggestions)
+	return string(b), nil
+}
+
+func (e *Executor) applyOptimization(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	suggestionID, _ := args["suggestion_id"].(string)
+	if suggestionID == "" {
+		return "", fmt.Errorf("suggestion_id is required")
+	}
+	if err := e.costEngine.Optimizer().ApplySuggestion(ctx, suggestionID, ""); err != nil {
+		return "", fmt.Errorf("apply_optimization failed: %w", err)
+	}
+	return `{"success": true, "message": "optimization applied"}`, nil
+}
+
+func (e *Executor) createOptimizationRule(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	name, _ := args["name"].(string)
+	description, _ := args["description"].(string)
+	enabled, _ := args["enabled"].(bool)
+	requiresConfirm := true
+	if v, ok := args["requires_confirm"].(bool); ok {
+		requiresConfirm = v
+	}
+
+	conditionJSON, err := json.Marshal(args["condition"])
+	if err != nil {
+		return "", fmt.Errorf("invalid condition: %w", err)
+	}
+	actionJSON, err := json.Marshal(args["action"])
+	if err != nil {
+		return "", fmt.Errorf("invalid action: %w", err)
+	}
+
+	rule, err := e.costEngine.Optimizer().CreateRule(ctx, name, description, enabled, requiresConfirm, conditionJSON, actionJSON, "")
+	if err != nil {
+		return "", fmt.Errorf("create_optimization_rule failed: %w", err)
+	}
+	b, _ := json.Marshal(rule)
+	return string(b), nil
+}
+
+func (e *Executor) forecastCost(ctx context.Context, args map[string]interface{}) (string, error) {
+	if e.costEngine == nil {
+		return `{"error": "cost engine not initialized"}`, nil
+	}
+	providers := parseStringArray(args["providers"])
+	forecast, err := e.costEngine.Aggregator().Forecast(ctx, providers)
+	if err != nil {
+		return "", fmt.Errorf("forecast_cost failed: %w", err)
+	}
+	b, _ := json.Marshal(forecast)
+	return string(b), nil
+}
+
+func parseStringArray(v interface{}) []string {
+	if v == nil {
+		return nil
+	}
+	switch arr := v.(type) {
+	case []interface{}:
+		out := make([]string, len(arr))
+		for i, item := range arr {
+			out[i], _ = item.(string)
+		}
+		return out
+	case []string:
+		return arr
+	default:
+		return nil
+	}
+}
+
+func parseTimeArg(v interface{}, fallback time.Time) time.Time {
+	if v == nil {
+		return fallback
+	}
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return fallback
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return fallback
+	}
+	return t
 }

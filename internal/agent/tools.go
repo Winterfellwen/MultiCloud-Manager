@@ -184,6 +184,122 @@ Response is automatically filtered — sensitive fields (secrets, tokens) are re
 	))
 }
 
+// RegisterCostTools registers all cost management tools into the given registry.
+func RegisterCostTools(registry *ToolRegistry, executor *Executor) {
+	registry.Register(NewBuiltInTool(
+		"get_cost_overview",
+		"Get cost overview for one or more cloud providers. Returns total, per-provider breakdown, and month-over-month change.",
+		map[string]interface{}{
+			"providers": map[string]interface{}{
+				"type":        "array",
+				"description": "Cloud providers to filter",
+				"items":       map[string]interface{}{"type": "string", "enum": []string{"azure", "aws", "tencent", "alicloud", "oracle", "render"}},
+			},
+			"start": map[string]interface{}{
+				"type":        "string",
+				"description": "Start date YYYY-MM-DD",
+			},
+			"end": map[string]interface{}{
+				"type":        "string",
+				"description": "End date YYYY-MM-DD",
+			},
+		},
+		executor.getCostOverview,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"get_cost_breakdown",
+		"Get detailed cost breakdown per resource.",
+		map[string]interface{}{
+			"providers": map[string]interface{}{
+				"type":        "array",
+				"description": "Cloud providers to filter",
+				"items":       map[string]interface{}{"type": "string"},
+			},
+			"start": map[string]interface{}{"type": "string", "description": "Start date YYYY-MM-DD"},
+			"end":   map[string]interface{}{"type": "string", "description": "End date YYYY-MM-DD"},
+		},
+		executor.getCostBreakdown,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"get_cost_trend",
+		"Get cost trend data over time, grouped by day/week/month.",
+		map[string]interface{}{
+			"providers": map[string]interface{}{
+				"type":        "array",
+				"description": "Cloud providers to filter",
+				"items":       map[string]interface{}{"type": "string"},
+			},
+			"start":    map[string]interface{}{"type": "string", "description": "Start date YYYY-MM-DD"},
+			"end":      map[string]interface{}{"type": "string", "description": "End date YYYY-MM-DD"},
+			"interval": map[string]interface{}{"type": "string", "description": "Grouping interval: day, week, or month"},
+		},
+		executor.getCostTrend,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"compare_cross_cloud_costs",
+		"Compare pricing across cloud providers for the same instance tier.",
+		map[string]interface{}{
+			"tier":   map[string]interface{}{"type": "string", "description": "Instance tier e.g. Standard_B2s, t3.micro"},
+			"region": map[string]interface{}{"type": "string", "description": "Cloud region e.g. eastus, us-east-1"},
+		},
+		executor.compareCrossCloud,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"get_optimization_suggestions",
+		"List cost optimization suggestions. Filter by status (pending, applied, dismissed).",
+		map[string]interface{}{
+			"status": map[string]interface{}{"type": "string", "description": "Filter by status: pending, applied, dismissed"},
+		},
+		executor.getOptimizationSuggestions,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"apply_optimization",
+		"Apply a cost optimization suggestion. Requires admin role.",
+		map[string]interface{}{
+			"suggestion_id": map[string]interface{}{"type": "string", "description": "ID of the optimization suggestion to apply"},
+		},
+		executor.applyOptimization,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"create_optimization_rule",
+		"Create an auto-optimization rule. The rule evaluates conditions against cost data and triggers actions.",
+		map[string]interface{}{
+			"name":             map[string]interface{}{"type": "string", "description": "Rule name"},
+			"description":      map[string]interface{}{"type": "string", "description": "Rule description"},
+			"enabled":          map[string]interface{}{"type": "boolean", "description": "Whether the rule is enabled on creation"},
+			"requires_confirm": map[string]interface{}{"type": "boolean", "description": "Whether admin confirmation is required before execution"},
+			"condition": map[string]interface{}{
+				"type":        "object",
+				"description": "Rule condition as JSON object e.g. {\"spend_threshold\": 500}",
+			},
+			"action": map[string]interface{}{
+				"type":        "object",
+				"description": "Action to take when condition matches e.g. {\"type\": \"notify\"}",
+			},
+		},
+		executor.createOptimizationRule,
+	))
+
+	registry.Register(NewBuiltInTool(
+		"forecast_cost",
+		"Forecast future costs based on historical data (next 30 days).",
+		map[string]interface{}{
+			"providers": map[string]interface{}{
+				"type":        "array",
+				"description": "Cloud providers to include in forecast",
+				"items":       map[string]interface{}{"type": "string"},
+			},
+		},
+		executor.forecastCost,
+	))
+}
+
 // MarshalJSON returns a JSON representation of a tool's definition in OpenAI format.
 func toolDefinition(t Tool) map[string]interface{} {
 	params := t.Parameters()
