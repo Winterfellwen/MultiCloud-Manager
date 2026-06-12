@@ -3,7 +3,6 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -112,6 +111,7 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 		}
 	}
 
+	// Send initial connection message
 	fmt.Fprintf(c.Writer, ": connected\n\n")
 	flusher.Flush()
 
@@ -121,21 +121,32 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 	tick := time.NewTicker(20 * time.Second)
 	defer tick.Stop()
 
-	c.Stream(func(w io.Writer) bool {
+	ctx := c.Request.Context()
+
+	// Manual streaming loop to properly handle chunked encoding termination
+	for {
 		select {
 		case ev, ok := <-ch:
 			if !ok {
-				return false
+				// Channel closed, send final chunk and exit
+				fmt.Fprintf(c.Writer, "0\r\n\r\n")
+				flusher.Flush()
+				return
 			}
 			id := strconv.FormatInt(ev.ID, 10)
 			data := toJSON(ev)
+			// SSE format: id: <id>\ndata: <json>\n\n
 			fmt.Fprintf(c.Writer, "id: %s\ndata: %s\n\n", id, data)
-			return true
+			flusher.Flush()
 		case <-tick.C:
+			// Send keep-alive comment
 			fmt.Fprintf(c.Writer, ": ping\n\n")
-			return true
-		case <-c.Request.Context().Done():
-			return false
+			flusher.Flush()
+		case <-ctx.Done():
+			// Client disconnected or request cancelled - send final chunk to properly terminate chunked encoding
+			fmt.Fprintf(c.Writer, "0\r\n\r\n")
+			flusher.Flush()
+			return
 		}
-	})
+	}
 }

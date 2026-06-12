@@ -1,0 +1,35 @@
+- generic [active] [ref=e1]:
+  - link "Skip to login form" [ref=e2] [cursor=pointer]:
+    - /url: "#username"
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - heading "MultiCloud" [level=1] [ref=e6]:
+        - img [ref=e7]
+        - text: MultiCloud
+      - paragraph [ref=e9]: 统一多云资源管理平台
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]: 用户名
+        - textbox "Username" [ref=e13]:
+          - /placeholder: 请输入用户名
+      - generic [ref=e14]:
+        - generic [ref=e15]: 密码
+        - generic [ref=e16]:
+          - textbox "Password" [ref=e17]:
+            - /placeholder: 请输入密码
+          - button "Toggle password visibility" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+      - button "Login" [ref=e21] [cursor=pointer]: 登 录
+    - generic [ref=e22]:
+      - generic [ref=e23]: ⓘ
+      - generic [ref=e24]:
+        - text: 测试账号：
+        - strong [ref=e25]: user
+        - text: /
+        - strong [ref=e26]: "12345678"
+        - text: （只读权限，可体验部分功能）
+    - generic [ref=e27]:
+      - paragraph [ref=e28]: 统一多云资源管理平台
+      - paragraph [ref=e29]:
+        - text: 温信锐（Peter Wen）
+        - text: winterfellwen@outlook.com
