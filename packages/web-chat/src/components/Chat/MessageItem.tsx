@@ -48,7 +48,7 @@ export function MessageItem({ message, toolCalls = [], isStreaming }: MessageIte
           </div>
         )}
         {toolCalls.length > 0 && (
-          <div className="tool-calls-inline">
+          <div className="tool-calls-container">
             {toolCalls.map((tc) => (
               <ToolCallCard key={tc.id || tc.name} tool={tc} />
             ))}

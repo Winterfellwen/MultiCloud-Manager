@@ -422,6 +422,13 @@ body {
   padding-top: 8px;
 }
 
+.tool-calls-container {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .tool-block {
   display: inline-flex;
   align-items: center;
