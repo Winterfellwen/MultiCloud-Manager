@@ -541,6 +541,11 @@ body {
   overflow-y: auto;
 }
 
+.field-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ============ Confirm ============ */
 .confirm-card {
   border: 1px solid var(--warning);
