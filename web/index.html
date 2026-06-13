@@ -1753,6 +1753,12 @@ function handleTokenEvent(ev) {
   if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
   // Skip token events for runs that have been stopped (e.g. stop summary)
   if (ev.run_id && STOPPED_RUNS.has(ev.run_id)) return;
+  
+  // Reset pending tool calls when a new message starts
+  if (!STREAMING_DIV || !STREAMING_DIV.isConnected) {
+    PENDING_TOOL_CALLS = [];
+  }
+  
   STREAMING_CONTENT += ev.payload.content;
   showGenerating();
   
@@ -1762,7 +1768,11 @@ function handleTokenEvent(ev) {
     STREAMING_DIV.className = 'msg agent streaming';
     STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor"></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
     container.appendChild(STREAMING_DIV);
+    // Clear tool calls container reference for new message
+    STREAMING_DIV._toolCallsContainer = null;
+    STREAMING_DIV._toolCallsHeader = null;
   }
+  
   var contentEl = STREAMING_DIV.querySelector('.msg-content');
   if (contentEl) {
     contentEl.textContent = STREAMING_CONTENT;
@@ -1775,13 +1785,19 @@ function handleToolStartEvent(ev) {
     ev.payload.tool_calls.forEach(function(tc) {
       var fn = tc.function || tc;
       var name = fn.name || 'unknown';
+      var args = fn.arguments || '';
+      // Deduplicate by tool name only (same tool shouldn't be called multiple times in one response)
+      var isDuplicate = PENDING_TOOL_CALLS.some(function(t) { return t.name === name; });
+      if (isDuplicate) return;
+      
       if (ev.session_id === CURRENT_SESSION) showToolRunning(name);
-      PENDING_TOOL_CALLS.push({name: name, params: fn.arguments || '', result: ''});
-      // Add tool call card to streaming AI message
+      PENDING_TOOL_CALLS.push({name: name, params: args, result: ''});
+      
+      // Add tool call card to streaming AI message if it exists
       if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-        var toolCallsContainer = STREAMING_DIV.querySelector('.tool-calls-inline');
-        if (!toolCallsContainer) {
-          toolCallsContainer = document.createElement('div');
+        // Use a property on STREAMING_DIV to track toolCallsContainer, avoiding repeated DOM queries
+        if (!STREAMING_DIV._toolCallsContainer) {
+          var toolCallsContainer = document.createElement('div');
           toolCallsContainer.className = 'tool-calls-inline';
           var header = document.createElement('div');
           header.className = 'tool-calls-header expanded';
@@ -1792,13 +1808,16 @@ function handleToolStartEvent(ev) {
           toolCallsContainer.appendChild(header);
           toolCallsContainer.appendChild(body);
           STREAMING_DIV.appendChild(toolCallsContainer);
+          STREAMING_DIV._toolCallsContainer = toolCallsContainer;
+          STREAMING_DIV._toolCallsHeader = header;
         } else {
           // Update count
-          var h = toolCallsContainer.querySelector('.tool-calls-header');
-          if (h) h.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + PENDING_TOOL_CALLS.length + ')';
+          if (STREAMING_DIV._toolCallsHeader) {
+            STREAMING_DIV._toolCallsHeader.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + PENDING_TOOL_CALLS.length + ')';
+          }
         }
         // Add tool card
-        var body = toolCallsContainer.querySelector('.tool-calls-body');
+        var body = STREAMING_DIV._toolCallsContainer ? STREAMING_DIV._toolCallsContainer.querySelector('.tool-calls-body') : null;
         if (body) {
           var card = buildToolCard({name: name, params: fn.arguments || '', result: ''});
           card.classList.add('running');

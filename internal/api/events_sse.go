@@ -28,6 +28,8 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("X-Accel-Buffering", "no")
+	// Disable chunked encoding for SSE
+	c.Header("Transfer-Encoding", "identity")
 
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
@@ -128,24 +130,38 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 		select {
 		case ev, ok := <-ch:
 			if !ok {
-				// Channel closed, send final chunk and exit
-				fmt.Fprintf(c.Writer, "0\r\n\r\n")
-				flusher.Flush()
+				// Channel closed, just return - no need to send chunked encoding terminator for SSE
 				return
+			}
+			// Check if connection is still alive before writing
+			select {
+			case <-ctx.Done():
+				return
+			default:
 			}
 			id := strconv.FormatInt(ev.ID, 10)
 			data := toJSON(ev)
 			// SSE format: id: <id>\ndata: <json>\n\n
-			fmt.Fprintf(c.Writer, "id: %s\ndata: %s\n\n", id, data)
+			_, err := fmt.Fprintf(c.Writer, "id: %s\ndata: %s\n\n", id, data)
+			if err != nil {
+				return
+			}
 			flusher.Flush()
 		case <-tick.C:
+			// Check if connection is still alive before writing keep-alive
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			// Send keep-alive comment
-			fmt.Fprintf(c.Writer, ": ping\n\n")
+			_, err := fmt.Fprintf(c.Writer, ": ping\n\n")
+			if err != nil {
+				return
+			}
 			flusher.Flush()
 		case <-ctx.Done():
-			// Client disconnected or request cancelled - send final chunk to properly terminate chunked encoding
-			fmt.Fprintf(c.Writer, "0\r\n\r\n")
-			flusher.Flush()
+			// Client disconnected or request cancelled - just return for SSE
 			return
 		}
 	}

@@ -49,6 +49,7 @@ test-web.js
 
 # Playwright
 playwright/.cache/
+.playwright-mcp/
 
 # Old code
 backend-old/
