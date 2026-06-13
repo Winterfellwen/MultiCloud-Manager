@@ -3,8 +3,8 @@ import { ChevronDown, ChevronRight, Loader, CheckCircle, XCircle } from 'lucide-
 import type { ToolCall } from '../../api/types'
 
 function getToolSummary(tool: ToolCall): string {
-  const { name, params: p } = tool
-  const params = p as Record<string, any>
+  const { name } = tool
+  const params = tool.params as Record<string, any> || {}
 
   switch (name) {
     case 'shell_exec':

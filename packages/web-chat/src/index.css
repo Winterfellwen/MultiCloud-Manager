@@ -469,6 +469,16 @@ body {
 .tool-card-header:hover { background: rgba(255,255,255,.02); }
 .tool-card-header .card-name { color: var(--primary); font-weight: 600; font-family: var(--font-mono); font-size: 11px; flex: 1; }
 
+.card-summary {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-status {
   font-size: 9px;
   padding: 1px 5px;
