@@ -129,7 +129,7 @@ function ElapsedTimer() {
     return () => clearInterval(interval)
   }, [])
 
-  return <span className="elapsed-time">{elapsed.toFixed(1)}s</span>
+  return <span className="elapsed-time">{elapsed}s</span>
 }
 
 interface ToolCallCardProps {
@@ -168,8 +168,12 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
         <span className="card-icon">🔧</span>
         <span className="card-name">{tool.name}</span>
         <span className="card-summary">{getToolSummary(tool)}</span>
-        <span className={`card-status ${tool.status}`}>
-          {statusIcon()} {statusText()} {tool.status === 'running' && <><ProgressDots /> <ElapsedTimer /></>}
+        <span className="card-status-group">
+          {tool.status === 'running' && <ProgressDots />}
+          {tool.status === 'running' && <ElapsedTimer />}
+          <span className={`card-status ${tool.status}`}>
+            {statusIcon()} {statusText()}
+          </span>
         </span>
       </div>
       {expanded && (

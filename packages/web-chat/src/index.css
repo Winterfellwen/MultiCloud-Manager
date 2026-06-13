@@ -487,6 +487,45 @@ body {
   font-weight: 600;
 }
 
+.card-status-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.progress-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  margin-right: 6px;
+}
+
+.progress-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: progress-dot 1.2s ease-in-out infinite;
+}
+
+.progress-dots span:nth-child(1) { animation-delay: 0s; }
+.progress-dots span:nth-child(2) { animation-delay: 0.2s; }
+.progress-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes progress-dot {
+  0%, 20% { opacity: 1; }
+  50% { opacity: 0.3; }
+  80%, 100% { opacity: 1; }
+}
+
+.elapsed-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-right: 6px;
+}
+
 .card-status.running { background: rgba(255,159,10,.1); color: var(--warning); }
 .card-status.done { background: rgba(0,200,83,.1); color: var(--success); }
 .card-status.error { background: rgba(255,59,48,.1); color: var(--danger); }
