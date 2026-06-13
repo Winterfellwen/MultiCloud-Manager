@@ -123,21 +123,22 @@ function ProgressDots() {
   )
 }
 
-function ElapsedTimer() {
-  const [elapsed, setElapsed] = useState(0)
+function ElapsedTimer({ startTime }: { startTime: number }) {
+  const [elapsed, setElapsed] = useState(() => (Date.now() - startTime) / 1000)
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setElapsed(prev => prev + 1)
+      setElapsed((Date.now() - startTime) / 1000)
     }, 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [startTime])
 
-  return <span className="elapsed-time">{elapsed}s</span>
+  return <span className="elapsed-time">{elapsed.toFixed(1)}s</span>
 }
 
 export function ToolCallCard({ tool }: ToolCallCardProps) {
   const [expanded, setExpanded] = useState(tool.status === 'running')
+  const [startTime] = useState(() => Date.now())
 
   useEffect(() => {
     setExpanded(tool.status === 'running')
@@ -167,7 +168,7 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
         <span className="card-summary">{summary}</span>
         <span className="card-status-group">
           {tool.status === 'running' && <ProgressDots />}
-          {tool.status === 'running' && <ElapsedTimer />}
+          <ElapsedTimer startTime={startTime} />
           <span className={`card-status ${tool.status}`}>
             {statusIcon()}
           </span>
@@ -175,31 +176,20 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
       </div>
       {expanded && (
         <div className="tool-card-body expanded">
-          {tool.status === 'running' ? (
+          <div className="field-label">{paramsLabel}</div>
+          <div className="field-code">
+            {JSON.stringify(tool.params, null, 2)}
+          </div>
+          {tool.status !== 'running' && tool.result && (
             <>
-              <div className="field-label">{paramsLabel}</div>
-              <div className="field-code">
-                {JSON.stringify(tool.params, null, 2)}
-              </div>
+              <div className="field-label">Result</div>
+              <div className="field-result">{tool.result}</div>
             </>
-          ) : (
+          )}
+          {tool.status !== 'running' && tool.error && (
             <>
-              <div className="field-label">{paramsLabel}</div>
-              <div className="field-code">
-                {JSON.stringify(tool.params, null, 2)}
-              </div>
-              {tool.result && (
-                <>
-                  <div className="field-label">Result</div>
-                  <div className="field-result">{tool.result}</div>
-                </>
-              )}
-              {tool.error && (
-                <>
-                  <div className="field-label">Error</div>
-                  <div className="field-result field-error">{tool.error}</div>
-                </>
-              )}
+              <div className="field-label">Error</div>
+              <div className="field-result field-error">{tool.error}</div>
             </>
           )}
         </div>
