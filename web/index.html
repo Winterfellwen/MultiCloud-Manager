@@ -580,7 +580,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 /* Resources - Platform tabbed layout */
 .res-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; min-height: auto; }
-.res-tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; min-height: auto; }
+.res-tabs { display: flex; flex-wrap: wrap; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; min-height: auto; }
 .res-tab { display: flex; align-items: center; gap: 5px; padding: 5px 12px; font-size: 12px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 4px; transition: all .15s; font-family: inherit; white-space: nowrap; min-height: auto; }
 .res-tab:hover { color: var(--text); background: var(--surface); min-height: auto; }
 .res-tab.active { color: var(--text); background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.15); min-height: auto; }
