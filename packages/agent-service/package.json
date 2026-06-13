@@ -1,0 +1,32 @@
+{
+  "name": "@opencode-ai/agent-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode-ai/core": "workspace:*",
+    "@opencode-ai/agent": "workspace:*",
+    "@opencode-ai/tool": "workspace:*",
+    "@opencode-ai/session": "workspace:*",
+    "effect": "catalog:",
+    "@effect/platform": "catalog:",
+    "@effect/platform-node": "catalog:",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/anthropic": "catalog:",
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:",
+    "ws": "^8.16.0",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/ws": "^8.5.10",
+    "@typescript/native-preview": "catalog:"
+  }
+}

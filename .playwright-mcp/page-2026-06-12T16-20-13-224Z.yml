@@ -1,0 +1,126 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "Sessions" [level=3] [ref=e7]
+        - button "New Session" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - img [ref=e12]
+          - textbox "Search..." [ref=e15]
+        - generic [ref=e16]:
+          - combobox [ref=e17]:
+            - option "Last Updated" [selected]
+            - option "Created"
+            - option "Title"
+          - combobox [ref=e18]:
+            - option "Desc" [selected]
+            - option "Asc"
+        - combobox [ref=e19]:
+          - option "All Status" [selected]
+          - option "Running"
+          - option "Done"
+          - option "Error"
+          - option "Stopped"
+          - option "Queued"
+      - generic [ref=e61] [cursor=pointer]:
+        - generic [ref=e62]:
+          - generic [ref=e63]: 你好
+          - generic [ref=e65]: 12m ago
+        - button "Delete" [ref=e66]:
+          - img [ref=e67]
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e26]: AI Cloud Assistant
+        - button "Files" [ref=e28] [cursor=pointer]
+      - generic [ref=e70]:
+        - generic [ref=e72]:
+          - paragraph [ref=e74]: 你好
+          - generic [ref=e75]: 00:01:29
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - img [ref=e80]
+            - generic [ref=e83]: AI
+          - paragraph [ref=e86]: 你好！有什么可以帮您解决的云管理任务吗？
+          - generic [ref=e87]: 00:01:29
+        - generic [ref=e89]:
+          - paragraph [ref=e91]: 你好
+          - generic [ref=e92]: 00:06:37
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - img [ref=e97]
+            - generic [ref=e100]: AI
+          - paragraph [ref=e103]: 你好！有什么可以帮您解决的云管理任务吗？
+          - generic [ref=e104]: 00:06:37
+        - generic [ref=e106]:
+          - paragraph [ref=e108]: 有什么资源
+          - generic [ref=e109]: 00:07:24
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - img [ref=e114]
+            - generic [ref=e117]: AI
+          - paragraph [ref=e120]:
+            - text: "[{\"name\":\"list_cloud_resources\",\"params\":\"{}\",\"result\":\"{\"count\":6,\"resources\":[{\"account\":\"Oracle Free\",\"availabilityDomain\":\"\",\"cloud_type\":\"oracle\",\"id\":\"84f79983-1e88-4004-9586-d31acc0c4df5\",\"name\":\"weapp-subnet\",\"region\":\"ap-singapore-1\",\"status\":\"available\",\"subnetDomainName\":\"weappsub.weappvcn.oraclevcn.com\",\"type\":\"network\",\"vcnId\":\"ocid1.vcn.oc1.ap-singapore-1.amaaaaaam54ag6yatcwbskk2nshq6isjhgm76ne63p5sab7466vzqhfld4ma\"},{\"account\":\"Oracle Free\",\"cloud_type\":\"oracle\",\"defaultRouteTableId\":\"ocid1.routetable.oc1.ap-singapore-1.aaaaaaaaoqifqdv4vvsuituho55zigs76prfgysha32cl57ctzmxwyidnvra\",\"defaultSecurityListId\":\"ocid1.securitylist.oc1.ap-singapore-1.aaaaaaaagfpfwgui4grbdtf5fr6p52izlkizdehst2bhvlxmqdpe4mddpiea\",\"id\":\"0a59b3cb-115c-43ee-86fc-de103b1a5268\",\"name\":\"weapp-vcn\",\"region\":\"ap-singapore-1\",\"status\":\"available\",\"type\":\"network\",\"vcnId\":\"ocid1.vcn.oc1.ap-singapore-1.amaaaaaam54ag6yatcwbskk2nshq6isjhgm76ne63p5sab7466vzqhfld4ma\"},{\"account\":\"Oracle Free\",\"availabilityDomain\":\"spNV:AP-SINGAPORE-1-AD-1\",\"cloud_type\":\"oracle\",\"id\":\"96ed9171-1b96-469d-a205-54baeac3a780\",\"isHydrated\":true,\"name\":\"win-block\",\"region\":\"ap-singapore-1\",\"status\":\"available\",\"type\":\"volume\",\"vpusPerGB\":10},{\"account\":\"Render\",\"cloud_type\":\"render\",\"id\":\"a662e4a2-85b2-4c21-9408-999229c8c475\",\"name\":\"multicloud-redis\",\"plan\":\"free\",\"region\":\"singapore\",\"status\":\"running\",\"type\":\"key_value\",\"version\":\"8.1.4\"},{\"account\":\"Render\",\"cloud_type\":\"render\",\"id\":\"dba6e453-eac2-4e81-9fe8-83dc4b09e05c\",\"name\":\"multicloud-db\",\"plan\":\"free\",\"region\":\"singapore\",\"status\":\"running\",\"type\":\"postgres\",\"version\":\"16\"},{\"account\":\"Render\",\"cloud_type\":\"render\",\"dashboard_url\":\""
+            - link "https://dashboard.render.com/web/srv-d8kli3rs9h5c73d619c0\",\"id\":\"f8439d34-45cc-4bcd-a840-eb61134cccbf\",\"name\":\"multicloud-backend\",\"plan\":\"starter\",\"region\":\"singapore\",\"slug\":\"multicloud-backend-md3x\",\"status\":\"running\",\"type\":\"web_service\",\"url\":\"https://multicloud-backend-md3x.onrender.com" [ref=e121] [cursor=pointer]:
+              - /url: https://dashboard.render.com/web/srv-d8kli3rs9h5c73d619c0%22,%22id%22:%22f8439d34-45cc-4bcd-a840-eb61134cccbf%22,%22name%22:%22multicloud-backend%22,%22plan%22:%22starter%22,%22region%22:%22singapore%22,%22slug%22:%22multicloud-backend-md3x%22,%22status%22:%22running%22,%22type%22:%22web_service%22,%22url%22:%22https://multicloud-backend-md3x.onrender.com
+            - text: "\"}]}\"}]"
+          - generic [ref=e122]: 00:07:24
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - img [ref=e127]
+            - generic [ref=e130]: AI
+          - generic [ref=e132]:
+            - paragraph [ref=e133]: 以下是当前云资源列表（共6项）：
+            - paragraph [ref=e134]:
+              - strong [ref=e135]: Oracle Cloud (ap-singapore-1)
+            - list [ref=e136]:
+              - listitem [ref=e137]:
+                - text: 📌
+                - code [ref=e138]: weapp-subnet
+                - text: (网络) - 可用
+              - listitem [ref=e139]:
+                - text: 📌
+                - code [ref=e140]: weapp-vcn
+                - text: (网络) - 可用
+              - listitem [ref=e141]:
+                - text: 📌
+                - code [ref=e142]: win-block
+                - text: (存储卷) - 可用
+            - paragraph [ref=e143]:
+              - strong [ref=e144]: Render Cloud (singapore)
+            - list [ref=e145]:
+              - listitem [ref=e146]:
+                - text: 🚀
+                - code [ref=e147]: multicloud-redis
+                - text: (Key-Value存储) - 运行中 (Free计划)
+              - listitem [ref=e148]:
+                - text: 🗄️
+                - code [ref=e149]: multicloud-db
+                - text: (PostgreSQL数据库) - 运行中 (Free计划)
+              - listitem [ref=e150]:
+                - text: 🌐
+                - code [ref=e151]: multicloud-backend
+                - text: (Web服务) - 运行中 (Starter计划)
+            - paragraph [ref=e152]: 所有资源状态均为可用/运行中，无异常。需要进一步操作请说明具体需求。
+          - generic [ref=e153]: 00:07:24
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - textbox "Type a message..." [ref=e32]
+          - button "Send" [disabled] [ref=e33]:
+            - img [ref=e34]
+        - radiogroup "Chat mode selector" [ref=e37]:
+          - radio "Read-only mode" [checked] [ref=e38] [cursor=pointer]: Plan
+          - radio "Execute operations" [ref=e39] [cursor=pointer]: Build
+          - radio "Requires approval" [ref=e40] [cursor=pointer]: Confirm
+        - generic [ref=e41]: MultiCloud AI Agent · Plan mode is read-only
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "Files" [level=3] [ref=e44]:
+          - img [ref=e45]
+          - text: Files
+        - button [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+      - generic [ref=e53]: No files generated yet
+  - button "Toggle theme" [ref=e54] [cursor=pointer]:
+    - img [ref=e55]

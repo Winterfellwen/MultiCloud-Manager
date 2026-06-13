@@ -1,0 +1,90 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#mainContent"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]: MultiCloud
+      - navigation [ref=e6]:
+        - button "Dashboard" [ref=e7] [cursor=pointer]:
+          - img [ref=e9]
+          - generic [ref=e11]: 首页
+        - button "AI Chat assistant" [ref=e12] [cursor=pointer]:
+          - img [ref=e14]
+          - generic [ref=e16]: AI 云助手
+        - button "Cloud Resources" [ref=e17] [cursor=pointer]:
+          - img [ref=e19]
+          - generic [ref=e21]: 资源
+        - button "Cloud Accounts" [ref=e22] [cursor=pointer]:
+          - img [ref=e24]
+          - generic [ref=e26]: 账户
+        - button "Team Management" [ref=e27] [cursor=pointer]:
+          - img [ref=e29]
+          - generic [ref=e31]: 团队
+        - button "Credential Vault" [ref=e32] [cursor=pointer]:
+          - img [ref=e34]
+          - generic [ref=e36]: Vault
+        - button "Cost Management" [ref=e37] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e41]: 成本
+        - button "Terraform Templates" [ref=e42] [cursor=pointer]:
+          - img [ref=e44]
+          - generic [ref=e46]: Terraform
+        - button "Profile Settings" [ref=e47] [cursor=pointer]:
+          - img [ref=e49]
+          - generic [ref=e51]: 我的
+      - button "Toggle theme" [ref=e53] [cursor=pointer]: 切换主题
+    - banner [ref=e55]:
+      - generic [ref=e56]: 仪表盘
+      - generic [ref=e57]:
+        - button "Switch language" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e61]: EN
+        - button "Toggle theme" [ref=e62] [cursor=pointer]:
+          - img [ref=e64]
+        - button "Messages" [ref=e66] [cursor=pointer]:
+          - img [ref=e67]
+        - button "Profile settings" [ref=e69] [cursor=pointer]: U
+    - main [ref=e70]:
+      - generic [ref=e72]:
+        - status "Cloud resources count" [ref=e73]:
+          - img [ref=e75]
+          - generic [ref=e78]: 云资源
+          - generic [ref=e79]: "6"
+          - generic [ref=e80]: 总计
+        - status "Cloud accounts count" [ref=e81]:
+          - generic [ref=e82]: 云账号
+          - generic [ref=e83]: "2"
+          - generic [ref=e84]: 已接入
+        - status "Terraform templates count" [ref=e85]:
+          - generic [ref=e86]: Terraform
+          - generic [ref=e87]: "0"
+          - generic [ref=e88]: 模板数
+        - status "Team members count" [ref=e89]:
+          - generic [ref=e90]: 团队成员
+          - generic [ref=e91]: "1"
+          - generic [ref=e92]: 成员数
+        - button "添加账户" [ref=e93] [cursor=pointer]:
+          - img [ref=e94]
+          - generic [ref=e96]: 添加账户
+        - generic [ref=e97]:
+          - generic [ref=e98]: 快捷操作
+          - generic [ref=e99]:
+            - button "资源列表" [ref=e100] [cursor=pointer]:
+              - img [ref=e101]
+              - generic [ref=e104]: 资源列表
+            - button "Terraform 模板" [ref=e105] [cursor=pointer]:
+              - img [ref=e106]
+              - generic [ref=e109]: Terraform
+            - button "成本管理" [ref=e110] [cursor=pointer]:
+              - img [ref=e111]
+              - generic [ref=e113]: 成本
+            - button "团队成员" [ref=e114] [cursor=pointer]:
+              - img [ref=e115]
+              - generic [ref=e120]: 团队成员
+            - button "设置" [ref=e121] [cursor=pointer]:
+              - img [ref=e122]
+              - generic [ref=e125]: 设置
+        - generic [ref=e126]:
+          - generic [ref=e127]: 最近活动
+          - generic [ref=e128]: 暂无活动记录
+      - status

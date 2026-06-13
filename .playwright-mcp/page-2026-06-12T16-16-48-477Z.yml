@@ -1,0 +1,51 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "Sessions" [level=3] [ref=e7]
+        - button "New Session" [ref=e8] [cursor=pointer]:
+          - img [ref=e9]
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - img [ref=e12]
+          - textbox "Search..." [ref=e15]
+        - generic [ref=e16]:
+          - combobox [ref=e17]:
+            - option "Last Updated" [selected]
+            - option "Created"
+            - option "Title"
+          - combobox [ref=e18]:
+            - option "Desc" [selected]
+            - option "Asc"
+        - combobox [ref=e19]:
+          - option "All Status" [selected]
+          - option "Running"
+          - option "Done"
+          - option "Error"
+          - option "Stopped"
+          - option "Queued"
+      - generic [ref=e23]: Loading sessions...
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e26]: AI Cloud Assistant
+        - button "Files" [ref=e28] [cursor=pointer]
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - textbox "Type a message..." [ref=e32]
+          - button "Send" [disabled] [ref=e33]:
+            - img [ref=e34]
+        - radiogroup "Chat mode selector" [ref=e37]:
+          - radio "Read-only mode" [checked] [ref=e38] [cursor=pointer]: Plan
+          - radio "Execute operations" [ref=e39] [cursor=pointer]: Build
+          - radio "Requires approval" [ref=e40] [cursor=pointer]: Confirm
+        - generic [ref=e41]: MultiCloud AI Agent · Plan mode is read-only
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "Files" [level=3] [ref=e44]:
+          - img [ref=e45]
+          - text: Files
+        - button [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+      - generic [ref=e53]: No files generated yet
+  - button "Toggle theme" [ref=e54] [cursor=pointer]:
+    - img [ref=e55]

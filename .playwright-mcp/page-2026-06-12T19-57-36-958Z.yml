@@ -1,0 +1,9 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - button "+ 新建对话" [ref=e5] [cursor=pointer]
+    - generic [ref=e7] [cursor=pointer]:
+      - generic [ref=e8]: New session - 2026-06-12T19:57:30Z
+      - generic [ref=e9]: 2026/6/13 03:57:30
+  - generic [ref=e12]:
+    - heading "AI 云助手" [level=2] [ref=e13]
+    - paragraph [ref=e14]: 选择或创建一个对话开始

@@ -1,0 +1,137 @@
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#mainContent"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]: MultiCloud
+      - navigation [ref=e6]:
+        - button "Dashboard" [ref=e7] [cursor=pointer]:
+          - img [ref=e9]
+          - generic [ref=e11]: 首页
+        - button "AI Chat assistant" [ref=e12] [cursor=pointer]:
+          - img [ref=e14]
+          - generic [ref=e16]: AI 云助手
+        - button "Cloud Resources" [ref=e17] [cursor=pointer]:
+          - img [ref=e19]
+          - generic [ref=e21]: 资源
+        - button "Cloud Accounts" [ref=e22] [cursor=pointer]:
+          - img [ref=e24]
+          - generic [ref=e26]: 账户
+        - button "Team Management" [ref=e27] [cursor=pointer]:
+          - img [ref=e29]
+          - generic [ref=e31]: 团队
+        - button "Credential Vault" [ref=e32] [cursor=pointer]:
+          - img [ref=e34]
+          - generic [ref=e36]: Vault
+        - button "Cost Management" [ref=e37] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e41]: 成本
+        - button "Terraform Templates" [ref=e42] [cursor=pointer]:
+          - img [ref=e44]
+          - generic [ref=e46]: Terraform
+        - button "Profile Settings" [ref=e47] [cursor=pointer]:
+          - img [ref=e49]
+          - generic [ref=e51]: 我的
+      - button "Toggle theme" [ref=e53] [cursor=pointer]: 切换主题
+    - banner [ref=e55]:
+      - generic [ref=e56]: AI 云助手
+      - generic [ref=e57]:
+        - button "Switch language" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e61]: EN
+        - button "Toggle theme" [ref=e62] [cursor=pointer]:
+          - img [ref=e64]
+        - button "Messages" [ref=e66] [cursor=pointer]:
+          - img [ref=e67]
+        - button "Profile settings" [ref=e69] [cursor=pointer]: U
+    - main [ref=e70]:
+      - generic [ref=e130]:
+        - generic [ref=e131]:
+          - generic [ref=e132]:
+            - heading "对话" [level=3] [ref=e133]
+            - generic [ref=e134]:
+              - button "New chat session" [ref=e135] [cursor=pointer]:
+                - img [ref=e136]
+              - button "Batch delete sessions" [ref=e138] [cursor=pointer]:
+                - img [ref=e139]
+          - generic [ref=e141]:
+            - textbox "搜索对话..." [ref=e142]
+            - generic [ref=e143]:
+              - combobox [ref=e144]:
+                - option "最近更新" [selected]
+                - option "创建时间"
+                - option "标题"
+              - combobox [ref=e145]:
+                - option "降序" [selected]
+                - option "升序"
+            - generic [ref=e146]:
+              - combobox [ref=e147]:
+                - option "全部状态" [selected]
+                - option "运行中"
+                - option "已完成"
+                - option "错误"
+                - option "已停止"
+                - option "排队中"
+              - combobox [ref=e148]:
+                - option "全部来源" [selected]
+                - option "OpenAI"
+                - option "Anthropic"
+                - option "Azure"
+            - generic [ref=e149]:
+              - textbox "开始日期" [ref=e150]
+              - textbox "结束日期" [ref=e151]
+            - combobox [ref=e152]:
+              - option "全部用户" [selected]
+          - generic [ref=e153] [cursor=pointer]: ▼ 筛选
+          - generic [ref=e154]:
+            - generic [ref=e155] [cursor=pointer]:
+              - generic [ref=e156]:
+                - generic [ref=e157]: 你好
+                - generic [ref=e158]:
+                  - generic [ref=e159]: 7小时前
+                  - generic [ref=e160]: admin
+                  - img "Idle" [ref=e162]
+              - button "Delete session" [ref=e163]:
+                - img [ref=e164]
+            - generic [ref=e167] [cursor=pointer]:
+              - generic [ref=e168]:
+                - generic [ref=e169]: 你好
+                - generic [ref=e170]:
+                  - generic [ref=e171]: 8小时前
+                  - generic [ref=e172]: admin
+                  - img "Idle" [ref=e174]
+              - button "Delete session" [ref=e175]:
+                - img [ref=e176]
+        - generic [ref=e181]:
+          - generic [ref=e183]:
+            - button "Files" [ref=e184] [cursor=pointer]:
+              - img [ref=e185]
+            - button "AI configuration settings" [ref=e187] [cursor=pointer]:
+              - img [ref=e188]
+          - generic [ref=e191]:
+            - generic [ref=e192]:
+              - img [ref=e194]
+              - generic [ref=e196]: AI
+            - paragraph [ref=e198]: Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.
+            - button "复制" [ref=e199] [cursor=pointer]:
+              - img [ref=e201]
+              - generic [ref=e203]: 复制
+          - generic [ref=e204]:
+            - generic [ref=e205]:
+              - textbox "Chat message input" [ref=e206]:
+                - /placeholder: Type a message...
+              - button "Send message" [disabled] [ref=e207]:
+                - img [ref=e208]
+            - radiogroup "Chat mode selector" [ref=e210]:
+              - radio "Plan mode - read only" [checked] [ref=e211] [cursor=pointer]: Plan
+              - radio "Build mode - execute operations" [ref=e212] [cursor=pointer]: Build
+              - radio "Confirm mode - requires approval" [ref=e213] [cursor=pointer]: Confirm
+            - generic [ref=e214]: MultiCloud AI Agent · Plan mode is read-only
+        - generic [ref=e215]:
+          - generic [ref=e216]:
+            - heading "Files" [level=3] [ref=e217]:
+              - img [ref=e218]
+              - text: Files
+            - button "×" [ref=e220] [cursor=pointer]
+          - generic [ref=e222]: No files generated yet
+      - status
