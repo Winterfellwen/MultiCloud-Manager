@@ -123,15 +123,16 @@ function ProgressDots() {
   )
 }
 
-function ElapsedTimer({ startTime }: { startTime: number }) {
+function ElapsedTimer({ startTime, status }: { startTime: number; status: string }) {
   const [elapsed, setElapsed] = useState(() => (Date.now() - startTime) / 1000)
 
   useEffect(() => {
+    if (status !== 'running') return
     const interval = setInterval(() => {
       setElapsed((Date.now() - startTime) / 1000)
     }, 1000)
     return () => clearInterval(interval)
-  }, [startTime])
+  }, [startTime, status])
 
   return <span className="elapsed-time">{elapsed.toFixed(1)}s</span>
 }
@@ -168,7 +169,7 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
         <span className="card-summary">{summary}</span>
         <span className="card-status-group">
           {tool.status === 'running' && <ProgressDots />}
-          <ElapsedTimer startTime={startTime} />
+          <ElapsedTimer startTime={startTime} status={tool.status} />
           <span className={`card-status ${tool.status}`}>
             {statusIcon()}
           </span>
