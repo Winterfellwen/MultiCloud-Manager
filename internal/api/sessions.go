@@ -545,3 +545,35 @@ func (h *SessionsHandler) Create(c *gin.Context) {
 		"user_id":    username,
 	})
 }
+
+func (h *SessionsHandler) BatchDelete(c *gin.Context) {
+	var req struct {
+		SessionIDs []string `json:"session_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.SessionIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "session_ids is required"})
+		return
+	}
+
+	username, _ := c.Get("user_id")
+	role, _ := c.Get("user_role")
+
+	deleted := 0
+	for _, sid := range req.SessionIDs {
+		var result sql.Result
+		var err error
+		if role == "admin" {
+			result, err = h.db.Exec(`DELETE FROM sessions WHERE session_id = $1`, sid)
+		} else {
+			result, err = h.db.Exec(`DELETE FROM sessions WHERE session_id = $1 AND user_id = $2`, sid, username)
+		}
+		if err != nil {
+			continue
+		}
+		if rows, _ := result.RowsAffected(); rows > 0 {
+			deleted++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"deleted": deleted})
+}

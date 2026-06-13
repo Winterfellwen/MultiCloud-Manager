@@ -120,6 +120,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		// Session endpoints — all roles (viewer can view history)
 		auth.GET("/agent/sessions", sessionsHandler.List)
 		auth.POST("/agent/sessions", sessionsHandler.Create)
+		auth.POST("/agent/sessions/batch-delete", sessionsHandler.BatchDelete)
 		auth.GET("/agent/sessions/:sid", sessionsHandler.Get)
 		auth.DELETE("/agent/sessions/:sid", sessionsHandler.Delete)
 		auth.PUT("/agent/sessions/:sid", RequireRole("admin", "user"), sessionsHandler.Update)
