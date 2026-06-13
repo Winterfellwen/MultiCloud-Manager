@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Loader, CheckCircle, XCircle } from 'lucide-react'
 import type { ToolCall } from '../../api/types'
 
+interface ToolCallCardProps {
+  tool: ToolCall
+}
+
 function getToolSummary(tool: ToolCall): string {
   const { name } = tool
   const params = tool.params as Record<string, any> || {}
@@ -132,12 +136,12 @@ function ElapsedTimer() {
   return <span className="elapsed-time">{elapsed}s</span>
 }
 
-interface ToolCallCardProps {
-  tool: ToolCall
-}
-
 export function ToolCallCard({ tool }: ToolCallCardProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(tool.status === 'running')
+
+  useEffect(() => {
+    setExpanded(tool.status === 'running')
+  }, [tool.status])
 
   const statusIcon = () => {
     switch (tool.status) {
@@ -150,13 +154,8 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
     }
   }
 
-  const statusText = () => {
-    switch (tool.status) {
-      case 'running': return 'Running'
-      case 'done': return 'Done'
-      case 'error': return 'Error'
-    }
-  }
+  const summary = getToolSummary(tool)
+  const paramsLabel = getParamsLabel(tool.name)
 
   return (
     <div className={`tool-card ${tool.status}`}>
@@ -165,29 +164,42 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
         onClick={() => setExpanded(!expanded)}
       >
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span className="card-icon">🔧</span>
-        <span className="card-name">{tool.name}</span>
-        <span className="card-summary">{getToolSummary(tool)}</span>
+        <span className="card-summary">{summary}</span>
         <span className="card-status-group">
           {tool.status === 'running' && <ProgressDots />}
           {tool.status === 'running' && <ElapsedTimer />}
           <span className={`card-status ${tool.status}`}>
-            {statusIcon()} {statusText()}
+            {statusIcon()}
           </span>
         </span>
       </div>
       {expanded && (
         <div className="tool-card-body expanded">
-          <div className="field-label">{getParamsLabel(tool.name)}</div>
-          <div className="field-code">
-            {JSON.stringify(tool.params, null, 2)}
-          </div>
-          {(tool.result || tool.error) && (
+          {tool.status === 'running' ? (
             <>
-              <div className="field-label">Result</div>
-              <div className="field-result">
-                {tool.error || tool.result || ''}
+              <div className="field-label">{paramsLabel}</div>
+              <div className="field-code">
+                {JSON.stringify(tool.params, null, 2)}
               </div>
+            </>
+          ) : (
+            <>
+              <div className="field-label">{paramsLabel}</div>
+              <div className="field-code">
+                {JSON.stringify(tool.params, null, 2)}
+              </div>
+              {tool.result && (
+                <>
+                  <div className="field-label">Result</div>
+                  <div className="field-result">{tool.result}</div>
+                </>
+              )}
+              {tool.error && (
+                <>
+                  <div className="field-label">Error</div>
+                  <div className="field-result field-error">{tool.error}</div>
+                </>
+              )}
             </>
           )}
         </div>
