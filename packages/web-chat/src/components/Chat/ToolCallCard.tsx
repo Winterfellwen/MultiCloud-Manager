@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Loader, CheckCircle, XCircle } from 'lucide-react'
 import type { ToolCall } from '../../api/types'
 
@@ -109,6 +109,29 @@ function getParamsLabel(toolName: string): string {
   }
 }
 
+function ProgressDots() {
+  return (
+    <span className="progress-dots">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+  )
+}
+
+function ElapsedTimer() {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(prev => prev + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return <span className="elapsed-time">{elapsed.toFixed(1)}s</span>
+}
+
 interface ToolCallCardProps {
   tool: ToolCall
 }
@@ -146,7 +169,7 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
         <span className="card-name">{tool.name}</span>
         <span className="card-summary">{getToolSummary(tool)}</span>
         <span className={`card-status ${tool.status}`}>
-          {statusIcon()} {statusText()}
+          {statusIcon()} {statusText()} {tool.status === 'running' && <><ProgressDots /> <ElapsedTimer /></>}
         </span>
       </div>
       {expanded && (
