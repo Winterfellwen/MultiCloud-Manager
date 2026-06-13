@@ -416,39 +416,12 @@ body {
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 /* ============ Tool Calls ============ */
-.tool-calls-inline {
-  margin-top: 8px;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
-}
-
 .tool-calls-container {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-
-.tool-block {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  white-space: nowrap;
-  background: var(--surface);
-  margin: 2px 0;
-}
-
-.tool-block .tool-icon { font-size: 12px; }
-.tool-block .tool-name { color: var(--primary); font-weight: 500; }
-.tool-block .tool-status { font-size: 9px; text-transform: uppercase; }
-.tool-block .tool-status.running { color: var(--warning); }
-.tool-block .tool-status.done { color: var(--success); }
-.tool-block .tool-status.error { color: var(--danger); }
 
 .tool-card {
   border: 1px solid var(--border);
