@@ -1,5 +1,0 @@
-- generic [ref=e2]:
-  - button "+ 新建对话" [ref=e5] [cursor=pointer]
-  - generic [ref=e9]:
-    - heading "AI 云助手" [level=2] [ref=e10]
-    - paragraph [ref=e11]: 选择或创建一个对话开始
