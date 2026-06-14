@@ -751,43 +751,11 @@ func convertHistoryToWireFormat(history []map[string]interface{}) []map[string]i
 		case "system", "user":
 			out = append(out, map[string]interface{}{"role": role, "content": content})
 		case "agent":
-			assistantMsg := map[string]interface{}{"role": "assistant", "content": content}
-			if i+1 < len(history) {
-				if nextRole, _ := history[i+1]["role"].(string); nextRole == "tool-calls" {
-					if tcs := convertToolCallsRow(history[i+1]["content"].(string)); tcs != nil {
-						toolCalls, results := tcs.calls, tcs.results
-						if len(toolCalls) > 0 {
-							assistantMsg["tool_calls"] = toolCalls
-						}
-						out = append(out, assistantMsg)
-						for idx, result := range results {
-							out = append(out, map[string]interface{}{
-								"role":         "tool",
-								"tool_call_id": fmt.Sprintf("tc_%d", idx),
-								"content":      result,
-							})
-						}
-						i++
-						continue
-					}
-				}
-			}
-			out = append(out, assistantMsg)
+			out = append(out, map[string]interface{}{"role": "assistant", "content": content})
 		case "tool-calls":
-			if tcs := convertToolCallsRow(content); tcs != nil {
-				out = append(out, map[string]interface{}{
-					"role":       "assistant",
-					"content":    "",
-					"tool_calls": tcs.calls,
-				})
-				for idx, result := range tcs.results {
-					out = append(out, map[string]interface{}{
-						"role":         "tool",
-						"tool_call_id": fmt.Sprintf("tc_%d", idx),
-						"content":      result,
-					})
-				}
-			}
+			// Keep tool-calls as a standalone message so the frontend
+			// can render individual tool cards in timeline order.
+			out = append(out, map[string]interface{}{"role": "tool-calls", "content": content})
 		default:
 			out = append(out, m)
 		}

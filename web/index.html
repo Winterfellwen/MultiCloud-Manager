@@ -1701,7 +1701,7 @@ function startGlobalEventSource() {
     _esProcessingEvents = true;
     try {
       var handler = EVENT_HANDLERS[parsed.event_type];
-      if (handler) handler(parsed, e.lastEventId);
+      if (handler && !_isEventProcessed(e.lastEventId)) handler(parsed, e.lastEventId);
     } finally {
       _esProcessingEvents = false;
     }
@@ -1713,6 +1713,18 @@ function startGlobalEventSource() {
 }
 
 var _esProcessingEvents = false;
+var _processedEventIds = new Set(); // Dedup: track event IDs already handled
+function _isEventProcessed(eventId) {
+  if (!eventId) return false;
+  if (_processedEventIds.has(eventId)) return true;
+  _processedEventIds.add(eventId);
+  // Keep the set from growing unbounded — prune old entries
+  if (_processedEventIds.size > 500) {
+    var arr = Array.from(_processedEventIds).sort(function(a,b){return a-b;});
+    _processedEventIds = new Set(arr.slice(250));
+  }
+  return false;
+}
 function subscribeToSession(sessionID) {
   if (SUBSCRIBED_SESSIONS.has(sessionID)) return;
   SUBSCRIBED_SESSIONS.add(sessionID);
@@ -1744,7 +1756,7 @@ function openDirectSSEStream(sessionId) {
 
   var params = new URLSearchParams({
     session_ids: sessionId,
-    last_event_id: '0',
+    last_event_id: String(LAST_EVENT_ID),
     token: localStorage.getItem('token') || '',
     v: '2'
   });
@@ -1779,7 +1791,7 @@ function openDirectSSEStream(sessionId) {
               try {
                 var parsed = JSON.parse(data);
                 var handler = EVENT_HANDLERS[parsed.event_type];
-                if (handler) handler(parsed, currentId);
+                if (handler && !_isEventProcessed(currentId)) handler(parsed, currentId);
               } catch(ex) {}
             }
             // Skip comments (lines starting with ':')
@@ -2053,23 +2065,67 @@ function handleStateChangeEvent(ev) {
       // Also remove any orphaned inline-status at STREAMING_DIV level
       var orphanStatus = STREAMING_DIV.querySelector(':scope > .inline-status');
       if (orphanStatus) orphanStatus.remove();
-      // Save to in-memory cache (tool-calls first, then agent text)
+      // Save to in-memory cache — walk the timeline to capture all blocks
       if (ev.session_id) {
         if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
-        // Save pending tool calls as a separate tool-calls message
+        // Deduplicate: skip if this run_id was already saved
+        var runId = ev.run_id || '';
+        var alreadySaved = SESSION_MESSAGES[ev.session_id].some(function(m) { return m._run_id === runId; });
+        if (alreadySaved) {
+          // Don't save again — prevents duplication on page refresh or session switch
+        } else {
+        // Collect all content blocks and tool cards from STREAMING_DIV in order
+        var timeEl = STREAMING_DIV ? STREAMING_DIV.querySelector('.msg-time') : null;
+        var blocks = [];
+        if (STREAMING_DIV) {
+          var children = STREAMING_DIV.children;
+          for (var bi = 0; bi < children.length; bi++) {
+            var child = children[bi];
+            if (child === timeEl) continue; // skip time element
+            if (child.classList.contains('msg-role') || child.classList.contains('agent-copy-btn')) continue;
+            if (child.classList.contains('msg-content')) {
+              var text = child.textContent.trim();
+              if (text) blocks.push({role: 'agent', content: text});
+            } else if (child.classList.contains('timeline-tool-card')) {
+              var tcName = child.querySelector('.card-name');
+              var tcResult = child.querySelector('.field-result');
+              var tcParams = child.querySelector('.field-args');
+              var tcTimestamp = child.querySelector('.card-timestamp');
+              blocks.push({
+                role: 'tool-calls',
+                content: JSON.stringify([{
+                  name: tcName ? tcName.textContent : 'unknown',
+                  params: tcParams ? tcParams.textContent : '',
+                  result: tcResult ? tcResult.textContent : '',
+                  timestamp: tcTimestamp ? tcTimestamp.textContent : ''
+                }])
+              });
+            }
+          }
+        }
+        // Also save pending tool calls that may not have DOM cards
         if (PENDING_TOOL_CALLS.length > 0) {
-          SESSION_MESSAGES[ev.session_id].push({
-            role: 'tool-calls',
-            content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
-              return {name: tc.name, params: tc.params, result: tc.result};
-            })),
-            created_at: new Date().toISOString(),
-            _run_id: ev.run_id
+          var savedTcNames = {};
+          blocks.forEach(function(b) {
+            if (b.role === 'tool-calls') {
+              try { var arr = JSON.parse(b.content); arr.forEach(function(t) { savedTcNames[t.name] = true; }); } catch(e) {}
+            }
+          });
+          PENDING_TOOL_CALLS.forEach(function(tc) {
+            if (!savedTcNames[tc.name]) {
+              blocks.push({
+                role: 'tool-calls',
+                content: JSON.stringify([{name: tc.name, params: tc.params, result: tc.result}])
+              });
+            }
           });
         }
-        if (STREAMING_CONTENT) {
-          SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
-        }
+        blocks.forEach(function(b) {
+          b.created_at = new Date().toISOString();
+          b._run_id = ev.run_id;
+          SESSION_MESSAGES[ev.session_id].push(b);
+        });
+        } // end of dedup check
       }
       // Finalize any still-running tool cards (stop timers, mark done)
       var runningCards = STREAMING_DIV.querySelectorAll('.timeline-tool-card.running, .tool-card.running');
@@ -3542,7 +3598,8 @@ async function switchSession(sid) {
       });
     }
     // If cache was stale and API has newer messages, render them
-    if (sessData.messages && sessData.messages.length > lastSyncedMsgCount) {
+    // Skip this if we already rendered from live memory cache (SESSION_MESSAGES)
+    if (!liveMsgs && sessData.messages && sessData.messages.length > lastSyncedMsgCount) {
       for (var i = lastSyncedMsgCount; i < sessData.messages.length; i++) {
         var m = sessData.messages[i];
         var ts = m.created_at || m.timestamp || '';
