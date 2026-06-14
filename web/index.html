@@ -132,6 +132,8 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 /* Topbar */
 .topbar { position: fixed; top: 0; left: var(--sidebar-width); right: 0; height: 44px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 50; }
 .topbar-title { font-size: 13px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.sidebar-toggle-btn { display: none; align-items: center; justify-content: center; background: none; border: none; color: var(--text-secondary); cursor: pointer; width: 32px; height: 32px; border-radius: var(--radius-sm); margin-right: 4px; flex-shrink: 0; min-height: auto; min-width: auto; }
+.sidebar-toggle-btn:hover { background: var(--surface-hover); color: var(--text); }
 .topbar-right { display: flex; align-items: center; gap: 8px; min-height: auto; }
 .theme-btn { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; width: 28px; height: 28px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; transition: all .15s; font-family: inherit; min-height: auto; min-width: auto; }
 .theme-btn:hover { background: var(--surface-hover); color: var(--text); }
@@ -864,14 +866,14 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tab-item.active { color: var(--primary); }
 
 /* Mobile / 小程序统一布局（由 embedded.js 设置 html.mobile-layout） */
-html.mobile-layout .sidebar { display: none; }
+html.mobile-layout .sidebar { transform: translateX(-100%); transition: transform .25s ease; }
+html.mobile-layout .sidebar.open { transform: translateX(0); }
 html.mobile-layout .sidebar-resizer { display: none; }
-html.mobile-layout .chat-sidebar-resizer { display: none; }
-html.mobile-layout .content { margin-left: 0; margin-top: calc(44px + env(safe-area-inset-top, 0px)); padding: 12px; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+html.mobile-layout .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.4); z-index: 99; }
+html.mobile-layout .sidebar-overlay.show { display: block; }
+html.mobile-layout .sidebar-toggle-btn { display: flex; }
+html.mobile-layout .content { margin-left: 0; margin-top: calc(44px + env(safe-area-inset-top, 0px)); padding: 12px; padding-bottom: 12px; }
 html.mobile-layout .topbar { left: 0; padding-top: env(safe-area-inset-top, 0px); height: calc(44px + env(safe-area-inset-top, 0px)); }
-html.mobile-layout .mobile-tabs { display: flex; height: calc(48px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); }
-html.mobile-layout .tab-item { font-size: 9px; min-width: 0; padding: 0 2px; }
-html.mobile-layout .tab-item .tab-icon { font-size: 14px; }
 html.mobile-layout .stats-grid { grid-template-columns: repeat(2, 1fr); }
 html.mobile-layout .quick-grid { grid-template-columns: repeat(2, 1fr); }
 html.mobile-layout .stat-card .stat-value { font-size: 20px; }
@@ -1010,6 +1012,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     <div class="nav-item" data-page="chat" role="button" aria-label="AI Chat assistant"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-chat"/></svg></span> <span data-i18n="nav.chat">AI 云助手</span></div>
     <div class="nav-item" data-page="resources" role="button" aria-label="Cloud Resources"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-resources"/></svg></span> <span data-i18n="nav.resources_short">资源</span></div>
     <div class="nav-item" data-page="accounts" role="button" aria-label="Cloud Accounts"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-accounts"/></svg></span> <span data-i18n="nav.accounts_short">账户</span></div>
+    <div class="nav-item" data-page="team" role="button" aria-label="User Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-team"/></svg></span> <span data-i18n="nav.team_short">用户管理</span></div>
     <div class="nav-item" data-page="vault" role="button" aria-label="Credential Vault"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-vault"/></svg></span> <span>Vault</span></div>
     <div class="nav-item" data-page="cost" role="button" aria-label="Cost Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-dollar"/></svg></span> <span data-i18n="cost.nav">成本</span></div>
     <div class="nav-item" data-page="terraform" role="button" aria-label="Terraform Templates"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-terraform"/></svg></span> <span data-i18n="quick.terraform">Terraform</span></div>
@@ -1023,6 +1026,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 
 <!-- Topbar -->
 <header class="topbar">
+  <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" aria-label="Toggle menu"><svg width="20" height="20"><use href="/static/icons.svg#icon-menu"/></svg></button>
   <div class="topbar-title" id="topbarTitle" data-i18n="page.dashboard">仪表盘</div>
   <div class="topbar-right">
     <button class="topbar-action-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English" aria-label="Switch language"><svg width="16" height="16"><use href="/static/icons.svg#icon-language"/></svg> <span class="lang-label">EN</span></button>
@@ -1566,36 +1570,18 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
         <span class="settings-label" data-i18n="profile.logs">日志</span>
         <span class="settings-value">&gt;</span>
       </div>
-      <div class="settings-item" onclick="toggleTeamView()">
-        <span class="settings-label" data-i18n="profile.user_management">用户管理</span>
-        <span class="settings-value">&gt;</span>
-      </div>
     </div>
     <div class="profile-logview" id="profileLogView">
       <div class="profile-logview-header"><span>全部日志</span><button onclick="clearAllLogs()">清除全部</button></div>
       <div class="profile-logview-list" id="profileLogList"></div>
-    </div>
-    <div class="profile-teamview" id="profileTeamView" style="display:none">
-      <div class="team-header">
-        <h2 data-i18n="team.title">开发团队</h2>
-        <span class="team-badge" id="profileTeamCount">0</span>
-      </div>
-      <div id="profileTeamList"></div>
-      <button class="invite-btn" onclick="openInviteModal()" data-i18n="team.invite">+ 邀请</button>
     </div>
     <button class="btn-logout" onclick="doLogout()" data-i18n="profile.logout">退出登录</button>
   </div>
 
 </main>
 
-<!-- Mobile Tabs -->
-<nav class="mobile-tabs" id="mobileTabs">
-  <div class="tab-item active" data-page="dashboard" role="tab" aria-label="Dashboard"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-dashboard"/></svg></span><span data-i18n="nav.dashboard_short">首页</span></div>
-  <div class="tab-item" data-page="chat" role="tab" aria-label="AI Chat"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span data-i18n="nav.chat">AI 云助手</span></div>
-  <div class="tab-item" data-page="resources" role="tab" aria-label="Resources"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-resources"/></svg></span><span data-i18n="nav.resources_short">资源</span></div>
-  <div class="tab-item" data-page="accounts" role="tab" aria-label="Accounts"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-accounts"/></svg></span><span data-i18n="nav.accounts_short">账户</span></div>
-  <div class="tab-item" data-page="profile" role="tab" aria-label="Settings"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-profile"/></svg></span><span data-i18n="nav.profile_short">设置</span></div>
-</nav>
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 </div>
 
@@ -1607,7 +1593,7 @@ const pageTitles = {
   chat: 'page.chat',
   resources: 'page.resources',
   accounts: 'page.accounts',
-  team: 'page.team',
+  team: 'page.team_users',
   vault: 'Vault',
   cost: 'cost.title',
   terraform: 'page.terraform',
@@ -2670,6 +2656,19 @@ function applyVaultRestrictions(role) {
 }
 
 /* Theme */
+function toggleSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (!sidebar) return;
+  var isOpen = sidebar.classList.toggle('open');
+  if (overlay) overlay.classList.toggle('show', isOpen);
+}
+function closeSidebar() {
+  var sidebar = document.querySelector('.sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('show');
+}
 function toggleTheme() {
   const html = document.documentElement;
   const isLight = html.classList.toggle('light');
@@ -2705,6 +2704,7 @@ function toggleChatSessions(force) {
 
 function showPage(page) {
   closeChatSessions();
+  closeSidebar();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + page);
   if (target) target.classList.add('active');
@@ -5299,12 +5299,12 @@ var __ = {
     'nav.chat': 'AI 云助手',
     'nav.resources': '云资源',
     'nav.accounts': '云账户',
-    'nav.team': '团队',
+    'nav.team': '用户管理',
     'nav.profile': '设置',
     'nav.dashboard_short': '首页',
     'nav.resources_short': '资源',
     'nav.accounts_short': '账户',
-    'nav.team_short': '团队',
+    'nav.team_short': '用户管理',
     'nav.profile_short': '设置',
     'nav.theme': '切换主题',
     'nav.lang': 'English',
@@ -5312,7 +5312,8 @@ var __ = {
     'page.chat': 'AI 云助手',
     'page.resources': '云资源',
     'page.accounts': '云账户',
-    'page.team': '团队',
+    'page.team': '用户管理',
+    'page.team_users': '用户管理',
     'page.terraform': 'Terraform 模板',
     'page.profile': '设置',
     'stat.resources': '云资源',
@@ -5482,12 +5483,12 @@ var __ = {
     'nav.chat': 'AI Assistant',
     'nav.resources': 'Cloud Resources',
     'nav.accounts': 'Cloud Accounts',
-    'nav.team': 'Team',
+    'nav.team': 'Users',
     'nav.profile': 'Settings',
     'nav.dashboard_short': 'Home',
     'nav.resources_short': 'Resources',
     'nav.accounts_short': 'Accounts',
-    'nav.team_short': 'Team',
+    'nav.team_short': 'Users',
     'nav.profile_short': 'Settings',
     'nav.theme': 'Toggle Theme',
     'nav.lang': '中文',
@@ -5495,7 +5496,8 @@ var __ = {
     'page.chat': 'AI Assistant',
     'page.resources': 'Cloud Resources',
     'page.accounts': 'Cloud Accounts',
-    'page.team': 'Team',
+    'page.team': 'Users',
+    'page.team_users': 'Users',
     'page.terraform': 'Terraform Templates',
     'page.profile': 'Settings',
     'stat.resources': 'Resources',
