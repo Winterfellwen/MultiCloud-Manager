@@ -15,6 +15,7 @@ export interface Message {
   content: string
   created_at?: string
   timestamp?: string
+  toolCalls?: ToolCall[]
 }
 
 export interface ToolCall {
@@ -35,18 +36,23 @@ export interface FileItem {
 }
 
 export interface SSEEvent {
-  type: string
+  id: number
   run_id?: string
   session_id?: string
-  content?: string
-  tool_calls?: ToolCall[]
-  tool_name?: string
-  result?: string
-  error?: string
-  message?: string
-  state?: string
-  error_message?: string
-  data?: Record<string, unknown>
+  seq?: number
+  event_type: string
+  payload?: {
+    content?: string
+    tool_calls?: ToolCall[]
+    tool_name?: string
+    result?: string
+    error?: string
+    message?: string
+    state?: string
+    error_message?: string
+    [key: string]: unknown
+  }
+  created_at?: string
 }
 
 export interface AIConfig {

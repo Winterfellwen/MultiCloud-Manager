@@ -9,7 +9,8 @@ interface MessageItemProps {
   isStreaming?: boolean
 }
 
-export function MessageItem({ message, toolCalls = [], isStreaming }: MessageItemProps) {
+export function MessageItem({ message, toolCalls: streamingToolCalls = [], isStreaming }: MessageItemProps) {
+  const displayToolCalls = isStreaming ? streamingToolCalls : (message.toolCalls || [])
   if (message.role === 'system') {
     return (
       <div className="msg system">
@@ -47,9 +48,9 @@ export function MessageItem({ message, toolCalls = [], isStreaming }: MessageIte
             <MarkdownRenderer content={message.content} />
           </div>
         )}
-        {toolCalls.length > 0 && (
+        {displayToolCalls.length > 0 && (
           <div className="tool-calls-container">
-            {toolCalls.map((tc) => (
+            {displayToolCalls.map((tc) => (
               <ToolCallCard key={tc.id || tc.name} tool={tc} />
             ))}
           </div>

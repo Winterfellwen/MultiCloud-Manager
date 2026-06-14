@@ -15,6 +15,10 @@ export function MessageList({ messages, toolCalls, streamingContent, isStreaming
 
   const allItems = [
     ...messages,
+    // Show tool calls as a special item when they exist during streaming
+    ...(isStreaming && toolCalls.length > 0
+      ? [{ role: 'tool-calls' as const, content: '', created_at: undefined }]
+      : []),
     ...(isStreaming && streamingContent
       ? [{ role: 'agent' as const, content: streamingContent, created_at: undefined }]
       : []),
@@ -72,9 +76,17 @@ export function MessageList({ messages, toolCalls, streamingContent, isStreaming
                     <span className="inline-status">Thinking...</span>
                   </div>
                 </div>
+              ) : msg.role === 'tool-calls' ? (
+                // Render tool calls directly when they exist during streaming
+                <MessageItem
+                  message={{ role: 'agent', content: '', created_at: undefined }}
+                  toolCalls={toolCalls}
+                  isStreaming={true}
+                />
               ) : (
                 <MessageItem
                   message={msg}
+                  toolCalls={[]}
                   isStreaming={isLast && isStreaming && !!streamingContent}
                 />
               )}

@@ -1,9 +1,35 @@
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight, Loader, CheckCircle, XCircle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader, CheckCircle, XCircle, Terminal, Search, Cloud, BarChart3 } from 'lucide-react'
 import type { ToolCall } from '../../api/types'
 
 interface ToolCallCardProps {
   tool: ToolCall
+}
+
+function getToolIcon(name: string) {
+  switch (name) {
+    case 'shell_exec':
+    case 'run_script':
+      return <Terminal size={12} />
+    case 'list_cloud_resources':
+    case 'get_cloud_stats':
+    case 'list_cloud_accounts':
+    case 'get_cloud_credentials':
+      return <Search size={12} />
+    case 'start_instance':
+    case 'stop_instance':
+    case 'restart_instance':
+    case 'sync_cloud_resources':
+      return <Cloud size={12} />
+    case 'get_cost_overview':
+    case 'get_cost_breakdown':
+    case 'get_cost_trend':
+    case 'compare_cross_cloud_costs':
+    case 'forecast_cost':
+      return <BarChart3 size={12} />
+    default:
+      return <Terminal size={12} />
+  }
 }
 
 function getToolSummary(tool: ToolCall): string {
@@ -12,104 +38,84 @@ function getToolSummary(tool: ToolCall): string {
 
   switch (name) {
     case 'shell_exec':
-      return params.command
-        ? (params.command.length > 50 ? params.command.slice(0, 50) + '...' : params.command)
-        : 'Execute command'
-
+      return params.command || 'Execute command'
     case 'run_script':
-      if (params.script) {
-        const firstLine = params.script.split('\n')[0]
-        return firstLine.length > 50 ? firstLine.slice(0, 50) + '...' : firstLine
-      }
-      return 'Execute script'
-
-    case 'cloud_api_request':
+      return params.script ? params.script.split('\n')[0] : 'Execute script'
+    case 'cloud_api_request': {
       const method = params.method || 'GET'
-      const url = params.url || ''
-      const displayUrl = url.length > 50 ? url.slice(0, 50) + '...' : url
-      return `${method} ${displayUrl}`
-
+      return `${method} ${params.url || ''}`
+    }
     case 'start_instance':
-      return params.resource_id ? `Start: ${params.resource_id}` : 'Start instance'
-
+      return params.resource_id ? `Start ${params.resource_id}` : 'Start instance'
     case 'stop_instance':
-      return params.resource_id ? `Stop: ${params.resource_id}` : 'Stop instance'
-
+      return params.resource_id ? `Stop ${params.resource_id}` : 'Stop instance'
     case 'restart_instance':
-      return params.resource_id ? `Restart: ${params.resource_id}` : 'Restart instance'
-
+      return params.resource_id ? `Restart ${params.resource_id}` : 'Restart instance'
     case 'list_cloud_resources': {
       const parts: string[] = ['List']
       if (params.cloud_type) parts.push(params.cloud_type)
       parts.push('resources')
-      if (params.region) parts.push(`in ${params.region}`)
-      if (params.status) parts.push(`(${params.status})`)
       return parts.join(' ')
     }
-
     case 'get_cloud_stats':
       return 'Get statistics'
-
     case 'sync_cloud_resources':
       return 'Sync all clouds'
-
     case 'list_cloud_accounts':
       return 'List cloud accounts'
-
     case 'get_cloud_credentials':
-      return params.cloud_type
-        ? `Get ${params.cloud_type} credentials`
-        : 'Get credentials'
-
+      return params.cloud_type ? `Get ${params.cloud_type} credentials` : 'Get credentials'
     case 'get_cost_overview':
       return 'Get cost overview'
-
     case 'get_cost_breakdown':
       return 'Get cost breakdown'
-
     case 'get_cost_trend':
       return 'Get cost trend'
-
     case 'compare_cross_cloud_costs':
-      return params.tier
-        ? `Compare ${params.tier} pricing`
-        : 'Compare cross-cloud pricing'
-
+      return params.tier ? `Compare ${params.tier} pricing` : 'Compare pricing'
     case 'get_optimization_suggestions':
       return 'Get optimization suggestions'
-
     case 'apply_optimization':
-      return params.suggestion_id
-        ? `Apply suggestion: ${params.suggestion_id}`
-        : 'Apply optimization'
-
+      return params.suggestion_id ? `Apply: ${params.suggestion_id}` : 'Apply optimization'
     case 'create_optimization_rule':
-      return params.name
-        ? `Create rule: ${params.name}`
-        : 'Create optimization rule'
-
+      return params.name ? `Create rule: ${params.name}` : 'Create rule'
     case 'forecast_cost':
       return 'Forecast costs'
-
     default:
       return name
   }
 }
 
-function getParamsLabel(toolName: string): string {
-  switch (toolName) {
+function getParamsPreview(tool: ToolCall): string {
+  const { name } = tool
+  const params = tool.params as Record<string, any> || {}
+
+  switch (name) {
     case 'shell_exec':
-      return 'Command'
+      return params.command ? `$ ${params.command}` : ''
     case 'run_script':
-      return 'Script'
+      return params.script ? params.script.split('\n').slice(0, 3).join('\n') : ''
     case 'cloud_api_request':
-      return 'Request'
+      return params.url ? `${params.method || 'GET'} ${params.url}` : ''
+    case 'list_cloud_resources':
     case 'start_instance':
     case 'stop_instance':
     case 'restart_instance':
-      return 'Resource'
+      return params.resource_id || ''
     default:
-      return 'Parameters'
+      return ''
+  }
+}
+
+function getParamsLabel(toolName: string): string {
+  switch (toolName) {
+    case 'shell_exec': return 'Command'
+    case 'run_script': return 'Script'
+    case 'cloud_api_request': return 'Request'
+    case 'start_instance':
+    case 'stop_instance':
+    case 'restart_instance': return 'Resource'
+    default: return 'Parameters'
   }
 }
 
@@ -138,26 +144,24 @@ function ElapsedTimer({ startTime, status }: { startTime: number; status: string
 }
 
 export function ToolCallCard({ tool }: ToolCallCardProps) {
-  const [expanded, setExpanded] = useState(tool.status === 'running')
+  const [expanded, setExpanded] = useState(false)
   const [startTime] = useState(() => Date.now())
 
-  useEffect(() => {
-    setExpanded(tool.status === 'running')
-  }, [tool.status])
+  const summary = getToolSummary(tool)
+  const paramsLabel = getParamsLabel(tool.name)
+  const paramsPreview = getParamsPreview(tool)
+  const toolIcon = getToolIcon(tool.name)
 
   const statusIcon = () => {
     switch (tool.status) {
       case 'running':
-        return <Loader size={12} className="animate-spin text-warning" />
+        return <Loader size={12} className="animate-spin" style={{ color: 'var(--warning)' }} />
       case 'done':
-        return <CheckCircle size={12} className="text-success" />
+        return <CheckCircle size={12} style={{ color: 'var(--success)' }} />
       case 'error':
-        return <XCircle size={12} className="text-danger" />
+        return <XCircle size={12} style={{ color: 'var(--danger)' }} />
     }
   }
-
-  const summary = getToolSummary(tool)
-  const paramsLabel = getParamsLabel(tool.name)
 
   return (
     <div className={`tool-card ${tool.status}`}>
@@ -165,15 +169,19 @@ export function ToolCallCard({ tool }: ToolCallCardProps) {
         className="tool-card-header"
         onClick={() => setExpanded(!expanded)}
       >
-        {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span className="card-summary">{summary}</span>
-        <span className="card-status-group">
-          {tool.status === 'running' && <ProgressDots />}
-          <ElapsedTimer startTime={startTime} status={tool.status} />
-          <span className={`card-status ${tool.status}`}>
-            {statusIcon()}
-          </span>
+        <span className={`card-status ${tool.status}`}>
+          {statusIcon()}
         </span>
+        {tool.status === 'running' && <ProgressDots />}
+        <span className="card-icon">{toolIcon}</span>
+        <span className="card-summary">
+          {summary}
+          {tool.status === 'running' && paramsPreview && (
+            <span className="card-running-cmd">{paramsPreview}</span>
+          )}
+        </span>
+        {tool.status !== 'running' && <ElapsedTimer startTime={startTime} status={tool.status} />}
+        {expanded ? <ChevronDown size={12} className="card-chevron" /> : <ChevronRight size={12} className="card-chevron" />}
       </div>
       {expanded && (
         <div className="tool-card-body expanded">

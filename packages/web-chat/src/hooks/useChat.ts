@@ -13,7 +13,7 @@ interface ChatState {
   streamingContent: string
 }
 
-export function useChat() {
+export function useChat(onRunComplete?: () => void) {
   const [state, setState] = useState<ChatState>({
     messages: [],
     isStreaming: false,
@@ -26,6 +26,9 @@ export function useChat() {
 
   const toolCallsRef = useRef<ToolCall[]>([])
   const streamingContentRef = useRef('')
+  const currentRunIdRef = useRef<string | null>(null)
+  const onRunCompleteRef = useRef(onRunComplete)
+  onRunCompleteRef.current = onRunComplete
 
   const setMode = useCallback((mode: ChatMode) => {
     setState(prev => ({ ...prev, mode }))
@@ -61,6 +64,7 @@ export function useChat() {
         currentRunId: data.active_run_id || null,
         isStreaming: !!data.active_run_id,
       }))
+      currentRunIdRef.current = data.active_run_id || null
 
       return data
     } catch (err) {
@@ -96,6 +100,7 @@ export function useChat() {
         mode,
       })
 
+      currentRunIdRef.current = res.run_id
       setState(prev => ({
         ...prev,
         currentRunId: res.run_id,
@@ -114,7 +119,7 @@ export function useChat() {
   }, [state.currentSessionId, state.mode])
 
   const handleConfirm = useCallback(async (toolName: string, params?: Record<string, unknown>) => {
-    const { currentRunId } = state
+    const currentRunId = currentRunIdRef.current
     if (!currentRunId) return
 
     try {
@@ -127,10 +132,10 @@ export function useChat() {
     } catch (err) {
       console.error('Failed to confirm:', err)
     }
-  }, [state.currentRunId])
+  }, [])
 
   const handleReject = useCallback(async (toolName: string) => {
-    const { currentRunId } = state
+    const currentRunId = currentRunIdRef.current
     if (!currentRunId) return
 
     try {
@@ -142,26 +147,35 @@ export function useChat() {
     } catch (err) {
       console.error('Failed to reject:', err)
     }
-  }, [state.currentRunId])
+  }, [])
 
   const handleStop = useCallback(async () => {
-    const { currentRunId } = state
+    const currentRunId = currentRunIdRef.current
     if (!currentRunId) return
 
     try {
       await stopChat(currentRunId)
-      setState(prev => ({ ...prev, isStreaming: false }))
+      currentRunIdRef.current = null
+      setState(prev => ({ ...prev, isStreaming: false, currentRunId: null }))
     } catch (err) {
       console.error('Failed to stop:', err)
     }
-  }, [state.currentRunId])
+  }, [])
 
   const handleSSEEvent = useCallback((event: SSEEvent) => {
-    if (event.run_id && event.run_id !== state.currentRunId) return
+    const currentRunId = currentRunIdRef.current
+    // Don't filter state_change/done/error events - they may arrive before currentRunId is set
+    const terminalEvents = ['state_change', 'done', 'error']
+    if (!terminalEvents.includes(event.event_type) && event.run_id && currentRunId && event.run_id !== currentRunId) {
+      return
+    }
 
-    switch (event.type) {
+    const eventType = event.event_type
+    const payload = event.payload || {}
+
+    switch (eventType) {
       case 'token': {
-        streamingContentRef.current += event.content || ''
+        streamingContentRef.current += payload.content || ''
         setState(prev => ({
           ...prev,
           streamingContent: streamingContentRef.current,
@@ -169,11 +183,24 @@ export function useChat() {
         break
       }
       case 'tool_start': {
-        if (event.tool_calls) {
-          toolCallsRef.current = event.tool_calls.map(tc => ({
-            ...tc,
-            status: 'running' as const,
-          }))
+        if (payload.tool_calls) {
+          toolCallsRef.current = payload.tool_calls.map(tc => {
+            // Transform from OpenAI format {function: {name, arguments}} to internal format
+            const fn = (tc as any).function
+            if (fn) {
+              let params = {}
+              try {
+                params = typeof fn.arguments === 'string' ? JSON.parse(fn.arguments) : fn.arguments || {}
+              } catch { params = {} }
+              return {
+                id: (tc as any).id || `tc-${Date.now()}`,
+                name: fn.name,
+                params,
+                status: 'running' as const,
+              }
+            }
+            return { ...tc, status: 'running' as const }
+          })
           setState(prev => ({
             ...prev,
             toolCalls: [...toolCallsRef.current],
@@ -182,10 +209,10 @@ export function useChat() {
         break
       }
       case 'tool_result': {
-        const toolName = event.tool_name || ''
+        const toolName = payload.tool_name || ''
         toolCallsRef.current = toolCallsRef.current.map(tc =>
           tc.name === toolName
-            ? { ...tc, status: event.error ? 'error' : 'done', result: event.result, error: event.error }
+            ? { ...tc, status: payload.error ? 'error' : 'done', result: payload.result, error: payload.error }
             : tc
         )
         setState(prev => ({
@@ -201,10 +228,11 @@ export function useChat() {
         break
       }
       case 'state_change': {
-        if (event.state === 'done' || event.state === 'error' || event.state === 'stopped') {
+        if (payload.state === 'done' || payload.state === 'error' || payload.state === 'stopped') {
           const finalContent = streamingContentRef.current
           const finalToolCalls = [...toolCallsRef.current]
 
+          currentRunIdRef.current = null
           setState(prev => {
             const newMessages = [...prev.messages]
             if (finalContent || finalToolCalls.length > 0) {
@@ -212,6 +240,7 @@ export function useChat() {
                 role: 'agent',
                 content: finalContent,
                 created_at: new Date().toISOString(),
+                toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
               })
             }
             return {
@@ -225,6 +254,7 @@ export function useChat() {
           })
           streamingContentRef.current = ''
           toolCallsRef.current = []
+          onRunCompleteRef.current?.()
         }
         break
       }
@@ -232,6 +262,7 @@ export function useChat() {
         const finalContent = streamingContentRef.current
         const finalToolCalls = [...toolCallsRef.current]
 
+        currentRunIdRef.current = null
         setState(prev => {
           const newMessages = [...prev.messages]
           if (finalContent || finalToolCalls.length > 0) {
@@ -239,6 +270,7 @@ export function useChat() {
               role: 'agent',
               content: finalContent,
               created_at: new Date().toISOString(),
+              toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
             })
           }
           return {
@@ -252,15 +284,17 @@ export function useChat() {
         })
         streamingContentRef.current = ''
         toolCallsRef.current = []
+        onRunCompleteRef.current?.()
         break
       }
       case 'error': {
+        currentRunIdRef.current = null
         setState(prev => ({
           ...prev,
           isStreaming: false,
           messages: [...prev.messages, {
             role: 'system',
-            content: `Error: ${event.message || event.error || 'Unknown error'}`,
+            content: `Error: ${payload.message || payload.error || 'Unknown error'}`,
           }],
           currentRunId: null,
         }))
@@ -269,7 +303,7 @@ export function useChat() {
         break
       }
     }
-  }, [state.currentRunId])
+  }, []) // No dependencies - uses refs for all mutable state
 
   return {
     ...state,

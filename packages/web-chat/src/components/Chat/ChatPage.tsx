@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useChat } from '../../hooks/useChat'
 import { useSessions } from '../../hooks/useSessions'
 import { useSSE } from '../../hooks/useSSE'
@@ -8,26 +8,35 @@ import { MessageList } from './MessageList'
 import { ChatInput } from './ChatInput'
 import { ConfirmCard } from './ConfirmCard'
 import { FilesSidebar } from '../Files/FilesSidebar'
-import type { FileItem } from '../../api/types'
+import type { FileItem, SSEEvent } from '../../api/types'
 
 export function ChatPage() {
-  const chat = useChat()
   const sessions = useSessions()
+  const chat = useChat(() => {
+    sessions.loadSessions()
+  })
   const [filesSidebarOpen, setFilesSidebarOpen] = useState(false)
   const files: FileItem[] = []
   const [confirmToolCalls, setConfirmToolCalls] = useState<{ name: string; params?: Record<string, unknown> }[]>([])
 
+  const sessionIds = useMemo(
+    () => chat.currentSessionId ? [chat.currentSessionId] : [],
+    [chat.currentSessionId]
+  )
+
+  const handleSSEEvent = useCallback((event: SSEEvent) => {
+    chat.handleSSEEvent(event)
+    if (event.event_type === 'confirm_required' && event.payload?.tool_calls) {
+      setConfirmToolCalls(event.payload.tool_calls.map((tc: { name: string; params?: Record<string, unknown> }) => ({
+        name: tc.name,
+        params: tc.params,
+      })))
+    }
+  }, [chat.handleSSEEvent])
+
   useSSE({
-    sessionIds: chat.currentSessionId ? [chat.currentSessionId] : [],
-    onEvent: (event) => {
-      chat.handleSSEEvent(event)
-      if (event.type === 'confirm_required' && event.tool_calls) {
-        setConfirmToolCalls(event.tool_calls.map(tc => ({
-          name: tc.name,
-          params: tc.params,
-        })))
-      }
-    },
+    sessionIds,
+    onEvent: handleSSEEvent,
     enabled: !!chat.currentSessionId,
   })
 
