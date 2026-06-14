@@ -4694,11 +4694,14 @@ function renderAccounts(list) {
       const statusLabel = a.is_active ? t('account.normal') : t('account.error');
       const vaultBadge = a.vault_secured ? ' <span style="color:var(--success);font-size:10px"><svg width="14" height="14" style="vertical-align:middle"><use href="/static/icons.svg#icon-lock"/></svg></span>' : '';
       const lastSync = a.last_sync_at || a.last_sync || t('account.unknown');
+      // Defensive: if account name looks like a raw key (e.g. "account.render"), display cloud label instead
+      var displayName = a.name;
+      if (/^account\.\w+$/.test(displayName)) displayName = cloudLabel;
       return '<div class="account-card">' +
         '<div class="account-left">' +
           '<div class="account-icon ' + a.cloud_type + '">' + (cloudShorts[a.cloud_type] || '??') + '</div>' +
           '<div>' +
-            '<div class="account-name">' + a.name + vaultBadge + '</div>' +
+            '<div class="account-name">' + displayName + vaultBadge + '</div>' +
             '<div class="account-meta">' + cloudLabel + ' / ' + statusLabel + ' / ' + t('account.sync_time') + lastSync + '</div>' +
           '</div>' +
         '</div>' +
@@ -4783,7 +4786,7 @@ function selectCloud(cloud) {
       ? '<textarea rows="3" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:inherit" id="field-' + f.key + '"></textarea>'
       : '<input type="' + f.type + '" id="field-' + f.key + '" placeholder="' + f.label + '"' + (f.default ? ' value="' + f.default + '"' : '') + '>')
   ).join('');
-  var guide = CLOUD_GUIDES[cloud];
+  var guide = getCloudGuide(cloud);
   if (guide) {
     fields.innerHTML += '<div class="cloud-guide">' +
       '<div class="cloud-guide-title">' + guide.title + '</div>' +
@@ -4793,50 +4796,47 @@ function selectCloud(cloud) {
   }
 }
 
-var CLOUD_GUIDES = {
-  azure: {
-    title: LOCALE === 'zh' ? '如何获取 Azure 凭证' : 'How to get Azure credentials',
-    steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → Azure Active Directory → 应用注册', '创建应用注册，获取 Application (client) ID 和 Directory (tenant) ID', '在"证书和密码"中创建 Client Secret', '在订阅中授予应用"参与者"角色']
-      : ['Sign in to <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → Azure AD → App registrations', 'Create an app registration, copy Application (client) ID and Directory (tenant) ID', 'Create a Client Secret under "Certificates & secrets"', 'Assign "Contributor" role to the app in your subscription'],
-    doc: 'https://learn.microsoft.com/azure/active-directory/develop/howto-create-service-principal-portal'
-  },
-  aws: {
-    title: LOCALE === 'zh' ? '如何获取 AWS 凭证' : 'How to get AWS credentials',
-    steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://console.aws.amazon.com" target="_blank">AWS Console</a> → IAM → 用户', '选择用户 → 安全凭证 → 创建访问密钥', '选择使用案例（CLI）→ 创建 → 复制 Access Key ID 和 Secret Access Key', '输入资源所在区域，如 us-east-1, ap-northeast-1']
-      : ['Sign in to <a href="https://console.aws.amazon.com" target="_blank">AWS Console</a> → IAM → Users', 'Select a user → Security credentials → Create access key', 'Choose a use case (CLI) → Create → copy Access Key ID and Secret Access Key', 'Enter the region where your resources are located, e.g. us-east-1, ap-northeast-1'],
-    doc: 'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html'
-  },
-  tencent: {
-    title: LOCALE === 'zh' ? '如何获取腾讯云凭证' : 'How to get Tencent Cloud credentials',
-    steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://console.cloud.tencent.com" target="_blank">腾讯云控制台</a> → CAM → API密钥', '点击"新建密钥" → 复制 SecretId 和 SecretKey', '推荐使用子账号密钥并通过 CAM 进行访问控制']
-      : ['Sign in to <a href="https://console.cloud.tencent.com" target="_blank">Tencent Cloud Console</a> → CAM → API Keys', 'Click "Create SecretKey" → copy SecretId and SecretKey', 'Recommended: use sub-account keys with CAM for access control'],
-    doc: 'https://cloud.tencent.com/document/product/598/34213'
-  },
-  alicloud: {
-    title: LOCALE === 'zh' ? '如何获取阿里云凭证' : 'How to get Alibaba Cloud credentials',
-    steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://www.aliyun.com" target="_blank">阿里云控制台</a> → 右上角头像 → AccessKey 管理', '点击"创建 AccessKey" → 验证身份 → 保存 AccessKey ID 和 Secret', '⚠️ AccessKey Secret 仅显示一次，请立即保存', '推荐使用 RAM 用户的 AccessKey 而非主账号']
-      : ['Sign in to <a href="https://www.aliyun.com" target="_blank">Alibaba Cloud Console</a> → profile menu → AccessKey Management', 'Click "Create AccessKey" → verify identity → save AccessKey ID and Secret', '⚠️ AccessKey Secret is shown only once — save it immediately', 'Recommended: use a RAM user AccessKey instead of the main account'],
-    doc: 'https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair'
-  },
-  oracle: {
-    title: LOCALE === 'zh' ? '如何获取 Oracle Cloud 凭证' : 'How to get Oracle Cloud credentials',
-    steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', '选择用户 → API Keys → 添加 API Key', '下载生成的私钥文件，将内容粘贴到 Private Key', '复制 Tenancy OCID、User OCID 和 Fingerprint', '如实例不在根 compartment，前往 Identity → Compartments 复制目标 Compartment OCID']
-      : ['Sign in to <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', 'Select a user → API Keys → Add API Key', 'Download the generated private key file, paste its content into Private Key', 'Copy Tenancy OCID, User OCID, and Fingerprint', 'If instances are not in root compartment, go to Identity → Compartments and copy target Compartment OCID'],
-    doc: 'https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/managingcredentials.htm'
-  },
-  render: {
-    title: LOCALE === 'zh' ? '如何获取 Render API Key' : 'How to get a Render API Key',
-    steps: LOCALE === 'zh'
-      ? ['登录 <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a> → Account → API Keys', '点击"Create API Key" → 复制生成的密钥']
-      : ['Sign in to <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a> → Account → API Keys', 'Click "Create API Key" → copy the generated key'],
-    doc: 'https://render.com/docs/api'
-  }
-};
+function getCloudGuide(cloud) {
+  var G = {
+    azure: {
+      zh: { title: '如何获取 Azure 凭证', steps: ['登录 <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → Azure Active Directory → 应用注册', '创建应用注册，获取 Application (client) ID 和 Directory (tenant) ID', '在"证书和密码"中创建 Client Secret', '在订阅中授予应用"参与者"角色'] },
+      en: { title: 'How to get Azure credentials', steps: ['Sign in to <a href="https://portal.azure.com" target="_blank">Azure Portal</a> → Azure AD → App registrations', 'Create an app registration, copy Application (client) ID and Directory (tenant) ID', 'Create a Client Secret under "Certificates & secrets"', 'Assign "Contributor" role to the app in your subscription'] }
+    },
+    aws: {
+      zh: { title: '如何获取 AWS 凭证', steps: ['登录 <a href="https://console.aws.amazon.com" target="_blank">AWS Console</a> → IAM → 用户', '选择用户 → 安全凭证 → 创建访问密钥', '选择使用案例（CLI）→ 创建 → 复制 Access Key ID 和 Secret Access Key', '输入资源所在区域，如 us-east-1, ap-northeast-1'] },
+      en: { title: 'How to get AWS credentials', steps: ['Sign in to <a href="https://console.aws.amazon.com" target="_blank">AWS Console</a> → IAM → Users', 'Select a user → Security credentials → Create access key', 'Choose a use case (CLI) → Create → copy Access Key ID and Secret Access Key', 'Enter the region where your resources are located, e.g. us-east-1, ap-northeast-1'] }
+    },
+    tencent: {
+      zh: { title: '如何获取腾讯云凭证', steps: ['登录 <a href="https://console.cloud.tencent.com" target="_blank">腾讯云控制台</a> → CAM → API密钥', '点击"新建密钥" → 复制 SecretId 和 SecretKey', '推荐使用子账号密钥并通过 CAM 进行访问控制'] },
+      en: { title: 'How to get Tencent Cloud credentials', steps: ['Sign in to <a href="https://console.cloud.tencent.com" target="_blank">Tencent Cloud Console</a> → CAM → API Keys', 'Click "Create SecretKey" → copy SecretId and SecretKey', 'Recommended: use sub-account keys with CAM for access control'] }
+    },
+    alicloud: {
+      zh: { title: '如何获取阿里云凭证', steps: ['登录 <a href="https://www.aliyun.com" target="_blank">阿里云控制台</a> → 右上角头像 → AccessKey 管理', '点击"创建 AccessKey" → 验证身份 → 保存 AccessKey ID 和 Secret', '⚠️ AccessKey Secret 仅显示一次，请立即保存', '推荐使用 RAM 用户的 AccessKey 而非主账号'] },
+      en: { title: 'How to get Alibaba Cloud credentials', steps: ['Sign in to <a href="https://www.aliyun.com" target="_blank">Alibaba Cloud Console</a> → profile menu → AccessKey Management', 'Click "Create AccessKey" → verify identity → save AccessKey ID and Secret', '⚠️ AccessKey Secret is shown only once — save it immediately', 'Recommended: use a RAM user AccessKey instead of the main account'] }
+    },
+    oracle: {
+      zh: { title: '如何获取 Oracle Cloud 凭证', steps: ['登录 <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', '选择用户 → API Keys → 添加 API Key', '下载生成的私钥文件，将内容粘贴到 Private Key', '复制 Tenancy OCID、User OCID 和 Fingerprint', '如实例不在根 compartment，前往 Identity → Compartments 复制目标 Compartment OCID'] },
+      en: { title: 'How to get Oracle Cloud credentials', steps: ['Sign in to <a href="https://cloud.oracle.com" target="_blank">Oracle Cloud Console</a> → Identity → Users', 'Select a user → API Keys → Add API Key', 'Download the generated private key file, paste its content into Private Key', 'Copy Tenancy OCID, User OCID, and Fingerprint', 'If instances are not in root compartment, go to Identity → Compartments and copy target Compartment OCID'] }
+    },
+    render: {
+      zh: { title: '如何获取 Render API Key', steps: ['登录 <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a> → Account → API Keys', '点击"Create API Key" → 复制生成的密钥'] },
+      en: { title: 'How to get a Render API Key', steps: ['Sign in to <a href="https://dashboard.render.com" target="_blank">Render Dashboard</a> → Account → API Keys', 'Click "Create API Key" → copy the generated key'] }
+    }
+  };
+  var docs = {
+    azure: 'https://learn.microsoft.com/azure/active-directory/develop/howto-create-service-principal-portal',
+    aws: 'https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html',
+    tencent: 'https://cloud.tencent.com/document/product/598/34213',
+    alicloud: 'https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair',
+    oracle: 'https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/managingcredentials.htm',
+    render: 'https://render.com/docs/api'
+  };
+  var entry = G[cloud];
+  if (!entry) return null;
+  var g = entry[LOCALE] || entry.zh;
+  g.doc = docs[cloud];
+  return g;
+}
 
 async function submitAccount() {
   if (!selectedCloud) { alert(t('account.select_cloud')); return; }
@@ -5356,6 +5356,9 @@ var __ = {
     'resource.stop': '停止',
     'account.add': '+ 添加云账户',
     'account.tencent': '腾讯云',
+    'account.alicloud': '阿里云',
+    'account.oracle': 'Oracle Cloud',
+    'account.render': 'Render',
     'account.cancel': '取消',
     'account.submit': '提交',
     'account.empty': '暂无云账户',
@@ -5535,6 +5538,9 @@ var __ = {
     'resource.stop': 'Stop',
     'account.add': '+ Add Account',
     'account.tencent': 'Tencent Cloud',
+    'account.alicloud': 'Alibaba Cloud',
+    'account.oracle': 'Oracle Cloud',
+    'account.render': 'Render',
     'account.cancel': 'Cancel',
     'account.submit': 'Submit',
     'account.empty': 'No accounts',
