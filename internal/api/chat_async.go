@@ -717,7 +717,7 @@ func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]in
 	if err == nil && historyJSON != "" {
 		var history []map[string]interface{}
 		if json.Unmarshal([]byte(historyJSON), &history) == nil {
-			return convertHistoryToWireFormat(history)
+			return convertHistoryForLLM(history)
 		}
 	}
 
@@ -737,7 +737,53 @@ func (h *ChatStreamHandler) loadSessionHistory(sessionID string) []map[string]in
 			"content": content,
 		})
 	}
-	return convertHistoryToWireFormat(history)
+	return convertHistoryForLLM(history)
+}
+
+func convertHistoryForLLM(history []map[string]interface{}) []map[string]interface{} {
+	out := make([]map[string]interface{}, 0, len(history))
+	for i := 0; i < len(history); i++ {
+		m := history[i]
+		role, _ := m["role"].(string)
+		content, _ := m["content"].(string)
+
+		switch role {
+		case "system", "user":
+			out = append(out, map[string]interface{}{"role": role, "content": content})
+		case "agent":
+			out = append(out, map[string]interface{}{"role": "assistant", "content": content})
+		case "tool-calls":
+			// Convert to OpenAI format: assistant with tool_calls + tool results
+			pair := convertToolCallsRow(content)
+			if pair == nil || len(pair.calls) == 0 {
+				continue
+			}
+			// Assistant message with tool_calls array
+			out = append(out, map[string]interface{}{
+				"role":       "assistant",
+				"content":    "",
+				"tool_calls": pair.calls,
+			})
+			// Individual tool result messages
+			for idx, result := range pair.results {
+				tcID := ""
+				if idx < len(pair.calls) {
+					tcID, _ = pair.calls[idx]["id"].(string)
+				}
+				if tcID == "" {
+					tcID = fmt.Sprintf("tc_%d", idx)
+				}
+				out = append(out, map[string]interface{}{
+					"role":         "tool",
+					"tool_call_id": tcID,
+					"content":      result,
+				})
+			}
+		default:
+			// Skip unknown roles (including old "tool-calls" that failed to parse)
+		}
+	}
+	return out
 }
 
 func convertHistoryToWireFormat(history []map[string]interface{}) []map[string]interface{} {

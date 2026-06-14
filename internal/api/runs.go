@@ -8,6 +8,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 // State is the lifecycle state of a Run.
@@ -305,7 +307,7 @@ func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID i
 		   FROM run_events WHERE id > $1 AND session_id = ANY($2)
 		   ORDER BY id DESC LIMIT $3
 		 ) sub ORDER BY id`,
-		fromID, sessionIDs, maxReplay)
+		fromID, pq.Array(sessionIDs), maxReplay)
 	if err != nil {
 		log.Printf("replayEvents: query failed (sessionIDs=%d, fromID=%d): %v", len(sessionIDs), fromID, err)
 		return
