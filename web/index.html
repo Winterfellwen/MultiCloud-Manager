@@ -1010,11 +1010,10 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     <div class="nav-item" data-page="chat" role="button" aria-label="AI Chat assistant"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-chat"/></svg></span> <span data-i18n="nav.chat">AI 云助手</span></div>
     <div class="nav-item" data-page="resources" role="button" aria-label="Cloud Resources"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-resources"/></svg></span> <span data-i18n="nav.resources_short">资源</span></div>
     <div class="nav-item" data-page="accounts" role="button" aria-label="Cloud Accounts"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-accounts"/></svg></span> <span data-i18n="nav.accounts_short">账户</span></div>
-    <div class="nav-item" data-page="team" role="button" aria-label="Team Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-team"/></svg></span> <span data-i18n="nav.team_short">团队</span></div>
     <div class="nav-item" data-page="vault" role="button" aria-label="Credential Vault"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-vault"/></svg></span> <span>Vault</span></div>
     <div class="nav-item" data-page="cost" role="button" aria-label="Cost Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-dollar"/></svg></span> <span data-i18n="cost.nav">成本</span></div>
     <div class="nav-item" data-page="terraform" role="button" aria-label="Terraform Templates"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-terraform"/></svg></span> <span data-i18n="quick.terraform">Terraform</span></div>
-    <div class="nav-item" data-page="profile" role="button" aria-label="Profile Settings"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-profile"/></svg></span> <span data-i18n="nav.profile_short">我的</span></div>
+    <div class="nav-item" data-page="profile" role="button" aria-label="Settings"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-profile"/></svg></span> <span data-i18n="nav.profile_short">设置</span></div>
   </nav>
   <div class="sidebar-bottom">
     <button class="theme-btn sidebar-theme-btn" onclick="toggleTheme()" data-i18n="nav.theme" aria-label="Toggle theme"><span class="theme-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-moon"/></svg></span> 主题</button>
@@ -1567,10 +1566,22 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
         <span class="settings-label" data-i18n="profile.logs">日志</span>
         <span class="settings-value">&gt;</span>
       </div>
+      <div class="settings-item" onclick="toggleTeamView()">
+        <span class="settings-label" data-i18n="profile.user_management">用户管理</span>
+        <span class="settings-value">&gt;</span>
+      </div>
     </div>
     <div class="profile-logview" id="profileLogView">
       <div class="profile-logview-header"><span>全部日志</span><button onclick="clearAllLogs()">清除全部</button></div>
       <div class="profile-logview-list" id="profileLogList"></div>
+    </div>
+    <div class="profile-teamview" id="profileTeamView" style="display:none">
+      <div class="team-header">
+        <h2 data-i18n="team.title">开发团队</h2>
+        <span class="team-badge" id="profileTeamCount">0</span>
+      </div>
+      <div id="profileTeamList"></div>
+      <button class="invite-btn" onclick="openInviteModal()" data-i18n="team.invite">+ 邀请</button>
     </div>
     <button class="btn-logout" onclick="doLogout()" data-i18n="profile.logout">退出登录</button>
   </div>
@@ -1583,8 +1594,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
   <div class="tab-item" data-page="chat" role="tab" aria-label="AI Chat"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span data-i18n="nav.chat">AI 云助手</span></div>
   <div class="tab-item" data-page="resources" role="tab" aria-label="Resources"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-resources"/></svg></span><span data-i18n="nav.resources_short">资源</span></div>
   <div class="tab-item" data-page="accounts" role="tab" aria-label="Accounts"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-accounts"/></svg></span><span data-i18n="nav.accounts_short">账户</span></div>
-  <div class="tab-item" data-page="team" role="tab" aria-label="Team"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-team"/></svg></span><span data-i18n="nav.team_short">团队</span></div>
-  <div class="tab-item" data-page="profile" role="tab" aria-label="Profile"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-profile"/></svg></span><span data-i18n="nav.profile_short">我的</span></div>
+  <div class="tab-item" data-page="profile" role="tab" aria-label="Settings"><span class="tab-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-profile"/></svg></span><span data-i18n="nav.profile_short">设置</span></div>
 </nav>
 
 </div>
@@ -5021,13 +5031,17 @@ async function deleteVaultSecret(path) {
   } catch(e) { showToast('Error: ' + e.message); }
 }
 
-async function loadTeam() {
+async function loadTeam(targetListId, targetCountId) {
+  var listId = targetListId || 'teamList';
+  var countId = targetCountId || 'teamCount';
   let data = await apiFetch(API + '/teams');
   let members;
   if (data && data.members) members = data.members;
   else members = [];
-  document.getElementById('teamCount').textContent = members.length;
-  const container = document.getElementById('teamList');
+  var countEl = document.getElementById(countId);
+  if (countEl) countEl.textContent = members.length;
+  const container = document.getElementById(listId);
+  if (!container) return;
   container.innerHTML = members.map(m => {
     var avatarLetter = (m.name || m.email || 'U').charAt(0).toUpperCase();
     var isAdmin = (m.role || 'user') === 'admin';
@@ -5286,12 +5300,12 @@ var __ = {
     'nav.resources': '云资源',
     'nav.accounts': '云账户',
     'nav.team': '团队',
-    'nav.profile': '个人中心',
+    'nav.profile': '设置',
     'nav.dashboard_short': '首页',
     'nav.resources_short': '资源',
     'nav.accounts_short': '账户',
     'nav.team_short': '团队',
-    'nav.profile_short': '我的',
+    'nav.profile_short': '设置',
     'nav.theme': '切换主题',
     'nav.lang': 'English',
     'page.dashboard': '仪表盘',
@@ -5300,7 +5314,7 @@ var __ = {
     'page.accounts': '云账户',
     'page.team': '团队',
     'page.terraform': 'Terraform 模板',
-    'page.profile': '个人中心',
+    'page.profile': '设置',
     'stat.resources': '云资源',
     'stat.resources_sub': '总计',
     'stat.accounts': '云账号',
@@ -5435,6 +5449,7 @@ var __ = {
     'profile.logs': '日志',
     'profile.logs_dev': '日志开发中',
     'profile.logout': '退出登录',
+    'profile.user_management': '用户管理',
     'mock.account_list': '已获取账户列表：\n- Azure 生产环境\n- 腾讯云开发环境\n\n共 2 个云账户，全部运行正常。',
     'mock.resource_list': '当前共有 2 个云资源：\n1. prod-web-01 (Azure, Standard_D2s_v3, 运行中)\n2. db-mysql-01 (腾讯云, 2C4G 50GB, 运行中)',
     'mock.plan_prefix': '好的，我为你制定了以下 VM 创建方案：',
@@ -5468,12 +5483,12 @@ var __ = {
     'nav.resources': 'Cloud Resources',
     'nav.accounts': 'Cloud Accounts',
     'nav.team': 'Team',
-    'nav.profile': 'Profile',
+    'nav.profile': 'Settings',
     'nav.dashboard_short': 'Home',
     'nav.resources_short': 'Resources',
     'nav.accounts_short': 'Accounts',
     'nav.team_short': 'Team',
-    'nav.profile_short': 'Me',
+    'nav.profile_short': 'Settings',
     'nav.theme': 'Toggle Theme',
     'nav.lang': '中文',
     'page.dashboard': 'Dashboard',
@@ -5482,7 +5497,7 @@ var __ = {
     'page.accounts': 'Cloud Accounts',
     'page.team': 'Team',
     'page.terraform': 'Terraform Templates',
-    'page.profile': 'Profile',
+    'page.profile': 'Settings',
     'stat.resources': 'Resources',
     'stat.resources_sub': 'Total',
     'stat.accounts': 'Accounts',
@@ -5615,6 +5630,7 @@ var __ = {
     'profile.logs': 'Logs',
     'profile.logs_dev': 'Logs in development',
     'profile.logout': 'Log Out',
+    'profile.user_management': 'User Management',
     'mock.account_list': 'Account list:\n- Azure Production\n- Tencent Cloud Dev\n\n2 accounts, all running normally.',
     'mock.resource_list': 'Current resources:\n1. prod-web-01 (Azure, Standard_D2s_v3, Running)\n2. db-mysql-01 (Tencent Cloud, 2C4G 50GB, Running)',
     'mock.plan_prefix': 'Here is the VM creation plan I prepared:',
@@ -5781,6 +5797,12 @@ function toggleLogView() {
   var el = document.getElementById('profileLogView');
   el.classList.toggle('show');
   if (el.classList.contains('show')) renderProfileLogs();
+}
+function toggleTeamView() {
+  var el = document.getElementById('profileTeamView');
+  var isShown = el.style.display !== 'none';
+  el.style.display = isShown ? 'none' : 'block';
+  if (!isShown) loadTeam('profileTeamList', 'profileTeamCount');
 }
 function renderProfileLogs() {
   var list = document.getElementById('profileLogList');
