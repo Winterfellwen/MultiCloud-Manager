@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; connect-src 'self' wss:; font-src 'self'; base-uri 'self'; form-action 'self'">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <script src="/embedded.js"></script>
 <script src="/static/js/g6.min.js"></script>
@@ -255,6 +255,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .session-status { flex-shrink: 0; display: flex; align-items: center; }
 .session-status .running-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 1.5s ease-in-out infinite; }
 .session-status .done-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+.session-status .error-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
 @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
 
 /* Delete btn */
@@ -308,7 +309,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .mode-btn:hover { color: var(--text); background: rgba(255,255,255,.03); min-height: auto; }
 .mode-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); min-height: auto; }
 
-.chat-messages { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 0; scroll-behavior: smooth; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 0; }
 
 /* Message blocks */
 .msg { padding: 12px 20px; font-size: 13px; line-height: 1.6; position: relative; }
@@ -411,14 +412,15 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 /* AI text - separate from tool blocks for selective replacement */
 .ai-text { display: inline; min-height: auto; }
-.ai-text.streaming-cursor::after { content: '|'; animation: blink 1s step-end infinite; color: var(--primary); font-weight: 300; min-height: auto; }
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.ai-text.streaming-cursor::after { content: '|'; color: var(--primary); font-weight: 300; min-height: auto; }
 
 /* Streaming cursor on msg-content (backward compat) */
-.streaming-cursor::after { content: '|'; animation: blink 1s step-end infinite; color: var(--primary); font-weight: 300; min-height: auto; }
+.streaming-cursor::after { content: '|'; color: var(--primary); font-weight: 300; min-height: auto; }
 
 /* Inline status indicators (Claude Code style) */
-.inline-status { display: inline; color: var(--text-muted); font-size: 12px; min-height: auto; }
+.inline-status { display: inline-flex; align-items: center; gap: 4px; color: var(--text-muted); font-size: 12px; min-height: auto; }
+.inline-status svg { animation: statusPulse 1.5s ease-in-out infinite; }
+.inline-status .thinking-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; }
 
 /* Tool calls - Claude Code style */
 .msg.tools { padding: 4px 20px 4px 16px; margin: 2px 0; min-height: auto; }
@@ -439,27 +441,82 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg.agent .tool-calls-inline { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; min-height: auto; }
 .msg.agent .tool-calls-inline .tool-calls-header { font-size: 11px; }
 
-/* Tool card - compact single-level design */
-.tool-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; transition: border-color .15s; min-height: auto; }
+/* Tool card - compact collapsed by default */
+.tool-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; min-height: auto; }
 .tool-card:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); min-height: auto; }
-.tool-card.running { border-color: var(--warning); opacity: 0.8; }
-.tool-card.running .tool-card-header .card-status { background: rgba(255,159,10,.1); color: var(--warning); }
-.tool-card.done .tool-card-header .card-status { background: rgba(0,200,83,.1); color: var(--success); }
+.tool-card.running { border-color: var(--warning); border-left: 3px solid var(--warning); }
+.tool-card.running .tool-card-header .card-status { background: rgba(255,159,10,.15); color: var(--warning); }
+.tool-card.done { border-left: 3px solid var(--success); }
+.tool-card.done .tool-card-header .card-status { background: rgba(0,200,83,.15); color: var(--success); }
+.tool-card.error { border-left: 3px solid var(--danger); }
+.tool-card.error .tool-card-header .card-status { background: rgba(255,59,48,.15); color: var(--danger); }
+/* Card header - always visible, clickable to expand */
 .tool-card-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; color: var(--text); transition: background .1s; user-select: none; min-height: auto; }
-.tool-card-header:hover { background: rgba(255,255,255,.02); min-height: auto; }
-.tool-card-header .card-icon { font-size: 12px; opacity: .6; min-height: auto; }
+.tool-card-header:hover { background: rgba(255,255,255,.03); min-height: auto; }
+.tool-card-header .card-icon { font-size: 12px; opacity: .7; min-height: auto; display: flex; align-items: center; }
 .tool-card-header .card-name { color: var(--primary); font-weight: 600; font-family: var(--font-mono); font-size: 11px; flex: 1; min-height: auto; }
-.tool-card-header .card-status { font-size: 9px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; font-weight: 600; letter-spacing: .3px; min-height: auto; }
-.tool-card-header .card-status.done { background: rgba(0,200,83,.1); color: var(--success); }
-.tool-card-header .card-status.error { background: rgba(255,59,48,.1); color: var(--danger); }
-.tool-card-header .expand-arrow { width: 12px; height: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: transform .15s; flex-shrink: 0; min-height: auto; min-width: auto; }
+.tool-card-header .card-status { font-size: 9px; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; font-weight: 600; letter-spacing: .3px; min-height: auto; }
+.tool-card-header .expand-arrow { width: 12px; height: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: transform .2s; flex-shrink: 0; min-height: auto; min-width: auto; }
 .tool-card-header .expand-arrow::before { content: ''; display: block; width: 0; height: 0; border-left: 4px solid currentColor; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
-.tool-card-header.expanded .expand-arrow { transform: rotate(90deg); min-height: auto; }
-.tool-card-body { display: none; padding: 0 10px 8px 10px; min-height: auto; }
+/* Summary line - always visible below header */
+.tool-card-summary { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); padding: 0 10px 6px 32px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-card-summary .summary-text { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
+.tool-card-summary .summary-duration { color: var(--text-muted); font-family: var(--font-mono); font-size: 10px; flex-shrink: 0; }
+/* Running progress bar */
+.tool-card.running .tool-card-progress { display: block; height: 2px; background: var(--border); margin: 0; overflow: hidden; }
+.tool-card .tool-card-progress { display: none; height: 2px; background: var(--border); margin: 0; overflow: hidden; }
+.tool-card-progress-bar { height: 100%; width: 30%; background: var(--warning); animation: progressSlide 1.2s ease-in-out infinite; }
+@keyframes progressSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+/* Running spinner on card icon */
+.tool-card.running .card-icon { animation: iconSpin 1s linear infinite; }
+@keyframes iconSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Timestamp on tool card header */
+.card-timestamp {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+  margin-right: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Timeline tool card — standalone card in the message timeline */
+.timeline-tool-card {
+  margin: 6px 0;
+  border-radius: 8px;
+}
+/* Body - hidden by default, shown when expanded */
+.tool-card-body { display: none; padding: 0 10px 8px 10px; min-height: auto; border-top: 1px solid var(--border); margin-top: 4px; }
 .tool-card-body.expanded { display: block; }
 .tool-card-body .field-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 8px; margin-bottom: 2px; min-height: auto; }
 .tool-card-body .field-code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; line-height: 1.4; min-height: auto; }
 .tool-card-body .field-result { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 5px 24px 5px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; line-height: 1.4; position: relative; min-height: auto; }
+
+/* Real-time tool output stream (terminal panel) */
+.tool-output-stream {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 40px;
+}
+.tool-output-stream:empty { display: none; }
+.tool-card.running .tool-output-stream {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 1px rgba(255,159,10,.1);
+}
+/* Auto-expand tool card body when output stream is active */
+.tool-card.running .tool-card-body { display: block; }
 
 /* Files sidebar (right panel) */
 .files-sidebar { width: 0; overflow: hidden; border-left: 1px solid var(--border); background: var(--surface); transition: width .25s ease; display: flex; flex-direction: column; flex-shrink: 0; min-height: auto; }
@@ -509,37 +566,10 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .dl-btn:hover { color: var(--text); border-color: var(--text-muted); }
 .dl-btn svg { vertical-align: middle; }
 
-/* AI Status Bar - Claude Code style */
-.ai-status-bar { display: none; align-items: center; gap: 8px; padding: 6px 10px; margin-bottom: 4px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); animation: statusSlideIn .2s ease-out; min-height: auto; }
-.ai-status-bar.active { display: flex; }
-@keyframes statusSlideIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-.ai-status-bar .status-icon { flex-shrink: 0; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; min-height: auto; min-width: auto; }
-.ai-status-bar .status-icon svg { width: 14px; height: 14px; }
-.ai-status-bar .status-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: auto; }
-.ai-status-bar .status-stop { background: var(--danger); color: #fff; border: none; border-radius: 2px; padding: 1px 6px; font-size: 10px; cursor: pointer; font-family: inherit; flex-shrink: 0; min-height: auto; }
-/* Thinking state - pulsing brain */
-.ai-status-bar.state-thinking .status-icon { color: var(--primary); min-height: auto; }
-.ai-status-bar.state-thinking .status-icon svg { animation: statusPulse 1.5s ease-in-out infinite; }
-.ai-status-bar.state-thinking .status-text { color: var(--primary); min-height: auto; }
-@keyframes statusPulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
-/* Tool state - spinning gear */
-.ai-status-bar.state-tool .status-icon { color: var(--warning); min-height: auto; }
-.ai-status-bar.state-tool .status-icon svg { animation: statusSpin 1s linear infinite; }
-.ai-status-bar.state-tool .status-text { color: var(--warning); min-height: auto; }
-@keyframes statusSpin { to { transform: rotate(360deg); } }
-/* Generating state - flowing dots */
-.ai-status-bar.state-generating .status-icon { color: var(--success); min-height: auto; }
-.ai-status-bar.state-generating .status-text { color: var(--text-secondary); min-height: auto; }
-.ai-status-bar.state-generating .status-icon svg { animation: statusSpin .8s linear infinite; }
-/* Done state - checkmark */
-.ai-status-bar.state-done .status-icon { color: var(--success); min-height: auto; }
-.ai-status-bar.state-done .status-text { color: var(--success); min-height: auto; }
-/* Error state */
-.ai-status-bar.state-error .status-icon { color: var(--danger); min-height: auto; }
-.ai-status-bar.state-error .status-text { color: var(--danger); min-height: auto; }
 /* Streaming dots animation */
-.ai-status-bar .streaming-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; min-height: auto; }
+.thinking-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; }
 @keyframes streamDots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+@keyframes statusPulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 
 /* Input bar */
 .chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -636,7 +666,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; min-height: auto; min-width: auto; }
 .status-dot.running, .status-dot.active { background: var(--success); min-height: auto; }
 .status-dot.stopped { background: var(--text-muted); min-height: auto; }
-.status-dot.pending { background: var(--warning); animation: blink 1s infinite; min-height: auto; }
+.status-dot.pending { background: var(--warning); min-height: auto; }
 .status-dot.error { background: var(--danger); min-height: auto; }
 .status-dot.terminated { background: var(--text-muted); opacity: .4; min-height: auto; }
 .res-card-actions { display: flex; gap: 4px; flex-shrink: 0; min-height: auto; }
@@ -1112,11 +1142,6 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
         </div>
         <div class="chat-messages" id="chatMessages">
           <div class="msg agent"><div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><p>Hello! I'm your MultiCloud AI assistant. I can help manage your cloud resources across Azure, Tencent Cloud, Oracle, and Render.</p></div><button type="button" class="msg-agent-copy" onclick="copyAIMessage(this)" title="复制完整回复（含工具调用）"><span class="icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-copy"/></svg></span><span class="label">复制</span></button></div>
-        </div>
-        <div class="ai-status-bar" id="aiStatusBar">
-          <span class="status-icon"></span>
-          <span class="status-text"></span>
-          <button class="status-stop" onclick="stopChat()" id="statusStopBtn">Stop</button>
         </div>
         <div class="chat-input-area">
           <div class="chat-input-bar">
@@ -1646,10 +1671,12 @@ const SUBSCRIBED_SESSIONS = new Set();
 let CURRENT_RUN_ID = null;
 const STOPPED_RUNS = new Set(); // Track runs that have been stopped
 var _pendingStopSession = null; // Session ID that user just requested to stop
+var _directSSEController = null; // AbortController for direct SSE fetch stream
 
 const EVENT_HANDLERS = {
   token: handleTokenEvent,
   tool_start: handleToolStartEvent,
+  tool_output: handleToolOutputEvent,
   tool_result: handleToolResultEvent,
   confirm_required: handleConfirmRequiredEvent,
   state_change: handleStateChangeEvent,
@@ -1689,9 +1716,10 @@ var _esProcessingEvents = false;
 function subscribeToSession(sessionID) {
   if (SUBSCRIBED_SESSIONS.has(sessionID)) return;
   SUBSCRIBED_SESSIONS.add(sessionID);
-  if (SUBSCRIBED_SESSIONS.size > 50) {
-    var first = SUBSCRIBED_SESSIONS.values().next().value;
-    SUBSCRIBED_SESSIONS.delete(first);
+  if (SUBSCRIBED_SESSIONS.size > 10) {
+    // Remove oldest sessions to keep URL length manageable
+    var toRemove = Array.from(SUBSCRIBED_SESSIONS).slice(0, SUBSCRIBED_SESSIONS.size - 10);
+    toRemove.forEach(function(sid) { SUBSCRIBED_SESSIONS.delete(sid); });
   }
   // Restart EventSource immediately (not deferred) so the new session's
   // events are captured from the start. _esProcessingEvents guards against
@@ -1702,82 +1730,169 @@ function subscribeToSession(sessionID) {
   }
 }
 
-// === AI Status Bar (Claude Code style) ===
-var _statusBar = null;
-var _statusTimeout = null;
-
-function _getStatusBar() {
-  if (!_statusBar) _statusBar = document.getElementById('aiStatusBar');
-  return _statusBar;
-}
-
-function showThinking() { showStatus('thinking', '<svg width="16" height="16"><use href="/static/icons.svg#icon-search"/></svg>', LOCALE === 'zh' ? '思考中' : 'Thinking'); }
-function showToolRunning(name) { showStatus('tool', '<svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg>', (LOCALE === 'zh' ? '执行 ' : 'Running ') + name); }
-function showDone() { showStatus('done', '<svg width="16" height="16"><use href="/static/icons.svg#icon-check"/></svg>', LOCALE === 'zh' ? '完成' : 'Done'); }
-function showError(msg) { showStatus('error', '<svg width="16" height="16"><use href="/static/icons.svg#icon-error"/></svg>', msg || (LOCALE === 'zh' ? '出错了' : 'Error')); }
-function showGenerating() { showStatus('thinking', '<svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg>', LOCALE === 'zh' ? '生成中' : 'Generating'); }
-
-function showStatus(state, icon, text) {
-  var bar = _getStatusBar();
-  if (!bar) return;
-  clearTimeout(_statusTimeout);
-  bar.className = 'ai-status-bar active state-' + state;
-  bar.querySelector('.status-icon').innerHTML = icon;
-  bar.querySelector('.status-text').innerHTML = text;
-  bar.querySelector('.status-stop').style.display = (state === 'done' || state === 'error') ? 'none' : '';
-  if (state === 'done' || state === 'error') {
-    _statusTimeout = setTimeout(function() { hideStatus(); }, 2000);
+// === Direct SSE stream for the current run ===
+// Opens a dedicated fetch-based SSE connection for the active session.
+// This ensures events for the current run are received reliably,
+// independent of the global EventSource's reconnection cycle.
+function openDirectSSEStream(sessionId) {
+  // Close any existing direct stream
+  if (_directSSEController) {
+    _directSSEController.abort();
   }
+  _directSSEController = new AbortController();
+  var signal = _directSSEController.signal;
+
+  var params = new URLSearchParams({
+    session_ids: sessionId,
+    last_event_id: '0',
+    token: localStorage.getItem('token') || '',
+    v: '2'
+  });
+
+  fetch(API + '/agent/events?' + params.toString(), { signal: signal })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('SSE fetch failed: ' + resp.status);
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+
+      function processChunk() {
+        reader.read().then(function(result) {
+          if (result.done) return;
+          buffer += decoder.decode(result.value, { stream: true });
+
+          // Parse SSE frames from buffer
+          var lines = buffer.split('\n');
+          buffer = lines.pop(); // Keep incomplete line in buffer
+
+          var currentId = '';
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (line.startsWith('id: ')) {
+              currentId = line.substring(4).trim();
+            } else if (line.startsWith('data: ')) {
+              var data = line.substring(6);
+              if (currentId) {
+                LAST_EVENT_ID = parseInt(currentId, 10);
+                localStorage.setItem('last_event_id', String(LAST_EVENT_ID));
+              }
+              try {
+                var parsed = JSON.parse(data);
+                var handler = EVENT_HANDLERS[parsed.event_type];
+                if (handler) handler(parsed, currentId);
+              } catch(ex) {}
+            }
+            // Skip comments (lines starting with ':')
+          }
+
+          // If run finished (state_change done/error/stopped), close direct stream
+          if (!CURRENT_RUN_ID || STOPPED_RUNS.has(CURRENT_RUN_ID)) {
+            _directSSEController = null;
+            return;
+          }
+
+          processChunk();
+        }).catch(function(err) {
+          if (err.name !== 'AbortError') {
+            // Connection lost — retry after short delay if run still active
+            setTimeout(function() {
+              if (CURRENT_RUN_ID && sessionId === CURRENT_SESSION) {
+                openDirectSSEStream(sessionId);
+              }
+            }, 1000);
+          }
+        });
+      }
+
+      processChunk();
+    })
+    .catch(function(err) {
+      if (err.name !== 'AbortError') {
+        console.warn('Direct SSE stream error:', err);
+      }
+    });
 }
 
-function hideStatus() {
-  var bar = _getStatusBar();
-  if (bar) bar.className = 'ai-status-bar';
-  clearTimeout(_statusTimeout);
-}
 // Smart scroll: only scroll to bottom if user is already near bottom
-function smartScrollBottom(el) {
+function scrollToBottom(el) {
   if (!el) el = document.getElementById('chatMessages');
   if (!el) return;
-  var nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 150;
-  if (nearBottom) el.scrollTop = el.scrollHeight;
+  el.scrollTop = el.scrollHeight;
 }
 
 
 var STREAMING_DIV = null;
 var STREAMING_CONTENT = '';
 var PENDING_TOOL_CALLS = [];
+var _lastStreamChild = null; // tracks the last child in STREAMING_DIV for ordering
+
+function _ensureStreamingDiv() {
+  if (STREAMING_DIV && STREAMING_DIV.isConnected) return;
+  var container = document.getElementById('chatMessages');
+  STREAMING_DIV = document.createElement('div');
+  STREAMING_DIV.className = 'msg agent streaming';
+  // No .msg-content yet — it will be created on first token
+  STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
+  container.appendChild(STREAMING_DIV);
+  STREAMING_DIV._toolCallsContainer = null;
+  STREAMING_DIV._toolCallsHeader = null;
+  STREAMING_DIV._lastRenderedLen = 0;
+  _lastStreamChild = null;
+  PENDING_TOOL_CALLS = [];
+}
+
+function _getOrCreateContentBlock() {
+  // Find or create a .msg-content element as the last content block before .msg-time
+  var timeEl = STREAMING_DIV.querySelector('.msg-time');
+  var lastChild = timeEl ? timeEl.previousElementSibling : STREAMING_DIV.lastElementChild;
+  if (lastChild && lastChild.classList.contains('msg-content')) {
+    return lastChild;
+  }
+  // Create a new content block and insert before .msg-time
+  var contentEl = document.createElement('div');
+  contentEl.className = 'msg-content streaming-cursor';
+  if (timeEl) {
+    STREAMING_DIV.insertBefore(contentEl, timeEl);
+  } else {
+    STREAMING_DIV.appendChild(contentEl);
+  }
+  STREAMING_DIV._lastRenderedLen = 0;
+  STREAMING_CONTENT = ''; // reset for new content block
+  return contentEl;
+}
 
 function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
   if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
-  // Skip token events for runs that have been stopped (e.g. stop summary)
   if (ev.run_id && STOPPED_RUNS.has(ev.run_id)) return;
-  
-  // Reset pending tool calls when a new message starts
-  if (!STREAMING_DIV || !STREAMING_DIV.isConnected) {
-    PENDING_TOOL_CALLS = [];
-  }
-  
+
+  _ensureStreamingDiv();
+
   STREAMING_CONTENT += ev.payload.content;
-  showGenerating();
-  
-  if (!STREAMING_DIV || !STREAMING_DIV.isConnected) {
-    var container = document.getElementById('chatMessages');
-    STREAMING_DIV = document.createElement('div');
-    STREAMING_DIV.className = 'msg agent streaming';
-    STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor"></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
-    container.appendChild(STREAMING_DIV);
-    // Clear tool calls container reference for new message
-    STREAMING_DIV._toolCallsContainer = null;
-    STREAMING_DIV._toolCallsHeader = null;
-  }
-  
-  var contentEl = STREAMING_DIV.querySelector('.msg-content');
+
+  var contentEl = _getOrCreateContentBlock();
   if (contentEl) {
-    contentEl.textContent = STREAMING_CONTENT;
+    var newPart = STREAMING_CONTENT.substring(STREAMING_DIV._lastRenderedLen || 0);
+    var hasStructure = /[\n#*`|>\-\[\]]/.test(newPart);
+    if (hasStructure || !STREAMING_DIV._lastRenderedLen) {
+      contentEl.innerHTML = renderMarkdown(STREAMING_CONTENT);
+    } else {
+      var aiText = contentEl.querySelector('.ai-text');
+      if (aiText) {
+        var lastChild = aiText.lastChild;
+        if (lastChild && lastChild.nodeType === 3) {
+          lastChild.textContent += newPart;
+        } else {
+          var textNode = document.createTextNode(newPart);
+          aiText.appendChild(textNode);
+        }
+      } else {
+        contentEl.innerHTML = renderMarkdown(STREAMING_CONTENT);
+      }
+    }
+    STREAMING_DIV._lastRenderedLen = STREAMING_CONTENT.length;
   }
-  smartScrollBottom();
+  scrollToBottom();
 }
 
 function handleToolStartEvent(ev) {
@@ -1789,43 +1904,67 @@ function handleToolStartEvent(ev) {
       // Deduplicate by tool name only (same tool shouldn't be called multiple times in one response)
       var isDuplicate = PENDING_TOOL_CALLS.some(function(t) { return t.name === name; });
       if (isDuplicate) return;
-      
-      if (ev.session_id === CURRENT_SESSION) showToolRunning(name);
+
       PENDING_TOOL_CALLS.push({name: name, params: args, result: ''});
-      
-      // Add tool call card to streaming AI message if it exists
-      if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-        // Use a property on STREAMING_DIV to track toolCallsContainer, avoiding repeated DOM queries
-        if (!STREAMING_DIV._toolCallsContainer) {
-          var toolCallsContainer = document.createElement('div');
-          toolCallsContainer.className = 'tool-calls-inline';
-          var header = document.createElement('div');
-          header.className = 'tool-calls-header expanded';
-          header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + PENDING_TOOL_CALLS.length + ')';
-          var body = document.createElement('div');
-          body.className = 'tool-calls-body';
-          body.style.display = 'flex';
-          toolCallsContainer.appendChild(header);
-          toolCallsContainer.appendChild(body);
-          STREAMING_DIV.appendChild(toolCallsContainer);
-          STREAMING_DIV._toolCallsContainer = toolCallsContainer;
-          STREAMING_DIV._toolCallsHeader = header;
-        } else {
-          // Update count
-          if (STREAMING_DIV._toolCallsHeader) {
-            STREAMING_DIV._toolCallsHeader.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + PENDING_TOOL_CALLS.length + ')';
-          }
-        }
-        // Add tool card
-        var body = STREAMING_DIV._toolCallsContainer ? STREAMING_DIV._toolCallsContainer.querySelector('.tool-calls-body') : null;
-        if (body) {
-          var card = buildToolCard({name: name, params: fn.arguments || '', result: ''});
-          card.classList.add('running');
-          body.appendChild(card);
-        }
-        smartScrollBottom();
+
+      _ensureStreamingDiv();
+
+      // Insert tool card directly into the timeline (before .msg-time)
+      // Each tool call is its own standalone card in chronological order
+      var card = buildToolCard({name: name, params: fn.arguments || '', result: '', status: 'running', timestamp: new Date().toISOString()});
+      card.classList.add('timeline-tool-card');
+
+      var timeEl = STREAMING_DIV.querySelector('.msg-time');
+      if (timeEl) {
+        STREAMING_DIV.insertBefore(card, timeEl);
+      } else {
+        STREAMING_DIV.appendChild(card);
       }
+
+      // Reset content block state so next token creates a NEW content block after this tool card
+      STREAMING_DIV._lastRenderedLen = 0;
+      STREAMING_CONTENT = '';
+
+      scrollToBottom();
     });
+  }
+}
+
+// handleToolOutputEvent — real-time streaming output from running tools (e.g., shell_exec)
+function handleToolOutputEvent(ev) {
+  if (!ev.payload || !ev.payload.output) return;
+  if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
+  if (ev.run_id && STOPPED_RUNS.has(ev.run_id)) return;
+
+  var toolName = ev.payload.tool_name || '';
+  var output = ev.payload.output;
+
+  if (STREAMING_DIV && STREAMING_DIV.isConnected) {
+    // Find the last running card matching the tool name in the timeline
+    var cards = STREAMING_DIV.querySelectorAll('.timeline-tool-card.running');
+    var targetCard = null;
+    for (var i = cards.length - 1; i >= 0; i--) {
+      var nameEl = cards[i].querySelector('.card-name');
+      if (nameEl && nameEl.textContent === toolName) {
+        targetCard = cards[i];
+        break;
+      }
+    }
+    if (!targetCard && cards.length > 0) {
+      targetCard = cards[cards.length - 1];
+    }
+    if (targetCard) {
+      var outputEl = targetCard.querySelector('.tool-output-stream');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'tool-output-stream';
+        var body = targetCard.querySelector('.tool-card-body');
+        if (body) body.appendChild(outputEl);
+      }
+      outputEl.textContent += output;
+      outputEl.scrollTop = outputEl.scrollHeight;
+      scrollToBottom();
+    }
   }
 }
 
@@ -1833,40 +1972,45 @@ function handleToolResultEvent(ev) {
   if (ev.payload) {
     var name = ev.payload.tool_name || 'tool';
     var result = ev.payload.result || ev.payload.error || '';
+    var hasError = !!(ev.payload.error || (result && result.toLowerCase().indexOf('error') !== -1));
     for (var i = PENDING_TOOL_CALLS.length - 1; i >= 0; i--) {
       if (PENDING_TOOL_CALLS[i].name === name && !PENDING_TOOL_CALLS[i].result) {
         PENDING_TOOL_CALLS[i].result = result;
+        PENDING_TOOL_CALLS[i].error = hasError;
         break;
       }
     }
-    // Update tool card in streaming AI message
+    // Update tool card in the timeline
     if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-      var toolCallsContainer = STREAMING_DIV.querySelector('.tool-calls-inline');
-      if (toolCallsContainer) {
-        var cards = toolCallsContainer.querySelectorAll('.tool-card.running');
-        cards.forEach(function(card) {
-          var nameEl = card.querySelector('.tool-card-name');
-          if (nameEl && nameEl.textContent === name) {
-            card.classList.remove('running');
-            card.classList.add('done');
-            var resultEl = card.querySelector('.tool-card-result');
-            if (resultEl) {
-              resultEl.textContent = result;
-              resultEl.style.display = 'block';
-            }
-            var toggle = card.querySelector('.tool-card-toggle');
-            if (toggle) toggle.textContent = '▼';
-            card.classList.add('expanded');
+      var cards = STREAMING_DIV.querySelectorAll('.timeline-tool-card.running');
+      cards.forEach(function(card) {
+        var nameEl = card.querySelector('.card-name');
+        if (nameEl && nameEl.textContent === name) {
+          if (card._timer) { clearInterval(card._timer); card._timer = null; }
+          card.classList.remove('running');
+          card.classList.add(hasError ? 'error' : 'done');
+          var statusEl = card.querySelector('.card-status');
+          if (statusEl) {
+            statusEl.className = 'card-status ' + (hasError ? 'error' : 'done');
+            statusEl.textContent = hasError ? (LOCALE === 'zh' ? '错误' : 'error') : (LOCALE === 'zh' ? '完成' : 'done');
           }
-        });
-        // Update header count
-        var header = toolCallsContainer.querySelector('.tool-calls-header');
-        if (header) {
-          var doneCount = toolCallsContainer.querySelectorAll('.tool-card.done').length;
-          header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + doneCount + '/' + PENDING_TOOL_CALLS.length + ')';
+          var body = card.querySelector('.tool-card-body');
+          if (body && result) {
+            var resultText = result;
+            try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) {}
+            var resultDiv = document.createElement('div');
+            resultDiv.className = 'field-label';
+            resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
+            body.appendChild(resultDiv);
+            var resultContent = document.createElement('div');
+            resultContent.className = 'field-result';
+            resultContent.setAttribute('data-result', escHtml(resultText));
+            resultContent.textContent = resultText;
+            body.appendChild(resultContent);
+          }
         }
-        smartScrollBottom();
-      }
+      });
+      scrollToBottom();
     }
   }
 }
@@ -1881,28 +2025,72 @@ function handleStateChangeEvent(ev) {
   var isCurrentSession = ev.session_id === CURRENT_SESSION;
   var newState = ev.payload.state;
   if (newState === 'done') {
-    if (isCurrentSession) showDone();
     if (ev.run_id === CURRENT_RUN_ID) {
       CURRENT_RUN_ID = null;
       document.getElementById('chatStopBtn').style.display = 'none';
       document.getElementById('chatSendBtn').disabled = false;
       CONFIRM_PENDING = false;
+      // Close direct SSE stream — run is finished
+      if (_directSSEController) {
+        _directSSEController.abort();
+        _directSSEController = null;
+      }
     }
     // Tool calls are already rendered inline in STREAMING_DIV during execution.
     // No need to render a separate group.
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
-      var contentEl = STREAMING_DIV.querySelector('.msg-content');
-      if (contentEl) {
-        contentEl.classList.remove('streaming-cursor');
-        contentEl.innerHTML = renderMarkdown(STREAMING_CONTENT);
-      }
-      // Save to in-memory cache
-      if (ev.session_id && STREAMING_CONTENT) {
+      // Finalize all .msg-content blocks — render markdown and remove streaming cursor
+      var allContentEls = STREAMING_DIV.querySelectorAll('.msg-content');
+      allContentEls.forEach(function(el) {
+        el.classList.remove('streaming-cursor');
+        // Remove "思考中..." indicators
+        var statusEl = el.querySelector('.inline-status');
+        if (statusEl) statusEl.remove();
+        // If content block is empty (was only showing 思考中), remove it entirely
+        if (!el.textContent.trim()) el.remove();
+      });
+      // Also remove any orphaned inline-status at STREAMING_DIV level
+      var orphanStatus = STREAMING_DIV.querySelector(':scope > .inline-status');
+      if (orphanStatus) orphanStatus.remove();
+      // Save to in-memory cache (tool-calls first, then agent text)
+      if (ev.session_id) {
         if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
-        SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString()});
+        // Save pending tool calls as a separate tool-calls message
+        if (PENDING_TOOL_CALLS.length > 0) {
+          SESSION_MESSAGES[ev.session_id].push({
+            role: 'tool-calls',
+            content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
+              return {name: tc.name, params: tc.params, result: tc.result};
+            })),
+            created_at: new Date().toISOString(),
+            _run_id: ev.run_id
+          });
+        }
+        if (STREAMING_CONTENT) {
+          SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
+        }
       }
-      smartScrollBottom();
+      // Finalize any still-running tool cards (stop timers, mark done)
+      var runningCards = STREAMING_DIV.querySelectorAll('.timeline-tool-card.running, .tool-card.running');
+      runningCards.forEach(function(card) {
+        if (card._timer) { clearInterval(card._timer); card._timer = null; }
+        card.classList.remove('running');
+        card.classList.add('done');
+        var statusEl = card.querySelector('.card-status');
+        if (statusEl) { statusEl.className = 'card-status done'; statusEl.textContent = LOCALE === 'zh' ? '完成' : 'done'; }
+      });
+      // Also finalize any legacy tool-blocks from handleSSEEvent
+      var runningBlocks = STREAMING_DIV.querySelectorAll('.tool-block:not(.done)');
+      runningBlocks.forEach(function(block) {
+        var statusEl = block.querySelector('.tool-status');
+        if (statusEl) {
+          statusEl.className = 'tool-status done';
+          statusEl.textContent = 'done';
+        }
+        block.classList.add('done');
+      });
+      scrollToBottom();
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
@@ -1914,11 +2102,38 @@ function handleStateChangeEvent(ev) {
       document.getElementById('chatStopBtn').style.display = 'none';
       document.getElementById('chatSendBtn').disabled = false;
       CONFIRM_PENDING = false;
+      if (_directSSEController) { _directSSEController.abort(); _directSSEController = null; }
     }
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
       if (contentEl) contentEl.classList.remove('streaming-cursor');
+      // Save partial content + tool calls to prevent poll re-rendering duplicates
+      if (ev.session_id) {
+        if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
+        if (PENDING_TOOL_CALLS.length > 0) {
+          SESSION_MESSAGES[ev.session_id].push({
+            role: 'tool-calls',
+            content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
+              return {name: tc.name, params: tc.params, result: tc.result};
+            })),
+            created_at: new Date().toISOString(),
+            _run_id: ev.run_id
+          });
+        }
+        if (STREAMING_CONTENT) {
+          SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
+        }
+      }
+      // Finalize running tool cards
+      var runningCards = STREAMING_DIV.querySelectorAll('.tool-card.running');
+      runningCards.forEach(function(card) {
+        if (card._timer) { clearInterval(card._timer); card._timer = null; }
+        card.classList.remove('running');
+        card.classList.add('error');
+        var statusEl = card.querySelector('.card-status');
+        if (statusEl) { statusEl.className = 'card-status error'; statusEl.textContent = LOCALE === 'zh' ? '错误' : 'error'; }
+      });
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
@@ -1931,11 +2146,48 @@ function handleStateChangeEvent(ev) {
       document.getElementById('chatStopBtn').style.display = 'none';
       document.getElementById('chatSendBtn').disabled = false;
       CONFIRM_PENDING = false;
+      if (_directSSEController) { _directSSEController.abort(); _directSSEController = null; }
     }
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
       if (contentEl) contentEl.classList.remove('streaming-cursor');
+      // Save partial content + tool calls to prevent poll re-rendering duplicates
+      if (ev.session_id) {
+        if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
+        if (PENDING_TOOL_CALLS.length > 0) {
+          SESSION_MESSAGES[ev.session_id].push({
+            role: 'tool-calls',
+            content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
+              return {name: tc.name, params: tc.params, result: tc.result};
+            })),
+            created_at: new Date().toISOString(),
+            _run_id: ev.run_id
+          });
+        }
+        if (STREAMING_CONTENT) {
+          SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
+        }
+      }
+      // Finalize running tool cards
+      var runningCards = STREAMING_DIV.querySelectorAll('.tool-card.running');
+      runningCards.forEach(function(card) {
+        if (card._timer) { clearInterval(card._timer); card._timer = null; }
+        card.classList.remove('running');
+        card.classList.add('done');
+        var statusEl = card.querySelector('.card-status');
+        if (statusEl) { statusEl.className = 'card-status done'; statusEl.textContent = LOCALE === 'zh' ? '完成' : 'done'; }
+      });
+      // Also finalize legacy tool-blocks
+      var runningBlocks = STREAMING_DIV.querySelectorAll('.tool-block:not(.done)');
+      runningBlocks.forEach(function(block) {
+        var statusEl = block.querySelector('.tool-status');
+        if (statusEl) {
+          statusEl.className = 'tool-status done';
+          statusEl.textContent = 'done';
+        }
+        block.classList.add('done');
+      });
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
@@ -2001,17 +2253,17 @@ function renderRunEvents(container, events) {
       buf += ev.payload.content;
       continue;
     }
-    if (buf) { appendMessage('agent', buf); buf = ''; }
+    if (buf) { appendMessage('agent', renderMarkdown(buf)); buf = ''; }
     appendRunEvent(container, ev);
   }
-  if (buf) { appendMessage('agent', buf); }
+  if (buf) { appendMessage('agent', renderMarkdown(buf)); }
 }
 
 function appendRunEvent(container, ev) {
   switch (ev.event_type) {
     case 'token':
       if (ev.payload && ev.payload.content) {
-        appendMessage('agent', ev.payload.content, false, container);
+        appendMessage('agent', renderMarkdown(ev.payload.content), false, container);
       }
       break;
     case 'tool_start':
@@ -2527,7 +2779,6 @@ async function sendChat() {
   STREAMING_CONTENT = '';
   var userTs = new Date().toISOString();
   appendMessage('user', escHtml(text), userTs);
-  showThinking();
 
   // Create session if needed
   var sessionId = CURRENT_SESSION;
@@ -2556,7 +2807,25 @@ async function sendChat() {
   if (resp && resp.run_id) {
     CURRENT_RUN_ID = resp.run_id;
     document.getElementById('chatStopBtn').style.display = '';
+    document.getElementById('chatSendBtn').disabled = true;
+
+    // Create streaming div with "Thinking" indicator
+    STREAMING_MSG = {type: 'agent', content: '', _afterTool: false};
+    if (CURRENT_SESSION && !SESSION_MESSAGES[CURRENT_SESSION]) {
+      SESSION_MESSAGES[CURRENT_SESSION] = [];
+    }
+    var container = document.getElementById('chatMessages');
+    var div = document.createElement('div');
+    div.className = 'msg agent streaming';
+    div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span></span></div>' + buildAgentCopyButton();
+    container.appendChild(div);
+    STREAMING_DIV = div;
+    scrollToBottom(container);
+
     subscribeToSession(sessionId);
+    // Open a dedicated SSE stream for this run — ensures reliable event delivery
+    // independent of the global EventSource's reconnection cycle.
+    openDirectSSEStream(sessionId);
   }
   await loadSessions();
 }
@@ -2578,6 +2847,11 @@ function stopChat() {
     ABORT_CONTROLLER.abort();
     ABORT_CONTROLLER = null;
   }
+  // Abort direct SSE stream
+  if (_directSSEController) {
+    _directSSEController.abort();
+    _directSSEController = null;
+  }
   // Tell backend to stop the running agent
   stopActiveSession();
 }
@@ -2597,7 +2871,6 @@ async function stopActiveSession() {
     CURRENT_RUN_ID = null;
     // Directly re-enable UI as a safety net.
     _pendingStopSession = CURRENT_SESSION;
-    hideStatus();
     document.getElementById('chatStopBtn').style.display = 'none';
     document.getElementById('chatSendBtn').disabled = false;
     CONFIRM_PENDING = false;
@@ -2609,7 +2882,6 @@ async function startStream(body) {
   CONFIRM_PENDING = true;
   document.getElementById('chatSendBtn').disabled = true;
   document.getElementById('chatStopBtn').style.display = '';
-  showThinking();
 
   ABORT_CONTROLLER = new AbortController();
 
@@ -2621,15 +2893,14 @@ async function startStream(body) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg agent streaming';
-  div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-sync"/></svg> ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span></span></div>' + buildAgentCopyButton();
+  div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span></span></div>' + buildAgentCopyButton();
   container.appendChild(div);
-  smartScrollBottom(container);
+  scrollToBottom(container);
 
   var streamTimeout = setTimeout(function() {
     CONFIRM_PENDING = false;
     document.getElementById('chatSendBtn').disabled = false;
     document.getElementById('chatStopBtn').style.display = 'none';
-    hideStatus();
   }, 120000);
 
   try {
@@ -2653,7 +2924,6 @@ async function startStream(body) {
       streamTimeout = setTimeout(function() {
         CONFIRM_PENDING = false;
         document.getElementById('chatSendBtn').disabled = false;
-        hideStatus();
       }, 120000);
       buffer += decoder.decode(value, {stream: true});
       const parts = buffer.split('\n');
@@ -2682,7 +2952,6 @@ async function startStream(body) {
     clearTimeout(streamTimeout);
   }
 
-  hideStatus();
   document.getElementById('chatStopBtn').style.display = 'none';
   ABORT_CONTROLLER = null;
 
@@ -2795,62 +3064,27 @@ function handleSSEEvent(data) {
           aiText.classList.add('streaming-cursor');
         }
         const container = document.getElementById('chatMessages');
-        smartScrollBottom(container);
+        scrollToBottom(container);
       }
       break;
     }
     case 'tool_start': {
+      // Tool UI is handled by global EventSource (handleToolStartEvent → .tool-card)
+      // Only update cursor state here
       if (lastMsg) {
         var aiTextEl = streamingMsg ? streamingMsg.querySelector('.ai-text') : null;
         if (aiTextEl) aiTextEl.classList.remove('streaming-cursor');
         else lastMsg.classList.remove('streaming-cursor');
       }
-      (data.tool_calls || []).forEach(function(tc) {
-        var fn = tc.function || {};
-        var name = fn.name || '';
-        var params = '';
-        try { params = JSON.stringify(JSON.parse(fn.arguments || '{}')); } catch(e) { params = fn.arguments || ''; }
-        var block = document.createElement('div');
-        block.className = 'tool-block';
-        block.dataset.toolName = name;
-        block.onclick = function() { this.classList.toggle('expanded'); };
-        var paramsShort = params.substring(0, 40);
-        block.innerHTML = '<div class="tool-header"><span class="tool-icon"><svg width="14" height="14"><use href="/static/icons.svg#icon-terminal"/></svg></span><span class="tool-name">' + escHtml(name) + '</span>' + (paramsShort ? '<span class="tool-params">' + escHtml(paramsShort) + '</span>' : '') + '<span class="tool-status running">running</span></div>';
-        if (streamingMsg) streamingMsg.appendChild(block);
-      });
       break;
     }
     case 'tool_result': {
       STREAMING_MSG._afterTool = true;
-      var blocks = streamingMsg ? streamingMsg.querySelectorAll('.tool-block[data-tool-name="' + (data.tool_name || '') + '"]:not(.done)') : [];
-      blocks.forEach(function(block) {
-        var statusEl = block.querySelector('.tool-status');
-        var iconEl = block.querySelector('.tool-icon');
-        if (iconEl) iconEl.innerHTML = data.error ? '<svg width="14" height="14"><use href="/static/icons.svg#icon-error"/></svg>' : '<svg width="14" height="14"><use href="/static/icons.svg#icon-check"/></svg>';
-        if (statusEl) {
-          if (data.error) {
-            statusEl.className = 'tool-status error';
-            statusEl.textContent = 'error';
-          } else {
-            statusEl.className = 'tool-status done';
-            statusEl.textContent = 'done';
-          }
-        }
-        var resultDiv = block.querySelector('.tool-result');
-        if (!resultDiv) {
-          resultDiv = document.createElement('div');
-          resultDiv.className = 'tool-result';
-          block.appendChild(resultDiv);
-        }
-        var text = data.error || data.result || '';
-        if (text.length > 500) text = text.substring(0, 500) + '... [truncated]';
-        resultDiv.textContent = text;
-        block.classList.add('done');
-      });
-      // Set .ai-text back to "Thinking..." while AI processes the result
+      // Tool UI is handled by global EventSource (handleToolResultEvent → .tool-card)
+      // Only update "thinking" indicator here
       var aiText = streamingMsg ? streamingMsg.querySelector('.ai-text') : null;
       if (aiText) {
-        aiText.innerHTML = '<span class="inline-status"><svg width="16" height="16" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-search"/></svg> ' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span>';
+        aiText.innerHTML = '<span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-search"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span>';
         aiText.classList.add('streaming-cursor');
       }
       break;
@@ -2877,7 +3111,7 @@ function handleSSEEvent(data) {
       html += '</div>' + buildAgentCopyButton();
       confirmDiv.innerHTML = html;
       container.appendChild(confirmDiv);
-      smartScrollBottom(container);
+      scrollToBottom(container);
       break;
     }
     case 'done':
@@ -3033,9 +3267,12 @@ async function loadSessions() {
     var timeStr = formatSessionTime(s.updated_at || s.created_at);
     var providerBadge = s.provider ? '<span class="session-provider">' + escHtml(s.provider) + '</span>' : '';
     var userBadge = s.user_id ? '<span class="session-user-badge">' + escHtml(s.user_id) + '</span>' : '';
-    var statusDot = s.status === 'running'
+    var state = s.state || 'idle';
+    var statusDot = (state === 'running' || state === 'waiting_confirm' || state === 'queued')
       ? '<span class="session-status"><span class="running-dot" role="img" aria-label="Running"></span></span>'
-      : '<span class="session-status"><span class="done-dot" role="img" aria-label="Idle"></span></span>';
+      : (state === 'error')
+        ? '<span class="session-status"><span class="error-dot" role="img" aria-label="Error"></span></span>'
+        : '<span class="session-status"><span class="done-dot" role="img" aria-label="Idle"></span></span>';
 
     item.innerHTML =
       '<input type="checkbox" class="session-checkbox" data-sid="' + s.session_id + '" onclick="event.stopPropagation();updateBatchCount()">' +
@@ -3128,10 +3365,33 @@ async function batchDeleteSessions() {
 }
 
 async function switchSession(sid) {
+  // Abort direct SSE stream for current session
+  if (_directSSEController) {
+    _directSSEController.abort();
+    _directSSEController = null;
+  }
+  // Save streaming state of current session before switching
+  if (CURRENT_SESSION && STREAMING_DIV && STREAMING_DIV.isConnected) {
+    if (!SESSION_MESSAGES[CURRENT_SESSION]) SESSION_MESSAGES[CURRENT_SESSION] = [];
+    // Save pending tool calls as tool-calls message
+    if (PENDING_TOOL_CALLS.length > 0) {
+      SESSION_MESSAGES[CURRENT_SESSION].push({
+        role: 'tool-calls',
+        content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
+          return {name: tc.name, params: tc.params, result: tc.result};
+        })),
+        created_at: new Date().toISOString(),
+        streaming: true
+      });
+    }
+    // Save partial streaming content
+    if (STREAMING_CONTENT) {
+      SESSION_MESSAGES[CURRENT_SESSION].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), streaming: true});
+    }
+  }
   CURRENT_SESSION = sid;
   STREAMING_DIV = null;
   STREAMING_CONTENT = '';
-  hideStatus();
   closeChatSessions();
   // Update sidebar
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
@@ -3190,9 +3450,18 @@ async function switchSession(sid) {
   } else {
     // Fallback: load from DB
     const data = await apiFetch(API + '/agent/sessions/' + sid);
-    if (data && data.status === 'running') {
-      showThinking();
+    var isRunning = data && (data.state === 'running' || data.state === 'waiting_confirm' || data.state === 'queued' || data.status === 'running');
+    if (isRunning) {
       document.getElementById('chatStopBtn').style.display = '';
+      // Show "thinking" indicator for running sessions with no messages yet
+      if (!data.messages || data.messages.length === 0) {
+        var thinkDiv = document.createElement('div');
+        thinkDiv.className = 'msg agent streaming';
+        thinkDiv.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span></span></div>' + buildAgentCopyButton();
+        container.appendChild(thinkDiv);
+        STREAMING_DIV = thinkDiv;
+        msgCount++;
+      }
     }
     if (data && data.messages && data.messages.length > 0) {
       // Store DB messages in global cache
@@ -3293,6 +3562,14 @@ async function switchSession(sid) {
   }
 
   container.scrollTop = container.scrollHeight;
+
+  // If the target session has an active run, open a direct SSE stream
+  // to receive events reliably (tool calls, tokens, state changes).
+  if (CURRENT_RUN_ID) {
+    subscribeToSession(sid);
+    openDirectSSEStream(sid);
+  }
+
   startSessionPoll();
 }
 
@@ -3305,7 +3582,6 @@ async function newSession() {
   CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
   CURRENT_SESSION_USER = null;
   updateSendButtonState();
-  hideStatus();
   document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
   closeChatSessions();
   await loadSessions();
@@ -3345,7 +3621,7 @@ function appendMessage(type, html, timestamp) {
     div.innerHTML = '<div class="msg-content">' + html + '</div>' + timeHtml;
   }
   container.appendChild(div);
-  smartScrollBottom(container);
+  scrollToBottom(container);
 }
 
 // Build the copy button HTML for an AI message. The button calls
@@ -3461,32 +3737,143 @@ function buildAgentCopyText(msgEl) {
 }
 
 /* Render tool calls group (from saved session JSON) */
+/* Generate a human-readable summary for a tool call */
+function getToolSummary(name, params) {
+  var loc = LOCALE === 'zh';
+  try { params = JSON.parse(params || '{}'); } catch(e) { params = {}; }
+  var p = params;
+  switch (name) {
+    case 'shell_exec':
+    case 'execute_command':
+    case 'run_command':
+    case 'shell':
+      var cmd = p.command || p.cmd || '';
+      return (loc ? '执行命令' : 'Run') + ': ' + (cmd.length > 60 ? cmd.substring(0, 60) + '...' : cmd);
+    case 'read_file':
+    case 'get_file':
+      return (loc ? '读取文件' : 'Read') + ': ' + (p.path || p.file_path || p.filename || '');
+    case 'write_file':
+    case 'create_file':
+      return (loc ? '写入文件' : 'Write') + ': ' + (p.path || p.file_path || p.filename || '');
+    case 'edit_file':
+    case 'modify_file':
+      return (loc ? '编辑文件' : 'Edit') + ': ' + (p.path || p.file_path || p.filename || '');
+    case 'search_files':
+    case 'find_files':
+    case 'glob':
+      return (loc ? '搜索文件' : 'Search') + ': ' + (p.pattern || p.query || p.path || '');
+    case 'list_directory':
+    case 'list_files':
+    case 'ls':
+      return (loc ? '列出目录' : 'List') + ': ' + (p.path || p.directory || '');
+    case 'docker_command':
+    case 'docker':
+      return (loc ? 'Docker 操作' : 'Docker') + ': ' + (p.command || p.action || '');
+    case 'cloud_api_request':
+    case 'api_request':
+    case 'http_request':
+      return (loc ? 'API 请求' : 'API') + ' ' + (p.method || 'GET') + ' ' + (p.url || p.endpoint || '');
+    case 'database_query':
+    case 'db_query':
+      return (loc ? '数据库查询' : 'DB Query') + ': ' + ((p.query || p.sql || '').substring(0, 50));
+    case 'get_cloud_credentials':
+      return loc ? '获取云凭证' : 'Get Cloud Credentials';
+    case 'list_cloud_resources':
+      return loc ? '列出云资源' : 'List Cloud Resources';
+    default:
+      return name;
+  }
+}
+
+/* Get an icon character for a tool name */
+function getToolIcon(name) {
+  var icons = {
+    'shell_exec': '⚡', 'execute_command': '⌨', 'run_command': '⌨', 'shell': '⌨',
+    'read_file': '📄', 'get_file': '📄', 'write_file': '✏', 'create_file': '✏', 'edit_file': '✏', 'modify_file': '✏',
+    'search_files': '🔍', 'find_files': '🔍', 'glob': '🔍',
+    'list_directory': '📁', 'list_files': '📁', 'ls': '📁',
+    'docker_command': '🐳', 'docker': '🐳',
+    'cloud_api_request': '☁', 'api_request': '🌐', 'http_request': '🌐',
+    'database_query': '🗃', 'db_query': '🗃',
+    'get_cloud_credentials': '🔑', 'list_cloud_resources': '📋'
+  };
+  return icons[name] || '🔧';
+}
+
 function buildToolCard(tc) {
   var card = document.createElement('div');
-  card.className = 'tool-card';
+  var isRunning = tc.status === 'running';
+  var hasError = tc.status === 'error' || (tc.result && String(tc.result).toLowerCase().indexOf('error') !== -1);
+  card.className = 'tool-card' + (isRunning ? ' running' : (hasError ? ' error' : ' done'));
+
   var paramsStr = '';
   try { paramsStr = JSON.stringify(JSON.parse(tc.params || '{}'), null, 2); } catch(e) { paramsStr = tc.params || ''; }
   var resultText = tc.result || '';
   try { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } catch(e) {}
-  var hasError = (tc.error || resultText.toLowerCase().indexOf('error') !== -1);
+
   var loc = LOCALE === 'zh';
+  var summary = getToolSummary(tc.name, tc.params);
+  var icon = getToolIcon(tc.name);
+  var statusLabel = isRunning ? (loc ? '运行中' : 'running') : (hasError ? (loc ? '错误' : 'error') : (loc ? '完成' : 'done'));
+  var statusClass = isRunning ? 'running' : (hasError ? 'error' : 'done');
+
+  // Build compact collapsed view (always visible)
+  // Build expandable detail view (hidden by default)
   card.innerHTML =
     '<div class="tool-card-header">' +
+      '<span class="card-icon">' + icon + '</span>' +
       '<span class="card-name">' + escHtml(tc.name) + '</span>' +
-      '<span class="card-status ' + (hasError ? 'error' : 'done') + '">' + (hasError ? 'error' : 'done') + '</span>' +
-      '<span class="expand-arrow"></span>' +
+      '<span class="card-status ' + statusClass + '">' + statusLabel + '</span>' +
+      '<span class="card-timestamp">' + (tc.timestamp ? formatMsgTime(tc.timestamp) : '') + '</span>' +
+      '<span class="expand-arrow" title="' + (loc ? '展开/折叠' : 'Expand/Collapse') + '"></span>' +
     '</div>' +
+    '<div class="tool-card-summary">' +
+      '<span class="summary-text">' + escHtml(summary) + '</span>' +
+      '<span class="summary-duration"></span>' +
+    '</div>' +
+    '<div class="tool-card-progress"><div class="tool-card-progress-bar"></div></div>' +
     '<div class="tool-card-body">' +
-      '<div class="field-label">' + (loc ? '参数' : 'Params') + '</div>' +
+      '<div class="field-label">' + (loc ? '命令 / 参数' : 'Command / Params') + '</div>' +
       '<div class="field-code">' + escHtml(paramsStr) + '</div>' +
-      '<div class="field-label">' + (loc ? '结果' : 'Result') + '</div>' +
-      '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
-        '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)" title="' + (loc ? '复制' : 'Copy') + '"><svg width="12" height="12"><use href="/static/icons.svg#icon-copy"/></svg></button>' +
-      '</div>' +
+      (resultText ? (
+        '<div class="field-label">' + (loc ? '结果' : 'Result') + '</div>' +
+        '<div class="field-result" data-result="' + escHtml(resultText) + '">' + escHtml(resultText) +
+          '<button class="copy-btn" onclick="event.stopPropagation();copyToolResult(this)" title="' + (loc ? '复制' : 'Copy') + '"><svg width="12" height="12"><use href="/static/icons.svg#icon-copy"/></svg></button>' +
+        '</div>'
+      ) : '') +
     '</div>';
+
   var hdr = card.querySelector('.tool-card-header');
   var bdy = card.querySelector('.tool-card-body');
-  hdr.onclick = function() { hdr.classList.toggle('expanded'); bdy.classList.toggle('expanded'); };
+  var arrow = card.querySelector('.expand-arrow');
+
+  // Click header to toggle expand/collapse
+  hdr.onclick = function() {
+    var isExpanded = bdy.classList.contains('expanded');
+    if (isExpanded) {
+      bdy.classList.remove('expanded');
+      hdr.classList.remove('expanded');
+      arrow.style.transform = 'rotate(0deg)';
+    } else {
+      bdy.classList.add('expanded');
+      hdr.classList.add('expanded');
+      arrow.style.transform = 'rotate(90deg)';
+    }
+  };
+
+  // Start duration timer for running cards
+  if (isRunning) {
+    var durEl = card.querySelector('.summary-duration');
+    var startTime = Date.now();
+    card._timer = setInterval(function() {
+      var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      durEl.textContent = '⏱ ' + elapsed + 's';
+    }, 100);
+  } else if (tc.duration) {
+    var durEl = card.querySelector('.summary-duration');
+    durEl.textContent = '⏱ ' + (tc.duration / 1000).toFixed(1) + 's';
+  }
+
   return card;
 }
 
@@ -3498,6 +3885,29 @@ function renderToolCallsGroup(jsonContent, container) {
     div.className = 'msg system';
     div.textContent = jsonContent;
     container.appendChild(div);
+    return;
+  }
+  // Check if already rendered
+  var existing = container.querySelector('.msg.tools:last-of-type');
+  if (existing) {
+    var body = existing.querySelector('.tool-calls-body');
+    var existingCards = body ? body.querySelectorAll('.tool-card') : [];
+    var existingNames = {};
+    existingCards.forEach(function(c) {
+      var nameEl = c.querySelector('.card-name');
+      if (nameEl) existingNames[nameEl.textContent] = c;
+    });
+    toolCalls.forEach(function(tc) {
+      var name = tc.name || (tc.function ? tc.function.name : 'unknown');
+      if (!existingNames[name]) {
+        var card = buildToolCard(tc);
+        if (body) body.appendChild(card);
+      }
+    });
+    var header = existing.querySelector('.tool-calls-header');
+    if (header) {
+      header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
+    }
     return;
   }
   var msgDiv = document.createElement('div');
@@ -3533,29 +3943,25 @@ function copyToolResult(btn) {
   }
 }
 
-/* Render tool calls inline at the bottom of an AI message */
+/* Render tool calls as standalone timeline cards inside an AI message */
 function renderToolCallsInline(jsonContent, agentMsgDiv) {
   var toolCalls;
   try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
   if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) return;
-  var inline = document.createElement('div');
-  inline.className = 'tool-calls-inline';
-  var header = document.createElement('div');
-  header.className = 'tool-calls-header collapsed';
-  header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
-  var body = document.createElement('div');
-  body.className = 'tool-calls-body';
-  body.style.display = 'none';
-  toolCalls.forEach(function(tc) { body.appendChild(buildToolCard(tc)); });
-  header.onclick = function(e) {
-    e.stopPropagation();
-    var isCollapsed = body.style.display === 'none';
-    body.style.display = isCollapsed ? 'flex' : 'none';
-    header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
-  };
-  inline.appendChild(header);
-  inline.appendChild(body);
-  agentMsgDiv.appendChild(inline);
+  // Check if already rendered
+  var existing = agentMsgDiv.querySelectorAll('.timeline-tool-card');
+  if (existing.length >= toolCalls.length) return;
+  // Render each tool call as a standalone card before .msg-time
+  var timeEl = agentMsgDiv.querySelector('.msg-time');
+  toolCalls.forEach(function(tc) {
+    var card = buildToolCard(tc);
+    card.classList.add('timeline-tool-card');
+    if (timeEl) {
+      agentMsgDiv.insertBefore(card, timeEl);
+    } else {
+      agentMsgDiv.appendChild(card);
+    }
+  });
 }
 
 
@@ -5553,7 +5959,7 @@ var lastSyncedMsgCount = 0;
 
 function startSessionPoll() {
   stopSessionPoll();
-  var lastKnownStatus = '';
+  var lastKnownState = '';
   sessionPollTimer = setInterval(async function() {
     if (!CURRENT_SESSION) return;
     // Skip if there's an active streaming message (SSE connected)
@@ -5561,13 +5967,14 @@ function startSessionPoll() {
     try {
       var data = await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION);
       if (!data || !data.messages) return;
-      // Always refresh session list to update running/done status
-      if (data.status !== lastKnownStatus) {
-        lastKnownStatus = data.status;
+      // Always refresh session list to update running/done state
+      var currentState = data.state || data.status || 'idle';
+      if (currentState !== lastKnownState) {
+        lastKnownState = currentState;
         loadSessions();
       }
       // Hide status bar if session finished
-      if (data.status !== 'running') {
+      if (currentState !== 'running' && currentState !== 'waiting_confirm' && currentState !== 'queued') {
         if (_pendingStopSession === CURRENT_SESSION) _pendingStopSession = null;
         var workIndicator = document.querySelector('.streaming-work');
         if (workIndicator) workIndicator.remove();
@@ -5578,41 +5985,43 @@ function startSessionPoll() {
         SESSION_MESSAGES[CURRENT_SESSION] = data.messages.map(function(m) {
           return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
         });
-        // Re-render messages
+        // Incremental append: only add new messages, never clear existing DOM
         var container = document.getElementById('chatMessages');
-        container.innerHTML = '';
-        lastSyncedMsgCount = 0;
-        data.messages.forEach(function(m) {
+        var wasNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 150;
+        var appended = 0;
+        var existingCount = container.querySelectorAll('.msg').length;
+        data.messages.forEach(function(m, idx) {
+          if (idx < existingCount) return; // already rendered
           var ts = m.created_at || m.timestamp || '';
           if (m.role === 'user') {
             appendMessage('user', escHtml(m.content), ts);
-            lastSyncedMsgCount++;
+            appended++;
           } else if (m.role === 'agent' || m.role === 'assistant') {
             appendMessage('agent', renderMarkdown(m.content), ts);
-            lastSyncedMsgCount++;
+            appended++;
           } else if (m.role === 'tool-calls') {
-            // Attach tool-calls to the preceding AI message instead of rendering as plain text
             var prevAgent = container.querySelector('.msg.agent:last-of-type');
             if (prevAgent) {
               renderToolCallsInline(m.content, prevAgent);
             } else {
               renderToolCallsGroup(m.content, container);
             }
-            lastSyncedMsgCount++;
+            appended++;
           } else if (m.role === 'system') {
             var div = document.createElement('div');
             div.className = 'msg system';
             div.textContent = m.content;
             container.appendChild(div);
-            lastSyncedMsgCount++;
+            appended++;
           }
         });
+        lastSyncedMsgCount = data.messages.length;
         // If still running, show status indicator (but not if user just clicked stop)
         if (data.status === 'running' && _pendingStopSession !== CURRENT_SESSION) {
-          showThinking();
           document.getElementById('chatStopBtn').style.display = '';
         }
-        smartScrollBottom(container);
+        // Auto-scroll to show new messages
+        if (appended > 0) scrollToBottom(container);
       }
     } catch(e) {}
   }, 5000);

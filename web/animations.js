@@ -144,7 +144,10 @@
   });
 
   // ====== Chat message animation ======
+  // Only animate on initial page load, not during streaming
+  var _initialChatAnimated = false;
   var chatObserver = new MutationObserver(function(mutations) {
+    if (_initialChatAnimated) return; // Skip after initial load
     mutations.forEach(function(m) {
       m.addedNodes.forEach(function(n) {
         if (n.nodeType === 1) {
@@ -161,6 +164,7 @@
         }
       });
     });
+    _initialChatAnimated = true;
   });
   var chatEl = document.getElementById('chatMessages');
   if (chatEl) {
