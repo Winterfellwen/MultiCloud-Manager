@@ -23,21 +23,8 @@ func NewEventsSSEHandler(db *sql.DB, rm *RunManager, jwtSecret string) *EventsSS
 }
 
 func (h *EventsSSEHandler) Stream(c *gin.Context) {
-	c.Header("Content-Type", "text/event-stream; charset=utf-8")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("X-Accel-Buffering", "no")
-	// Disable chunked encoding for SSE
-	c.Header("Transfer-Encoding", "identity")
+	// --- Auth & validation BEFORE setting SSE headers ---
 
-	flusher, ok := c.Writer.(http.Flusher)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
-		return
-	}
-
-	// Auth: accept token from query param (EventSource can't set request headers)
 	tokenStr := c.Query("token")
 	if tokenStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
@@ -58,12 +45,11 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 		return
 	}
 
-	c.Set("user_id", claims["sub"])
+	userID := fmt.Sprintf("%v", claims["sub"])
 	role := "viewer"
 	if r, ok := claims["role"].(string); ok && r != "" {
 		role = r
 	}
-	c.Set("user_role", role)
 
 	sessionIDsParam := c.Query("session_ids")
 	if sessionIDsParam == "" {
@@ -75,32 +61,24 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 		sessionIDs[i] = strings.TrimSpace(sessionIDs[i])
 	}
 
-	userID, _ := c.Get("user_id")
-	userRole, _ := c.Get("user_role")
-	ownerID, _ := userID.(string)
-	role, _ = userRole.(string)
-
-	if role != "admin" {
-		for _, sid := range sessionIDs {
-			sid = strings.TrimSpace(sid)
-			if sid == "" {
+	// Batch permission check for non-admin users
+	if role != "admin" && h.db != nil {
+		rows, err := h.db.Query(
+			`SELECT user_id FROM sessions WHERE session_id = ANY($1)`,
+			sessionIDs,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var dbOwnerID string
+			if err := rows.Scan(&dbOwnerID); err != nil {
 				continue
 			}
-			var dbOwnerID string
-			err := h.db.QueryRow(`SELECT user_id FROM sessions WHERE session_id = $1`, sid).Scan(&dbOwnerID)
-			if err == sql.ErrNoRows {
-				c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
-				c.Abort()
-				return
-			}
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				c.Abort()
-				return
-			}
-			if dbOwnerID != ownerID {
+			if dbOwnerID != userID {
 				c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-				c.Abort()
 				return
 			}
 		}
@@ -111,6 +89,19 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
 			fromID = n
 		}
+	}
+
+	// --- Now set SSE headers (after all validation passes) ---
+	c.Header("Content-Type", "text/event-stream; charset=utf-8")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("X-Accel-Buffering", "no")
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		// Should not happen with gin + net/http
+		return
 	}
 
 	// Send initial connection message
@@ -125,15 +116,12 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	// Manual streaming loop to properly handle chunked encoding termination
 	for {
 		select {
 		case ev, ok := <-ch:
 			if !ok {
-				// Channel closed, just return - no need to send chunked encoding terminator for SSE
 				return
 			}
-			// Check if connection is still alive before writing
 			select {
 			case <-ctx.Done():
 				return
@@ -141,27 +129,21 @@ func (h *EventsSSEHandler) Stream(c *gin.Context) {
 			}
 			id := strconv.FormatInt(ev.ID, 10)
 			data := toJSON(ev)
-			// SSE format: id: <id>\ndata: <json>\n\n
-			_, err := fmt.Fprintf(c.Writer, "id: %s\ndata: %s\n\n", id, data)
-			if err != nil {
+			if _, err := fmt.Fprintf(c.Writer, "id: %s\ndata: %s\n\n", id, data); err != nil {
 				return
 			}
 			flusher.Flush()
 		case <-tick.C:
-			// Check if connection is still alive before writing keep-alive
 			select {
 			case <-ctx.Done():
 				return
 			default:
 			}
-			// Send keep-alive comment
-			_, err := fmt.Fprintf(c.Writer, ": ping\n\n")
-			if err != nil {
+			if _, err := fmt.Fprintf(c.Writer, ": ping\n\n"); err != nil {
 				return
 			}
 			flusher.Flush()
 		case <-ctx.Done():
-			// Client disconnected or request cancelled - just return for SSE
 			return
 		}
 	}

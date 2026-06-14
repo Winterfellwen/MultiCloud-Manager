@@ -290,6 +290,9 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	r.StaticFile("/static/animations.js", filepath.Join(webDir, "animations.js"))
 	r.Static("/static/js", filepath.Join(webDir, "js"))
 
+	// React app assets
+	r.Static("/assets", filepath.Join(webDir, "assets"))
+
 	r.GET("/embedded.js", func(c *gin.Context) {
 		serveFileWithType(c, filepath.Join(webDir, "embedded.js"), "application/javascript; charset=utf-8")
 	})
@@ -332,10 +335,19 @@ func getWebDir() string {
 	execPath, err := os.Executable()
 	if err == nil {
 		execDir := filepath.Dir(execPath)
+		// Try React app first, fallback to old SPA
+		reactDir := filepath.Join(execDir, "web", "react")
+		if _, err := os.Stat(reactDir); err == nil {
+			return reactDir
+		}
 		webDir := filepath.Join(execDir, "web")
 		if _, err := os.Stat(webDir); err == nil {
 			return webDir
 		}
+	}
+	// Try React app first in current directory
+	if _, err := os.Stat("web/react"); err == nil {
+		return "web/react"
 	}
 	return "web"
 }

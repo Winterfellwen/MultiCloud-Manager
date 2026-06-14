@@ -54,8 +54,8 @@ func main() {
 		Handler:           router,
 		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      120 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		WriteTimeout:      0, // No write timeout — SSE endpoints need long-lived connections
+		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    1 << 16,
 	}
 
