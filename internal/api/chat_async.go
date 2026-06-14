@@ -288,6 +288,18 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 				toolArgs = map[string]interface{}{}
 			}
 
+			// For shell tools, inject an onOutput callback that streams
+			// tool_output events to the frontend in real-time.
+			if toolName == "shell_exec" || toolName == "run_script" {
+				outputCtx := agent.WithOutputCallback(ctx, func(chunk string) {
+					h.rm.persistEvent(r, EventToolOutput, map[string]interface{}{
+						"tool_name": toolName,
+						"output":    chunk,
+					})
+				})
+				ctx = outputCtx
+			}
+
 			result, execErr := h.runtime.ExecuteTool(ctx, toolName, toolArgs)
 
 			h.rm.persistEvent(r, EventToolResult, map[string]interface{}{

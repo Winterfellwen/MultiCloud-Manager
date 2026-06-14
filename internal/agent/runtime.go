@@ -12,6 +12,22 @@ import (
 	"multicloud/internal/vault"
 )
 
+// outputCallbackKey is a context key for the tool output callback.
+type outputCallbackKey struct{}
+
+// WithOutputCallback returns a context that carries a tool output callback.
+func WithOutputCallback(ctx context.Context, cb func(chunk string)) context.Context {
+	return context.WithValue(ctx, outputCallbackKey{}, cb)
+}
+
+// OutputCallbackFromContext extracts the tool output callback from context.
+func OutputCallbackFromContext(ctx context.Context) func(chunk string) {
+	if cb, ok := ctx.Value(outputCallbackKey{}).(func(chunk string)); ok {
+		return cb
+	}
+	return nil
+}
+
 // Runtime combines all agent components into a single usable unit.
 type Runtime struct {
 	registry *ToolRegistry
@@ -38,7 +54,19 @@ func (w *shellToolWrapper) Name() string        { return w.shellTool.Name() }
 func (w *shellToolWrapper) Description() string  { return w.shellTool.Description() }
 func (w *shellToolWrapper) Parameters() map[string]interface{} { return w.shellTool.Parameters() }
 func (w *shellToolWrapper) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
-	return w.shellTool.Execute(ctx, args)
+	return w.shellTool.Execute(ctx, args, OutputCallbackFromContext(ctx))
+}
+
+// scriptToolWrapper wraps shell.ScriptTool to implement agent.Tool interface
+type scriptToolWrapper struct {
+	scriptTool *shell.ScriptTool
+}
+
+func (w *scriptToolWrapper) Name() string        { return w.scriptTool.Name() }
+func (w *scriptToolWrapper) Description() string  { return w.scriptTool.Description() }
+func (w *scriptToolWrapper) Parameters() map[string]interface{} { return w.scriptTool.Parameters() }
+func (w *scriptToolWrapper) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
+	return w.scriptTool.Execute(ctx, args, OutputCallbackFromContext(ctx))
 }
 
 // NewRuntime creates and configures a new Runtime.
@@ -54,8 +82,7 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 	registry.Register(&shellToolWrapper{shellTool: shell.NewShellTool(shellExecutor)})
 
 	// Register script executor tool (for multi-step operations with shared state)
-	// ScriptTool already satisfies agent.Tool interface directly.
-	registry.Register(shell.NewScriptTool(shellExecutor))
+	registry.Register(&scriptToolWrapper{scriptTool: shell.NewScriptTool(shellExecutor)})
 
 	router := NewRouter(registry)
 

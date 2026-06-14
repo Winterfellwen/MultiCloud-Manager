@@ -41,7 +41,7 @@ func (t *ShellTool) Parameters() map[string]interface{} {
 	}
 }
 
-func (t *ShellTool) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *ShellTool) Execute(ctx context.Context, args map[string]interface{}, onOutput func(chunk string)) (string, error) {
 	command, ok := args["command"].(string)
 	if !ok || command == "" {
 		return "", fmt.Errorf("command parameter is required and must be a non-empty string")
@@ -49,7 +49,7 @@ func (t *ShellTool) Execute(ctx context.Context, args map[string]interface{}) (s
 
 	workdir, _ := args["workdir"].(string)
 
-	result, err := t.executor.Execute(ctx, command, workdir)
+	result, err := t.executor.Execute(ctx, command, workdir, onOutput)
 	if err != nil {
 		return "", fmt.Errorf("shell execution failed: %w", err)
 	}
@@ -95,7 +95,7 @@ func (t *ScriptTool) Parameters() map[string]interface{} {
 	}
 }
 
-func (t *ScriptTool) Execute(ctx context.Context, args map[string]interface{}) (string, error) {
+func (t *ScriptTool) Execute(ctx context.Context, args map[string]interface{}, onOutput func(chunk string)) (string, error) {
 	script, ok := args["script"].(string)
 	if !ok || script == "" {
 		return "", fmt.Errorf("script parameter is required and must be a non-empty string")
@@ -103,7 +103,7 @@ func (t *ScriptTool) Execute(ctx context.Context, args map[string]interface{}) (
 
 	workdir, _ := args["workdir"].(string)
 
-	result, err := t.executor.ExecuteScript(ctx, script, workdir)
+	result, err := t.executor.ExecuteScript(ctx, script, workdir, onOutput)
 	if err != nil {
 		return "", fmt.Errorf("script execution failed: %w", err)
 	}

@@ -78,7 +78,8 @@ func checkBlocked(command string) error {
 }
 
 // Execute runs a single shell command string.
-func (e *Executor) Execute(ctx context.Context, command string, workdir string) (*Result, error) {
+// If onOutput is non-nil, stdout/stderr chunks are sent to it in real-time.
+func (e *Executor) Execute(ctx context.Context, command string, workdir string, onOutput func(chunk string)) (*Result, error) {
 	if command == "" {
 		return nil, fmt.Errorf("empty command")
 	}
@@ -101,7 +102,7 @@ func (e *Executor) Execute(ctx context.Context, command string, workdir string) 
 		return nil, fmt.Errorf("parse command: %w", err)
 	}
 
-	return e.run(ctx, file, dir)
+	return e.run(ctx, file, dir, onOutput)
 }
 
 // ExecuteScript writes a multi-line script to a temporary file and executes it.
@@ -110,7 +111,7 @@ func (e *Executor) Execute(ctx context.Context, command string, workdir string) 
 //  2. Complex quoting - script content is written to file, not parsed from JSON string
 //
 // The temporary file is cleaned up after execution.
-func (e *Executor) ExecuteScript(ctx context.Context, script string, workdir string) (*Result, error) {
+func (e *Executor) ExecuteScript(ctx context.Context, script string, workdir string, onOutput func(chunk string)) (*Result, error) {
 	if script == "" {
 		return nil, fmt.Errorf("empty script")
 	}
@@ -148,7 +149,7 @@ func (e *Executor) ExecuteScript(ctx context.Context, script string, workdir str
 		return nil, fmt.Errorf("parse script: %w", err)
 	}
 
-	return e.run(ctx, f, dir)
+	return e.run(ctx, f, dir, onOutput)
 }
 
 // resolveDir determines the working directory, falling back to /tmp if invalid.
@@ -164,10 +165,14 @@ func (e *Executor) resolveDir(workdir string) string {
 }
 
 // run executes a parsed shell AST and returns the result.
-func (e *Executor) run(ctx context.Context, file *syntax.File, dir string) (*Result, error) {
-	var stdout, stderr bytes.Buffer
+func (e *Executor) run(ctx context.Context, file *syntax.File, dir string, onOutput func(chunk string)) (*Result, error) {
+	// streamingWriter wraps bytes.Buffer and optionally calls onOutput for each Write.
+	var stdoutBuf, stderrBuf bytes.Buffer
+	stdout := &streamingWriter{buf: &stdoutBuf, cb: onOutput}
+	stderr := &streamingWriter{buf: &stderrBuf, cb: onOutput}
+
 	runner, err := interp.New(
-		interp.StdIO(nil, &stdout, &stderr),
+		interp.StdIO(nil, stdout, stderr),
 		interp.Dir(dir),
 		interp.Env(expand.ListEnviron(os.Environ()...)),
 	)
@@ -189,11 +194,25 @@ func (e *Executor) run(ctx context.Context, file *syntax.File, dir string) (*Res
 	}
 
 	return &Result{
-		Stdout:   strings.TrimSpace(stdout.String()),
-		Stderr:   strings.TrimSpace(stderr.String()),
+		Stdout:   strings.TrimSpace(stdoutBuf.String()),
+		Stderr:   strings.TrimSpace(stderrBuf.String()),
 		ExitCode: exitCode,
 		Duration: duration,
 	}, nil
+}
+
+// streamingWriter is an io.Writer that buffers data and optionally calls a callback.
+type streamingWriter struct {
+	buf *bytes.Buffer
+	cb  func(chunk string) // may be nil
+}
+
+func (w *streamingWriter) Write(p []byte) (int, error) {
+	n, err := w.buf.Write(p)
+	if w.cb != nil && n > 0 {
+		w.cb(string(p))
+	}
+	return n, err
 }
 
 // cleanPath ensures a path is safe and absolute.

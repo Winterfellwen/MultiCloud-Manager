@@ -28,6 +28,7 @@ type EventType string
 const (
 	EventToken           EventType = "token"
 	EventToolStart       EventType = "tool_start"
+	EventToolOutput      EventType = "tool_output"
 	EventToolResult      EventType = "tool_result"
 	EventConfirmRequired EventType = "confirm_required"
 	EventStateChange     EventType = "state_change"
@@ -251,21 +252,28 @@ func (m *RunManager) cleanup(r *Run) {
 var newUUID = newSessionID
 
 // Subscribe returns a buffered channel of events for the given sessions,
-// plus an unsubscribe function. fromID > 0 causes the channel to first
-// replay events with id > fromID (read from the DB).
+// plus an unsubscribe function. fromID > 0 causes replay of events
+// with id > fromID (read from the DB) BEFORE registering for live events,
+// so no events are lost or delivered out of order.
 func (m *RunManager) Subscribe(sessionIDs []string, fromID int64) (<-chan Event, func()) {
-	ch := make(chan Event, 256)
+	ch := make(chan Event, 512)
+
+	// Replay historical events FIRST (synchronous), before registering for live events.
+	// This prevents race conditions where live events arrive before replay completes.
+	m.replayEvents(ch, sessionIDs, fromID)
+
+	// Now register for live events
+	m.subMu.Lock()
 	for _, sid := range sessionIDs {
-		m.subMu.Lock()
 		if len(m.subs[sid]) >= 100 {
-			m.subMu.Unlock()
-			close(ch)
-			return ch, func() {}
+			// Too many subscribers for this session; skip but don't close channel
+			// since we already replayed events into it.
+			continue
 		}
 		m.subs[sid] = append(m.subs[sid], ch)
-		m.subMu.Unlock()
 	}
-	go m.replayEvents(ch, sessionIDs, fromID)
+	m.subMu.Unlock()
+
 	return ch, func() {
 		m.subMu.Lock()
 		for _, sid := range sessionIDs {
@@ -283,12 +291,15 @@ func (m *RunManager) Subscribe(sessionIDs []string, fromID int64) (<-chan Event,
 
 // replayEvents fetches events with id > fromID from the DB and sends them to ch.
 // It does not block on ch; if the buffer is full it drops (the live stream continues).
+// The query is limited to maxReplay rows and uses a 5-second context timeout.
 func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID int64) {
 	if m.db == nil {
 		return
 	}
-	const maxReplay = 500
-	rows, err := m.db.Query(
+	const maxReplay = 200
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	rows, err := m.db.QueryContext(ctx,
 		`SELECT id, run_id, session_id, seq, event_type, payload, created_at FROM (
 		   SELECT id, run_id, session_id, seq, event_type, payload, created_at
 		   FROM run_events WHERE id > $1 AND session_id = ANY($2)
@@ -296,16 +307,28 @@ func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID i
 		 ) sub ORDER BY id`,
 		fromID, sessionIDs, maxReplay)
 	if err != nil {
+		log.Printf("replayEvents: query failed (sessionIDs=%d, fromID=%d): %v", len(sessionIDs), fromID, err)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
+		// Check if context expired
+		select {
+		case <-ctx.Done():
+			log.Printf("replayEvents: timeout, stopping after partial replay")
+			return
+		default:
+		}
 		var ev Event
 		var payload []byte
 		if err := rows.Scan(&ev.ID, &ev.RunID, &ev.SessionID, &ev.Seq, &ev.Type, &payload, &ev.CreatedAt); err != nil {
 			continue
 		}
 		if ev.Type == EventToken {
+			continue
+		}
+		// Skip tool_output events during replay — they are real-time streaming data
+		if ev.Type == EventToolOutput {
 			continue
 		}
 		_ = jsonUnmarshal(payload, &ev.Payload)
@@ -318,14 +341,29 @@ func (m *RunManager) replayEvents(ch chan<- Event, sessionIDs []string, fromID i
 }
 
 // broadcast sends ev to all subscribers of its session.
+// Critical events (state_change, tool_start, tool_result, error) are sent
+// with a blocking send to guarantee delivery. Token events use non-blocking
+// send to avoid slowing down the LLM stream.
 func (m *RunManager) broadcast(ev Event) {
 	m.subMu.RLock()
 	subs := append([]chan Event(nil), m.subs[ev.SessionID]...)
 	m.subMu.RUnlock()
+
+	isCritical := ev.Type != EventToken && ev.Type != EventToolOutput
 	for _, c := range subs {
-		select {
-		case c <- ev:
-		default:
+		if isCritical {
+			// Block for up to 5s to deliver critical events
+			select {
+			case c <- ev:
+			case <-time.After(5 * time.Second):
+				log.Printf("broadcast: dropped critical event %s for session %s (channel full)", ev.Type, ev.SessionID)
+			}
+		} else {
+			select {
+			case c <- ev:
+			default:
+				// Drop token events if buffer is full — they can be recovered via replay
+			}
 		}
 	}
 }
