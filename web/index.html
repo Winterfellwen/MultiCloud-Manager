@@ -5680,6 +5680,10 @@ function applyLang() {
   if (document.getElementById('page-accounts').classList.contains('active') && typeof loadAccounts === 'function') {
     loadAccounts();
   }
+  // Re-render cloud guide if form is open
+  if (selectedCloud && document.getElementById('accountForm').style.display !== 'none') {
+    selectCloud(selectedCloud);
+  }
 }
 
 function switchLang(locale) {
