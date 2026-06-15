@@ -26,12 +26,11 @@
   "homepage": "https://github.com/Winterfellwen/MultiCloud-Manager#readme",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "miniprogram-automator": "^0.12.1"
-  },
-  "dependencies": {
+    "miniprogram-automator": "^0.12.1",
     "@browserbasehq/stagehand": "^3.5.0",
     "bcrypt": "^6.0.0",
     "pg": "^8.21.0",
     "playwright": "^1.60.0"
-  }
+  },
+  "dependencies": {}
 }

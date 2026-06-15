@@ -2,15 +2,16 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"multicloud/internal/cloud"
 	"multicloud/internal/vault"
 )
 
-func RegisterCloudProxyRoutes(r *gin.RouterGroup, syncer *cloud.Syncer, vaultSvc vault.Service) {
+func RegisterCloudProxyRoutes(r *gin.RouterGroup, syncer *cloud.Syncer, vaultSvc vault.Service, jwtSecret string) {
 	g := r.Group("/internal/cloud")
-	g.Use(InternalAuthMiddleware())
+	g.Use(InternalAuthMiddleware(jwtSecret))
 
 	g.POST("/list-resources", handleListResources(syncer))
 	g.POST("/start-instance", handleStartInstance(syncer))
@@ -21,13 +22,27 @@ func RegisterCloudProxyRoutes(r *gin.RouterGroup, syncer *cloud.Syncer, vaultSvc
 	g.POST("/do-raw-request", handleDoRawRequest(syncer))
 }
 
-func InternalAuthMiddleware() gin.HandlerFunc {
+func InternalAuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
 		if auth == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
 			return
 		}
+
+		tokenStr := strings.TrimPrefix(auth, "Bearer ")
+		if tokenStr == auth {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
+			return
+		}
+
+		_, claims, err := ValidateJWTToken(tokenStr, jwtSecret)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+
+		c.Set("user_id", claims["sub"])
 		c.Next()
 	}
 }

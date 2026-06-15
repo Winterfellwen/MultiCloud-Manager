@@ -1587,6 +1587,34 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 
 <script>
 const API = '/api';
+
+/* ── Magic-number constants ── */
+const API_TIMEOUT_MS = 120000;
+const SSE_RECONNECT_DELAY_MS = 1000;
+const SESSION_POLL_INTERVAL_MS = 5000;
+const SEARCH_DEBOUNCE_MS = 300;
+const TOAST_DURATION_MS = 3000;
+const COPY_FEEDBACK_MS = 1600;
+const BTN_RESET_MS = 2000;
+const AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
+const STREAM_TIMEOUT_MS = 120000;
+const MAX_PROCESSED_EVENTS = 500;
+const EVENT_PRUNE_THRESHOLD = 250;
+const MAX_SUBSCRIBED_SESSIONS = 10;
+const MAX_MSG_HISTORY = 50;
+const SESSION_PAGE_SIZE = 20;
+const DEFAULT_AI_ENDPOINT = 'https://api.openai.com/v1';
+const DEFAULT_AI_MODEL = 'gpt-4o-mini';
+
+/* ── Reusable HTML-template helpers ── */
+function thinkingIndicator(icon) {
+  var ic = icon || 'icon-sync';
+  return '<span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#' + ic + '"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span>';
+}
+function aiRoleHeader() {
+  return '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div>';
+}
+
 const pageTitles = {
   dashboard: 'page.dashboard',
   chat: 'page.chat',
@@ -1670,7 +1698,7 @@ const EVENT_HANDLERS = {
 
 function startGlobalEventSource() {
   if (GLOBAL_EVENT_SOURCE) { GLOBAL_EVENT_SOURCE.close(); GLOBAL_EVENT_SOURCE = null; }
-  const ids = Array.from(SUBSCRIBED_SESSIONS).slice(0, 50);
+  const ids = Array.from(SUBSCRIBED_SESSIONS).slice(0, MAX_SUBSCRIBED_SESSIONS * 5);
   if (ids.length === 0) return;
   const params = new URLSearchParams({
     session_ids: ids.join(','),
@@ -1693,7 +1721,7 @@ function startGlobalEventSource() {
     }
   };
   es.onerror = function() {
-    setTimeout(startGlobalEventSource, 1000);
+    setTimeout(startGlobalEventSource, SSE_RECONNECT_DELAY_MS);
   };
   GLOBAL_EVENT_SOURCE = es;
 }
@@ -1705,18 +1733,18 @@ function _isEventProcessed(eventId) {
   if (_processedEventIds.has(eventId)) return true;
   _processedEventIds.add(eventId);
   // Keep the set from growing unbounded — prune old entries
-  if (_processedEventIds.size > 500) {
+  if (_processedEventIds.size > MAX_PROCESSED_EVENTS) {
     var arr = Array.from(_processedEventIds).sort(function(a,b){return a-b;});
-    _processedEventIds = new Set(arr.slice(250));
+    _processedEventIds = new Set(arr.slice(EVENT_PRUNE_THRESHOLD));
   }
   return false;
 }
 function subscribeToSession(sessionID) {
   if (SUBSCRIBED_SESSIONS.has(sessionID)) return;
   SUBSCRIBED_SESSIONS.add(sessionID);
-  if (SUBSCRIBED_SESSIONS.size > 10) {
+  if (SUBSCRIBED_SESSIONS.size > MAX_SUBSCRIBED_SESSIONS) {
     // Remove oldest sessions to keep URL length manageable
-    var toRemove = Array.from(SUBSCRIBED_SESSIONS).slice(0, SUBSCRIBED_SESSIONS.size - 10);
+    var toRemove = Array.from(SUBSCRIBED_SESSIONS).slice(0, SUBSCRIBED_SESSIONS.size - MAX_SUBSCRIBED_SESSIONS);
     toRemove.forEach(function(sid) { SUBSCRIBED_SESSIONS.delete(sid); });
   }
   // Restart EventSource immediately (not deferred) so the new session's
@@ -1778,7 +1806,7 @@ function openDirectSSEStream(sessionId) {
                 var parsed = JSON.parse(data);
                 var handler = EVENT_HANDLERS[parsed.event_type];
                 if (handler && !_isEventProcessed(currentId)) handler(parsed, currentId);
-              } catch(ex) {}
+              } catch(ex) { console.warn('[MCM]', ex); }
             }
             // Skip comments (lines starting with ':')
           }
@@ -1797,7 +1825,7 @@ function openDirectSSEStream(sessionId) {
               if (CURRENT_RUN_ID && sessionId === CURRENT_SESSION) {
                 openDirectSSEStream(sessionId);
               }
-            }, 1000);
+            }, SSE_RECONNECT_DELAY_MS);
           }
         });
       }
@@ -1830,7 +1858,7 @@ function _ensureStreamingDiv() {
   STREAMING_DIV = document.createElement('div');
   STREAMING_DIV.className = 'msg agent streaming';
   // No .msg-content yet — it will be created on first token
-  STREAMING_DIV.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
+  STREAMING_DIV.innerHTML = aiRoleHeader() + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
   container.appendChild(STREAMING_DIV);
   STREAMING_DIV._toolCallsContainer = null;
   STREAMING_DIV._toolCallsHeader = null;
@@ -1995,7 +2023,7 @@ function handleToolResultEvent(ev) {
           var body = card.querySelector('.tool-card-body');
           if (body && result) {
             var resultText = result;
-            try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) {}
+            try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { console.warn('[MCM]', e); }
             var resultDiv = document.createElement('div');
             resultDiv.className = 'field-label';
             resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
@@ -2094,7 +2122,7 @@ function handleStateChangeEvent(ev) {
           var savedTcNames = {};
           blocks.forEach(function(b) {
             if (b.role === 'tool-calls') {
-              try { var arr = JSON.parse(b.content); arr.forEach(function(t) { savedTcNames[t.name] = true; }); } catch(e) {}
+              try { var arr = JSON.parse(b.content); arr.forEach(function(t) { savedTcNames[t.name] = true; }); } catch(e) { console.warn('[MCM]', e); }
             }
           });
           PENDING_TOOL_CALLS.forEach(function(tc) {
@@ -2341,7 +2369,7 @@ window.addEventListener('storage', function(e) {
 });
 
 var TAB_CHANNEL = null;
-try { TAB_CHANNEL = new BroadcastChannel('mc-state'); } catch(e) {}
+try { TAB_CHANNEL = new BroadcastChannel('mc-state'); } catch(e) { console.warn('[MCM]', e); }
 if (TAB_CHANNEL) {
   TAB_CHANNEL.onmessage = function(e) {
     if (e.data && e.data.type === 'session-changed') {
@@ -2400,7 +2428,7 @@ function updateUserProfile(user) {
       if (document.visibilityState === 'visible') {
         syncAllAccounts();
       }
-    }, 10 * 60 * 1000);
+    }, AUTO_SYNC_INTERVAL_MS);
   }
 }
 
@@ -2606,7 +2634,7 @@ function applyChatRestrictions(role) {
     }
   }
   var currentUser = '';
-  try { currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}').user || ''; } catch(e) {}
+  try { currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}').user || ''; } catch(e) { console.warn('[MCM]', e); }
   document.querySelectorAll('.session-del-btn').forEach(el => {
     var sessionItem = el.closest('.chat-session-item');
     var sessionUserId = sessionItem ? (sessionItem.dataset.userId || '') : '';
@@ -2718,7 +2746,7 @@ document.querySelectorAll('.nav-item, .tab-item').forEach(el => {
 /* API helper */
 async function apiFetch(url, options) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
     const res = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeout);
@@ -2873,7 +2901,7 @@ async function sendChat() {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'msg agent streaming';
-    div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span></span></div>' + buildAgentCopyButton();
+    div.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
     container.appendChild(div);
     STREAMING_DIV = div;
     scrollToBottom(container);
@@ -2923,7 +2951,7 @@ async function stopActiveSession() {
         headers: Object.assign({}, getAuthHeaders(), { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ run_id: runId })
       });
-    } catch(e) { /* ignore */ }
+    } catch(e) { console.warn('[MCM]', e); }
     CURRENT_RUN_ID = null;
     // Directly re-enable UI as a safety net.
     _pendingStopSession = CURRENT_SESSION;
@@ -2990,7 +3018,7 @@ function handleSSEEvent(data) {
       // Only update "thinking" indicator here
       var aiText = streamingMsg ? streamingMsg.querySelector('.ai-text') : null;
       if (aiText) {
-        aiText.innerHTML = '<span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-search"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span>';
+        aiText.innerHTML = thinkingIndicator('icon-search');
         aiText.classList.add('streaming-cursor');
       }
       break;
@@ -3004,7 +3032,7 @@ function handleSSEEvent(data) {
       const container = document.getElementById('chatMessages');
       const confirmDiv = document.createElement('div');
       confirmDiv.className = 'msg agent confirm-block';
-      let html = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
+      let html = aiRoleHeader() + '<div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
       (data.tool_calls || []).forEach(function(tc, idx) {
         var paramsStr = JSON.stringify(tc.params);
         var name = tc.name;
@@ -3047,7 +3075,7 @@ function doConfirm(toolName) {
     if (nameEl && nameEl.textContent === toolName) {
       var paramsEl = toolCalls[i].querySelector('.tool-params');
       if (paramsEl) {
-        try { params = JSON.parse(paramsEl.textContent); } catch(e) {}
+        try { params = JSON.parse(paramsEl.textContent); } catch(e) { console.warn('[MCM]', e); }
       }
       break;
     }
@@ -3061,7 +3089,7 @@ function doReject(toolName) {
 
 /* Session Management */
 let SESSION_PAGE = 1;
-let SESSION_LIMIT = 20;
+let SESSION_LIMIT = SESSION_PAGE_SIZE;
 let SESSION_TOTAL = 0;
 let _searchTimer = null;
 
@@ -3084,7 +3112,7 @@ function toggleSessionFilters() {
 
 function debounceSessionSearch() {
   clearTimeout(_searchTimer);
-  _searchTimer = setTimeout(function() { SESSION_PAGE = 1; loadSessions(); }, 300);
+  _searchTimer = setTimeout(function() { SESSION_PAGE = 1; loadSessions(); }, SEARCH_DEBOUNCE_MS);
 }
 
 function changeSessionPage(delta) {
@@ -3108,7 +3136,7 @@ async function loadSessionUsers() {
         sel.appendChild(opt);
       });
     }
-  } catch(e) { /* ignore */ }
+  } catch(e) { console.warn('[MCM]', e); }
 }
 
 function formatSessionTime(dateStr) {
@@ -3323,7 +3351,7 @@ async function switchSession(sid) {
         if (m.streaming) {
           var div = document.createElement('div');
           div.className = 'msg agent streaming';
-          div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton();
+          div.innerHTML = aiRoleHeader() + '<div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton();
           container.appendChild(div);
         } else {
           appendMessage('agent', renderMarkdown(m.content), ts);
@@ -3362,7 +3390,7 @@ async function switchSession(sid) {
       if (!data.messages || data.messages.length === 0) {
         var thinkDiv = document.createElement('div');
         thinkDiv.className = 'msg agent streaming';
-        thinkDiv.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span></span></div>' + buildAgentCopyButton();
+        thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
         container.appendChild(thinkDiv);
         STREAMING_DIV = thinkDiv;
         msgCount++;
@@ -3488,7 +3516,7 @@ async function newSession() {
   CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
   CURRENT_SESSION_USER = null;
   updateSendButtonState();
-  document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
+  document.getElementById('chatMessages').innerHTML = '<div class="msg agent">' + aiRoleHeader() + '<div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
   closeChatSessions();
   await loadSessions();
 }
@@ -3498,7 +3526,7 @@ async function deleteSession(sid) {
   await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
   if (CURRENT_SESSION === sid) {
     CURRENT_SESSION = null;
-    document.getElementById('chatMessages').innerHTML = '<div class="msg agent"><div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '</div>';
+    document.getElementById('chatMessages').innerHTML = '<div class="msg agent">' + aiRoleHeader() + '<div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '</div>';
   }
   await loadSessions();
 }
@@ -3522,7 +3550,7 @@ function appendMessage(type, html, timestamp) {
   if (type === 'user') {
     div.innerHTML = '<div class="msg-bubble">' + html + '</div>' + timeHtml;
   } else if (type === 'agent') {
-    div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content">' + html + '</div>' + timeHtml + buildAgentCopyButton();
+    div.innerHTML = aiRoleHeader() + '<div class="msg-content">' + html + '</div>' + timeHtml + buildAgentCopyButton();
   } else {
     div.innerHTML = '<div class="msg-content">' + html + '</div>' + timeHtml;
   }
@@ -3578,7 +3606,7 @@ async function copyAIMessage(btn) {
   setTimeout(function() {
     if (labelEl && orig != null) labelEl.textContent = orig;
     btn.classList.remove('copied', 'error');
-  }, 1600);
+  }, COPY_FEEDBACK_MS);
 }
 
 // Build the plain-text payload for an AI message bubble. Includes the rendered
@@ -3715,7 +3743,7 @@ function buildToolCard(tc) {
   var paramsStr = '';
   try { paramsStr = JSON.stringify(JSON.parse(tc.params || '{}'), null, 2); } catch(e) { paramsStr = tc.params || ''; }
   var resultText = tc.result || '';
-  try { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } catch(e) {}
+  try { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } catch(e) { console.warn('[MCM]', e); }
 
   var loc = LOCALE === 'zh';
   var summary = getToolSummary(tc.name, tc.params);
@@ -3785,7 +3813,7 @@ function buildToolCard(tc) {
 
 function renderToolCallsGroup(jsonContent, container) {
   var toolCalls;
-  try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
+  try { toolCalls = JSON.parse(jsonContent); } catch(e) { console.warn('[MCM]', e); }
   if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) {
     var div = document.createElement('div');
     div.className = 'msg system';
@@ -3844,7 +3872,7 @@ function copyToolResult(btn) {
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text.trim()).then(function() {
       btn.textContent = (LOCALE === 'zh' ? '已复制' : 'Copied!');
-      setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, 2000);
+      setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, BTN_RESET_MS);
     });
   }
 }
@@ -3852,7 +3880,7 @@ function copyToolResult(btn) {
 /* Render tool calls as standalone timeline cards inside an AI message */
 function renderToolCallsInline(jsonContent, agentMsgDiv) {
   var toolCalls;
-  try { toolCalls = JSON.parse(jsonContent); } catch(e) {}
+  try { toolCalls = JSON.parse(jsonContent); } catch(e) { console.warn('[MCM]', e); }
   if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) return;
   // Check if already rendered
   var existing = agentMsgDiv.querySelectorAll('.timeline-tool-card');
@@ -4016,7 +4044,7 @@ function downloadCode(ext, btn) {
   a.click();
   URL.revokeObjectURL(a.href);
   btn.textContent = '\u2713';
-  setTimeout(function() {   btn.innerHTML = '<svg width="14" height="14"><use href="/static/icons.svg#icon-download"/></svg>'; }, 2000);
+  setTimeout(function() {   btn.innerHTML = '<svg width="14" height="14"><use href="/static/icons.svg#icon-download"/></svg>'; }, BTN_RESET_MS);
 }
 
 /* Resources - Platform-specific rendering */
@@ -4401,7 +4429,7 @@ function renderTopology(resources) {
   
   // Clean up old graph and resize listener
   if (topoGraph) {
-    try { topoGraph.destroy(); } catch (e) {}
+    try { topoGraph.destroy(); } catch (e) { console.warn('[MCM]', e); }
     topoGraph = null;
   }
   if (window._topoResizeHandler) {
@@ -4766,7 +4794,7 @@ async function loadVaultAccounts() {
       var secured = a.vault_secured ? '<span style="color:var(--success);font-size:11px"><svg width="14" height="14" style="vertical-align:middle;margin-right:2px"><use href="/static/icons.svg#icon-lock"/></svg>vault</span>' : '<span style="color:var(--warning);font-size:11px"><svg width="14" height="14" style="vertical-align:middle;margin-right:2px"><use href="/static/icons.svg#icon-warning"/></svg>plaintext</span>';
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span>' + icon + '</span><span style="font-size:12px;flex:1">' + escHtml(a.name) + ' <span style="color:var(--text-muted)">(' + a.cloud_type + ')</span></span>' + secured + '</div>';
     }).join('');
-  } catch(e) {}
+  } catch(e) { console.warn('[MCM]', e); }
 }
 
 async function migrateToVault() {
@@ -4795,7 +4823,7 @@ async function loadVaultSecrets() {
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:var(--font-mono);font-size:12px;flex:1">' + escHtml(s) + '</span><button class="vault-del-btn" onclick="deleteVaultSecret(\'' + escHtml(s) + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px">Delete</button></div>';
     }).join('');
     applyVaultRestrictions(getRole());
-  } catch(e) {}
+  } catch(e) { console.warn('[MCM]', e); }
 }
 
 async function addVaultSecret() {
@@ -4888,7 +4916,7 @@ async function refreshCostOverview() {
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
   const end = now.toISOString().slice(0,10);
   let data;
-  try { data = await apiFetch(API + '/cost/overview?start=' + start + '&end=' + end); } catch(e) {}
+  try { data = await apiFetch(API + '/cost/overview?start=' + start + '&end=' + end); } catch(e) { console.warn('[MCM]', e); }
   if (!data) {
     document.getElementById('costTotalValue').textContent = '--';
     return;
@@ -4917,7 +4945,7 @@ async function refreshCostTrend() {
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
   const end = now.toISOString().slice(0,10);
   let data;
-  try { data = await apiFetch(API + '/cost/trend?start=' + start + '&end=' + end + '&interval=day'); } catch(e) {}
+  try { data = await apiFetch(API + '/cost/trend?start=' + start + '&end=' + end + '&interval=day'); } catch(e) { console.warn('[MCM]', e); }
   const container = document.getElementById('costTrendContainer');
   if (!data || data.length === 0) {
     container.innerHTML = '<div class="empty-state">' + (t('cost.no_data') || '暂无成本数据') + '</div>';
@@ -4938,7 +4966,7 @@ async function refreshCostTrend() {
 }
 async function refreshCostOptimizations() {
   let data;
-  try { data = await apiFetch(API + '/cost/optimizations?status=pending'); } catch(e) {}
+  try { data = await apiFetch(API + '/cost/optimizations?status=pending'); } catch(e) { console.warn('[MCM]', e); }
   const list = document.getElementById('costOptimizationList');
   if (!data || data.length === 0) {
     list.innerHTML = '<div class="empty-state">' + (t('cost.no_optimizations') || '暂无优化建议') + '</div>';
@@ -5036,8 +5064,8 @@ function closeAIConfig() {
 async function loadAIConfig() {
   var data = await apiFetch(API + '/agent/config');
   if (data) {
-    document.getElementById('aiApiEndpoint').value = data.api_endpoint || 'https://api.openai.com/v1';
-    document.getElementById('aiModel').value = data.model || 'gpt-4o-mini';
+    document.getElementById('aiApiEndpoint').value = data.api_endpoint || DEFAULT_AI_ENDPOINT;
+    document.getElementById('aiModel').value = data.model || DEFAULT_AI_MODEL;
     document.getElementById('aiApiKey').value = data.api_key || '';
     document.getElementById('aiEnableReasoning').checked = !!data.enable_reasoning;
     document.getElementById('aiReasoningEffort').value = data.reasoning_effort || 'medium';
@@ -5048,8 +5076,8 @@ async function loadAIConfig() {
 
 async function saveAIConfig() {
   var body = {
-    api_endpoint: document.getElementById('aiApiEndpoint').value || 'https://api.openai.com/v1',
-    model: document.getElementById('aiModel').value || 'gpt-4o-mini',
+    api_endpoint: document.getElementById('aiApiEndpoint').value || DEFAULT_AI_ENDPOINT,
+    model: document.getElementById('aiModel').value || DEFAULT_AI_MODEL,
     api_key: document.getElementById('aiApiKey').value || '',
     enable_reasoning: document.getElementById('aiEnableReasoning').checked,
     reasoning_effort: document.getElementById('aiReasoningEffort').value
@@ -5546,10 +5574,10 @@ function showToast(msg, type) {
   if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
   msgEl.textContent = msg;
   el.className = 'toast show toast-' + (type || 'info');
-  _toastTimer = setTimeout(hideToast, 3000);
+  _toastTimer = setTimeout(hideToast, TOAST_DURATION_MS);
   /* Record in message history */
   _msgHistory.push({ msg: msg, time: Date.now(), type: type || 'info' });
-  if (_msgHistory.length > 50) _msgHistory.shift();
+  if (_msgHistory.length > MAX_MSG_HISTORY) _msgHistory.shift();
   renderMsgBadge();
   renderMsgList();
 }
@@ -5973,8 +6001,8 @@ function startSessionPoll() {
         // Auto-scroll to show new messages
         if (appended > 0) scrollToBottom(container);
       }
-    } catch(e) {}
-  }, 5000);
+    } catch(e) { console.warn('[MCM]', e); }
+  }, SESSION_POLL_INTERVAL_MS);
 }
 
 function stopSessionPoll() {
@@ -6004,7 +6032,7 @@ function makeResizable(id, cssVar, opts) {
     var w = opts.getWidth(e);
     w = Math.max(minW, Math.min(maxW, w));
     document.documentElement.style.setProperty(cssVar, w + 'px');
-    try { localStorage.setItem('sidebarWidth_' + id, w); } catch(ex) {}
+    try { localStorage.setItem('sidebarWidth_' + id, w); } catch(ex) { console.warn('[MCM]', ex); }
   });
   document.addEventListener('mouseup', function() {
     if (!isResizing) return;
@@ -6022,7 +6050,7 @@ function makeResizable(id, cssVar, opts) {
         document.documentElement.style.setProperty(cssVar, v + 'px');
       }
     }
-  } catch(ex) {}
+  } catch(ex) { console.warn('[MCM]', ex); }
 }
 makeResizable('sidebarResizer', '--sidebar-width', { min: 160, max: 320, getWidth: function(e) { return e.clientX; } });
 makeResizable('chatSidebarResizer', '--chat-sidebar-width', { min: 200, max: 400, getWidth: function(e) {

@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
+
+	"multicloud/internal/config"
 )
 
 type Database struct {
@@ -63,9 +64,9 @@ func initPostgres(dsn string) (*Database, error) {
 }
 
 func (d *Database) Migrate() error {
-	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	adminPassword := config.Load().AdminPassword
 	if adminPassword == "" {
-		adminPassword = "Test.1234"
+		log.Fatal("FATAL: ADMIN_PASSWORD must be set (env var or config)")
 	}
 
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
