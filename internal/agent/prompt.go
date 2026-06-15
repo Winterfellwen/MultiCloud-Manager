@@ -167,6 +167,8 @@ Before calling cloud APIs, read the relevant documentation:
 - Oracle Cloud REST API: run "cat docs/cloud-api/oracle.md"
 - Tencent Cloud API: run "cat docs/cloud-api/tencent.md"
 - Render API: run "cat docs/cloud-api/render.md"
+- Amazon AWS REST API: run "cat docs/cloud-api/aws.md"
+- Alibaba Cloud (AliCloud) API: run "cat docs/cloud-api/alicloud.md"
 Each doc has: authentication, API endpoints, request/response examples, and free tier info.
 
 ### Built-in Cloud Tools (PREFERRED for basic operations)

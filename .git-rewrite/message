@@ -1,1 +1,3 @@
-fix: removes newline from start of strea
+fix(playwright.yml): fix condition for running Playwright tests on pull requests
+
+The condition for running Playwright tests on pull requests was not properly formatted. The repository name was not enclosed in quotes. This commit fixes the condition by adding single quotes around the repository name.

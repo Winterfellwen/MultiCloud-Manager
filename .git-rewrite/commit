@@ -1,6 +1,8 @@
-tree e3379b06a5729c11b970626e6824c20489abc7b2
-parent 8762765dd0f9477e23781e0da787943f41a509f7
-author Daniel Avila <messagedaniel@protonmail.com> 1678594084 -0500
-committer Daniel Avila <messagedaniel@protonmail.com> 1678594084 -0500
+tree 36607cd7f617e4cd0277d31578488ee6420c50f9
+parent 01b7aa65b63980fa1962b6ab6dc68e4a85947f04
+author Danny Avila <messagedaniel@protonmail.com> 1691590858 -0400
+committer Danny Avila <110412045+danny-avila@users.noreply.github.com> 1691591284 -0400
 
-update bypass proxy url for browser client
+fix(playwright.yml): fix condition for running Playwright tests on pull requests
+
+The condition for running Playwright tests on pull requests was not properly formatted. The repository name was not enclosed in quotes. This commit fixes the condition by adding single quotes around the repository name.
