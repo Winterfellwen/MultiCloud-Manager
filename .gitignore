@@ -56,3 +56,15 @@ backend-old/
 
 # Logs
 *.log
+
+# Security - NEVER commit private keys
+*.pem
+*.key
+*.pkcs12
+update_oracle.sql
+
+# Private config
+project.private.config.json
+
+# Debug artifacts
+prompt.json

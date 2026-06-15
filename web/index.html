@@ -1587,7 +1587,6 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 
 <script>
 const API = '/api';
-const SESSION_ID = 'web-' + Date.now();
 const pageTitles = {
   dashboard: 'page.dashboard',
   chat: 'page.chat',
@@ -1598,25 +1597,6 @@ const pageTitles = {
   cost: 'cost.title',
   terraform: 'page.terraform',
   profile: 'page.profile'
-};
-
-const mockData = {
-  stats: { resources: '12', accounts: '4', terraform: '3', members: '5' },
-  accounts: [
-    { id: 'a1', name: 'Azure 生产环境', cloud_type: 'azure', is_active: true, last_sync: '2分钟前' },
-    { id: 'a2', name: '腾讯云开发环境', cloud_type: 'tencent', is_active: true, last_sync: '5分钟前' }
-  ],
-  resources: [
-    { id: 'r1', name: 'prod-web-01', cloud_type: 'azure', type: 'VM', region: 'southeastasia', status: 'running', spec: 'Standard_D2s_v3' },
-    { id: 'r2', name: 'db-mysql-01', cloud_type: 'tencent', type: 'Database', region: '广州', status: 'running', spec: '2C4G 50GB' }
-  ],
-  members: [
-    { id: 'u1', name: '张三', role: 'admin', avatar: 'U' },
-    { id: 'u2', name: '李四', role: 'member', avatar: 'U' }
-  ],
-  templates: [
-    { id: 't1', name: '标准 VM 模板', version: 2, created_at: '2026-05-20' }
-  ]
 };
 
 function getCloudLabel(type) {
@@ -1689,7 +1669,7 @@ const EVENT_HANDLERS = {
 };
 
 function startGlobalEventSource() {
-  if (GLOBAL_EVENT_SOURCE) GLOBAL_EVENT_SOURCE.close();
+  if (GLOBAL_EVENT_SOURCE) { GLOBAL_EVENT_SOURCE.close(); GLOBAL_EVENT_SOURCE = null; }
   const ids = Array.from(SUBSCRIBED_SESSIONS).slice(0, 50);
   if (ids.length === 0) return;
   const params = new URLSearchParams({
@@ -2954,156 +2934,6 @@ async function stopActiveSession() {
   await loadSessions();
 }
 
-async function startStream(body) {
-  CONFIRM_PENDING = true;
-  document.getElementById('chatSendBtn').disabled = true;
-  document.getElementById('chatStopBtn').style.display = '';
-
-  ABORT_CONTROLLER = new AbortController();
-
-  STREAMING_MSG = {type: 'agent', content: '', _afterTool: false};
-  // Initialize session message store
-  if (CURRENT_SESSION && !SESSION_MESSAGES[CURRENT_SESSION]) {
-    SESSION_MESSAGES[CURRENT_SESSION] = [];
-  }
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'msg agent streaming';
-  div.innerHTML = '<div class="msg-role"><span class="role-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-chat"/></svg></span><span class="role-label">AI</span></div><div class="msg-content"><span class="ai-text streaming-cursor"><span class="inline-status"><svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中' : 'Thinking') + '</span><span class="thinking-dots"></span></span></span></div>' + buildAgentCopyButton();
-  container.appendChild(div);
-  scrollToBottom(container);
-
-  var streamTimeout = setTimeout(function() {
-    CONFIRM_PENDING = false;
-    document.getElementById('chatSendBtn').disabled = false;
-    document.getElementById('chatStopBtn').style.display = 'none';
-  }, 120000);
-
-  try {
-    const res = await fetch(API + '/agent/chat/stream', {
-      method: 'POST',
-      headers: Object.assign({}, getAuthHeaders(), { 'Content-Type': 'application/json' }),
-      body: JSON.stringify(body),
-      signal: ABORT_CONTROLLER.signal
-    });
-
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let currentEvent = '';
-
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      clearTimeout(streamTimeout);
-      streamTimeout = setTimeout(function() {
-        CONFIRM_PENDING = false;
-        document.getElementById('chatSendBtn').disabled = false;
-      }, 120000);
-      buffer += decoder.decode(value, {stream: true});
-      const parts = buffer.split('\n');
-      buffer = parts.pop() || '';
-      for (const line of parts) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7).trim();
-        } else if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            data.event = currentEvent;
-            handleSSEEvent(data);
-          } catch(e) { /* ignore parse errors */ }
-        }
-      }
-    }
-  } catch(e) {
-    if (e.name === 'AbortError') {
-      // User stopped manually
-      appendMessage('agent', '⏹ ' + (LOCALE === 'zh' ? 'AI 已被手动停止。' : 'AI was manually stopped.'), new Date().toISOString());
-    } else {
-      console.error('Stream error:', e);
-      appendMessage('agent', (LOCALE === 'zh' ? '错误：连接中断 - ' : 'Error: connection lost - ') + escHtml(e.message) + (LOCALE === 'zh' ? '。请重试。' : '. Please retry.'), new Date().toISOString());
-    }
-  } finally {
-    clearTimeout(streamTimeout);
-  }
-
-  document.getElementById('chatStopBtn').style.display = 'none';
-  ABORT_CONTROLLER = null;
-
-  var lastMsg = document.querySelector('.msg.streaming');
-  if (lastMsg) {
-    var mc = lastMsg.querySelector('.msg-content');
-    if (mc) {
-      var aiText = lastMsg.querySelector('.ai-text');
-      if (aiText) {
-        aiText.classList.remove('streaming-cursor');
-        // If still showing "Thinking..." placeholder, replace with empty
-        if (aiText.textContent.indexOf('Thinking') !== -1 || aiText.textContent.indexOf('思考') !== -1) {
-          aiText.innerHTML = '';
-        }
-      } else {
-        mc.classList.remove('streaming-cursor');
-        // No .ai-text element: use innerHTML directly (backward compat)
-        var existingToolBlocks = mc.querySelectorAll('.tool-block');
-        var toolBlocksHTML = '';
-        existingToolBlocks.forEach(function(tb) { toolBlocksHTML += tb.outerHTML; });
-        if (STREAMING_MSG && STREAMING_MSG.content) {
-          mc.innerHTML = renderMarkdown(STREAMING_MSG.content) + toolBlocksHTML;
-        }
-      }
-    }
-    lastMsg.classList.remove('streaming');
-  }
-  // Consolidate inline tool blocks into collapsible group at bottom of AI message
-  if (lastMsg) {
-    var doneBlocks = lastMsg.querySelectorAll('.tool-block.done');
-    if (doneBlocks.length > 0) {
-      var toolCallData = [];
-      doneBlocks.forEach(function(block) {
-        var name = (block.querySelector('.tool-name') || {}).textContent || '';
-        var params = (block.querySelector('.tool-params') || {}).textContent || '';
-        var resultDiv = block.querySelector('.tool-result');
-        var result = resultDiv ? (resultDiv.getAttribute('data-result') || resultDiv.textContent.replace('Copy','').replace('复制','').trim()) : '';
-        toolCallData.push({name: name, params: params, result: result});
-      });
-      // Remove inline blocks from msg-content
-      doneBlocks.forEach(function(block) { block.remove(); });
-      // Create inline collapsible section at bottom of the AI message
-      var inline = document.createElement('div');
-      inline.className = 'tool-calls-inline';
-      var header = document.createElement('div');
-      header.className = 'tool-calls-header collapsed';
-      header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCallData.length + ')';
-      var body = document.createElement('div');
-      body.className = 'tool-calls-body';
-      body.style.display = 'none';
-      toolCallData.forEach(function(tc) { body.appendChild(buildToolCard(tc)); });
-      header.onclick = function(e) {
-        e.stopPropagation();
-        var isCollapsed = body.style.display === 'none';
-        body.style.display = isCollapsed ? 'flex' : 'none';
-        header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
-      };
-      inline.appendChild(header);
-      inline.appendChild(body);
-      lastMsg.appendChild(inline);
-    }
-  }
-  STREAMING_MSG = null;
-  // Finalize streaming message in global store
-  if (CURRENT_SESSION && SESSION_MESSAGES[CURRENT_SESSION]) {
-    var msgs = SESSION_MESSAGES[CURRENT_SESSION];
-    for (var i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].streaming) {
-        delete msgs[i].streaming;
-        break;
-      }
-    }
-  }
-  document.getElementById('chatSendBtn').disabled = false;
-}
-
 function handleSSEEvent(data) {
   const type = data.event || '';
   const streamingMsg = document.querySelector('.msg.streaming');
@@ -3180,8 +3010,8 @@ function handleSSEEvent(data) {
         var name = tc.name;
         html += '<div class="tool-call"><span class="tool-name">' + name + '</span> <span class="tool-params">' + paramsStr + '</span></div>';
         html += '<div class="confirm-bar">';
-        html += '<button class="confirm-btn" onclick="doConfirm(\'' + name + '\')">' + (LOCALE === 'zh' ? '确认' : 'Confirm') + '</button>';
-        html += '<button class="reject-btn" onclick="doReject(\'' + name + '\')">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
+        html += '<button class="confirm-btn" onclick="doConfirm(\'' + escAttr(name) + '\')">' + (LOCALE === 'zh' ? '确认' : 'Confirm') + '</button>';
+        html += '<button class="reject-btn" onclick="doReject(\'' + escAttr(name) + '\')">' + (LOCALE === 'zh' ? '拒绝' : 'Reject') + '</button>';
         html += '</div>';
       });
       html += '</div>' + buildAgentCopyButton();
@@ -3362,11 +3192,10 @@ async function loadSessions() {
           statusDot +
         '</div>' +
       '</div>' +
-      '<button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + s.session_id + '\')" title="Delete" aria-label="Delete session"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+      '<button class="session-del-btn" onclick="event.stopPropagation();deleteSession(\'' + escAttr(s.session_id) + '\')" title="Delete" aria-label="Delete session"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
     item.onclick = function() { switchSession(s.session_id); };
     list.appendChild(item);
     // Add state badge dot
-    var state = s.state || 'idle';
     var depth = s.queue_depth || 0;
     if (state !== 'idle') {
       var badge = document.createElement('span');
@@ -4121,7 +3950,7 @@ function renderMarkdown(text) {
   var html = safe
     .replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
       const ext = {'bash':'sh','shell':'sh','python':'py','javascript':'js','typescript':'ts','yaml':'yaml','yml':'yml','json':'json','terraform':'tf','hcl':'tf','sql':'sql','dockerfile':'Dockerfile','go':'go','rust':'rs','ruby':'rb','php':'php','java':'java','c':'c','cpp':'cpp','css':'css','html':'html','xml':'xml','toml':'toml','ini':'ini','cfg':'cfg','md':'md','markdown':'md','text':'txt','plain':'txt'}[lang] || lang || 'txt';
-      return '<div style="position:relative"><pre><code class="language-' + lang + '">' + code + '</code><button class="dl-btn" onclick="downloadCode(\'' + escHtml(ext) + '\',this)"><svg width="14" height="14"><use href="/static/icons.svg#icon-download"/></svg></button></pre></div>';
+      return '<div style="position:relative"><pre><code class="language-' + escAttr(lang) + '">' + code + '</code><button class="dl-btn" onclick="downloadCode(\'' + escAttr(ext) + '\',this)"><svg width="14" height="14"><use href="/static/icons.svg#icon-download"/></svg></button></pre></div>';
     })
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\|(.+)\|/g, function(m) {
@@ -4160,7 +3989,7 @@ function renderMarkdown(text) {
     .replace(/^[\s]*[-*] (.+)$/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
     .replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return url.match(/^https?:\/\//i) ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : text; })
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return url.match(/^https?:\/\//i) ? '<a href="' + escAttr(url) + '" target="_blank" rel="noopener">' + escHtml(text) + '</a>' : escHtml(text); })
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
 
@@ -4176,13 +4005,6 @@ function escHtml(s) {
   return el.innerHTML;
 }
 
-// Escape a string for safe inclusion as an HTML attribute value (double-quoted).
-// escHtml above only encodes <, >, & — it leaves " and ' alone, which truncates
-// any attribute value that contains a JSON string with quotes.
-function escAttr(s) {
-  return escHtml(s).replace(/"/g, '&quot;');
-}
-
 function downloadCode(ext, btn) {
   var pre = btn.closest('div').querySelector('pre') || btn.closest('pre');
   var code = pre ? (pre.querySelector('code') || pre).textContent : '';
@@ -4195,34 +4017,6 @@ function downloadCode(ext, btn) {
   URL.revokeObjectURL(a.href);
   btn.textContent = '\u2713';
   setTimeout(function() {   btn.innerHTML = '<svg width="14" height="14"><use href="/static/icons.svg#icon-download"/></svg>'; }, 2000);
-}
-
-function getMockChatResponse(text) {
-  var loc = LOCALE || 'zh';
-  var tFunc = function(key) { return t(key); };
-  if (loc === 'zh') {
-    if (text.includes('查看') || text.includes('账户')) {
-      return '- Azure 订阅 (Pay-As-You-Go)\n- Tencent Cloud 账号\n- Oracle Cloud 账号 (Always Free)\n- Render 账号';
-    }
-    if (text.includes('资源')) {
-      return '以下是您的云资源：\n\n| 资源 | 类型 | 地区 | 状态 |\n|------|------|------|------|\n| WebApp-Prod | App Service | East US | 运行中 |\n| DB-Primary | PostgreSQL | East US | 运行中 |\n| VM-Backend | Virtual Machine | Southeast Asia | 停止 |\n| AKS-Cluster | Kubernetes | West Europe | 运行中 |\n| Storage-Backup | Storage Account | East US | 运行中 |\n| Frontend-App | Static Web App | Global | 运行中 |';
-    }
-    if (text.includes('新建') || text.includes('VM') || text.includes('虚拟机')) {
-      return '## 创建虚拟机方案\n\n我将为您在 Azure 创建一台虚拟机：\n\n1. **选择规格**: Standard_B2s (2vCPU, 4GB RAM)\n2. **配置网络**: 新建 VNet + 公网 IP\n3. **选择镜像**: Ubuntu 22.04 LTS\n4. **设置认证**: SSH 密钥\n\n> 是否确定执行此方案？';
-    }
-    return '您好！我是 MultiCloud AI 助手。我可以：\n\n- 查看云资源列表\n- 查看云账户信息\n- 创建虚拟机、数据库\n- 管理 Kubernetes 集群\n\n请问有什么可以帮您？';
-  }
-  var tl = text.toLowerCase();
-  if (tl.includes('account') || tl.includes('view')) {
-    return '- Azure Subscription (Pay-As-You-Go)\n- Tencent Cloud Account\n- Oracle Cloud Account (Always Free)\n- Render Account';
-  }
-  if (tl.includes('resource')) {
-    return 'Here are your cloud resources:\n\n| Resource | Type | Region | Status |\n|----------|------|--------|--------|\n| WebApp-Prod | App Service | East US | Running |\n| DB-Primary | PostgreSQL | East US | Running |\n| VM-Backend | Virtual Machine | Southeast Asia | Stopped |\n| AKS-Cluster | Kubernetes | West Europe | Running |\n| Storage-Backup | Storage Account | East US | Running |\n| Frontend-App | Static Web App | Global | Running |';
-  }
-  if (tl.includes('create') || tl.includes('new') || tl.includes('vm')) {
-    return '## Virtual Machine Creation Plan\n\nI will create a VM on Azure:\n\n1. **Spec**: Standard_B2s (2vCPU, 4GB RAM)\n2. **Network**: New VNet + Public IP\n3. **Image**: Ubuntu 22.04 LTS\n4. **Auth**: SSH Key\n\n> Proceed with this plan?';
-  }
-  return 'Hello! I am MultiCloud AI Assistant. I can help you:\n\n- View cloud resources\n- Check cloud accounts\n- Create VMs, databases\n- Manage Kubernetes clusters\n\nHow can I help you today?';
 }
 
 /* Resources - Platform-specific rendering */
@@ -4395,9 +4189,9 @@ function buildResourceCard(r) {
   // Action buttons
   var actionsHtml = '';
   if (s === 'running') {
-    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'stop\')">' + t('resource.stop') + '</button>';
+    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'stop\')">' + t('resource.stop') + '</button>';
   } else if (s === 'stopped') {
-    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + r.id + '\',\'start\')">' + t('resource.start') + '</button>';
+    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'start\')">' + t('resource.start') + '</button>';
   }
   if (r.cloud_type === 'render' && spec.dashboard_url) {
     actionsHtml += '<a class="resource-action-btn" href="' + escAttr(spec.dashboard_url) + '" target="_blank" rel="noopener" style="text-decoration:none">Dashboard</a>';
@@ -4934,7 +4728,7 @@ async function loadVault() {
     var data = await apiFetch(API + '/vault/health');
     var el = document.getElementById('vaultHealth');
     if (data && data.status === 'ok') {
-      el.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-check"/></svg>Active (' + (data.type || 'builtin') + ') — ' + (data.secrets || 0) + ' secrets stored';
+      el.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-check"/></svg>' + t('vault.active') + ' (' + (data.type || 'builtin') + ') — ' + (data.secrets || 0) + ' secrets stored';
       el.style.color = 'var(--success)';
     } else if (data && data.status === 'error') {
       el.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>' + (data.message || 'Error');
@@ -4963,7 +4757,7 @@ async function loadVaultAccounts() {
     var migrateBtn = document.getElementById('vaultMigrateBtn');
     if (migrateBtn) migrateBtn.style.display = unmigrated.length > 0 ? '' : 'none';
     if (accounts.length === 0) {
-      el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">No cloud accounts configured</div>';
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">' + t('vault.no_accounts') + '</div>';
       return;
     }
     el.innerHTML = accounts.map(function(a) {
@@ -4981,7 +4775,7 @@ async function migrateToVault() {
   try {
     var data = await apiFetch(API + '/vault/migrate', { method: 'POST' });
     var count = data && data.migrated ? data.migrated : 0;
-    showToast('Migrated ' + count + ' account(s) to vault');
+    showToast(t('vault.migrated').replace('{n}', count));
     loadVault();
   } catch(e) { showToast('Migration failed: ' + e.message); }
   if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-sync"/></svg>Migrate existing credentials to vault'; }
@@ -4994,7 +4788,7 @@ async function loadVaultSecrets() {
     if (!el) return;
     var secrets = data && data.secrets ? data.secrets : [];
     if (secrets.length === 0) {
-      el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">No secrets stored yet</div>';
+      el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0">' + t('vault.no_secrets') + '</div>';
       return;
     }
     el.innerHTML = secrets.map(function(s) {
@@ -5153,12 +4947,12 @@ async function refreshCostOptimizations() {
   list.innerHTML = data.map(s =>
     '<div class="cost-optim-item">' +
       '<div class="cost-optim-info">' +
-        '<div class="cost-optim-title">' + s.title + '</div>' +
-        '<div class="cost-optim-desc">' + (s.description || '') + '</div>' +
+        '<div class="cost-optim-title">' + escHtml(s.title) + '</div>' +
+        '<div class="cost-optim-desc">' + escHtml(s.description || '') + '</div>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:8px">' +
         '<span class="cost-optim-savings">-$' + (s.estimated_savings || 0).toFixed(2) + '</span>' +
-        '<button class="btn-action" onclick="applyOptimization(\'' + s.id + '\')" style="font-size:12px;padding:6px 10px">' + (t('cost.apply') || '应用') + '</button>' +
+        '<button class="btn-action" onclick="applyOptimization(\'' + escAttr(s.id) + '\')" style="font-size:12px;padding:6px 10px">' + (t('cost.apply') || '应用') + '</button>' +
       '</div>' +
     '</div>'
   ).join('');
@@ -5274,7 +5068,7 @@ async function saveAIConfig() {
 
 async function testAIConfig() {
   var resultDiv = document.getElementById('aiTestResult');
-  resultDiv.innerHTML = '测试中...';
+  resultDiv.innerHTML = t('common.testing');
   resultDiv.style.display = 'block';
   resultDiv.style.color = 'var(--text-secondary)';
   
@@ -5286,7 +5080,7 @@ async function testAIConfig() {
     resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>' + result.error;
     resultDiv.style.color = 'var(--danger)';
   } else {
-    resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>测试失败: 无法连接服务器';
+    resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>' + t('common.test_failed');
     resultDiv.style.color = 'var(--danger)';
   }
 }
@@ -5409,6 +5203,8 @@ var __ = {
     'terraform.apply_success': 'Apply 完成',
     'terraform.confirm_apply': '确定要执行 Apply 吗？',
     'terraform.delete': '删除',
+    'terraform.fill_required': '请填写模板名称和配置内容',
+    'terraform.upload_success': '模板上传成功',
     'team.confirm_remove': '确定要移除该成员吗？',
     'team.invite_title': '添加团队成员',
     'team.invite_desc': '创建成员账号，设置登录密码',
@@ -5423,6 +5219,8 @@ var __ = {
     'team.reset_pw_confirm': '确认重置',
     'team.edit': '编辑',
     'team.edit_title': '编辑成员',
+    'team.member_added': '成员已添加，可使用 {email} 登录',
+    'team.password_reset': '密码已重置',
     'account.name': '账户名称',
     'account.name_placeholder': '请输入账户名称',
     'account.list': '云账户列表',
@@ -5451,6 +5249,7 @@ var __ = {
     'profile.logs_dev': '日志开发中',
     'profile.logout': '退出登录',
     'profile.user_management': '用户管理',
+    'profile.password_hint': '密码至少6位，包含字母和数字',
     'mock.account_list': '已获取账户列表：\n- Azure 生产环境\n- 腾讯云开发环境\n\n共 2 个云账户，全部运行正常。',
     'mock.resource_list': '当前共有 2 个云资源：\n1. prod-web-01 (Azure, Standard_D2s_v3, 运行中)\n2. db-mysql-01 (腾讯云, 2C4G 50GB, 运行中)',
     'mock.plan_prefix': '好的，我为你制定了以下 VM 创建方案：',
@@ -5477,6 +5276,15 @@ var __ = {
     'cost.confirm_apply': '确定要应用此优化建议吗？',
     'cost.updated': '已更新',
     'cost.vs_last_month': '% vs 上月',
+    'common.no_messages': '暂无消息',
+    'common.loading': '加载中...',
+    'common.load_failed': '加载失败',
+    'common.testing': '测试中...',
+    'common.test_failed': '测试失败: 无法连接服务器',
+    'vault.active': '运行中',
+    'vault.no_accounts': '暂无云账户配置',
+    'vault.no_secrets': '暂无存储的密钥',
+    'vault.migrated': '已迁移 {n} 个账户到密钥库',
   },
   en: {
     'nav.dashboard': 'Dashboard',
@@ -5593,6 +5401,8 @@ var __ = {
     'terraform.apply_success': 'Apply completed',
     'terraform.confirm_apply': 'Are you sure you want to run Apply?',
     'terraform.delete': 'Delete',
+    'terraform.fill_required': 'Please fill in template name and config',
+    'terraform.upload_success': 'Template uploaded',
     'team.confirm_remove': 'Are you sure you want to remove this member?',
     'team.invite_title': 'Add Team Member',
     'team.invite_desc': 'Create account with login credentials',
@@ -5605,6 +5415,10 @@ var __ = {
     'team.reset_pw_title': 'Reset Password',
     'team.field_new_password': 'New Password',
     'team.reset_pw_confirm': 'Confirm Reset',
+    'team.edit': 'Edit',
+    'team.edit_title': 'Edit Member',
+    'team.member_added': 'Member added, can login with {email}',
+    'team.password_reset': 'Password reset',
     'account.name': 'Account Name',
     'account.name_placeholder': 'Enter account name',
     'account.list': 'Cloud Accounts',
@@ -5633,6 +5447,7 @@ var __ = {
     'profile.logs_dev': 'Logs in development',
     'profile.logout': 'Log Out',
     'profile.user_management': 'User Management',
+    'profile.password_hint': 'At least 6 chars with letters and numbers',
     'mock.account_list': 'Account list:\n- Azure Production\n- Tencent Cloud Dev\n\n2 accounts, all running normally.',
     'mock.resource_list': 'Current resources:\n1. prod-web-01 (Azure, Standard_D2s_v3, Running)\n2. db-mysql-01 (Tencent Cloud, 2C4G 50GB, Running)',
     'mock.plan_prefix': 'Here is the VM creation plan I prepared:',
@@ -5659,6 +5474,15 @@ var __ = {
     'cost.confirm_apply': 'Apply this optimization?',
     'cost.updated': 'Updated',
     'cost.vs_last_month': '% vs last month',
+    'common.no_messages': 'No messages',
+    'common.loading': 'Loading...',
+    'common.load_failed': 'Load failed',
+    'common.testing': 'Testing...',
+    'common.test_failed': 'Test failed: cannot connect to server',
+    'vault.active': 'Active',
+    'vault.no_accounts': 'No cloud accounts configured',
+    'vault.no_secrets': 'No secrets stored yet',
+    'vault.migrated': 'Migrated {n} account(s) to vault',
   }
 };
 
@@ -5730,8 +5554,6 @@ function showToast(msg, type) {
   renderMsgList();
 }
 function showError(msg) { showToast(msg, 'error'); }
-function showSuccess(msg) { showToast(msg, 'success'); }
-function showInfo(msg) { showToast(msg, 'info'); }
 function hideToast() {
   var el = document.getElementById('toast');
   el.classList.remove('show');
@@ -5754,7 +5576,7 @@ function renderMsgBadge() {
 function renderMsgList() {
   var list = document.getElementById('errList');
   if (_msgHistory.length === 0) {
-    list.innerHTML = '<div class="err-panel-empty">暂无消息</div>';
+    list.innerHTML = '<div class="err-panel-empty">' + t('common.no_messages') + '</div>';
     return;
   }
   var html = '';
@@ -5808,13 +5630,13 @@ function toggleTeamView() {
 }
 function renderProfileLogs() {
   var list = document.getElementById('profileLogList');
-  if (_errHistory.length === 0) {
+  if (_msgHistory.length === 0) {
     list.innerHTML = '<div class="profile-logview-empty">' + (LOCALE === 'zh' ? '暂无日志' : 'No logs') + '</div>';
     return;
   }
   var html = '';
-  for (var i = _errHistory.length - 1; i >= 0; i--) {
-    var e = _errHistory[i];
+  for (var i = _msgHistory.length - 1; i >= 0; i--) {
+    var e = _msgHistory[i];
     var t = new Date(e.time);
     var ts = pad(t.getFullYear()) + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()) + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
     html += '<div class="profile-logview-item"><span class="lv-time">' + ts + '</span><span class="lv-msg">' + escHtml(e.msg) + '</span></div>';
@@ -5822,9 +5644,9 @@ function renderProfileLogs() {
   list.innerHTML = html;
 }
 function clearAllLogs() {
-  _errHistory = [];
-  renderErrBadge();
-  renderErrList();
+  _msgHistory = [];
+  renderMsgBadge();
+  renderMsgList();
   renderProfileLogs();
 }
 
@@ -5859,7 +5681,7 @@ async function submitPassword() {
   var confirmPwd = document.getElementById('confirmPassword').value;
   if (!oldPwd || !newPwd) { showToast('请填写所有字段'); return; }
   if (newPwd !== confirmPwd) { showToast('两次输入的新密码不一致'); return; }
-  if (newPwd.length < 6) { showToast('新密码至少6位'); return; }
+  if (newPwd.length < 6) { showToast(t('profile.password_hint')); return; }
   var result = await apiFetch(API + '/auth/password', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -5895,10 +5717,9 @@ function closeStatsModal() {
 }
 async function loadStats() {
   var el = document.getElementById('statsContent');
-  el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px">加载中...</div>';
+  el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px">' + t('common.loading') + '</div>';
   try {
-    var resp = await fetch(API + '/stats', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
-    var data = await resp.json();
+    var data = await apiFetch(API + '/stats');
     var s = data.stats || {};
     el.innerHTML =
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
@@ -5920,7 +5741,7 @@ async function loadStats() {
         '</div>' +
       '</div>';
   } catch(e) {
-    el.innerHTML = '<div style="text-align:center;color:var(--danger);padding:20px">加载失败</div>';
+    el.innerHTML = '<div style="text-align:center;color:var(--danger);padding:20px">' + t('common.load_failed') + '</div>';
   }
 }
 
@@ -5958,7 +5779,7 @@ async function submitInvite() {
     showToast(result.error);
   } else {
     closeInviteModal();
-    showToast('成员已添加，可使用 ' + email + ' 登录');
+    showToast(t('team.member_added').replace('{email}', email));
     loadTeam();
   }
 }
@@ -5994,7 +5815,7 @@ async function submitResetPw() {
     showToast(result.error);
   } else {
     closeResetPwModal();
-    showToast('密码已重置');
+    showToast(t('team.password_reset'));
   }
 }
 
@@ -6045,7 +5866,7 @@ function closeUploadModal() {
 async function submitUpload() {
   var name = document.getElementById('templateName').value.trim();
   var content = document.getElementById('templateContent').value.trim();
-  if (!name || !content) { showToast('请填写模板名称和配置内容'); return; }
+  if (!name || !content) { showToast(t('terraform.fill_required')); return; }
   var result = await apiFetch(API + '/terraform/templates', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -6055,7 +5876,7 @@ async function submitUpload() {
     showToast(result.error);
   } else {
     closeUploadModal();
-    showToast('模板上传成功');
+    showToast(t('terraform.upload_success'));
     loadTerraform();
   }
 }
@@ -6107,8 +5928,6 @@ function startSessionPoll() {
       // Hide status bar if session finished
       if (currentState !== 'running' && currentState !== 'waiting_confirm' && currentState !== 'queued') {
         if (_pendingStopSession === CURRENT_SESSION) _pendingStopSession = null;
-        var workIndicator = document.querySelector('.streaming-work');
-        if (workIndicator) workIndicator.remove();
         document.getElementById('chatStopBtn').style.display = 'none';
       }
       if (data.messages.length !== lastSyncedMsgCount) {
