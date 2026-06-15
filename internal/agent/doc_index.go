@@ -108,10 +108,13 @@ func (di *DocIndex) extractSummary(content, provider string) string {
 		sections = append(sections, "### Authentication\n"+auth)
 	}
 
-	// Extract Common Endpoints / first endpoint section
+	// Extract Common Endpoints / Base URL / first endpoint section
 	endpoints := extractSection(content, "Common Endpoints")
 	if endpoints == "" {
 		endpoints = extractSection(content, "Common API Endpoints")
+	}
+	if endpoints == "" {
+		endpoints = extractSection(content, "Base URL")
 	}
 	if endpoints == "" {
 		endpoints = extractSection(content, "通用参数")

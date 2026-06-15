@@ -217,7 +217,10 @@ Make authenticated HTTP calls to cloud APIs. Credentials stay server-side.
 **Examples:**
 - Azure: cloud_api_request(account_id, "GET", "https://management.azure.com/subscriptions/{sub}/resources?api-version=2021-04-01")
 - Tencent: cloud_api_request(account_id, "POST", "https://cvm.tencentcloudapi.com/", headers={"X-TC-Action":"DescribeInstances","X-TC-Region":"ap-guangzhou"})
-- Oracle: cloud_api_request(account_id, "GET", "https://compute.{region}.oraclecloud.com/20160918/instances?compartmentId={ocid}")
+- Oracle: cloud_api_request(account_id, "GET", "https://iaas.{region}.oraclecloud.com/20160918/availabilityDomains?compartmentId={ocid}")
+  - Oracle: cloud_api_request(account_id, "GET", "https://iaas.{region}.oraclecloud.com/20160918/instances?compartmentId={ocid}")
+  - Oracle: cloud_api_request(account_id, "POST", "https://iaas.{region}.oraclecloud.com/20160918/instances/{instance_ocid}/actions/STOP", body="{}")
+  - **CRITICAL for Oracle:** Almost all APIs require "compartmentId" query parameter. Always include it. Get compartment OCID from get_cloud_credentials or list compartments first.
 - Render: cloud_api_request(account_id, "GET", "https://api.render.com/v1/services?limit=100")
 
 **Constraints:**
