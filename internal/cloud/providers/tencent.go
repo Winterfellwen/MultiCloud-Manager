@@ -35,6 +35,29 @@ func NewTencentProvider(creds map[string]string) *TencentProvider {
 
 func (p *TencentProvider) GetType() string { return "tencent" }
 
+func (p *TencentProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		return fmt.Sprintf("https://console.cloud.tencent.com/cvm/instance/detail?Id=%s", id)
+	case types.ResourceTypeDatabase:
+		return fmt.Sprintf("https://console.cloud.tencent.com/cdb/instance/%s/detail", id)
+	case types.ResourceTypeNetwork:
+		return "https://console.cloud.tencent.com/vpc"
+	case types.ResourceTypeLoadBalancer:
+		return "https://console.cloud.tencent.com/clb"
+	case types.ResourceTypeBucket:
+		return "https://console.cloud.tencent.com/cos"
+	case types.ResourceTypeCluster:
+		return "https://console.cloud.tencent.com/tke2"
+	case types.ResourceTypeVolume:
+		return "https://console.cloud.tencent.com/cvm/cbs"
+	case types.ResourceTypeFunction:
+		return "https://console.cloud.tencent.com/scf"
+	default:
+		return "https://console.cloud.tencent.com"
+	}
+}
+
 func (p *TencentProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
 	action := "DescribeInstances"
 	service := "cvm"

@@ -28,6 +28,11 @@ func NewRenderProvider(creds map[string]string) *RenderProvider {
 
 func (p *RenderProvider) GetType() string { return "render" }
 
+func (p *RenderProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	// Render dashboard_url is already in spec; return empty so frontend uses spec value
+	return ""
+}
+
 type renderService struct {
 	ID             string `json:"id"`
 	ServiceDetails struct {

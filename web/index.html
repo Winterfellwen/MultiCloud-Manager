@@ -4033,6 +4033,183 @@ const PLATFORMS = {
   render:   { name: 'Render',         color: '#46e8b1', icon: 'R', views: ['category'] },
 };
 
+// Resource type registry - maps resource_type to display metadata and view templates
+const RESOURCE_REGISTRY = {
+  instance: {
+    label: 'VM',
+    icon: 'vm',
+    color: '#3b82f6',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (r.instance_type) tags.push(r.instance_type);
+      if (spec.cpu && spec.memory) tags.push(spec.cpu + 'vCPU / ' + spec.memory + 'GB');
+      if (spec.os_type) tags.push(spec.os_type);
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      var details = [];
+      if (spec.public_ip) details.push({icon: 'ip', text: spec.public_ip});
+      if (spec.private_ip) details.push({icon: 'ip', text: spec.private_ip});
+      if (spec.os_name) details.push({icon: 'os', text: spec.os_name});
+      return details;
+    },
+    actions: ['start', 'stop', 'console', 'ssh']
+  },
+  database: {
+    label: 'Database',
+    icon: 'db',
+    color: '#f59e0b',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.engine) tags.push(spec.engine + (spec.engine_version ? ' ' + spec.engine_version : ''));
+      if (spec.instance_class) tags.push(spec.instance_class);
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      var details = [];
+      if (spec.connection_string) details.push({icon: 'link', text: spec.connection_string});
+      if (spec.storage_gb) details.push({icon: 'disk', text: spec.storage_gb + ' GB'});
+      return details;
+    },
+    actions: ['console']
+  },
+  volume: {
+    label: 'Volume',
+    icon: 'disk',
+    color: '#8b5cf6',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.volume_type || spec.type) tags.push(spec.volume_type || spec.type);
+      if (spec.size_gb) tags.push(spec.size_gb + ' GB');
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  },
+  network: {
+    label: 'Network',
+    icon: 'net',
+    color: '#10b981',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.network_type || spec.type) tags.push(spec.network_type || spec.type);
+      if (spec.cidr) tags.push(spec.cidr);
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  },
+  loadbalancer: {
+    label: 'Load Balancer',
+    icon: 'lb',
+    color: '#ef4444',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.lb_type || spec.type) tags.push(spec.lb_type || spec.type);
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  },
+  bucket: {
+    label: 'Storage',
+    icon: 'bucket',
+    color: '#06b6d4',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.storage_class) tags.push(spec.storage_class);
+      if (spec.size_gb) tags.push(spec.size_gb + ' GB');
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  },
+  cluster: {
+    label: 'Kubernetes',
+    icon: 'k8s',
+    color: '#6366f1',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.cluster_type || spec.type) tags.push(spec.cluster_type || spec.type);
+      if (spec.k8s_version) tags.push('K8s ' + spec.k8s_version);
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: ['console']
+  },
+  function: {
+    label: 'Function',
+    icon: 'fn',
+    color: '#ec4899',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.runtime) tags.push(spec.runtime);
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  },
+  dns_zone: {
+    label: 'DNS',
+    icon: 'dns',
+    color: '#14b8a6',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (r.region) tags.push(r.region);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  },
+  certificate: {
+    label: 'Certificate',
+    icon: 'cert',
+    color: '#84cc16',
+    getTags: function(r, spec) {
+      var tags = [];
+      if (spec.domain) tags.push(spec.domain);
+      if (spec.issuer) tags.push(spec.issuer);
+      return tags;
+    },
+    getDetails: function(r, spec) {
+      return [];
+    },
+    actions: []
+  }
+};
+
+// Platform-specific resource type label overrides
+const PLATFORM_RESOURCE_LABELS = {
+  tencent: { instance: 'CVM', volume: 'CBS', network: 'VPC', database: 'CDB', loadbalancer: 'CLB', bucket: 'COS', cluster: 'TKE', function: 'SCF', dns_zone: 'DNSPod', certificate: 'SSL' },
+  alicloud: { instance: 'ECS', volume: 'Disk', network: 'VPC', database: 'RDS', loadbalancer: 'SLB', bucket: 'OSS', cluster: 'ACK', function: 'FC', dns_zone: 'DNS', certificate: 'SSL' },
+  aws: { instance: 'EC2', volume: 'EBS', network: 'VPC', database: 'RDS', loadbalancer: 'ELB', bucket: 'S3', cluster: 'EKS', function: 'Lambda', dns_zone: 'Route53', certificate: 'ACM' },
+  azure: { instance: 'VM', volume: 'Disk', network: 'VNet', database: 'SQL', loadbalancer: 'LB', bucket: 'Storage', cluster: 'AKS', function: 'Functions', dns_zone: 'DNS', certificate: 'KeyVault' },
+  oracle: { instance: 'Compute', volume: 'Block', network: 'VCN', database: 'DB', loadbalancer: 'LB', bucket: 'Object', cluster: 'OKE', function: 'Functions', dns_zone: 'DNS', certificate: 'Certificates' },
+  render: { instance: 'Service', database: 'PostgreSQL', bucket: 'Key-Value' }
+};
+
 // Azure resource type namespace -> friendly category name
 const AZURE_CATEGORIES = {
   'Microsoft.Compute': 'Virtual Machines',
@@ -4052,7 +4229,6 @@ function getCategoryLabel(cloudType, resource) {
   if (cloudType === 'azure') {
     var ns = resource.provider_ns || '';
     if (AZURE_CATEGORIES[ns]) return AZURE_CATEGORIES[ns];
-    // Fallback: use the second part of the type path
     var t = resource.type || '';
     if (t.includes('/')) {
       var parts = t.split('/');
@@ -4060,15 +4236,15 @@ function getCategoryLabel(cloudType, resource) {
     }
     return resource.type || 'Other';
   }
-  if (cloudType === 'tencent') return resource.instance_type || 'CVM';
-  if (cloudType === 'alicloud') return resource.instance_type || 'ECS';
-  if (cloudType === 'aws') return resource.instance_type || 'EC2';
-  if (cloudType === 'oracle') return resource.shape || resource.instance_type || 'Instance';
-  if (cloudType === 'render') {
-    var rt = resource.instance_type || '';
-    return rt === 'web_service' ? 'Web Services' : rt === 'worker' ? 'Workers' : rt === 'static_site' ? 'Static Sites' : rt === 'postgres' ? 'PostgreSQL' : rt === 'key_value' ? 'Key-Value' : rt || 'Other';
-  }
-  return resource.type || 'Other';
+
+  // Use resource_type from registry for all other platforms
+  var rt = resource.resource_type || 'instance';
+  var registry = RESOURCE_REGISTRY[rt];
+  if (!registry) return resource.type || 'Other';
+
+  // Get platform-specific label override
+  var platformLabels = PLATFORM_RESOURCE_LABELS[cloudType] || {};
+  return platformLabels[rt] || registry.label;
 }
 
 let azureViewMode = 'category'; // 'category' or 'resource_group'
@@ -4149,51 +4325,74 @@ function buildResourceCard(r) {
   var statusLabel = s === 'running' ? t('resource.status_running') : s === 'stopped' ? t('resource.status_stopped') : s === 'pending' ? 'Pending' : s === 'terminated' ? 'Terminated' : s;
   var spec = r.spec || {};
   var metaHtml = '';
-
-  // Platform-specific metadata
-  if (r.cloud_type === 'azure') {
-    var azType = spec.type || r.instance_type || '';
-    if (azType.includes('/')) azType = azType.split('/').pop();
-    metaHtml += '<span class="res-card-tag">' + escHtml(azType || 'Resource') + '</span>';
-    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
-    if (r.account) metaHtml += '<span class="res-card-tag">' + escHtml(r.account) + '</span>';
-  } else if (r.cloud_type === 'tencent') {
-    metaHtml += '<span class="res-card-tag">' + escHtml(r.instance_type || 'CVM') + '</span>';
-    if (spec.cpu) metaHtml += '<span class="res-card-tag">' + spec.cpu + 'vCPU / ' + (spec.memory || '?') + 'GB</span>';
-    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
-  } else if (r.cloud_type === 'oracle') {
-    metaHtml += '<span class="res-card-tag">' + escHtml(spec.shape || r.instance_type || 'Instance') + '</span>';
-    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
-    if (r.tags && Object.keys(r.tags).length > 0) {
-      Object.keys(r.tags).slice(0, 2).forEach(function(k) {
-        metaHtml += '<span class="res-card-tag">' + escHtml(k + '=' + r.tags[k]) + '</span>';
-      });
-    }
-  } else if (r.cloud_type === 'render') {
-    var rType = r.instance_type || '';
-    var typeLabel = rType === 'web_service' ? 'Web Service' : rType === 'worker' ? 'Worker' : rType === 'static_site' ? 'Static Site' : rType === 'postgres' ? 'PostgreSQL' : rType === 'key_value' ? 'Key-Value' : rType;
-    metaHtml += '<span class="res-card-tag">' + escHtml(typeLabel) + '</span>';
-    if (spec.plan) metaHtml += '<span class="res-card-tag">' + escHtml(spec.plan) + '</span>';
-    if (spec.version) metaHtml += '<span class="res-card-tag">v' + escHtml(spec.version) + '</span>';
-    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
-  } else {
-    metaHtml += '<span class="res-card-tag">' + escHtml(r.instance_type || r.cloud_type) + '</span>';
-    if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
-  }
-
-  // Render: show URL link
   var extraHtml = '';
-  if (r.cloud_type === 'render' && spec.url) {
-    extraHtml = '<a class="res-card-link" href="' + escAttr(spec.url) + '" target="_blank" rel="noopener">' + escHtml(spec.url.replace(/^https?:\/\//, '')) + '</a>';
+  var actionsHtml = '';
+
+  // Get registry config for this resource type
+  var rt = r.resource_type || 'instance';
+  var registry = RESOURCE_REGISTRY[rt];
+
+  if (registry) {
+    // Build tags from registry
+    var tags = registry.getTags(r, spec);
+    tags.forEach(function(tag) {
+      metaHtml += '<span class="res-card-tag">' + escHtml(tag) + '</span>';
+    });
+
+    // Build details from registry
+    var details = registry.getDetails(r, spec);
+    if (details.length > 0) {
+      extraHtml = '<div class="res-card-details">';
+      details.forEach(function(d) {
+        extraHtml += '<span class="res-card-detail"><span class="detail-icon">' + escHtml(d.icon) + '</span>' + escHtml(d.text) + '</span>';
+      });
+      extraHtml += '</div>';
+    }
+
+    // Build actions from registry
+    var actionList = registry.actions || [];
+    actionList.forEach(function(action) {
+      if (action === 'start' && s === 'stopped') {
+        actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'start\')">' + t('resource.start') + '</button>';
+      } else if (action === 'stop' && s === 'running') {
+        actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'stop\')">' + t('resource.stop') + '</button>';
+      } else if (action === 'console') {
+        if (r.console_url) {
+          actionsHtml += '<button class="resource-action-btn" onclick="openConsole(\'' + escAttr(r.console_url) + '\')">Console</button>';
+        } else if (spec.console_url) {
+          actionsHtml += '<button class="resource-action-btn" onclick="openConsole(\'' + escAttr(spec.console_url) + '\')">Console</button>';
+        }
+      } else if (action === 'ssh') {
+        actionsHtml += '<button class="resource-action-btn" onclick="openSSH(' + JSON.stringify(r).replace(/"/g, '&quot;') + ')">SSH</button>';
+      }
+    });
+  } else {
+    // Fallback for unregistered resource types
+    if (r.cloud_type === 'azure') {
+      var azType = spec.type || r.instance_type || '';
+      if (azType.includes('/')) azType = azType.split('/').pop();
+      metaHtml += '<span class="res-card-tag">' + escHtml(azType || 'Resource') + '</span>';
+      if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+      if (r.account) metaHtml += '<span class="res-card-tag">' + escHtml(r.account) + '</span>';
+    } else {
+      metaHtml += '<span class="res-card-tag">' + escHtml(r.instance_type || r.type || r.cloud_type) + '</span>';
+      if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
+    }
+
+    // Basic actions fallback
+    if (s === 'running') {
+      actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'stop\')">' + t('resource.stop') + '</button>';
+    } else if (s === 'stopped') {
+      actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'start\')">' + t('resource.start') + '</button>';
+    }
   }
 
-  // Action buttons
-  var actionsHtml = '';
-  if (s === 'running') {
-    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'stop\')">' + t('resource.stop') + '</button>';
-  } else if (s === 'stopped') {
-    actionsHtml = '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'start\')">' + t('resource.start') + '</button>';
+  // Render-specific: show URL link
+  if (r.cloud_type === 'render' && spec.url) {
+    extraHtml += '<a class="res-card-link" href="' + escAttr(spec.url) + '" target="_blank" rel="noopener">' + escHtml(spec.url.replace(/^https?:\/\//, '')) + '</a>';
   }
+
+  // Render-specific: dashboard link
   if (r.cloud_type === 'render' && spec.dashboard_url) {
     actionsHtml += '<a class="resource-action-btn" href="' + escAttr(spec.dashboard_url) + '" target="_blank" rel="noopener" style="text-decoration:none">Dashboard</a>';
   }
@@ -4202,11 +4401,30 @@ function buildResourceCard(r) {
     '<div class="res-card-main">' +
       '<div class="res-card-name">' + escHtml(r.name) + '</div>' +
       '<div class="res-card-meta">' + metaHtml + '</div>' +
-      (extraHtml ? '<div style="margin-top:2px">' + extraHtml + '</div>' : '') +
+      (extraHtml ? '<div style="margin-top:4px">' + extraHtml + '</div>' : '') +
     '</div>' +
     '<div class="res-card-status"><span class="status-dot ' + s + '"></span><span>' + statusLabel + '</span></div>' +
     '<div class="res-card-actions">' + actionsHtml + '</div>' +
   '</div>';
+}
+
+function openConsole(url) {
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  else showToast('Console URL not available');
+}
+
+function openSSH(r) {
+  var spec = r.spec || {};
+  var ip = spec.public_ip || spec.private_ip;
+  if (!ip) { showToast('No IP address available for SSH'); return; }
+  var user = spec.os_type && spec.os_type.toLowerCase().includes('windows') ? 'Administrator' : 'root';
+  var cmd = 'ssh ' + user + '@' + ip;
+  // Copy to clipboard
+  navigator.clipboard.writeText(cmd).then(function() {
+    showToast('SSH command copied: ' + cmd);
+  }).catch(function() {
+    showToast(cmd);
+  });
 }
 
 function renderResources(list) {

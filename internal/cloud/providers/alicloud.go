@@ -42,6 +42,37 @@ func NewAlicloudProvider(creds map[string]string) *AlicloudProvider {
 
 func (p *AlicloudProvider) GetType() string { return "alicloud" }
 
+func (p *AlicloudProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	if region == "" {
+		region = p.region
+	}
+	base := fmt.Sprintf("https://%s.console.aliyun.com", region)
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		return fmt.Sprintf("%s/ecs/instance/%s", base, id)
+	case types.ResourceTypeVolume:
+		return fmt.Sprintf("%s/ecs/disk/%s", base, id)
+	case types.ResourceTypeNetwork:
+		return fmt.Sprintf("%s/vpc/vpc/%s", base, id)
+	case types.ResourceTypeDatabase:
+		return fmt.Sprintf("%s/rds/instance/%s", base, id)
+	case types.ResourceTypeLoadBalancer:
+		return fmt.Sprintf("%s/slb/instance/%s", base, id)
+	case types.ResourceTypeBucket:
+		return fmt.Sprintf("%s/oss/bucket/%s", base, id)
+	case types.ResourceTypeCluster:
+		return fmt.Sprintf("%s/cs/cluster/%s", base, id)
+	case types.ResourceTypeFunction:
+		return fmt.Sprintf("%s/fc/service/%s", base, id)
+	case types.ResourceTypeDNSZone:
+		return fmt.Sprintf("%s/dns/zone/%s", base, id)
+	case types.ResourceTypeCertificate:
+		return fmt.Sprintf("%s/cas/certificate/%s", base, id)
+	default:
+		return base
+	}
+}
+
 // --- Alibaba Cloud API signing (SignatureVersion 1.0 / HMAC-SHA1) ---
 
 func (p *AlicloudProvider) signedRequest(ctx context.Context, params map[string]string) (*http.Response, error) {

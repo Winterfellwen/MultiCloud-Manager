@@ -288,7 +288,8 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
-			rc.spec, rc.tags, ca.cloud_type, ca.name as account_name
+			rc.spec, rc.tags, ca.cloud_type, ca.name as account_name,
+			ca.id as account_id, ca.credentials, COALESCE(ca.vault_path, '')
 		FROM resources_cache rc
 		JOIN cloud_accounts ca ON rc.account_id = ca.id
 		ORDER BY ca.cloud_type, rc.resource_type, rc.name
@@ -298,11 +299,15 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 	}
 	defer rows.Close()
 
+	// Cache providers per account to avoid repeated credential parsing
+	providerCache := make(map[string]types.Provider)
+
 	var resources []map[string]interface{}
 	for rows.Next() {
 		var id, name, resourceType, region, status, cloudType, accountName string
+		var accountID, credJSON, vaultPath string
 		var specJSON, tagsJSON []byte
-		if err := rows.Scan(&id, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName); err != nil {
+		if err := rows.Scan(&id, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName, &accountID, &credJSON, &vaultPath); err != nil {
 			continue
 		}
 
@@ -316,13 +321,13 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 		}
 
 		r := map[string]interface{}{
-			"id":         id,
-			"name":       name,
-			"type":       resourceType,
-			"cloud_type": cloudType,
-			"region":     region,
-			"status":     status,
-			"account":    accountName,
+			"id":            id,
+			"name":          name,
+			"resource_type": resourceType,
+			"cloud_type":    cloudType,
+			"region":        region,
+			"status":        status,
+			"account":       accountName,
 		}
 		if spec != nil {
 			for k, v := range spec {
@@ -332,6 +337,31 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 		if tags != nil && len(tags) > 0 {
 			r["tags"] = tags
 		}
+
+		// Generate console_url using cached provider
+		prov, ok := providerCache[accountID]
+		if !ok {
+			// Prefer vault credentials
+			if vaultPath != "" && s.vault != nil {
+				if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
+					if dataBytes, err := json.Marshal(secretData); err == nil {
+						credJSON = string(dataBytes)
+					}
+				}
+			}
+			var creds map[string]string
+			if err := json.Unmarshal([]byte(credJSON), &creds); err == nil {
+				prov = NewProvider(cloudType, creds)
+				providerCache[accountID] = prov
+			}
+		}
+		if prov != nil {
+			consoleURL := prov.GetConsoleURL(types.ResourceType(resourceType), id, region)
+			if consoleURL != "" {
+				r["console_url"] = consoleURL
+			}
+		}
+
 		resources = append(resources, r)
 	}
 	if resources == nil {

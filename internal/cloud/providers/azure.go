@@ -60,6 +60,34 @@ func NewAzureProvider(creds map[string]string) *AzureProvider {
 
 func (p *AzureProvider) GetType() string { return "azure" }
 
+func (p *AzureProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	base := "https://portal.azure.com"
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeVolume:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeNetwork:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeDatabase:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeLoadBalancer:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeBucket:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeCluster:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeFunction:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeDNSZone:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	case types.ResourceTypeCertificate:
+		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+	default:
+		return base
+	}
+}
+
 func (p *AzureProvider) getToken(ctx context.Context) (string, error) {
 	if cached, ok := p.tokenCache.Get(); ok {
 		return cached, nil

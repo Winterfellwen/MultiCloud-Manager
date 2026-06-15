@@ -79,6 +79,34 @@ func NewOracleProvider(creds map[string]string) *OracleProvider {
 
 func (p *OracleProvider) GetType() string { return "oracle" }
 
+func (p *OracleProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	base := "https://cloud.oracle.com"
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		return fmt.Sprintf("%s/compute/instances/%s", base, id)
+	case types.ResourceTypeVolume:
+		return fmt.Sprintf("%s/block-storage/volumes/%s", base, id)
+	case types.ResourceTypeNetwork:
+		return fmt.Sprintf("%s/networking/vcns/%s", base, id)
+	case types.ResourceTypeDatabase:
+		return fmt.Sprintf("%s/database/dbSystems/%s", base, id)
+	case types.ResourceTypeLoadBalancer:
+		return fmt.Sprintf("%s/networking/load-balancers/%s", base, id)
+	case types.ResourceTypeBucket:
+		return fmt.Sprintf("%s/object-storage/buckets/%s", base, id)
+	case types.ResourceTypeCluster:
+		return fmt.Sprintf("%s/containers/clusters/%s", base, id)
+	case types.ResourceTypeFunction:
+		return fmt.Sprintf("%s/functions/applications/%s", base, id)
+	case types.ResourceTypeDNSZone:
+		return fmt.Sprintf("%s/dns/zones/%s", base, id)
+	case types.ResourceTypeCertificate:
+		return fmt.Sprintf("%s/certificates/certificates/%s", base, id)
+	default:
+		return base
+	}
+}
+
 func (p *OracleProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
 	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/instances?compartmentId=%s&compartmentIdInSubtree=true&limit=100", p.region, p.compartmentOCID)
 	log.Printf("oracle: ListInstances endpoint=%s", endpoint)

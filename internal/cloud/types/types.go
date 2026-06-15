@@ -12,17 +12,39 @@ type RawResponse struct {
 type ResourceType string
 
 const (
-	ResourceTypeInstance    ResourceType = "instance"
-	ResourceTypeVolume      ResourceType = "volume"
-	ResourceTypeNetwork     ResourceType = "network"
-	ResourceTypeDatabase    ResourceType = "database"
+	ResourceTypeInstance     ResourceType = "instance"
+	ResourceTypeVolume       ResourceType = "volume"
+	ResourceTypeNetwork      ResourceType = "network"
+	ResourceTypeDatabase     ResourceType = "database"
 	ResourceTypeLoadBalancer ResourceType = "loadbalancer"
-	ResourceTypeBucket      ResourceType = "bucket"
-	ResourceTypeCluster     ResourceType = "cluster"
-	ResourceTypeFunction    ResourceType = "function"
-	ResourceTypeDNSZone     ResourceType = "dns_zone"
-	ResourceTypeCertificate ResourceType = "certificate"
+	ResourceTypeBucket       ResourceType = "bucket"
+	ResourceTypeCluster      ResourceType = "cluster"
+	ResourceTypeFunction     ResourceType = "function"
+	ResourceTypeDNSZone      ResourceType = "dns_zone"
+	ResourceTypeCertificate  ResourceType = "certificate"
 )
+
+// ResourceTypeMeta describes display metadata for each resource type.
+type ResourceTypeMeta struct {
+	Label       string
+	Icon        string
+	Color       string
+	ConsolePath string // Console URL path template
+}
+
+// ResourceTypeMetas maps each ResourceType to its display metadata.
+var ResourceTypeMetas = map[ResourceType]ResourceTypeMeta{
+	ResourceTypeInstance:     {Label: "VM", Icon: "vm", Color: "#3b82f6", ConsolePath: ""},
+	ResourceTypeVolume:       {Label: "Volume", Icon: "disk", Color: "#8b5cf6", ConsolePath: ""},
+	ResourceTypeNetwork:      {Label: "Network", Icon: "net", Color: "#10b981", ConsolePath: ""},
+	ResourceTypeDatabase:     {Label: "Database", Icon: "db", Color: "#f59e0b", ConsolePath: ""},
+	ResourceTypeLoadBalancer: {Label: "Load Balancer", Icon: "lb", Color: "#ef4444", ConsolePath: ""},
+	ResourceTypeBucket:       {Label: "Storage", Icon: "bucket", Color: "#06b6d4", ConsolePath: ""},
+	ResourceTypeCluster:      {Label: "Kubernetes", Icon: "k8s", Color: "#6366f1", ConsolePath: ""},
+	ResourceTypeFunction:     {Label: "Function", Icon: "fn", Color: "#ec4899", ConsolePath: ""},
+	ResourceTypeDNSZone:      {Label: "DNS", Icon: "dns", Color: "#14b8a6", ConsolePath: ""},
+	ResourceTypeCertificate:  {Label: "Certificate", Icon: "cert", Color: "#84cc16", ConsolePath: ""},
+}
 
 type ListOptions struct {
 	ResourceType string
@@ -174,6 +196,7 @@ type GenericResource struct {
 
 type Provider interface {
 	GetType() string
+	GetConsoleURL(resourceType ResourceType, id, region string) string
 	ListInstances(ctx context.Context, opts ListOptions) ([]Instance, error)
 	ListVolumes(ctx context.Context, opts ListOptions) ([]Volume, error)
 	ListNetworks(ctx context.Context, opts ListOptions) ([]Network, error)

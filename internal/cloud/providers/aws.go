@@ -40,6 +40,36 @@ func NewAWSProvider(creds map[string]string) *AWSProvider {
 
 func (p *AWSProvider) GetType() string { return "aws" }
 
+func (p *AWSProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	if region == "" {
+		region = p.region
+	}
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/ec2/home?region=%s#InstanceDetails:instanceId=%s", region, region, id)
+	case types.ResourceTypeVolume:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/ec2/home?region=%s#VolumeDetails:volumeId=%s", region, region, id)
+	case types.ResourceTypeNetwork:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/vpcconsole/home?region=%s#VpcDetails:vpcId=%s", region, region, id)
+	case types.ResourceTypeDatabase:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/rds/home?region=%s#database:id=%s", region, region, id)
+	case types.ResourceTypeLoadBalancer:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/ec2/home?region=%s#LoadBalancer:loadBalancerArn=%s", region, region, url.QueryEscape(id))
+	case types.ResourceTypeBucket:
+		return fmt.Sprintf("https://s3.console.aws.amazon.com/s3/buckets/%s", id)
+	case types.ResourceTypeCluster:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/ecs/home?region=%s#/clusters/%s", region, region, id)
+	case types.ResourceTypeFunction:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/lambda/home?region=%s#/functions/%s", region, region, id)
+	case types.ResourceTypeDNSZone:
+		return fmt.Sprintf("https://us-east-1.console.aws.amazon.com/route53/v2/hostedzones#ListRecordSets/%s", id)
+	case types.ResourceTypeCertificate:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/acm/home?region=%s#/certificates/%s", region, region, id)
+	default:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com", region)
+	}
+}
+
 // --- SigV4 signing ---
 
 func (p *AWSProvider) signRequest(req *http.Request, service string, body []byte) {
