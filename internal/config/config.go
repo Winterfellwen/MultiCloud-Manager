@@ -21,14 +21,14 @@ type Config struct {
 }
 
 func Load() *Config {
-	env := getEnv("ENVIRONMENT", "development")
+	env := GetEnv("ENVIRONMENT", "development")
 	cfg := &Config{
-		Port:          getEnv("PORT", "8099"),
-		DBPath:        getEnv("DB_PATH", "multicloud.db"),
-		DatabaseURL:   getEnv("DATABASE_URL", ""),
-		RedisURL:      getEnv("REDIS_URL", ""),
-		JWTSecret:     getEnv("JWT_SECRET", defaultJWTSecret),
-		AdminPassword: getEnv("ADMIN_PASSWORD", defaultAdminPassword),
+		Port:          GetEnv("PORT", "8099"),
+		DBPath:        GetEnv("DB_PATH", "multicloud.db"),
+		DatabaseURL:   GetEnv("DATABASE_URL", ""),
+		RedisURL:      GetEnv("REDIS_URL", ""),
+		JWTSecret:     GetEnv("JWT_SECRET", defaultJWTSecret),
+		AdminPassword: GetEnv("ADMIN_PASSWORD", defaultAdminPassword),
 		Environment:   env,
 	}
 
@@ -48,7 +48,7 @@ func Load() *Config {
 	return cfg
 }
 
-func getEnv(key, fallback string) string {
+func GetEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}

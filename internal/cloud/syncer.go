@@ -130,6 +130,9 @@ func (s *Syncer) SyncAll(ctx context.Context) ([]SyncResult, error) {
 		// Log to database
 		s.logSyncResult(ctx, res)
 	}
+	if err := rows.Err(); err != nil {
+		log.Printf("syncer: error iterating accounts: %v", err)
+	}
 
 	s.mu.Lock()
 	s.lastSyncAt = time.Now()
@@ -354,11 +357,14 @@ func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, l
 		if !liveIDs[compositeKey] {
 			_, delErr := s.db.Exec(`DELETE FROM resources_cache WHERE id = $1`, cacheID)
 			if delErr != nil {
-				log.Printf("syncer: delete resource %s: %v", cacheID, err)
+				log.Printf("syncer: delete resource %s: %v", cacheID, delErr)
 			} else {
 				log.Printf("syncer: removed deleted resource %s (%s)", cloudResID, name.String)
 			}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("syncer: error iterating deleted resources: %v", err)
 	}
 }
 
@@ -378,6 +384,9 @@ func (s *Syncer) markExistingAsLive(ctx context.Context, accountID, resourceType
 		}
 		liveIDs[cloudResID+"|"+resourceType] = true
 	}
+	if err := rows.Err(); err != nil {
+		log.Printf("syncer: error marking existing as live: %v", err)
+	}
 }
 
 func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, error) {
@@ -388,7 +397,7 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT rc.id, rc.cloud_resource_id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
 			rc.spec, rc.tags, ca.cloud_type, ca.name as account_name,
-			ca.id as account_id, ca.credentials, COALESCE(ca.vault_path, '')
+			ca.id as account_id, COALESCE(ca.vault_path, '')
 		FROM resources_cache rc
 		JOIN cloud_accounts ca ON rc.account_id = ca.id
 		ORDER BY ca.cloud_type, rc.resource_type, rc.name
@@ -404,9 +413,9 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 	var resources []map[string]interface{}
 	for rows.Next() {
 		var id, cloudResID, name, resourceType, region, status, cloudType, accountName string
-		var accountID, credJSON, vaultPath string
+		var accountID, vaultPath string
 		var specJSON, tagsJSON []byte
-		if err := rows.Scan(&id, &cloudResID, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName, &accountID, &credJSON, &vaultPath); err != nil {
+		if err := rows.Scan(&id, &cloudResID, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName, &accountID, &vaultPath); err != nil {
 			continue
 		}
 
@@ -439,17 +448,15 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 
 		// Generate console_url using cached provider
 		prov, ok := providerCache[accountID]
-		if !ok {
-			// Prefer vault credentials
-			if vaultPath != "" && s.vault != nil {
-				if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
-					if dataBytes, err := json.Marshal(secretData); err == nil {
-						credJSON = string(dataBytes)
+		if !ok && vaultPath != "" && s.vault != nil {
+			// Only use vault credentials for security
+			if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
+				creds := make(map[string]string, len(secretData))
+				for k, v := range secretData {
+					if s, ok := v.(string); ok {
+						creds[k] = s
 					}
 				}
-			}
-			var creds map[string]string
-			if err := json.Unmarshal([]byte(credJSON), &creds); err == nil {
 				prov = NewProvider(cloudType, creds)
 				providerCache[accountID] = prov
 			}
@@ -469,6 +476,9 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 		}
 
 		resources = append(resources, r)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("syncer: error iterating resources: %v", err)
 	}
 	if resources == nil {
 		resources = []map[string]interface{}{}

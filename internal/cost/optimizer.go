@@ -142,6 +142,9 @@ func (o *Optimizer) ListSuggestions(ctx context.Context, status string) ([]Sugge
 		}
 		result = append(result, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -182,6 +185,9 @@ func (o *Optimizer) ListRules(ctx context.Context) ([]OptimizationRule, error) {
 			rule.LastTriggeredAt = &lastTriggered.Time
 		}
 		result = append(result, rule)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return result, nil
 }

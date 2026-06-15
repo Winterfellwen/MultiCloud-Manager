@@ -185,8 +185,12 @@ func (e *Executor) syncResources(ctx context.Context) (string, error) {
 
 func (e *Executor) getStats(ctx context.Context) (string, error) {
 	var resourceCount, accountCount int
-	e.db.QueryRow("SELECT COUNT(*) FROM resources_cache").Scan(&resourceCount)
-	e.db.QueryRow("SELECT COUNT(*) FROM cloud_accounts").Scan(&accountCount)
+	if err := e.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM resources_cache").Scan(&resourceCount); err != nil {
+		return "", fmt.Errorf("count resources: %w", err)
+	}
+	if err := e.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cloud_accounts").Scan(&accountCount); err != nil {
+		return "", fmt.Errorf("count accounts: %w", err)
+	}
 
 	result := map[string]interface{}{
 		"resources": resourceCount,
@@ -221,6 +225,9 @@ func (e *Executor) listAccounts(ctx context.Context) (string, error) {
 			acc["last_sync_at"] = lastSync.Time.Format("2006-01-02 15:04:05")
 		}
 		accounts = append(accounts, acc)
+	}
+	if err := rows.Err(); err != nil {
+		return "", fmt.Errorf("iterate accounts: %w", err)
 	}
 	if accounts == nil {
 		accounts = []map[string]interface{}{}

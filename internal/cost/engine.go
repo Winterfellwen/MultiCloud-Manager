@@ -128,6 +128,9 @@ func (ce *CostEngine) estimateForAccount(ctx context.Context, acct AccountInfo, 
 			result = append(result, *cd)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		log.Printf("cost: estimate iteration error: %v", err)
+	}
 	return result, nil
 }
 

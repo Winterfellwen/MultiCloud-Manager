@@ -136,6 +136,9 @@ func (ca *CostAggregator) Breakdown(ctx context.Context, providers []string, sta
 		}
 		result = append(result, b)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -174,6 +177,9 @@ func (ca *CostAggregator) Trend(ctx context.Context, providers []string, start, 
 		}
 		result = append(result, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -193,6 +199,9 @@ func (ca *CostAggregator) CompareCrossCloud(ctx context.Context, tier string, re
 			return nil, err
 		}
 		result = append(result, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -224,6 +233,9 @@ func (ca *CostAggregator) Forecast(ctx context.Context, providers []string) ([]C
 			return nil, err
 		}
 		dailyTotals = append(dailyTotals, total)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	if len(dailyTotals) == 0 {

@@ -14,6 +14,7 @@ import (
 
 	"multicloud/internal/agent"
 	"multicloud/internal/cloud"
+	"multicloud/internal/config"
 	"multicloud/internal/cost"
 	"multicloud/internal/vault"
 
@@ -33,7 +34,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		allowedOrigins := getEnv("ALLOWED_ORIGINS", "http://localhost:8099,http://127.0.0.1:8099")
+		allowedOrigins := config.GetEnv("ALLOWED_ORIGINS", "http://localhost:8099,http://127.0.0.1:8099")
 		for _, o := range strings.Split(allowedOrigins, ",") {
 			o = strings.TrimSpace(o)
 			if o == origin {
@@ -362,11 +363,4 @@ func getWebDir() string {
 		return "web/react"
 	}
 	return "web"
-}
-
-func getEnv(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
 }
