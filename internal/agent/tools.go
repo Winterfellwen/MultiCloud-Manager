@@ -11,6 +11,7 @@ var ReadOnlyTools = map[string]bool{
 	"get_cloud_stats":       true,
 	"list_cloud_accounts":   true,
 	"get_cloud_credentials": true,
+	"lookup_cloud_api_doc":  true,
 }
 
 // BuiltInTool is a convenience implementation of Tool backed by a function.
@@ -180,6 +181,26 @@ Response is automatically filtered — sensitive fields (secrets, tokens) are re
 		},
 		func(ctx context.Context, args map[string]interface{}) (string, error) {
 			return executor.cloudAPIRequest(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"lookup_cloud_api_doc",
+		`Look up cloud provider API documentation. Returns reference docs for the specified provider, optionally filtered to a specific section. Use this instead of reading docs files directly with shell_exec or cat.
+Available providers: azure, aws, alicloud, tencent, oracle, render.`,
+		map[string]interface{}{
+			"provider": map[string]interface{}{
+				"type":        "string",
+				"description": "Cloud provider name",
+				"enum":        []string{"azure", "aws", "alicloud", "tencent", "oracle", "render"},
+			},
+			"section": map[string]interface{}{
+				"type":        "string",
+				"description": "Optional section name to retrieve (e.g. 'EC2', 'Authentication'). If omitted, returns the full doc.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.lookupCloudAPIDoc(ctx, args)
 		},
 	))
 }

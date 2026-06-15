@@ -88,7 +88,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		return
 	}
 
-	systemPrompt := h.runtime.GetSystemPrompt(r.Mode)
+	systemPrompt := h.runtime.GetSystemPrompt(r.Mode, r.UserMessage)
 	messages := []map[string]interface{}{
 		{"role": "system", "content": systemPrompt},
 	}
@@ -312,8 +312,12 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			if execErr != nil {
 				toolResultContent = fmt.Sprintf("Error: %s", execErr.Error())
 			}
-			if len(toolResultContent) > 2000 {
-				toolResultContent = toolResultContent[:2000] + "...[truncated]"
+			truncationLimit := 2000
+			if toolName == "lookup_cloud_api_doc" {
+				truncationLimit = 16000
+			}
+			if len(toolResultContent) > truncationLimit {
+				toolResultContent = toolResultContent[:truncationLimit] + "...[truncated]"
 			}
 			messages = append(messages, map[string]interface{}{
 				"role":         "tool",

@@ -19,10 +19,41 @@ type Executor struct {
 	db          *sql.DB
 	vault       vault.Service
 	costEngine  *cost.CostEngine
+	docIndex    *DocIndex
 }
 
 func (e *Executor) SetCostEngine(ce *cost.CostEngine) {
 	e.costEngine = ce
+}
+
+// SetDocIndex sets the document index for cloud API doc lookups.
+func (e *Executor) SetDocIndex(di *DocIndex) {
+	e.docIndex = di
+}
+
+// lookupCloudAPIDoc handles the lookup_cloud_api_doc tool call.
+func (e *Executor) lookupCloudAPIDoc(ctx context.Context, args map[string]interface{}) (string, error) {
+	provider, _ := args["provider"].(string)
+	if provider == "" {
+		return `{"error": "provider is required", "available": ["azure","aws","alicloud","tencent","oracle","render"]}`, nil
+	}
+	if e.docIndex == nil {
+		return `{"error": "document index not initialized"}`, nil
+	}
+	section, _ := args["section"].(string)
+	if section != "" {
+		content := e.docIndex.GetSection(provider, section)
+		if content == "" {
+			sections := e.docIndex.ListSections(provider)
+			return fmt.Sprintf(`{"error": "section '%s' not found", "available_sections": %q}`, section, sections), nil
+		}
+		return content, nil
+	}
+	doc := e.docIndex.GetFullDoc(provider)
+	if doc == "" {
+		return fmt.Sprintf(`{"error": "no documentation for provider '%s'", "available": %q}`, provider, e.docIndex.ListProviders()), nil
+	}
+	return doc, nil
 }
 
 // NewExecutor creates a new tool executor.

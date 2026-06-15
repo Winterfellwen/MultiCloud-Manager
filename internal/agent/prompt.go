@@ -78,6 +78,22 @@ func (b *PromptBuilder) Reset() *PromptBuilder {
 	return b
 }
 
+// Clone creates a shallow copy of the PromptBuilder safe for concurrent use.
+func (b *PromptBuilder) Clone() *PromptBuilder {
+	extras := make(map[string]string, len(b.extras))
+	for k, v := range b.extras {
+		extras[k] = v
+	}
+	skills := make([]string, len(b.skills))
+	copy(skills, b.skills)
+	return &PromptBuilder{
+		basePrompt: b.basePrompt,
+		mode:       b.mode,
+		skills:     skills,
+		extras:     extras,
+	}
+}
+
 // DefaultSystemPrompt returns the base system prompt for the multi-cloud agent.
 func DefaultSystemPrompt() string {
 	wd, _ := os.Getwd()
@@ -92,7 +108,7 @@ Date: %s
 
 ## CRITICAL RULES
 
-0. **READ DOCS FIRST** - Before making ANY cloud API call, you MUST first run "cat docs/cloud-api/{provider}.md" to read the reference docs. The docs contain the exact endpoints, auth methods, and gotchas you need. DO NOT guess API endpoints.
+0. **USE CLOUD API DOCS** - Quick reference for mentioned cloud providers is auto-injected below ("Cloud API Quick Reference"). For detailed API info (full endpoints, request/response examples, error codes), use the 'lookup_cloud_api_doc' tool. Do NOT use shell_exec/cat to read docs files directly.
 1. **ALWAYS use tools** - Never fabricate information. Use tools to get REAL data.
 2. **Use REST APIs via curl or built-in tools** - Call cloud provider REST APIs directly using curl in shell_exec, or use the built-in cloud tools (list_cloud_resources, start_instance, etc.).
 3. **Never provide text-only guides** - Actually DO it by calling tools.
@@ -161,15 +177,13 @@ Write multi-line scripts using \n for newlines.
 Execute a single shell command. Use this ONLY for one-off operations (checking a file, running a single curl).
 Do NOT use this for multi-step operations that need variable persistence.
 
-### Cloud REST API Knowledge Base
-Before calling cloud APIs, read the relevant documentation:
-- Azure REST API: run "cat docs/cloud-api/azure.md"
-- Oracle Cloud REST API: run "cat docs/cloud-api/oracle.md"
-- Tencent Cloud API: run "cat docs/cloud-api/tencent.md"
-- Render API: run "cat docs/cloud-api/render.md"
-- Amazon AWS REST API: run "cat docs/cloud-api/aws.md"
-- Alibaba Cloud (AliCloud) API: run "cat docs/cloud-api/alicloud.md"
-Each doc has: authentication, API endpoints, request/response examples, and free tier info.
+### Cloud REST API Documentation
+Quick reference for relevant cloud providers is auto-injected in the "Cloud API Quick Reference" section below.
+For complete documentation including all endpoints, examples, and gotchas, use the 'lookup_cloud_api_doc' tool:
+  - lookup_cloud_api_doc(provider="azure")  # Full Azure doc
+  - lookup_cloud_api_doc(provider="aws", section="EC2")  # Specific section
+Available providers: azure, aws, alicloud, tencent, oracle, render
+DO NOT use shell_exec or cat to read docs files -- use this tool instead.
 
 ### Built-in Cloud Tools (PREFERRED for basic operations)
 Use these for common operations - they handle authentication automatically:

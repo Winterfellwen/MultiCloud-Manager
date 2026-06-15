@@ -1,3 +1,2 @@
-fix(playwright.yml): fix condition for running Playwright tests on pull requests
+🔗 fix: broken blog link in README (#4763)
 
-The condition for running Playwright tests on pull requests was not properly formatted. The repository name was not enclosed in quotes. This commit fixes the condition by adding single quotes around the repository name.

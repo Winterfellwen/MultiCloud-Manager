@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"multicloud/internal/agent/shell"
 	"multicloud/internal/cloud"
@@ -34,6 +35,7 @@ type Runtime struct {
 	router   *Router
 	prompt   *PromptBuilder
 	executor *Executor
+	docIndex *DocIndex
 	db       *sql.DB
 }
 
@@ -43,6 +45,7 @@ type RuntimeConfig struct {
 	Syncer     *cloud.Syncer
 	Vault      vault.Service
 	BasePrompt string
+	DocsDir    string
 }
 
 // shellToolWrapper wraps shell.ShellTool to implement agent.Tool interface
@@ -93,11 +96,19 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 	}
 	prompt := NewPromptBuilder(basePrompt)
 
+	docsDir := cfg.DocsDir
+	if docsDir == "" {
+		docsDir = "docs/cloud-api"
+	}
+	docIndex := NewDocIndex(docsDir)
+	executor.SetDocIndex(docIndex)
+
 	return &Runtime{
 		registry: registry,
 		router:   router,
 		prompt:   prompt,
 		executor: executor,
+		docIndex: docIndex,
 		db:       cfg.DB,
 	}
 }
@@ -148,10 +159,26 @@ func (r *Runtime) BuildPrompt() string {
 }
 
 // GetSystemPrompt builds the system prompt for the given mode.
-func (r *Runtime) GetSystemPrompt(mode string) string {
-	prompt := r.prompt
+func (r *Runtime) GetSystemPrompt(mode string, userMessage string) string {
+	prompt := r.prompt.Clone()
 	if mode != "" {
-		prompt = prompt.SetMode(mode)
+		prompt.SetMode(mode)
+	}
+	if r.docIndex != nil && userMessage != "" {
+		providers := r.docIndex.DetectProviders(userMessage)
+		if len(providers) > 0 {
+			var docSections []string
+			for _, p := range providers {
+				summary := r.docIndex.GetSummary(p)
+				if summary != "" {
+					displayName := GetProviderDisplayName(p)
+					docSections = append(docSections, fmt.Sprintf("#### %s\n%s", displayName, summary))
+				}
+			}
+			if len(docSections) > 0 {
+				prompt.AddExtra("Cloud API Quick Reference", strings.Join(docSections, "\n\n"))
+			}
+		}
 	}
 	return prompt.Build()
 }
