@@ -56,7 +56,7 @@ func initPostgres(dsn string) (*Database, error) {
 
 	d := &Database{db}
 	if err := d.Migrate(); err != nil {
-		log.Printf("WARNING: Migration failed: %v", err)
+		log.Fatalf("Migration failed: %v", err)
 	}
 
 	log.Println("PostgreSQL database initialized")

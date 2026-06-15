@@ -1850,7 +1850,6 @@ function scrollToBottom(el) {
 var STREAMING_DIV = null;
 var STREAMING_CONTENT = '';
 var PENDING_TOOL_CALLS = [];
-var _lastStreamChild = null; // tracks the last child in STREAMING_DIV for ordering
 
 function _ensureStreamingDiv() {
   if (STREAMING_DIV && STREAMING_DIV.isConnected) return;
@@ -1863,7 +1862,6 @@ function _ensureStreamingDiv() {
   STREAMING_DIV._toolCallsContainer = null;
   STREAMING_DIV._toolCallsHeader = null;
   STREAMING_DIV._lastRenderedLen = 0;
-  _lastStreamChild = null;
   PENDING_TOOL_CALLS = [];
 }
 
@@ -2398,6 +2396,13 @@ function updateUserProfile(user) {
       }
     }, AUTO_SYNC_INTERVAL_MS);
   }
+  // Clean up auto-sync interval on page unload
+  window.addEventListener('beforeunload', () => {
+    if (window._autoSyncInterval) {
+      clearInterval(window._autoSyncInterval);
+      window._autoSyncInterval = null;
+    }
+  });
 }
 
 /* Role-based access control */
@@ -3002,7 +3007,7 @@ function handleSSEEvent(data) {
       confirmDiv.className = 'msg agent confirm-block';
       let html = aiRoleHeader() + '<div class="msg-content"><p><strong>' + (LOCALE === 'zh' ? '需要确认以下操作：' : 'Confirm the following operations:') + '</strong></p>';
       (data.tool_calls || []).forEach(function(tc, idx) {
-        var paramsStr = JSON.stringify(tc.params);
+        var paramsStr = escHtml(JSON.stringify(tc.params || {}));
         var name = tc.name;
         html += '<div class="tool-call"><span class="tool-name">' + name + '</span> <span class="tool-params">' + paramsStr + '</span></div>';
         html += '<div class="confirm-bar">';
@@ -3434,7 +3439,7 @@ async function switchSession(sid) {
         details.className = 'incomplete-run';
         var summary = document.createElement('summary');
         var incIcon = inc.state === 'stopped' ? '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-stop"/></svg>' : '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>';
-        summary.innerHTML = incIcon + (inc.state === 'stopped' ? (LOCALE === 'zh' ? '已停止' : 'Stopped') : (LOCALE === 'zh' ? '错误' : 'Error')) + ': ' + (inc.user_message || '').slice(0, 40);
+        summary.innerHTML = incIcon + (inc.state === 'stopped' ? (LOCALE === 'zh' ? '已停止' : 'Stopped') : (LOCALE === 'zh' ? '错误' : 'Error')) + ': ' + escHtml((inc.user_message || '').slice(0, 40));
         details.appendChild(summary);
         if (inc.events) {
           renderRunEvents(details, inc.events);
@@ -5070,10 +5075,10 @@ async function testAIConfig() {
   
   var result = await apiFetch(API + '/agent/config/test', { method: 'POST' });
   if (result && result.message) {
-    resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-check"/></svg>' + result.message + (result.reply ? '<br>回复: ' + result.reply : '');
+    resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-check"/></svg>' + escHtml(result.message) + (result.reply ? '<br>回复: ' + escHtml(result.reply) : '');
     resultDiv.style.color = 'var(--success)';
   } else if (result && result.error) {
-    resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>' + result.error;
+    resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>' + escHtml(result.error);
     resultDiv.style.color = 'var(--danger)';
   } else {
     resultDiv.innerHTML = '<svg width="14" height="14" style="vertical-align:middle;margin-right:4px"><use href="/static/icons.svg#icon-error"/></svg>' + t('common.test_failed');

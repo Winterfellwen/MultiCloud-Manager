@@ -1,6 +1,35 @@
+# Git & IDE
 .git/
 .gitignore
 .vscode/
+.idea/
+
+# Env & secrets
+.env*
+*.pem
+*.key
+*.pkcs12
+*.crt
+*.csr
+
+# Tests & reports
+tests/
+test-results/
+playwright-report/
+playwright.config.ts
+
+# CI/CD
+.github/
+render.yaml
+run.sh
+
+# Node (not needed in Go binary image)
 node_modules/
-/*.md
-web/js/*.map
+package*.json
+
+# Misc
+.trae/
+.playwright-mcp/
+project.config.json
+project.private.config.json
+*.log

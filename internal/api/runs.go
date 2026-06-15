@@ -546,6 +546,9 @@ func jsonUnmarshal(data []byte, v interface{}) error {
 }
 
 func mustJSON(v interface{}) []byte {
-	b, _ := json.Marshal(v)
+	b, err := json.Marshal(v)
+	if err != nil {
+		log.Printf("mustJSON: json.Marshal failed: %v", err)
+	}
 	return b
 }

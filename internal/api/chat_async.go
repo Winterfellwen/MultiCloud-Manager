@@ -27,6 +27,11 @@ type ChatRequest struct {
 	ToolParams    interface{} `json:"tool_params"`
 }
 
+const (
+	maxLLMIterations = 100
+	defaultMaxTokens  = 8192
+)
+
 type ChatStreamHandler struct {
 	db       *sql.DB
 	executor *agent.Executor
@@ -106,7 +111,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		}
 	}
 
-	maxIterations := 100
+	maxIterations := maxLLMIterations
 	var lastTurnContent string
 
 	httpClient := &http.Client{Timeout: 120 * time.Second}
@@ -142,7 +147,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			"messages":   messages,
 			"stream":     true,
 			"tools":      toolDefs,
-			"max_tokens": 8192,
+			"max_tokens": defaultMaxTokens,
 		}
 
 		if cfg.EnableReasoning {
@@ -151,7 +156,11 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 
 		baseURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions")
 		apiURL := baseURL + "/chat/completions"
-		bodyBytes, _ := json.Marshal(body)
+		bodyBytes, err := json.Marshal(body)
+		if err != nil {
+			stopReason = "failed to marshal request body: " + err.Error()
+			break
+		}
 		httpReq, err := http.NewRequest("POST", apiURL, bytes.NewReader(bodyBytes))
 		if err != nil {
 			stopReason = "failed to create request: " + err.Error()
