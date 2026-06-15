@@ -2214,9 +2214,10 @@ function handleStateChangeEvent(ev) {
       STREAMING_CONTENT = '';
     }
   }
-  // Update sidebar badge directly (don't call loadSessions which restarts EventSource)
+  // Update sidebar badge and running indicator directly
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
     if (el.dataset.sid === ev.session_id) {
+      // Update session-badge
       var badge = el.querySelector('.session-badge');
       if (badge) {
         var stateText = '', stateCls = 'session-badge';
@@ -2231,6 +2232,21 @@ function handleStateChangeEvent(ev) {
         badge.textContent = stateText;
         badge.className = stateCls;
         if (titleText) { badge.title = titleText; }
+      }
+      // Update running-dot and .running class
+      var isRunning = (newState === 'running' || newState === 'waiting_confirm' || newState === 'queued');
+      el.classList.toggle('running', isRunning);
+      var statusEl = el.querySelector('.session-status');
+      if (statusEl) {
+        if (isRunning) {
+          if (!statusEl.querySelector('.running-dot')) {
+            statusEl.innerHTML = '<span class="running-dot" style="width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 1.5s ease-in-out infinite"></span>';
+          }
+        } else if (newState === 'error') {
+          statusEl.innerHTML = '<span class="error-dot" style="width:6px;height:6px;border-radius:50%;background:var(--error)"></span>';
+        } else {
+          statusEl.innerHTML = '<span class="done-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted)"></span>';
+        }
       }
     }
   });

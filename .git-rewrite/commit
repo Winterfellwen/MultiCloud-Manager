@@ -1,6 +1,6 @@
-tree 627bf65676fa26bf57fc66d618487ab72f79a4e6
-parent 946bbf4c59bc98b672656bb48c1a10c6fe387432
-author Hongkai Ye <ye.hon@northeastern.edu> 1732136003 -0800
-committer GitHub <noreply@github.com> 1732136003 -0500
+tree 2fc7613c7206cdd3cce44160fdebd7b43b2a4f8b
+parent 4a6ea1cac90cf64d659a7304111728fe7715c123
+author Danny Avila <danny@librechat.ai> 1755152133 -0400
+committer Danny Avila <danny@librechat.ai> 1755152133 -0400
 
-🌊 feat: add streaming support for o1 models (#476
+🎏 refactor: Streamline Role Permissions from Interface Config
