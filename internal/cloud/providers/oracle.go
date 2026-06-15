@@ -50,13 +50,28 @@ func NewOracleProvider(creds map[string]string) *OracleProvider {
 	if pkPEM := creds["private_key"]; pkPEM != "" {
 		block, _ := pem.Decode([]byte(pkPEM))
 		if block != nil {
+			// Try PKCS#8 first (modern OCI default)
 			key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+			if err != nil {
+				// Fallback to PKCS#1 (legacy RSA private key format)
+				key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+				if err != nil {
+					log.Printf("oracle: failed to parse private key (tried PKCS#8 and PKCS#1): %v", err)
+				}
+			}
 			if err == nil {
 				if rsaKey, ok := key.(*rsa.PrivateKey); ok {
 					p.privateKey = rsaKey
+					log.Printf("oracle: private key loaded successfully (type=%s)", block.Type)
+				} else {
+					log.Printf("oracle: private key is not RSA type: %T", key)
 				}
 			}
+		} else {
+			log.Printf("oracle: failed to decode PEM block from private_key")
 		}
+	} else {
+		log.Printf("oracle: private_key is empty in credentials")
 	}
 
 	return p
@@ -1556,6 +1571,8 @@ func (p *OracleProvider) DoRawRequest(ctx context.Context, method, reqURL string
 		!strings.Contains(reqURL, ".oraclecloud.com?") {
 		return nil, fmt.Errorf("oracle: URL must be an oraclecloud.com domain")
 	}
+
+	log.Printf("oracle DoRawRequest: method=%s url=%s keyID=%s", method, reqURL, p.keyID)
 
 	var bodyReader io.Reader
 	if body != nil {

@@ -315,18 +315,31 @@ func (e *Executor) cloudAPIRequest(ctx context.Context, args map[string]interfac
 		return "", fmt.Errorf("account not found: %w", err)
 	}
 
+	var creds map[string]string
+
 	// Load credentials from vault (preferred) or DB fallback
 	if vaultPath != "" && e.vault != nil {
 		if secretData, err := e.vault.GetSecret(vaultPath); err == nil {
-			if dataBytes, err := json.Marshal(secretData); err == nil {
-				credJSON = string(dataBytes)
+			// Convert map[string]interface{} to map[string]string safely
+			creds = make(map[string]string, len(secretData))
+			for k, v := range secretData {
+				if s, ok := v.(string); ok {
+					creds[k] = s
+				} else if v != nil {
+					creds[k] = fmt.Sprintf("%v", v)
+				}
+			}
+		} else {
+			// Vault failed, try DB fallback
+			if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+				return "", fmt.Errorf("parse credentials: %w", err)
 			}
 		}
-	}
-
-	var creds map[string]string
-	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
-		return "", fmt.Errorf("parse credentials: %w", err)
+	} else {
+		// No vault path, use DB credentials
+		if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+			return "", fmt.Errorf("parse credentials: %w", err)
+		}
 	}
 
 	// Create provider
