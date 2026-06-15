@@ -663,3 +663,65 @@ func (p *RenderProvider) GetDNSZone(ctx context.Context, zoneID string) (*types.
 func (p *RenderProvider) GetCertificate(ctx context.Context, certID string) (*types.Certificate, error) {
 	return nil, fmt.Errorf("render: certificates not supported")
 }
+
+// —— 新增：新资源类型 List 方法 ——
+func (p *RenderProvider) ListRedis(ctx context.Context, opts types.ListOptions) ([]types.Redis, error) {
+	return []types.Redis{}, nil
+}
+
+func (p *RenderProvider) ListMQ(ctx context.Context, opts types.ListOptions) ([]types.MQ, error) {
+	return []types.MQ{}, nil
+}
+
+func (p *RenderProvider) ListCDN(ctx context.Context, opts types.ListOptions) ([]types.CDN, error) {
+	return []types.CDN{}, nil
+}
+
+func (p *RenderProvider) ListWAF(ctx context.Context, opts types.ListOptions) ([]types.WAF, error) {
+	return []types.WAF{}, nil
+}
+
+func (p *RenderProvider) ListNATGateways(ctx context.Context, opts types.ListOptions) ([]types.NATGateway, error) {
+	return []types.NATGateway{}, nil
+}
+
+func (p *RenderProvider) ListImages(ctx context.Context, opts types.ListOptions) ([]types.Image, error) {
+	return []types.Image{}, nil
+}
+
+func (p *RenderProvider) ListAPIGateways(ctx context.Context, opts types.ListOptions) ([]types.APIGateway, error) {
+	return []types.APIGateway{}, nil
+}
+
+func (p *RenderProvider) ListLogServices(ctx context.Context, opts types.ListOptions) ([]types.LogService, error) {
+	return []types.LogService{}, nil
+}
+
+func (p *RenderProvider) ListSecurityGroups(ctx context.Context, opts types.ListOptions) ([]types.SecurityGroup, error) {
+	return []types.SecurityGroup{}, nil
+}
+
+func (p *RenderProvider) ListRegistries(ctx context.Context, opts types.ListOptions) ([]types.Registry, error) {
+	return []types.Registry{}, nil
+}
+
+// —— 新增：GetResourceDetail ——
+func (p *RenderProvider) GetResourceDetail(ctx context.Context, resourceType types.ResourceType, id, region string) (map[string]interface{}, error) {
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		if v, err := p.GetInstance(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDatabase:
+		if v, err := p.GetDatabase(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	}
+	return map[string]interface{}{"provider": "render"}, nil
+}

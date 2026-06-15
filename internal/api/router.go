@@ -64,6 +64,17 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 	r.POST("/api/auth/login", RateLimitMiddleware(loginLimiter), authHandler.Login)
 
+	// Terminal - 需要 admin 角色（危险功能）
+	EnsureTerminalInitialized()
+	r.GET("/api/terminal/info", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalHandlerInfo())
+	r.POST("/api/terminal/create", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalCreate())
+	r.GET("/api/terminal/stream", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalStream())
+	r.POST("/api/terminal/write", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalWrite())
+	r.DELETE("/api/terminal/session/:id", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalClose())
+	r.POST("/api/terminal/exec", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalExec())
+	r.GET("/api/terminal/sessions", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalListSessions())
+	r.GET("/api/terminal/history", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalGetHistory())
+
 	// Built-in vault — no external dependency
 	vaultService, err := vault.NewService(db)
 	if err != nil {
@@ -137,6 +148,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 		// Resources — read: all roles; sync/action: admin + user
 		auth.GET("/resources", resourcesHandler.List)
+		auth.GET("/resources/:id", resourcesHandler.Detail)
 		auth.POST("/resources/sync", RequireRole("admin", "user"), resourcesHandler.Sync)
 		auth.GET("/resources/sync-logs", RequireRole("admin", "user"), resourcesHandler.SyncLogs)
 		auth.POST("/resources/:id/:action", RequireRole("admin", "user"), resourcesHandler.Action)

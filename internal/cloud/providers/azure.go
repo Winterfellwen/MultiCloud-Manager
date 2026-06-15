@@ -448,6 +448,124 @@ func (p *AzureProvider) vmAction(ctx context.Context, resourceID, action string)
 	return err
 }
 
+// —— 新增：新资源类型 List 方法 ——
+func (p *AzureProvider) ListRedis(ctx context.Context, opts types.ListOptions) ([]types.Redis, error) {
+	return []types.Redis{}, nil
+}
+
+func (p *AzureProvider) ListMQ(ctx context.Context, opts types.ListOptions) ([]types.MQ, error) {
+	return []types.MQ{}, nil
+}
+
+func (p *AzureProvider) ListCDN(ctx context.Context, opts types.ListOptions) ([]types.CDN, error) {
+	return []types.CDN{}, nil
+}
+
+func (p *AzureProvider) ListWAF(ctx context.Context, opts types.ListOptions) ([]types.WAF, error) {
+	return []types.WAF{}, nil
+}
+
+func (p *AzureProvider) ListNATGateways(ctx context.Context, opts types.ListOptions) ([]types.NATGateway, error) {
+	return []types.NATGateway{}, nil
+}
+
+func (p *AzureProvider) ListImages(ctx context.Context, opts types.ListOptions) ([]types.Image, error) {
+	return []types.Image{}, nil
+}
+
+func (p *AzureProvider) ListAPIGateways(ctx context.Context, opts types.ListOptions) ([]types.APIGateway, error) {
+	return []types.APIGateway{}, nil
+}
+
+func (p *AzureProvider) ListLogServices(ctx context.Context, opts types.ListOptions) ([]types.LogService, error) {
+	return []types.LogService{}, nil
+}
+
+func (p *AzureProvider) ListSecurityGroups(ctx context.Context, opts types.ListOptions) ([]types.SecurityGroup, error) {
+	return []types.SecurityGroup{}, nil
+}
+
+func (p *AzureProvider) ListRegistries(ctx context.Context, opts types.ListOptions) ([]types.Registry, error) {
+	return []types.Registry{}, nil
+}
+
+// —— 新增：GetResourceDetail ——
+func (p *AzureProvider) GetResourceDetail(ctx context.Context, resourceType types.ResourceType, id, region string) (map[string]interface{}, error) {
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		if v, err := p.GetInstance(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeVolume:
+		if v, err := p.GetVolume(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeNetwork:
+		if v, err := p.GetNetwork(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDatabase:
+		if v, err := p.GetDatabase(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeLoadBalancer:
+		if v, err := p.GetLoadBalancer(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeBucket:
+		if v, err := p.GetBucket(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeCluster:
+		if v, err := p.GetCluster(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeFunction:
+		if v, err := p.GetFunction(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDNSZone:
+		if v, err := p.GetDNSZone(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeCertificate:
+		if v, err := p.GetCertificate(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	}
+	return map[string]interface{}{"provider": "azure"}, nil
+}
+
 func (p *AzureProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {
 	// Validate URL host — only allow Azure management endpoints
 	if !strings.HasPrefix(reqURL, "https://management.azure.com") &&

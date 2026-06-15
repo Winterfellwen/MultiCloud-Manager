@@ -65,6 +65,26 @@ func (p *AWSProvider) GetConsoleURL(resourceType types.ResourceType, id, region 
 		return fmt.Sprintf("https://us-east-1.console.aws.amazon.com/route53/v2/hostedzones#ListRecordSets/%s", id)
 	case types.ResourceTypeCertificate:
 		return fmt.Sprintf("https://%s.console.aws.amazon.com/acm/home?region=%s#/certificates/%s", region, region, id)
+	case types.ResourceTypeRedis:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/elasticache/home?region=%s#/redis/%s", region, region, id)
+	case types.ResourceTypeMQ:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/mq/home?region=%s#/brokers/%s", region, region, id)
+	case types.ResourceTypeCDN:
+		return fmt.Sprintf("https://console.aws.amazon.com/cloudfront/v3/home#/distributions/%s", id)
+	case types.ResourceTypeWAF:
+		return fmt.Sprintf("https://console.aws.amazon.com/wafv2/homev2/web-acl/details/%s?region=%s", id, region)
+	case types.ResourceTypeNATGateway:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/vpcconsole/home?region=%s#NatGatewayDetails:natGatewayId=%s", region, region, id)
+	case types.ResourceTypeImage:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/ec2/home?region=%s#ImageDetails:imageId=%s", region, region, id)
+	case types.ResourceTypeAPIGateway:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/apigateway/home?region=%s#/restapis/%s", region, region, id)
+	case types.ResourceTypeLogService:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logsV2:log-groups/log-group/%s", region, region, url.QueryEscape(id))
+	case types.ResourceTypeSecurity:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/vpcconsole/home?region=%s#SecurityGroup:groupId=%s", region, region, id)
+	case types.ResourceTypeRegistry:
+		return fmt.Sprintf("https://%s.console.aws.amazon.com/ecr/home?region=%s#/repositories/%s", region, region, id)
 	default:
 		return fmt.Sprintf("https://%s.console.aws.amazon.com", region)
 	}
@@ -1648,6 +1668,124 @@ func (p *AWSProvider) GetCertificate(ctx context.Context, certID string) (*types
 		},
 		Tags: map[string]string{},
 	}, nil
+}
+
+// —— 新增：新资源类型 List 方法 ——
+func (p *AWSProvider) ListRedis(ctx context.Context, opts types.ListOptions) ([]types.Redis, error) {
+	return []types.Redis{}, nil
+}
+
+func (p *AWSProvider) ListMQ(ctx context.Context, opts types.ListOptions) ([]types.MQ, error) {
+	return []types.MQ{}, nil
+}
+
+func (p *AWSProvider) ListCDN(ctx context.Context, opts types.ListOptions) ([]types.CDN, error) {
+	return []types.CDN{}, nil
+}
+
+func (p *AWSProvider) ListWAF(ctx context.Context, opts types.ListOptions) ([]types.WAF, error) {
+	return []types.WAF{}, nil
+}
+
+func (p *AWSProvider) ListNATGateways(ctx context.Context, opts types.ListOptions) ([]types.NATGateway, error) {
+	return []types.NATGateway{}, nil
+}
+
+func (p *AWSProvider) ListImages(ctx context.Context, opts types.ListOptions) ([]types.Image, error) {
+	return []types.Image{}, nil
+}
+
+func (p *AWSProvider) ListAPIGateways(ctx context.Context, opts types.ListOptions) ([]types.APIGateway, error) {
+	return []types.APIGateway{}, nil
+}
+
+func (p *AWSProvider) ListLogServices(ctx context.Context, opts types.ListOptions) ([]types.LogService, error) {
+	return []types.LogService{}, nil
+}
+
+func (p *AWSProvider) ListSecurityGroups(ctx context.Context, opts types.ListOptions) ([]types.SecurityGroup, error) {
+	return []types.SecurityGroup{}, nil
+}
+
+func (p *AWSProvider) ListRegistries(ctx context.Context, opts types.ListOptions) ([]types.Registry, error) {
+	return []types.Registry{}, nil
+}
+
+// —— 新增：GetResourceDetail ——
+func (p *AWSProvider) GetResourceDetail(ctx context.Context, resourceType types.ResourceType, id, region string) (map[string]interface{}, error) {
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		if inst, err := p.GetInstance(ctx, id); err == nil && inst != nil {
+			raw, _ := json.Marshal(inst)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeVolume:
+		if v, err := p.GetVolume(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeNetwork:
+		if v, err := p.GetNetwork(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDatabase:
+		if v, err := p.GetDatabase(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeLoadBalancer:
+		if v, err := p.GetLoadBalancer(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeBucket:
+		if v, err := p.GetBucket(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeCluster:
+		if v, err := p.GetCluster(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeFunction:
+		if v, err := p.GetFunction(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDNSZone:
+		if v, err := p.GetDNSZone(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeCertificate:
+		if v, err := p.GetCertificate(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	}
+	return map[string]interface{}{"provider": p.GetType()}, nil
 }
 
 // --- Raw Request ---

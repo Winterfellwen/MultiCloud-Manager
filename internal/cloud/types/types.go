@@ -46,6 +46,17 @@ const (
 	ResourceTypeFunction     ResourceType = "function"
 	ResourceTypeDNSZone      ResourceType = "dns_zone"
 	ResourceTypeCertificate  ResourceType = "certificate"
+	// —— 新增资源类型 ——
+	ResourceTypeRedis      ResourceType = "redis"
+	ResourceTypeMQ         ResourceType = "mq"
+	ResourceTypeCDN        ResourceType = "cdn"
+	ResourceTypeWAF        ResourceType = "waf"
+	ResourceTypeNATGateway ResourceType = "nat_gateway"
+	ResourceTypeImage      ResourceType = "image"
+	ResourceTypeAPIGateway ResourceType = "api_gateway"
+	ResourceTypeLogService ResourceType = "log_service"
+	ResourceTypeSecurity   ResourceType = "security_group"
+	ResourceTypeRegistry   ResourceType = "registry"
 )
 
 // ResourceTypeMeta describes display metadata for each resource type.
@@ -68,6 +79,17 @@ var ResourceTypeMetas = map[ResourceType]ResourceTypeMeta{
 	ResourceTypeFunction:     {Label: "Function", Icon: "fn", Color: "#ec4899", ConsolePath: ""},
 	ResourceTypeDNSZone:      {Label: "DNS", Icon: "dns", Color: "#14b8a6", ConsolePath: ""},
 	ResourceTypeCertificate:  {Label: "Certificate", Icon: "cert", Color: "#84cc16", ConsolePath: ""},
+	// —— 新增 ——
+	ResourceTypeRedis:      {Label: "Redis", Icon: "redis", Color: "#dc382d", ConsolePath: ""},
+	ResourceTypeMQ:         {Label: "Message Queue", Icon: "mq", Color: "#7c3aed", ConsolePath: ""},
+	ResourceTypeCDN:        {Label: "CDN", Icon: "cdn", Color: "#0891b2", ConsolePath: ""},
+	ResourceTypeWAF:        {Label: "WAF", Icon: "waf", Color: "#be185d", ConsolePath: ""},
+	ResourceTypeNATGateway: {Label: "NAT Gateway", Icon: "nat", Color: "#0d9488", ConsolePath: ""},
+	ResourceTypeImage:      {Label: "Image", Icon: "image", Color: "#a16207", ConsolePath: ""},
+	ResourceTypeAPIGateway: {Label: "API Gateway", Icon: "api", Color: "#4f46e5", ConsolePath: ""},
+	ResourceTypeLogService: {Label: "Log Service", Icon: "log", Color: "#64748b", ConsolePath: ""},
+	ResourceTypeSecurity:   {Label: "Security Group", Icon: "sg", Color: "#059669", ConsolePath: ""},
+	ResourceTypeRegistry:   {Label: "Container Registry", Icon: "registry", Color: "#d97706", ConsolePath: ""},
 }
 
 type ListOptions struct {
@@ -218,6 +240,128 @@ type GenericResource struct {
 	Tags         map[string]string      `json:"tags"`
 }
 
+// —— 新增资源类型的结构体 ——
+type Redis struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	CloudType   string                 `json:"cloud_type"`
+	Region      string                 `json:"region"`
+	Status      string                 `json:"status"`
+	Engine      string                 `json:"engine,omitempty"`
+	EngineVer   string                 `json:"engine_version,omitempty"`
+	InstanceCls string                 `json:"instance_class,omitempty"`
+	Nodes       int                    `json:"nodes,omitempty"`
+	Endpoint    string                 `json:"endpoint,omitempty"`
+	Spec        map[string]interface{} `json:"spec"`
+	Tags        map[string]string      `json:"tags"`
+}
+
+type MQ struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	MQType    string                 `json:"mq_type,omitempty"`
+	Queues    int                    `json:"queues,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type CDN struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	Domain    string                 `json:"domain,omitempty"`
+	Origin    string                 `json:"origin,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type WAF struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	Rules     int                    `json:"rules,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type NATGateway struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	NATType   string                 `json:"nat_type,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type Image struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	OS        string                 `json:"os,omitempty"`
+	SizeGB    int                    `json:"size_gb,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type APIGateway struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	APIs      int                    `json:"apis,omitempty"`
+	Endpoint  string                 `json:"endpoint,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type LogService struct {
+	ID         string                 `json:"id"`
+	Name       string                 `json:"name"`
+	CloudType  string                 `json:"cloud_type"`
+	Region     string                 `json:"region"`
+	Status     string                 `json:"status"`
+	LogType    string                 `json:"log_type,omitempty"`
+	Retention  int                    `json:"retention_days,omitempty"`
+	Spec       map[string]interface{} `json:"spec"`
+	Tags       map[string]string      `json:"tags"`
+}
+
+type SecurityGroup struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	Rules     int                    `json:"rules,omitempty"`
+	VPCID     string                 `json:"vpc_id,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
+type Registry struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	CloudType string                 `json:"cloud_type"`
+	Region    string                 `json:"region"`
+	Status    string                 `json:"status"`
+	Images    int                    `json:"images,omitempty"`
+	RepoURL   string                 `json:"repo_url,omitempty"`
+	Spec      map[string]interface{} `json:"spec"`
+	Tags      map[string]string      `json:"tags"`
+}
+
 type Provider interface {
 	GetType() string
 	GetConsoleURL(resourceType ResourceType, id, region string) string
@@ -231,6 +375,18 @@ type Provider interface {
 	ListFunctions(ctx context.Context, opts ListOptions) ([]Function, error)
 	ListDNSZones(ctx context.Context, opts ListOptions) ([]DNSZone, error)
 	ListCertificates(ctx context.Context, opts ListOptions) ([]Certificate, error)
+	// —— 新增 List 接口 ——
+	ListRedis(ctx context.Context, opts ListOptions) ([]Redis, error)
+	ListMQ(ctx context.Context, opts ListOptions) ([]MQ, error)
+	ListCDN(ctx context.Context, opts ListOptions) ([]CDN, error)
+	ListWAF(ctx context.Context, opts ListOptions) ([]WAF, error)
+	ListNATGateways(ctx context.Context, opts ListOptions) ([]NATGateway, error)
+	ListImages(ctx context.Context, opts ListOptions) ([]Image, error)
+	ListAPIGateways(ctx context.Context, opts ListOptions) ([]APIGateway, error)
+	ListLogServices(ctx context.Context, opts ListOptions) ([]LogService, error)
+	ListSecurityGroups(ctx context.Context, opts ListOptions) ([]SecurityGroup, error)
+	ListRegistries(ctx context.Context, opts ListOptions) ([]Registry, error)
+	// —— 详情接口 ——
 	GetInstance(ctx context.Context, instanceID string) (*Instance, error)
 	GetVolume(ctx context.Context, volumeID string) (*Volume, error)
 	GetNetwork(ctx context.Context, networkID string) (*Network, error)
@@ -241,6 +397,7 @@ type Provider interface {
 	GetFunction(ctx context.Context, functionID string) (*Function, error)
 	GetDNSZone(ctx context.Context, zoneID string) (*DNSZone, error)
 	GetCertificate(ctx context.Context, certID string) (*Certificate, error)
+	GetResourceDetail(ctx context.Context, resourceType ResourceType, id, region string) (map[string]interface{}, error)
 	StartInstance(ctx context.Context, instanceID string) error
 	StopInstance(ctx context.Context, instanceID string) error
 	RestartInstance(ctx context.Context, instanceID string) error
@@ -258,6 +415,17 @@ var SupportedResourceTypes = []ResourceType{
 	ResourceTypeFunction,
 	ResourceTypeDNSZone,
 	ResourceTypeCertificate,
+	// —— 新增 ——
+	ResourceTypeRedis,
+	ResourceTypeMQ,
+	ResourceTypeCDN,
+	ResourceTypeWAF,
+	ResourceTypeNATGateway,
+	ResourceTypeImage,
+	ResourceTypeAPIGateway,
+	ResourceTypeLogService,
+	ResourceTypeSecurity,
+	ResourceTypeRegistry,
 }
 
 func IsSupportedResourceType(rt string) bool {

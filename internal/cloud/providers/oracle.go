@@ -1588,6 +1588,124 @@ func (p *OracleProvider) ociRequest(ctx context.Context, method, reqURL string, 
 	return respBody, nil
 }
 
+// —— 新增：新资源类型 List 方法 ——
+func (p *OracleProvider) ListRedis(ctx context.Context, opts types.ListOptions) ([]types.Redis, error) {
+	return []types.Redis{}, nil
+}
+
+func (p *OracleProvider) ListMQ(ctx context.Context, opts types.ListOptions) ([]types.MQ, error) {
+	return []types.MQ{}, nil
+}
+
+func (p *OracleProvider) ListCDN(ctx context.Context, opts types.ListOptions) ([]types.CDN, error) {
+	return []types.CDN{}, nil
+}
+
+func (p *OracleProvider) ListWAF(ctx context.Context, opts types.ListOptions) ([]types.WAF, error) {
+	return []types.WAF{}, nil
+}
+
+func (p *OracleProvider) ListNATGateways(ctx context.Context, opts types.ListOptions) ([]types.NATGateway, error) {
+	return []types.NATGateway{}, nil
+}
+
+func (p *OracleProvider) ListImages(ctx context.Context, opts types.ListOptions) ([]types.Image, error) {
+	return []types.Image{}, nil
+}
+
+func (p *OracleProvider) ListAPIGateways(ctx context.Context, opts types.ListOptions) ([]types.APIGateway, error) {
+	return []types.APIGateway{}, nil
+}
+
+func (p *OracleProvider) ListLogServices(ctx context.Context, opts types.ListOptions) ([]types.LogService, error) {
+	return []types.LogService{}, nil
+}
+
+func (p *OracleProvider) ListSecurityGroups(ctx context.Context, opts types.ListOptions) ([]types.SecurityGroup, error) {
+	return []types.SecurityGroup{}, nil
+}
+
+func (p *OracleProvider) ListRegistries(ctx context.Context, opts types.ListOptions) ([]types.Registry, error) {
+	return []types.Registry{}, nil
+}
+
+// —— 新增：GetResourceDetail ——
+func (p *OracleProvider) GetResourceDetail(ctx context.Context, resourceType types.ResourceType, id, region string) (map[string]interface{}, error) {
+	switch resourceType {
+	case types.ResourceTypeInstance:
+		if v, err := p.GetInstance(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeVolume:
+		if v, err := p.GetVolume(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeNetwork:
+		if v, err := p.GetNetwork(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDatabase:
+		if v, err := p.GetDatabase(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeLoadBalancer:
+		if v, err := p.GetLoadBalancer(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeBucket:
+		if v, err := p.GetBucket(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeCluster:
+		if v, err := p.GetCluster(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeFunction:
+		if v, err := p.GetFunction(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeDNSZone:
+		if v, err := p.GetDNSZone(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	case types.ResourceTypeCertificate:
+		if v, err := p.GetCertificate(ctx, id); err == nil && v != nil {
+			raw, _ := json.Marshal(v)
+			var m map[string]interface{}
+			json.Unmarshal(raw, &m)
+			return m, nil
+		}
+	}
+	return map[string]interface{}{"provider": "oracle"}, nil
+}
+
 func (p *OracleProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {
 	if p.privateKey == nil {
 		return nil, fmt.Errorf("oracle: private key not loaded")

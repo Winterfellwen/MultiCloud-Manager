@@ -200,6 +200,17 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 		{"function", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListFunctions(ctx, opts)) }},
 		{"dns_zone", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListDNSZones(ctx, opts)) }},
 		{"certificate", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListCertificates(ctx, opts)) }},
+		// —— 新增资源类型 ——
+		{"redis", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListRedis(ctx, opts)) }},
+		{"mq", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListMQ(ctx, opts)) }},
+		{"cdn", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListCDN(ctx, opts)) }},
+		{"waf", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListWAF(ctx, opts)) }},
+		{"nat_gateway", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListNATGateways(ctx, opts)) }},
+		{"image", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListImages(ctx, opts)) }},
+		{"api_gateway", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListAPIGateways(ctx, opts)) }},
+		{"log_service", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListLogServices(ctx, opts)) }},
+		{"security_group", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListSecurityGroups(ctx, opts)) }},
+		{"registry", func() ([]map[string]interface{}, error) { return s.listToMaps(prov.ListRegistries(ctx, opts)) }},
 	}
 
 	for _, j := range jobs {
@@ -231,6 +242,26 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 					resources, err = s.listToMaps(prov.ListDNSZones(ctx, regionalOpts))
 				case "certificate":
 					resources, err = s.listToMaps(prov.ListCertificates(ctx, regionalOpts))
+				case "redis":
+					resources, err = s.listToMaps(prov.ListRedis(ctx, regionalOpts))
+				case "mq":
+					resources, err = s.listToMaps(prov.ListMQ(ctx, regionalOpts))
+				case "cdn":
+					resources, err = s.listToMaps(prov.ListCDN(ctx, regionalOpts))
+				case "waf":
+					resources, err = s.listToMaps(prov.ListWAF(ctx, regionalOpts))
+				case "nat_gateway":
+					resources, err = s.listToMaps(prov.ListNATGateways(ctx, regionalOpts))
+				case "image":
+					resources, err = s.listToMaps(prov.ListImages(ctx, regionalOpts))
+				case "api_gateway":
+					resources, err = s.listToMaps(prov.ListAPIGateways(ctx, regionalOpts))
+				case "log_service":
+					resources, err = s.listToMaps(prov.ListLogServices(ctx, regionalOpts))
+				case "security_group":
+					resources, err = s.listToMaps(prov.ListSecurityGroups(ctx, regionalOpts))
+				case "registry":
+					resources, err = s.listToMaps(prov.ListRegistries(ctx, regionalOpts))
 				}
 				if err != nil {
 					log.Printf("syncer: list %s for %s (%s) in %s: %v", j.name, cloudType, accountID, region, err)
@@ -573,4 +604,94 @@ func NewProvider(cloudType string, creds map[string]string) types.Provider {
 	default:
 		return nil
 	}
+}
+
+// GetResourceDetail returns live, detailed information about a resource by delegating
+// to the provider's GetResourceDetail method, combined with cached information.
+func (s *Syncer) GetResourceDetail(ctx context.Context, resourceID string) (map[string]interface{}, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("no database")
+	}
+
+	var accountID, cloudType, credJSON, cloudResID, resourceType, region, name, status, specJSON, tagsJSON string
+	var vaultPath string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT rc.account_id, rc.cloud_resource_id, rc.resource_type, rc.cloud_region, rc.name, rc.status,
+		       rc.spec, rc.tags, ca.cloud_type, ca.credentials, COALESCE(ca.vault_path, '')
+		FROM resources_cache rc
+		JOIN cloud_accounts ca ON rc.account_id = ca.id
+		WHERE rc.id = $1
+	`, resourceID).Scan(&accountID, &cloudResID, &resourceType, &region, &name, &status, &specJSON, &tagsJSON, &cloudType, &credJSON, &vaultPath)
+	if err != nil {
+		return nil, fmt.Errorf("resource lookup: %w", err)
+	}
+
+	result := map[string]interface{}{
+		"id":             resourceID,
+		"cloud_resource_id": cloudResID,
+		"resource_type":  resourceType,
+		"cloud_type":     cloudType,
+		"region":         region,
+		"name":           name,
+		"status":         status,
+		"account_id":     accountID,
+	}
+
+	if specJSON != "" {
+		var spec map[string]interface{}
+		if json.Unmarshal([]byte(specJSON), &spec) == nil && spec != nil {
+			result["spec"] = spec
+		}
+	}
+	if tagsJSON != "" {
+		var tags map[string]interface{}
+		if json.Unmarshal([]byte(tagsJSON), &tags) == nil && tags != nil && len(tags) > 0 {
+			result["tags"] = tags
+		}
+	}
+
+	// Prefer vault credentials over plaintext
+	if vaultPath != "" && s.vault != nil {
+		if secretData, err := s.vault.GetSecret(vaultPath); err == nil {
+			if dataBytes, err := json.Marshal(secretData); err == nil {
+				credJSON = string(dataBytes)
+			}
+		}
+	}
+
+	var creds map[string]string
+	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+		return result, nil // fallback: return only cached data
+	}
+
+	prov := NewProvider(cloudType, creds)
+	if prov == nil {
+		return result, nil
+	}
+	consoleURL := prov.GetConsoleURL(types.ResourceType(resourceType), cloudResID, region)
+	if consoleURL != "" {
+		result["console_url"] = consoleURL
+	}
+
+	live, err := prov.GetResourceDetail(ctx, types.ResourceType(resourceType), cloudResID, region)
+	if err == nil && live != nil {
+		for k, v := range live {
+			if _, exists := result[k]; !exists {
+				result[k] = v
+			} else {
+				// live takes precedence for known "live" fields
+				if k == "spec" || k == "live" {
+					result[k] = v
+				}
+			}
+		}
+		result["live_fetched"] = true
+	} else {
+		result["live_fetched"] = false
+		if err != nil {
+			result["live_error"] = err.Error()
+		}
+	}
+
+	return result, nil
 }

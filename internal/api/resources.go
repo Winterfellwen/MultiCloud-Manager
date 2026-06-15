@@ -3,7 +3,9 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"multicloud/internal/cloud"
@@ -264,4 +266,17 @@ func (h *ResourcesHandler) SyncLogs(c *gin.Context) {
 		logs = []map[string]interface{}{}
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
+}
+
+// Detail returns detailed, live information about a single resource, combining
+// cached fields with provider-fetched data.
+func (h *ResourcesHandler) Detail(c *gin.Context) {
+	id := c.Param("id")
+	ctx := c.Request.Context()
+	detail, err := h.syncer.GetResourceDetail(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": detail})
 }

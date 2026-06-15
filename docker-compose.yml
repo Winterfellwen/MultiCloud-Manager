@@ -54,6 +54,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       DATABASE_URL: postgres://${POSTGRES_USER:-multicloud}:${POSTGRES_PASSWORD:-multicloud_dev}@postgres:5432/${POSTGRES_DB:-multicloud}?sslmode=disable
       REDIS_URL: redis://default:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      TERMINAL_ENABLED: ${TERMINAL_ENABLED:-false}
     ports:
       - "8099:8099"
     depends_on:
