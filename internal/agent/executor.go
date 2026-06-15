@@ -134,7 +134,7 @@ func (e *Executor) instanceAction(ctx context.Context, args map[string]interface
 		return "", fmt.Errorf("resource_id is required")
 	}
 
-	prov, cloudResID, err := e.syncer.GetProviderForResource(ctx, resourceID)
+	prov, cloudResID, _, err := e.syncer.GetProviderForResource(ctx, resourceID)
 	if err != nil {
 		return "", fmt.Errorf("resource lookup failed: %w", err)
 	}

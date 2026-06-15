@@ -87,10 +87,19 @@ func (h *ResourcesHandler) Action(c *gin.Context) {
 	action := c.Param("action")
 	ctx := c.Request.Context()
 
-	prov, cloudResID, err := h.syncer.GetProviderForResource(ctx, id)
+	prov, cloudResID, resourceType, err := h.syncer.GetProviderForResource(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Validate action is supported for resource type
+	switch action {
+	case "start", "stop", "restart":
+		if !isComputeResourceType(resourceType) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("action '%s' is not supported for resource type '%s'", action, resourceType)})
+			return
+		}
 	}
 
 	var opErr error
@@ -114,12 +123,37 @@ func (h *ResourcesHandler) Action(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// isComputeResourceType checks if the resource type supports lifecycle actions
+func isComputeResourceType(resourceType string) bool {
+	computeTypes := []string{"vm", "virtual_machine", "instance", "compute", "ecs", "ec2", "azure_vm", "tvm"}
+	resourceTypeLower := strings.ToLower(resourceType)
+	for _, t := range computeTypes {
+		if strings.Contains(resourceTypeLower, t) {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *ResourcesHandler) Stats(c *gin.Context) {
+	ctx := c.Request.Context()
 	var resourceCount, accountCount, terraformCount, teamCount int
-	h.db.QueryRow("SELECT COUNT(*) FROM resources_cache").Scan(&resourceCount)
-	h.db.QueryRow("SELECT COUNT(*) FROM cloud_accounts").Scan(&accountCount)
-	h.db.QueryRow("SELECT COUNT(*) FROM terraform_templates").Scan(&terraformCount)
-	h.db.QueryRow("SELECT COUNT(*) FROM team_members").Scan(&teamCount)
+	if err := h.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM resources_cache").Scan(&resourceCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM cloud_accounts").Scan(&accountCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM terraform_templates").Scan(&terraformCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM team_members").Scan(&teamCount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"stats": map[string]interface{}{
@@ -137,6 +171,7 @@ type PasswordRequest struct {
 }
 
 func (h *ResourcesHandler) ChangePassword(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req PasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -150,9 +185,12 @@ func (h *ResourcesHandler) ChangePassword(c *gin.Context) {
 	}
 
 	var passwordHash string
-	h.db.QueryRow("SELECT password_hash FROM users WHERE username = $1", username).Scan(&passwordHash)
-	if passwordHash == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+	if err := h.db.QueryRowContext(ctx, "SELECT password_hash FROM users WHERE username = $1", username).Scan(&passwordHash); err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -167,7 +205,7 @@ func (h *ResourcesHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	_, err = h.db.Exec("UPDATE users SET password_hash = $1 WHERE username = $2", string(hash), username)
+	_, err = h.db.ExecContext(ctx, "UPDATE users SET password_hash = $1 WHERE username = $2", string(hash), username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -218,6 +256,12 @@ func (h *ResourcesHandler) SyncLogs(c *gin.Context) {
 			"resource_count": resourceCount,
 			"created_at":     createdAt.Format(time.RFC3339),
 		})
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("SyncLogs: error iterating rows: %v", err)
+	}
+	if logs == nil {
+		logs = []map[string]interface{}{}
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
 }

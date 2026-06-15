@@ -515,21 +515,21 @@ func (s *Syncer) SyncAccountByID(ctx context.Context, accountID string) error {
 	return err
 }
 
-func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) (types.Provider, string, error) {
+func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) (types.Provider, string, string, error) {
 	if s.db == nil {
-		return nil, "", fmt.Errorf("no database")
+		return nil, "", "", fmt.Errorf("no database")
 	}
 
-	var accountID, cloudType, credJSON, cloudResID string
+	var accountID, cloudType, credJSON, cloudResID, resourceType string
 	var vaultPath string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials, COALESCE(ca.vault_path, '')
+		SELECT rc.account_id, rc.cloud_resource_id, ca.cloud_type, ca.credentials, COALESCE(ca.vault_path, ''), rc.resource_type
 		FROM resources_cache rc
 		JOIN cloud_accounts ca ON rc.account_id = ca.id
 		WHERE rc.id = $1
-	`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON, &vaultPath)
+	`, resourceID).Scan(&accountID, &cloudResID, &cloudType, &credJSON, &vaultPath, &resourceType)
 	if err != nil {
-		return nil, "", fmt.Errorf("resource lookup: %w", err)
+		return nil, "", "", fmt.Errorf("resource lookup: %w", err)
 	}
 
 	// Prefer vault credentials over plaintext
@@ -545,15 +545,15 @@ func (s *Syncer) GetProviderForResource(ctx context.Context, resourceID string) 
 
 	var creds map[string]string
 	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
-		return nil, "", fmt.Errorf("parse credentials: %w", err)
+		return nil, "", "", fmt.Errorf("parse credentials: %w", err)
 	}
 
 	prov := NewProvider(cloudType, creds)
 	if prov == nil {
-		return nil, "", fmt.Errorf("unsupported cloud type: %s", cloudType)
+		return nil, "", "", fmt.Errorf("unsupported cloud type: %s", cloudType)
 	}
 
-	return prov, cloudResID, nil
+	return prov, cloudResID, resourceType, nil
 }
 
 func NewProvider(cloudType string, creds map[string]string) types.Provider {
