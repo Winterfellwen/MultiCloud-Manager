@@ -19,6 +19,7 @@ backend/server
 backend/server.exe
 app.exe
 server.exe
+multicloud
 
 # Database
 *.db

@@ -38,6 +38,10 @@ func (p *TencentProvider) GetType() string { return "tencent" }
 func (p *TencentProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
 	switch resourceType {
 	case types.ResourceTypeInstance:
+		// Lighthouse instances have IDs starting with "lhins-"
+		if strings.HasPrefix(id, "lhins-") {
+			return fmt.Sprintf("https://console.cloud.tencent.com/lighthouse/instance/index")
+		}
 		return fmt.Sprintf("https://console.cloud.tencent.com/cvm/instance/detail?Id=%s", id)
 	case types.ResourceTypeDatabase:
 		return fmt.Sprintf("https://console.cloud.tencent.com/cdb/instance/%s/detail", id)
@@ -59,12 +63,36 @@ func (p *TencentProvider) GetConsoleURL(resourceType types.ResourceType, id, reg
 }
 
 func (p *TencentProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
-	action := "DescribeInstances"
-	service := "cvm"
 	region := opts.Region
 	if region == "" {
 		region = "ap-guangzhou"
 	}
+
+	var allInstances []types.Instance
+
+	// 1. Query standard CVM instances
+	cvmInstances, err := p.listCVMInstances(ctx, region)
+	if err != nil {
+		log.Printf("Tencent CVM: request failed in %s: %v", region, err)
+	} else {
+		allInstances = append(allInstances, cvmInstances...)
+	}
+
+	// 2. Query Lighthouse instances (轻量应用服务器)
+	lhInstances, err := p.listLighthouseInstances(ctx, region)
+	if err != nil {
+		log.Printf("Tencent Lighthouse: request failed in %s: %v", region, err)
+	} else {
+		allInstances = append(allInstances, lhInstances...)
+	}
+
+	log.Printf("Tencent CVM+Lighthouse: listed %d instances in %s", len(allInstances), region)
+	return allInstances, nil
+}
+
+func (p *TencentProvider) listCVMInstances(ctx context.Context, region string) ([]types.Instance, error) {
+	action := "DescribeInstances"
+	service := "cvm"
 	version := "2017-03-12"
 
 	payload := map[string]interface{}{
@@ -82,14 +110,17 @@ func (p *TencentProvider) ListInstances(ctx context.Context, opts types.ListOpti
 		Response struct {
 			TotalCount  int `json:"TotalCount"`
 			InstanceSet []struct {
-				InstanceId   string `json:"InstanceId"`
-				InstanceName string `json:"InstanceName"`
+				InstanceId    string `json:"InstanceId"`
+				InstanceName  string `json:"InstanceName"`
 				InstanceState string `json:"InstanceState"`
-				Region       string `json:"Region"`
-				CPU          int    `json:"CPU"`
-				Memory       int    `json:"Memory"`
-				InstanceType string `json:"InstanceType"`
-				CreatedTime  string `json:"CreatedTime"`
+				Region        string `json:"Region"`
+				CPU           int    `json:"CPU"`
+				Memory        int    `json:"Memory"`
+				InstanceType  string `json:"InstanceType"`
+				CreatedTime   string `json:"CreatedTime"`
+				PublicIpAddresses []string `json:"PublicIpAddresses"`
+				PrivateIpAddresses []string `json:"PrivateIpAddresses"`
+				OsName        string `json:"OsName"`
 			} `json:"InstanceSet"`
 		} `json:"Response"`
 	}
@@ -111,6 +142,21 @@ func (p *TencentProvider) ListInstances(ctx context.Context, opts types.ListOpti
 			status = "stopped"
 		}
 
+		spec := map[string]interface{}{
+			"cpu":    inst.CPU,
+			"memory": inst.Memory,
+		}
+		if len(inst.PublicIpAddresses) > 0 {
+			spec["public_ip"] = inst.PublicIpAddresses[0]
+		}
+		if len(inst.PrivateIpAddresses) > 0 {
+			spec["private_ip"] = inst.PrivateIpAddresses[0]
+		}
+		if inst.OsName != "" {
+			spec["os_name"] = inst.OsName
+			spec["os_type"] = detectOSType(inst.OsName)
+		}
+
 		instances = append(instances, types.Instance{
 			ID:           inst.InstanceId,
 			Name:         inst.InstanceName,
@@ -118,14 +164,111 @@ func (p *TencentProvider) ListInstances(ctx context.Context, opts types.ListOpti
 			Region:       inst.Region,
 			Status:       status,
 			InstanceType: inst.InstanceType,
-			Spec: map[string]interface{}{
-				"cpu":    inst.CPU,
-				"memory": inst.Memory,
-			},
+			Spec:         spec,
 		})
 	}
 
 	return instances, nil
+}
+
+func (p *TencentProvider) listLighthouseInstances(ctx context.Context, region string) ([]types.Instance, error) {
+	action := "DescribeInstances"
+	service := "lighthouse"
+	version := "2020-03-24"
+
+	payload := map[string]interface{}{
+		"Offset": 0,
+		"Limit":  100,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	resp, err := p.tencentRequest(ctx, service, action, version, region, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Response struct {
+			TotalCount     int `json:"TotalCount"`
+			InstanceSet    []struct {
+				InstanceId    string   `json:"InstanceId"`
+				InstanceName  string   `json:"InstanceName"`
+				InstanceState string   `json:"InstanceState"`
+				Zone          string   `json:"Zone"`
+				CPU           int      `json:"CPU"`
+				Memory        int      `json:"Memory"`
+				BundleId      string   `json:"BundleId"`
+				PublicAddresses  []string `json:"PublicAddresses"`
+				PrivateAddresses []string `json:"PrivateAddresses"`
+				OsName        string   `json:"OsName"`
+			} `json:"InstanceSet"`
+		} `json:"Response"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	var instances []types.Instance
+	for _, inst := range result.Response.InstanceSet {
+		status := "running"
+		switch inst.InstanceState {
+		case "RUNNING":
+			status = "running"
+		case "STOPPED":
+			status = "stopped"
+		default:
+			status = "stopped"
+		}
+
+		spec := map[string]interface{}{
+			"cpu":         inst.CPU,
+			"memory":      inst.Memory,
+			"instance_type": inst.BundleId,
+		}
+		if len(inst.PublicAddresses) > 0 {
+			spec["public_ip"] = inst.PublicAddresses[0]
+		}
+		if len(inst.PrivateAddresses) > 0 {
+			spec["private_ip"] = inst.PrivateAddresses[0]
+		}
+		if inst.OsName != "" {
+			spec["os_name"] = inst.OsName
+			spec["os_type"] = detectOSType(inst.OsName)
+		}
+
+		instances = append(instances, types.Instance{
+			ID:           inst.InstanceId,
+			Name:         inst.InstanceName,
+			CloudType:    "tencent",
+			Region:       inst.Zone,
+			Status:       status,
+			InstanceType: inst.BundleId,
+			Spec:         spec,
+		})
+	}
+
+	return instances, nil
+}
+
+// detectOSType guesses OS type from OS name
+func detectOSType(osName string) string {
+	lower := strings.ToLower(osName)
+	if strings.Contains(lower, "windows") {
+		return "Windows"
+	}
+	if strings.Contains(lower, "centos") {
+		return "CentOS"
+	}
+	if strings.Contains(lower, "ubuntu") {
+		return "Ubuntu"
+	}
+	if strings.Contains(lower, "debian") {
+		return "Debian"
+	}
+	if strings.Contains(lower, "alpine") {
+		return "Alpine"
+	}
+	return "Linux"
 }
 
 func (p *TencentProvider) GetInstance(ctx context.Context, id string) (*types.Instance, error) {
@@ -1496,6 +1639,12 @@ func (p *TencentProvider) tencentRequest(ctx context.Context, service, action, v
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("tencent API %s error %d: %s", action, resp.StatusCode, string(respBody))
 	}
+	// Log response for debugging (truncate if too large)
+	bodyPreview := string(respBody)
+	if len(bodyPreview) > 500 {
+		bodyPreview = bodyPreview[:500] + "..."
+	}
+	log.Printf("tencent API %s response: %s", action, bodyPreview)
 	return respBody, nil
 }
 

@@ -664,6 +664,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .res-card-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: auto; }
 .res-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; min-height: auto; }
 .res-card-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); font-family: var(--font-mono); white-space: nowrap; min-height: auto; }
+.res-card-details { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; font-size: 11px; color: var(--text-secondary); }
+.res-card-detail { display: inline-flex; align-items: center; gap: 4px; }
+.res-card-detail .detail-icon { font-size: 10px; color: var(--text-muted); }
 .res-card-status { display: flex; align-items: center; gap: 4px; font-size: 11px; flex-shrink: 0; min-height: auto; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; min-height: auto; min-width: auto; }
 .status-dot.running, .status-dot.active { background: var(--success); min-height: auto; }
@@ -998,6 +1001,35 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 .cost-trend-bar { width: 100%; max-width: 24px; background: var(--primary); border-radius: 2px 2px 0 0; min-height: 1px; opacity: 0.7; }
 .cost-trend-bar:hover { opacity: 1; }
 .cost-trend-label { font-size: 9px; color: var(--text-muted); margin-top: 4px; white-space: nowrap; }
+.msg-stats-bar{display:flex;gap:12px;margin-bottom:16px}
+.msg-stat-card{flex:1;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;text-align:center}
+.msg-stat-card.critical{border-color:var(--danger)}
+.msg-stat-card.warning{border-color:#f59e0b}
+.msg-stat-card.info{border-color:var(--primary)}
+.msg-stat-value{display:block;font-size:24px;font-weight:700;color:var(--text)}
+.msg-stat-label{font-size:11px;color:var(--text-muted);text-transform:uppercase}
+.msg-filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.msg-filter-bar select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px}
+.msg-analysis-bar{display:flex;gap:8px;margin-bottom:12px}
+.msg-analysis-panel{background:var(--surface);border:1px solid var(--primary);border-radius:8px;padding:16px;margin-bottom:16px}
+.msg-analysis-content{font-size:13px;line-height:1.6;white-space:pre-wrap}
+.msg-list{flex:1;overflow-y:auto}
+.msg-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background .15s}
+.msg-item:hover{background:var(--surface-hover)}
+.msg-item.severity-critical{border-left:3px solid var(--danger)}
+.msg-item.severity-warning{border-left:3px solid #f59e0b}
+.msg-item.severity-info{border-left:3px solid var(--primary)}
+.msg-item.severity-ok{border-left:3px solid #10b981}
+.msg-cloud-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surface-hover);color:var(--text-muted)}
+.msg-severity-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
+.msg-severity-badge.severity-critical{background:rgba(239,68,68,.15);color:var(--danger)}
+.msg-severity-badge.severity-warning{background:rgba(245,158,11,.15);color:#f59e0b}
+.msg-severity-badge.severity-info{background:rgba(59,130,246,.15);color:var(--primary)}
+.msg-severity-badge.severity-ok{background:rgba(16,185,129,.15);color:#10b981}
+.msg-pagination{display:flex;gap:8px;justify-content:center;padding:12px 0}
+.msg-pagination button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px}
+.msg-pagination button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.msg-pagination button:disabled{opacity:.5;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -1016,6 +1048,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     <div class="nav-item" data-page="vault" role="button" aria-label="Credential Vault"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-vault"/></svg></span> <span>Vault</span></div>
     <div class="nav-item" data-page="cost" role="button" aria-label="Cost Management"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-dollar"/></svg></span> <span data-i18n="cost.nav">成本</span></div>
     <div class="nav-item" data-page="terraform" role="button" aria-label="Terraform Templates"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-terraform"/></svg></span> <span data-i18n="quick.terraform">Terraform</span></div>
+    <div class="nav-item" data-page="messages" role="button" aria-label="Message Center"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-bell"/></svg></span> <span data-i18n="nav.messages">消息中心</span><span class="badge" id="msgCenterBadge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-size:9px;min-width:16px;height:16px;border-radius:8px;padding:0 4px;">0</span></div>
     <div class="nav-item" data-page="profile" role="button" aria-label="Settings"><span class="nav-icon"><svg width="18" height="18"><use href="/static/icons.svg#icon-profile"/></svg></span> <span data-i18n="nav.profile_short">设置</span></div>
   </nav>
   <div class="sidebar-bottom">
@@ -1539,6 +1572,68 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
     <button class="upload-btn" onclick="openUploadModal()" data-i18n="terraform.upload">+ 上传模板</button>
   </div>
 
+  <!-- Messages -->
+  <div id="page-messages" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 data-i18n="page.messages">消息中心</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="sync-info" id="msgSyncInfo"></span>
+        <button class="upload-btn" style="width:auto;margin:0;padding:6px 12px" onclick="triggerEventSync()" id="msgSyncBtn">
+          <svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg> <span data-i18n="msg.sync">同步</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="msg-stats-bar">
+      <div class="msg-stat-card"><span class="msg-stat-value" id="msgTotal">0</span><span class="msg-stat-label" data-i18n="msg.total">总事件</span></div>
+      <div class="msg-stat-card critical"><span class="msg-stat-value" id="msgCritical">0</span><span class="msg-stat-label" data-i18n="msg.critical">严重</span></div>
+      <div class="msg-stat-card warning"><span class="msg-stat-value" id="msgWarning">0</span><span class="msg-stat-label" data-i18n="msg.warning">警告</span></div>
+      <div class="msg-stat-card info"><span class="msg-stat-value" id="msgInfo">0</span><span class="msg-stat-label" data-i18n="msg.info">信息</span></div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="msg-filter-bar">
+      <select id="msgFilterCloud" onchange="loadCloudEvents(1)">
+        <option value="" data-i18n="msg.all_clouds">全部平台</option>
+        <option value="render">Render</option>
+        <option value="tencent" data-i18n="msg.tencent">腾讯云</option>
+      </select>
+      <select id="msgFilterType" onchange="loadCloudEvents(1)">
+        <option value="" data-i18n="msg.all_types">全部类型</option>
+        <option value="deploy" data-i18n="msg.type_deploy">部署</option>
+        <option value="event" data-i18n="msg.type_event">事件</option>
+        <option value="audit" data-i18n="msg.type_audit">审计</option>
+      </select>
+      <select id="msgFilterSeverity" onchange="loadCloudEvents(1)">
+        <option value="" data-i18n="msg.all_severity">全部级别</option>
+        <option value="critical" data-i18n="msg.critical">严重</option>
+        <option value="warning" data-i18n="msg.warning">警告</option>
+        <option value="info" data-i18n="msg.info">信息</option>
+      </select>
+    </div>
+
+    <!-- AI Analysis buttons -->
+    <div class="msg-analysis-bar">
+      <button class="upload-btn" style="width:auto;margin:0;padding:6px 12px;border-color:var(--primary);color:var(--primary)" onclick="triggerAnalysis('anomaly_detection')" data-i18n="msg.anomaly">异常检测</button>
+      <button class="upload-btn" style="width:auto;margin:0;padding:6px 12px;border-color:var(--primary);color:var(--primary)" onclick="triggerAnalysis('trend')" data-i18n="msg.trend">趋势分析</button>
+      <button class="upload-btn" style="width:auto;margin:0;padding:6px 12px;border-color:var(--primary);color:var(--primary)" onclick="triggerAnalysis('suggestion')" data-i18n="msg.suggestion">智能建议</button>
+    </div>
+
+    <!-- Analysis panel -->
+    <div id="msgAnalysisPanel" class="msg-analysis-panel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong data-i18n="msg.ai_result">AI 分析结果</strong>
+        <button onclick="document.getElementById('msgAnalysisPanel').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px">&times;</button>
+      </div>
+      <div id="msgAnalysisContent" class="msg-analysis-content"></div>
+    </div>
+
+    <!-- Event list -->
+    <div class="msg-list" id="msgEventList"></div>
+    <div class="msg-pagination" id="msgPagination"></div>
+  </div>
+
   <!-- Profile -->
   <div id="page-profile" class="page">
     <div class="profile-header">
@@ -1624,6 +1719,7 @@ const pageTitles = {
   vault: 'Vault',
   cost: 'cost.title',
   terraform: 'page.terraform',
+  messages: 'page.messages',
   profile: 'page.profile'
 };
 
@@ -2707,6 +2803,7 @@ function showPage(page) {
   if (page === 'vault') loadVault();
   if (page === 'terraform') loadTerraform();
   if (page === 'cost') loadCostData();
+  if (page === 'messages') loadCloudEvents(1);
   applyRolePermissions();
 }
 
@@ -4043,6 +4140,7 @@ const RESOURCE_REGISTRY = {
       var tags = [];
       if (r.instance_type) tags.push(r.instance_type);
       if (spec.cpu && spec.memory) tags.push(spec.cpu + 'vCPU / ' + spec.memory + 'GB');
+      if (spec.engine) tags.push(spec.engine + (spec.engine_version ? ' ' + spec.engine_version : ''));
       if (spec.os_type) tags.push(spec.os_type);
       if (r.region) tags.push(r.region);
       return tags;
@@ -4051,10 +4149,11 @@ const RESOURCE_REGISTRY = {
       var details = [];
       if (spec.public_ip) details.push({icon: 'ip', text: spec.public_ip});
       if (spec.private_ip) details.push({icon: 'ip', text: spec.private_ip});
+      if (spec.url && !spec.public_ip && !spec.private_ip) details.push({icon: 'link', text: spec.url});
       if (spec.os_name) details.push({icon: 'os', text: spec.os_name});
       return details;
     },
-    actions: ['start', 'stop', 'console', 'ssh']
+    actions: ['console', 'ssh']
   },
   database: {
     label: 'Database',
@@ -4244,7 +4343,14 @@ function getCategoryLabel(cloudType, resource) {
 
   // Get platform-specific label override
   var platformLabels = PLATFORM_RESOURCE_LABELS[cloudType] || {};
-  return platformLabels[rt] || registry.label;
+  var label = platformLabels[rt] || registry.label;
+  // Render: distinguish PostgreSQL vs Redis by engine field
+  if (cloudType === 'render' && rt === 'database') {
+    var engine = resource.engine || (resource.spec && resource.spec.engine) || '';
+    if (engine.toLowerCase().includes('redis')) return 'Redis';
+    if (engine.toLowerCase().includes('postgres')) return 'PostgreSQL';
+  }
+  return label;
 }
 
 let azureViewMode = 'category'; // 'category' or 'resource_group'
@@ -4323,7 +4429,12 @@ function filterResources() {
 function buildResourceCard(r) {
   var s = r.status;
   var statusLabel = s === 'running' ? t('resource.status_running') : s === 'stopped' ? t('resource.status_stopped') : s === 'pending' ? 'Pending' : s === 'terminated' ? 'Terminated' : s;
+  // Build spec from r: API flattens spec fields into the resource object
   var spec = r.spec || {};
+  var specFields = ['cpu','memory','public_ip','private_ip','os_name','os_type','instance_type','engine','engine_version','storage_gb','volume_type','size_gb','network_type','cidr','lb_type','lb_vips','storage_class','cluster_type','k8s_version','runtime','handler','timeout','memory_size','url','dashboard_url','console_url','connection_string','disk_type','disk_size','zone','attached','description','create_time','is_default','type','vpc_id','record_count','domain','cert_begin_time','cert_end_time'];
+  specFields.forEach(function(f) {
+    if (r[f] !== undefined && spec[f] === undefined) spec[f] = r[f];
+  });
   var metaHtml = '';
   var extraHtml = '';
   var actionsHtml = '';
@@ -4352,11 +4463,7 @@ function buildResourceCard(r) {
     // Build actions from registry
     var actionList = registry.actions || [];
     actionList.forEach(function(action) {
-      if (action === 'start' && s === 'stopped') {
-        actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'start\')">' + t('resource.start') + '</button>';
-      } else if (action === 'stop' && s === 'running') {
-        actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'stop\')">' + t('resource.stop') + '</button>';
-      } else if (action === 'console') {
+      if (action === 'console') {
         if (r.console_url) {
           actionsHtml += '<button class="resource-action-btn" onclick="openConsole(\'' + escAttr(r.console_url) + '\')">Console</button>';
         } else if (spec.console_url) {
@@ -4377,13 +4484,6 @@ function buildResourceCard(r) {
     } else {
       metaHtml += '<span class="res-card-tag">' + escHtml(r.instance_type || r.type || r.cloud_type) + '</span>';
       if (r.region) metaHtml += '<span class="res-card-tag">' + escHtml(r.region) + '</span>';
-    }
-
-    // Basic actions fallback
-    if (s === 'running') {
-      actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'stop\')">' + t('resource.stop') + '</button>';
-    } else if (s === 'stopped') {
-      actionsHtml += '<button class="resource-action-btn" onclick="ctrlResource(\'' + escAttr(r.id) + '\',\'start\')">' + t('resource.start') + '</button>';
     }
   }
 
@@ -4414,10 +4514,12 @@ function openConsole(url) {
 }
 
 function openSSH(r) {
+  // API flattens spec fields into the resource object
   var spec = r.spec || {};
-  var ip = spec.public_ip || spec.private_ip;
+  var ip = r.public_ip || r.private_ip || spec.public_ip || spec.private_ip;
   if (!ip) { showToast('No IP address available for SSH'); return; }
-  var user = spec.os_type && spec.os_type.toLowerCase().includes('windows') ? 'Administrator' : 'root';
+  var osType = r.os_type || spec.os_type || '';
+  var user = osType && osType.toLowerCase().includes('windows') ? 'Administrator' : 'root';
   var cmd = 'ssh ' + user + '@' + ip;
   // Copy to clipboard
   navigator.clipboard.writeText(cmd).then(function() {
@@ -5318,6 +5420,8 @@ var __ = {
     'nav.resources_short': '资源',
     'nav.accounts_short': '账户',
     'nav.team_short': '用户管理',
+    'nav.messages': '消息中心',
+    'nav.messages_short': '消息',
     'nav.profile_short': '设置',
     'nav.theme': '切换主题',
     'nav.lang': 'English',
@@ -5327,6 +5431,7 @@ var __ = {
     'page.accounts': '云账户',
     'page.team': '用户管理',
     'page.team_users': '用户管理',
+    'page.messages': '消息中心',
     'page.terraform': 'Terraform 模板',
     'page.profile': '设置',
     'stat.resources': '云资源',
@@ -5504,6 +5609,38 @@ var __ = {
     'vault.no_accounts': '暂无云账户配置',
     'vault.no_secrets': '暂无存储的密钥',
     'vault.migrated': '已迁移 {n} 个账户到密钥库',
+    'msg.sync': '同步',
+    'msg.syncing': '同步中...',
+    'msg.last_sync': '最后同步:',
+    'msg.total': '总事件',
+    'msg.critical': '严重',
+    'msg.warning': '警告',
+    'msg.info': '信息',
+    'msg.ok': '正常',
+    'msg.all_clouds': '全部平台',
+    'msg.all_types': '全部类型',
+    'msg.all_severity': '全部级别',
+    'msg.tencent': '腾讯云',
+    'msg.alicloud': '阿里云',
+    'msg.type_deploy': '部署',
+    'msg.type_event': '事件',
+    'msg.type_audit': '审计',
+    'msg.type_log': '日志',
+    'msg.type_alert': '告警',
+    'msg.type_announcement': '公告',
+    'msg.anomaly': '异常检测',
+    'msg.trend': '趋势分析',
+    'msg.suggestion': '智能建议',
+    'msg.ai_result': 'AI 分析结果',
+    'msg.analyzing': '正在分析中...',
+    'msg.analysis_failed': '分析失败',
+    'msg.no_events': '暂无事件数据',
+    'msg.prev_page': '上一页',
+    'msg.next_page': '下一页',
+    'msg.just_now': '刚刚',
+    'msg.minutes_ago': '分钟前',
+    'msg.hours_ago': '小时前',
+    'msg.days_ago': '天前',
   },
   en: {
     'nav.dashboard': 'Dashboard',
@@ -5516,6 +5653,8 @@ var __ = {
     'nav.resources_short': 'Resources',
     'nav.accounts_short': 'Accounts',
     'nav.team_short': 'Users',
+    'nav.messages': 'Messages',
+    'nav.messages_short': 'Msgs',
     'nav.profile_short': 'Settings',
     'nav.theme': 'Toggle Theme',
     'nav.lang': '中文',
@@ -5525,6 +5664,7 @@ var __ = {
     'page.accounts': 'Cloud Accounts',
     'page.team': 'Users',
     'page.team_users': 'Users',
+    'page.messages': 'Messages',
     'page.terraform': 'Terraform Templates',
     'page.profile': 'Settings',
     'stat.resources': 'Resources',
@@ -5702,6 +5842,38 @@ var __ = {
     'vault.no_accounts': 'No cloud accounts configured',
     'vault.no_secrets': 'No secrets stored yet',
     'vault.migrated': 'Migrated {n} account(s) to vault',
+    'msg.sync': 'Sync',
+    'msg.syncing': 'Syncing...',
+    'msg.last_sync': 'Last sync:',
+    'msg.total': 'Total',
+    'msg.critical': 'Critical',
+    'msg.warning': 'Warning',
+    'msg.info': 'Info',
+    'msg.ok': 'OK',
+    'msg.all_clouds': 'All Platforms',
+    'msg.all_types': 'All Types',
+    'msg.all_severity': 'All Severity',
+    'msg.tencent': 'Tencent Cloud',
+    'msg.alicloud': 'Alibaba Cloud',
+    'msg.type_deploy': 'Deploy',
+    'msg.type_event': 'Event',
+    'msg.type_audit': 'Audit',
+    'msg.type_log': 'Log',
+    'msg.type_alert': 'Alert',
+    'msg.type_announcement': 'Announcement',
+    'msg.anomaly': 'Anomaly Detection',
+    'msg.trend': 'Trend Analysis',
+    'msg.suggestion': 'Suggestions',
+    'msg.ai_result': 'AI Analysis Result',
+    'msg.analyzing': 'Analyzing...',
+    'msg.analysis_failed': 'Analysis Failed',
+    'msg.no_events': 'No events data',
+    'msg.prev_page': 'Prev',
+    'msg.next_page': 'Next',
+    'msg.just_now': 'just now',
+    'msg.minutes_ago': 'm ago',
+    'msg.hours_ago': 'h ago',
+    'msg.days_ago': 'd ago',
   }
 };
 
@@ -6249,6 +6421,124 @@ makeResizable('chatSidebarResizer', '--chat-sidebar-width', { min: 200, max: 400
   if (!sidebar) return 280;
   return e.clientX - sidebar.getBoundingClientRect().left;
 } });
+
+/* ===== Message Center ===== */
+var msgCurrentPage = 1;
+
+function loadCloudEvents(page) {
+  page = page || 1;
+  msgCurrentPage = page;
+  var params = {
+    cloud_type: document.getElementById('msgFilterCloud').value,
+    event_type: document.getElementById('msgFilterType').value,
+    severity: document.getElementById('msgFilterSeverity').value,
+    page: page, page_size: 20
+  };
+  var qs = Object.keys(params).filter(function(k){return params[k]}).map(function(k){return k+'='+encodeURIComponent(params[k])}).join('&');
+  fetch('/api/events?'+qs, {headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(data) {
+    renderEventList(data.items || []);
+    renderEventPagination(data.total || 0, data.page || 1, data.page_size || 20);
+  });
+  updateEventStats();
+}
+
+function updateEventStats() {
+  fetch('/api/events/stats', {headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function(data) {
+    document.getElementById('msgTotal').textContent = data.total || 0;
+    document.getElementById('msgCritical').textContent = (data.by_severity && data.by_severity.critical) || 0;
+    document.getElementById('msgWarning').textContent = (data.by_severity && data.by_severity.warning) || 0;
+    document.getElementById('msgInfo').textContent = (data.by_severity && data.by_severity.info) || 0;
+    var critCount = (data.by_severity && data.by_severity.critical) || 0;
+    var badge = document.getElementById('msgCenterBadge');
+    if (critCount > 0) { badge.style.display = 'flex'; badge.textContent = critCount; }
+    else { badge.style.display = 'none'; }
+    if (data.last_sync_at) {
+      document.getElementById('msgSyncInfo').textContent = t('msg.last_sync') + ' ' + formatTimeAgo(data.last_sync_at);
+    }
+  });
+}
+
+function renderEventList(items) {
+  var list = document.getElementById('msgEventList');
+  if (!items.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">' + t('msg.no_events') + '</div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item) {
+    var sevClass = item.severity || 'info';
+    var sevLabel = ({critical:t('msg.critical'),warning:t('msg.warning'),info:t('msg.info'),ok:t('msg.ok')})[sevClass] || sevClass;
+    var typeLabel = ({deploy:t('msg.type_deploy'),event:t('msg.type_event'),audit:t('msg.type_audit'),log:t('msg.type_log'),alert:t('msg.type_alert'),announcement:t('msg.type_announcement')})[item.event_type] || item.event_type;
+    var cloudLabel = ({render:'Render',tencent:t('msg.tencent'),aws:'AWS',azure:'Azure',oracle:'Oracle',alicloud:t('msg.alicloud')})[item.cloud_type] || item.cloud_type;
+    html += '<div class="msg-item severity-'+sevClass+'">' +
+      '<span class="msg-cloud-badge">'+escHtml(cloudLabel)+'</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:500">'+escHtml(item.title)+'</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' +
+          (item.resource_name ? escHtml(item.resource_name) + ' · ' : '') +
+          (item.region ? escHtml(item.region) + ' · ' : '') +
+          typeLabel + ' · ' + formatTimeAgo(item.event_at) +
+        '</div>' +
+      '</div>' +
+      '<span class="msg-severity-badge severity-'+sevClass+'">'+sevLabel+'</span>' +
+    '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function renderEventPagination(total, page, pageSize) {
+  var pages = Math.ceil(total / pageSize);
+  var el = document.getElementById('msgPagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  var html = '';
+  html += '<button '+(page<=1?'disabled':'')+' onclick="loadCloudEvents('+(page-1)+')">' + t('msg.prev_page') + '</button>';
+  for (var i = 1; i <= Math.min(pages, 10); i++) {
+    html += '<button class="'+(i===page?'active':'')+'" onclick="loadCloudEvents('+i+')">'+i+'</button>';
+  }
+  html += '<button '+(page>=pages?'disabled':'')+' onclick="loadCloudEvents('+(page+1)+')">' + t('msg.next_page') + '</button>';
+  el.innerHTML = html;
+}
+
+function triggerEventSync() {
+  var btn = document.getElementById('msgSyncBtn');
+  btn.disabled = true;
+  btn.textContent = t('msg.syncing');
+  fetch('/api/events/sync', {method:'POST',headers:getAuthHeaders()}).then(function(r){return r.json()}).then(function() {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg> ' + t('msg.sync');
+    setTimeout(function(){ loadCloudEvents(1); }, 3000);
+  });
+}
+
+function triggerAnalysis(type) {
+  var panel = document.getElementById('msgAnalysisPanel');
+  panel.style.display = 'block';
+  document.getElementById('msgAnalysisContent').innerHTML = '<em>' + t('msg.analyzing') + '</em>';
+  fetch('/api/events/analysis', {
+    method: 'POST',
+    headers: Object.assign({'Content-Type':'application/json'}, getAuthHeaders()),
+    body: JSON.stringify({analysis_type: type})
+  }).then(function(r){return r.json()}).then(function(data) {
+    if (data.error) {
+      document.getElementById('msgAnalysisContent').innerHTML = '<span style="color:var(--danger)">'+escHtml(data.error)+'</span>';
+    } else {
+      document.getElementById('msgAnalysisContent').textContent = data.summary || JSON.stringify(data, null, 2);
+    }
+  }).catch(function(err) {
+    document.getElementById('msgAnalysisContent').innerHTML = '<span style="color:var(--danger)">' + t('msg.analysis_failed') + ': ' + escHtml(err.message) + '</span>';
+  });
+}
+
+function formatTimeAgo(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  var now = new Date();
+  var diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return t('msg.just_now');
+  if (diff < 3600) return Math.floor(diff/60) + t('msg.minutes_ago');
+  if (diff < 86400) return Math.floor(diff/3600) + t('msg.hours_ago');
+  return Math.floor(diff/86400) + t('msg.days_ago');
+}
 </script>
 <script src="/static/anime.min.js"></script>
 <script src="/static/animations.js"></script>

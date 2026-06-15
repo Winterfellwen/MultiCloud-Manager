@@ -29,7 +29,8 @@ func NewRenderProvider(creds map[string]string) *RenderProvider {
 func (p *RenderProvider) GetType() string { return "render" }
 
 func (p *RenderProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
-	// Render dashboard_url is already in spec; return empty so frontend uses spec value
+	// Render dashboard URLs follow a pattern based on service type
+	// We return empty here; the syncer falls back to spec.dashboard_url
 	return ""
 }
 
@@ -44,33 +45,15 @@ type renderService struct {
 }
 
 func (p *RenderProvider) ListInstances(ctx context.Context, opts types.ListOptions) ([]types.Instance, error) {
-	var instances []types.Instance
-
+	// Only return web services as instances; PostgreSQL and Redis are returned by ListDatabases
 	services, err := p.listServices(ctx)
 	if err != nil {
-		log.Printf("render: list services: %v", err)
-	} else {
-		instances = append(instances, services...)
+		return nil, fmt.Errorf("render: list services: %w", err)
 	}
-
-	pgs, err := p.listPostgres(ctx)
-	if err != nil {
-		log.Printf("render: list postgres: %v", err)
-	} else {
-		instances = append(instances, pgs...)
+	if services == nil {
+		services = []types.Instance{}
 	}
-
-	kvs, err := p.listKeyValue(ctx)
-	if err != nil {
-		log.Printf("render: list key-value: %v", err)
-	} else {
-		instances = append(instances, kvs...)
-	}
-
-	if instances == nil {
-		return nil, fmt.Errorf("all Render API calls failed")
-	}
-	return instances, nil
+	return services, nil
 }
 
 func (p *RenderProvider) listServices(ctx context.Context) ([]types.Instance, error) {
@@ -131,120 +114,6 @@ func (p *RenderProvider) listServices(ctx context.Context) ([]types.Instance, er
 				"url":           s.ServiceDetails.URL,
 				"slug":          s.Slug,
 				"dashboard_url": s.DashboardUrl,
-			},
-		})
-	}
-	return instances, nil
-}
-
-func (p *RenderProvider) listPostgres(ctx context.Context) ([]types.Instance, error) {
-	body, err := p.doGet(ctx, "https://api.render.com/v1/postgres?limit=100")
-	if err != nil {
-		return nil, err
-	}
-
-	var raw []map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, fmt.Errorf("postgres unmarshal: %w", err)
-	}
-
-	var instances []types.Instance
-	for _, item := range raw {
-		pgData, ok := item["postgres"]
-		if !ok {
-			continue
-		}
-		var pg struct {
-			ID         string `json:"id"`
-			Name       string `json:"name"`
-			Region     string `json:"region"`
-			Status     string `json:"status"`
-			Plan       string `json:"plan"`
-			Version    string `json:"version"`
-			Suspended  string `json:"suspended"`
-			CreatedAt  string `json:"createdAt"`
-		}
-		if err := json.Unmarshal(pgData, &pg); err != nil {
-			continue
-		}
-
-		status := "running"
-		if pg.Status != "available" || pg.Suspended != "not_suspended" {
-			status = "stopped"
-		}
-
-		region := pg.Region
-		if region == "" {
-			region = "singapore"
-		}
-
-		instances = append(instances, types.Instance{
-			ID:           pg.ID,
-			Name:         pg.Name,
-			CloudType:    "render",
-			Region:       region,
-			Status:       status,
-			InstanceType: "postgres",
-			Spec: map[string]interface{}{
-				"plan":    pg.Plan,
-				"version": pg.Version,
-			},
-		})
-	}
-	return instances, nil
-}
-
-func (p *RenderProvider) listKeyValue(ctx context.Context) ([]types.Instance, error) {
-	body, err := p.doGet(ctx, "https://api.render.com/v1/key-value?limit=100")
-	if err != nil {
-		return nil, err
-	}
-
-	var raw []map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, fmt.Errorf("key-value unmarshal: %w", err)
-	}
-
-	var instances []types.Instance
-	for _, item := range raw {
-		kvData, ok := item["keyValue"]
-		if !ok {
-			continue
-		}
-		var kv struct {
-			ID        string `json:"id"`
-			Name      string `json:"name"`
-			Region    string `json:"region"`
-			Status    string `json:"status"`
-			Plan      string `json:"plan"`
-			Version   string `json:"version"`
-			Suspended string `json:"suspended"`
-			CreatedAt string `json:"createdAt"`
-		}
-		if err := json.Unmarshal(kvData, &kv); err != nil {
-			continue
-		}
-
-		status := "running"
-		if kv.Status != "available" {
-			status = "stopped"
-		}
-
-		region := kv.Region
-		if region == "" {
-			region = "singapore"
-		}
-
-		instances = append(instances, types.Instance{
-			ID:           kv.ID,
-			Name:         kv.Name,
-			CloudType:    "render",
-			Region:       region,
-			Status:       status,
-			InstanceType: "key_value",
-			Spec: map[string]interface{}{
-				"plan":    kv.Plan,
-				"version": kv.Version,
 			},
 		})
 	}
@@ -483,14 +352,15 @@ func (p *RenderProvider) listPostgresAsDBs(ctx context.Context) ([]types.Databas
 			continue
 		}
 		var pg struct {
-			ID        string `json:"id"`
-			Name      string `json:"name"`
-			Region    string `json:"region"`
-			Status    string `json:"status"`
-			Plan      string `json:"plan"`
-			Version   string `json:"version"`
-			Suspended string `json:"suspended"`
-			CreatedAt string `json:"createdAt"`
+			ID           string `json:"id"`
+			Name         string `json:"name"`
+			Region       string `json:"region"`
+			Status       string `json:"status"`
+			Plan         string `json:"plan"`
+			Version      string `json:"version"`
+			Suspended    string `json:"suspended"`
+			CreatedAt    string `json:"createdAt"`
+			DashboardURL string `json:"dashboardUrl"`
 		}
 		if err := json.Unmarshal(pgData, &pg); err != nil {
 			continue
@@ -512,12 +382,14 @@ func (p *RenderProvider) listPostgresAsDBs(ctx context.Context) ([]types.Databas
 			CloudType:   "render",
 			Region:      region,
 			Status:      status,
-			Engine:      "postgres",
+			Engine:      "PostgreSQL",
 			EngineVer:   pg.Version,
 			InstanceCls: pg.Plan,
 			Spec: map[string]interface{}{
-				"plan":    pg.Plan,
-				"version": pg.Version,
+				"plan":          pg.Plan,
+				"engine":        "PostgreSQL",
+				"engine_version": pg.Version,
+				"dashboard_url": pg.DashboardURL,
 			},
 		})
 	}
@@ -542,14 +414,15 @@ func (p *RenderProvider) listKeyValueAsDBs(ctx context.Context) ([]types.Databas
 			continue
 		}
 		var kv struct {
-			ID        string `json:"id"`
-			Name      string `json:"name"`
-			Region    string `json:"region"`
-			Status    string `json:"status"`
-			Plan      string `json:"plan"`
-			Version   string `json:"version"`
-			Suspended string `json:"suspended"`
-			CreatedAt string `json:"createdAt"`
+			ID           string `json:"id"`
+			Name         string `json:"name"`
+			Region       string `json:"region"`
+			Status       string `json:"status"`
+			Plan         string `json:"plan"`
+			Version      string `json:"version"`
+			Suspended    string `json:"suspended"`
+			CreatedAt    string `json:"createdAt"`
+			DashboardURL string `json:"dashboardUrl"`
 		}
 		if err := json.Unmarshal(kvData, &kv); err != nil {
 			continue
@@ -571,12 +444,14 @@ func (p *RenderProvider) listKeyValueAsDBs(ctx context.Context) ([]types.Databas
 			CloudType:   "render",
 			Region:      region,
 			Status:      status,
-			Engine:      "redis",
+			Engine:      "Redis",
 			EngineVer:   kv.Version,
 			InstanceCls: kv.Plan,
 			Spec: map[string]interface{}{
-				"plan":    kv.Plan,
-				"version": kv.Version,
+				"plan":          kv.Plan,
+				"engine":        "Redis",
+				"engine_version": kv.Version,
+				"dashboard_url": kv.DashboardURL,
 			},
 		})
 	}

@@ -70,6 +70,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	}
 
 	syncer := cloud.NewSyncer(db, vaultService)
+	eventSyncer := cloud.NewEventSyncer(db, vaultService)
 	executor := agent.NewExecutor(syncer, db, vaultService)
 	if costEngine != nil {
 		executor.SetCostEngine(costEngine)
@@ -96,6 +97,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 	ctx, cancel := context.WithCancel(context.Background())
 	syncer.Start(ctx, 5*time.Minute)
+	eventSyncer.Start(ctx, 3*time.Minute)
 
 	auth := r.Group("/api")
 	auth.Use(AuthMiddleware(jwtSecret))
@@ -138,6 +140,15 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.GET("/resources/sync-logs", RequireRole("admin", "user"), resourcesHandler.SyncLogs)
 		auth.POST("/resources/:id/:action", RequireRole("admin", "user"), resourcesHandler.Action)
 		auth.GET("/stats", resourcesHandler.Stats)
+
+		// Cloud Events — read: all roles; sync: admin + user
+		eventsHandler := NewCloudEventsHandler(db, vaultService, eventSyncer)
+		auth.GET("/events", eventsHandler.List)
+		auth.GET("/events/stats", eventsHandler.Stats)
+		auth.POST("/events/sync", RequireRole("admin", "user"), eventsHandler.TriggerSync)
+		auth.GET("/events/sync-status", eventsHandler.SyncStatus)
+		auth.POST("/events/analysis", RequireRole("admin"), eventsHandler.TriggerAnalysis)
+		auth.GET("/events/analysis", eventsHandler.GetAnalysis)
 
 		// Team management — read: all roles; write: admin only
 		auth.GET("/teams", teamsHandler.GetTeams)
@@ -308,6 +319,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 
 	return r, func() {
 		syncer.Stop()
+		eventSyncer.Stop()
 		if costEngine != nil {
 			costEngine.Stop()
 		}

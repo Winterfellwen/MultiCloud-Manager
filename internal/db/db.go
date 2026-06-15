@@ -186,10 +186,16 @@ func (d *Database) Migrate() error {
 			spec JSONB,
 			tags JSONB,
 			last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			UNIQUE(account_id, cloud_resource_id)
+			UNIQUE(account_id, cloud_resource_id, resource_type)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_resources_account ON resources_cache(account_id)`,
 		`DELETE FROM resources_cache WHERE account_id NOT IN (SELECT id FROM cloud_accounts)`,
+		// Migrate: change unique constraint to include resource_type
+		`DO $$ BEGIN
+			ALTER TABLE resources_cache DROP CONSTRAINT IF EXISTS resources_cache_account_id_cloud_resource_id_key;
+			ALTER TABLE resources_cache ADD CONSTRAINT resources_cache_account_id_cloud_resource_id_resource_type_key UNIQUE(account_id, cloud_resource_id, resource_type);
+		EXCEPTION WHEN OTHERS THEN NULL;
+		END $$`,
 		`CREATE TABLE IF NOT EXISTS sync_logs (
 			id BIGSERIAL PRIMARY KEY,
 			account_id UUID REFERENCES cloud_accounts(id) ON DELETE SET NULL,
@@ -353,6 +359,52 @@ END $$`,
 			last_triggered_at TIMESTAMP,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS cloud_events (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			account_id UUID NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+			cloud_type VARCHAR(50) NOT NULL,
+			event_type VARCHAR(50) NOT NULL,
+			severity VARCHAR(20) NOT NULL DEFAULT 'info',
+			title VARCHAR(500) NOT NULL,
+			description TEXT,
+			source VARCHAR(200),
+			source_id VARCHAR(500),
+			resource_id VARCHAR(500),
+			resource_name VARCHAR(500),
+			resource_type VARCHAR(100),
+			region VARCHAR(100),
+			metadata JSONB DEFAULT '{}',
+			event_at TIMESTAMP NOT NULL,
+			fetched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(account_id, cloud_type, source_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_cloud_events_account ON cloud_events(account_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_cloud_events_type ON cloud_events(cloud_type, event_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_cloud_events_severity ON cloud_events(severity)`,
+		`CREATE INDEX IF NOT EXISTS idx_cloud_events_time ON cloud_events(event_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_cloud_events_composite ON cloud_events(cloud_type, event_type, event_at DESC)`,
+		`CREATE TABLE IF NOT EXISTS cloud_event_analysis (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			analysis_type VARCHAR(50) NOT NULL,
+			scope VARCHAR(20) NOT NULL DEFAULT 'all',
+			scope_params JSONB DEFAULT '{}',
+			summary TEXT NOT NULL,
+			details JSONB DEFAULT '[]',
+			model VARCHAR(100),
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_analysis_type ON cloud_event_analysis(analysis_type, created_at DESC)`,
+		`CREATE TABLE IF NOT EXISTS cloud_event_sync_state (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			account_id UUID NOT NULL REFERENCES cloud_accounts(id) ON DELETE CASCADE,
+			cloud_type VARCHAR(50) NOT NULL,
+			event_type VARCHAR(50) NOT NULL,
+			last_event_at TIMESTAMP,
+			last_sync_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			sync_status VARCHAR(20) DEFAULT 'idle',
+			error_message TEXT,
+			UNIQUE(account_id, cloud_type, event_type)
 		)`,
 	}
 

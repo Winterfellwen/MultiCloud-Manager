@@ -1,6 +1,30 @@
 package types
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+// EventProvider is the interface for fetching cloud platform events.
+type EventProvider interface {
+	SupportedEventTypes() []string
+	FetchEvents(ctx context.Context, eventType string, since time.Time) ([]CloudEvent, error)
+}
+
+// CloudEvent represents a cloud provider event (deploy, alert, etc.).
+type CloudEvent struct {
+	SourceID     string                 `json:"source_id"`
+	EventType    string                 `json:"event_type"`
+	Severity     string                 `json:"severity"`
+	Title        string                 `json:"title"`
+	Description  string                 `json:"description"`
+	Source       string                 `json:"source"`
+	ResourceID   string                 `json:"resource_id"`
+	ResourceName string                 `json:"resource_name"`
+	ResourceType string                 `json:"resource_type"`
+	EventAt      time.Time              `json:"event_at"`
+	Metadata     map[string]interface{} `json:"metadata"`
+}
 
 // RawResponse is the result of a DoRawRequest call.
 type RawResponse struct {

@@ -156,7 +156,15 @@ func (s *Syncer) logSyncResult(ctx context.Context, res SyncResult) {
 	}
 }
 
+// tencentRegions is the list of Tencent Cloud regions to query when no specific region is set.
+var tencentRegions = []string{
+	"ap-guangzhou", "ap-shanghai", "ap-beijing", "ap-hongkong",
+	"ap-singapore", "ap-mumbai", "ap-seoul", "ap-tokyo",
+	"na-siliconvalley", "na-ashburn", "eu-frankfurt",
+}
+
 func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON string) (int, error) {
+	log.Printf("syncer: starting sync for account %s (%s)", accountID, cloudType)
 	var creds map[string]string
 
 	if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
@@ -192,43 +200,114 @@ func (s *Syncer) syncAccount(ctx context.Context, accountID, cloudType, credJSON
 	}
 
 	for _, j := range jobs {
-		resources, err := j.listFn()
-		if err != nil {
-			log.Printf("syncer: list %s for %s (%s): %v", j.name, cloudType, accountID, err)
-			continue
-		}
-		for _, res := range resources {
-			id, _ := res["id"].(string)
-			if id == "" {
+		log.Printf("syncer: syncing %s for %s", j.name, cloudType)
+		// For Tencent Cloud, query all regions when no region is specified
+		if cloudType == "tencent" && opts.Region == "" {
+			for _, region := range tencentRegions {
+				regionalOpts := types.ListOptions{Limit: 100, Region: region}
+				var resources []map[string]interface{}
+				var err error
+				switch j.name {
+				case "instance":
+					resources, err = s.listToMaps(prov.ListInstances(ctx, regionalOpts))
+				case "volume":
+					resources, err = s.listToMaps(prov.ListVolumes(ctx, regionalOpts))
+				case "network":
+					resources, err = s.listToMaps(prov.ListNetworks(ctx, regionalOpts))
+				case "database":
+					resources, err = s.listToMaps(prov.ListDatabases(ctx, regionalOpts))
+				case "loadbalancer":
+					resources, err = s.listToMaps(prov.ListLoadBalancers(ctx, regionalOpts))
+				case "bucket":
+					resources, err = s.listToMaps(prov.ListBuckets(ctx, regionalOpts))
+				case "cluster":
+					resources, err = s.listToMaps(prov.ListClusters(ctx, regionalOpts))
+				case "function":
+					resources, err = s.listToMaps(prov.ListFunctions(ctx, regionalOpts))
+				case "dns_zone":
+					resources, err = s.listToMaps(prov.ListDNSZones(ctx, regionalOpts))
+				case "certificate":
+					resources, err = s.listToMaps(prov.ListCertificates(ctx, regionalOpts))
+				}
+				if err != nil {
+					log.Printf("syncer: list %s for %s (%s) in %s: %v", j.name, cloudType, accountID, region, err)
+					continue
+				}
+				for _, res := range resources {
+					id, _ := res["id"].(string)
+					if id == "" {
+						continue
+					}
+					allLiveIDs[id+"|"+j.name] = true
+					name, _ := res["name"].(string)
+					region, _ := res["region"].(string)
+					status, _ := res["status"].(string)
+
+					spec, _ := res["spec"].(map[string]interface{})
+					specJSON, _ := json.Marshal(spec)
+					if len(specJSON) == 0 {
+						specJSON = []byte("{}")
+					}
+
+					tagsRaw, _ := res["tags"].(map[string]interface{})
+					tagsJSON, _ := json.Marshal(tagsRaw)
+					if len(tagsJSON) == 0 {
+						tagsJSON = []byte("{}")
+					}
+
+					_, err := s.db.Exec(`
+						INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
+						VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+						ON CONFLICT (account_id, cloud_resource_id, resource_type)
+						DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
+					`, accountID, id, j.name, region, name, status, string(specJSON), string(tagsJSON))
+					if err != nil {
+						log.Printf("syncer: upsert %s %s: %v", j.name, name, err)
+					}
+					totalCount++
+				}
+			}
+		} else {
+			resources, err := j.listFn()
+			if err != nil {
+				log.Printf("syncer: list %s for %s (%s): %v", j.name, cloudType, accountID, err)
+				// Don't delete resources on API failure — mark existing ones as live
+				s.markExistingAsLive(ctx, accountID, j.name, allLiveIDs)
 				continue
 			}
-			allLiveIDs[id] = true
-			name, _ := res["name"].(string)
-			region, _ := res["region"].(string)
-			status, _ := res["status"].(string)
+			for _, res := range resources {
+				id, _ := res["id"].(string)
+				if id == "" {
+					continue
+				}
+				allLiveIDs[id+"|"+j.name] = true
+				name, _ := res["name"].(string)
+				region, _ := res["region"].(string)
+				status, _ := res["status"].(string)
 
-			spec, _ := res["spec"].(map[string]interface{})
-			specJSON, _ := json.Marshal(spec)
-			if len(specJSON) == 0 {
-				specJSON = []byte("{}")
-			}
+				spec, _ := res["spec"].(map[string]interface{})
+				specJSON, _ := json.Marshal(spec)
+				if len(specJSON) == 0 {
+					specJSON = []byte("{}")
+				}
 
-			tagsRaw, _ := res["tags"].(map[string]interface{})
-			tagsJSON, _ := json.Marshal(tagsRaw)
-			if len(tagsJSON) == 0 {
-				tagsJSON = []byte("{}")
-			}
+				tagsRaw, _ := res["tags"].(map[string]interface{})
+				tagsJSON, _ := json.Marshal(tagsRaw)
+				if len(tagsJSON) == 0 {
+					tagsJSON = []byte("{}")
+				}
 
-			_, err := s.db.Exec(`
-				INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
-				VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-				ON CONFLICT (account_id, cloud_resource_id)
-				DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
-			`, accountID, id, j.name, region, name, status, string(specJSON), string(tagsJSON))
-			if err != nil {
-				log.Printf("syncer: upsert %s %s: %v", j.name, name, err)
+				_, err := s.db.Exec(`
+					INSERT INTO resources_cache (account_id, cloud_resource_id, resource_type, cloud_region, name, status, spec, tags)
+					VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+					ON CONFLICT (account_id, cloud_resource_id, resource_type)
+					DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, spec = EXCLUDED.spec, tags = EXCLUDED.tags, last_synced_at = CURRENT_TIMESTAMP
+				`, accountID, id, j.name, region, name, status, string(specJSON), string(tagsJSON))
+				if err != nil {
+					log.Printf("syncer: upsert %s %s: %v", j.name, name, err)
+				}
+				totalCount++
 			}
-			totalCount++
 		}
 	}
 
@@ -270,7 +349,9 @@ func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, l
 		if err := rows.Scan(&cacheID, &cloudResID, &name, &resType); err != nil {
 			continue
 		}
-		if !liveIDs[cloudResID] {
+		// Use composite key: cloud_resource_id + resource_type
+		compositeKey := cloudResID + "|" + resType.String
+		if !liveIDs[compositeKey] {
 			_, delErr := s.db.Exec(`DELETE FROM resources_cache WHERE id = $1`, cacheID)
 			if delErr != nil {
 				log.Printf("syncer: delete resource %s: %v", cacheID, err)
@@ -281,13 +362,31 @@ func (s *Syncer) detectDeletedResources(ctx context.Context, accountID string, l
 	}
 }
 
+// markExistingAsLive prevents deletion of resources when an API call fails.
+// It queries existing resources of the given type and marks them as live.
+func (s *Syncer) markExistingAsLive(ctx context.Context, accountID, resourceType string, liveIDs map[string]bool) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT cloud_resource_id FROM resources_cache WHERE account_id = $1 AND resource_type = $2`, accountID, resourceType)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cloudResID string
+		if err := rows.Scan(&cloudResID); err != nil {
+			continue
+		}
+		liveIDs[cloudResID+"|"+resourceType] = true
+	}
+}
+
 func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, error) {
 	if s.db == nil {
 		return nil, nil
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT rc.id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
+		SELECT rc.id, rc.cloud_resource_id, rc.name, rc.resource_type, rc.cloud_region, rc.status,
 			rc.spec, rc.tags, ca.cloud_type, ca.name as account_name,
 			ca.id as account_id, ca.credentials, COALESCE(ca.vault_path, '')
 		FROM resources_cache rc
@@ -304,10 +403,10 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 
 	var resources []map[string]interface{}
 	for rows.Next() {
-		var id, name, resourceType, region, status, cloudType, accountName string
+		var id, cloudResID, name, resourceType, region, status, cloudType, accountName string
 		var accountID, credJSON, vaultPath string
 		var specJSON, tagsJSON []byte
-		if err := rows.Scan(&id, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName, &accountID, &credJSON, &vaultPath); err != nil {
+		if err := rows.Scan(&id, &cloudResID, &name, &resourceType, &region, &status, &specJSON, &tagsJSON, &cloudType, &accountName, &accountID, &credJSON, &vaultPath); err != nil {
 			continue
 		}
 
@@ -356,9 +455,16 @@ func (s *Syncer) GetResources(ctx context.Context) ([]map[string]interface{}, er
 			}
 		}
 		if prov != nil {
-			consoleURL := prov.GetConsoleURL(types.ResourceType(resourceType), id, region)
+			consoleURL := prov.GetConsoleURL(types.ResourceType(resourceType), cloudResID, region)
 			if consoleURL != "" {
 				r["console_url"] = consoleURL
+			} else if spec != nil {
+				// Fallback: use dashboard_url or url from spec (e.g., Render)
+				if du, ok := spec["dashboard_url"].(string); ok && du != "" {
+					r["console_url"] = du
+				} else if u, ok := spec["url"].(string); ok && u != "" {
+					r["console_url"] = u
+				}
 			}
 		}
 
