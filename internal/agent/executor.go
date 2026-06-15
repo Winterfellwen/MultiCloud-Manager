@@ -306,6 +306,12 @@ func (e *Executor) cloudAPIRequest(ctx context.Context, args map[string]interfac
 		return "", fmt.Errorf("account_id, method, and url are required")
 	}
 
+	// Strip markdown formatting characters that LLMs may wrap around URLs
+	reqURL = strings.TrimFunc(reqURL, func(r rune) bool {
+		return r == '`' || r == '\'' || r == '"' || r == ' ' || r == '\n' || r == '\t'
+	})
+	method = strings.TrimSpace(strings.ToUpper(method))
+
 	// Load account from DB
 	var cloudType, credJSON, vaultPath string
 	err := e.db.QueryRowContext(ctx,
