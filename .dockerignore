@@ -2,6 +2,5 @@
 .gitignore
 .vscode/
 node_modules/
-*.md
-docs/
+/*.md
 web/js/*.map

@@ -1,4 +1,4 @@
-# Vault 配置文件
+﻿# Vault 配置文件
 # 用于 Agent Vault 凭证代理层
 
 storage "file" {
@@ -6,8 +6,10 @@ storage "file" {
 }
 
 listener "tcp" {
-  address     = "0.0.0.0:8200"
-  tls_disable = "true"
+  address       = "0.0.0.0:8200"
+  tls_disable   = 0
+  tls_cert_file = "/vault/config/tls/server.crt"
+  tls_key_file  = "/vault/config/tls/server.key"
 }
 
 # 禁用 UI（仅 API）
@@ -32,4 +34,4 @@ default_lease_ttl = "1h"
 max_lease_ttl     = "24h"
 
 # API 地址
-api_addr = "http://0.0.0.0:8200"
+api_addr = "https://0.0.0.0:8200"

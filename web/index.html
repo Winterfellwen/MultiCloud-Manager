@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -2047,21 +2047,56 @@ function handleConfirmRequiredEvent(ev) {
   }
 }
 
+
+function resetCurrentRun(ev) {
+  if (ev.run_id === CURRENT_RUN_ID) {
+    CURRENT_RUN_ID = null;
+    document.getElementById('chatStopBtn').style.display = 'none';
+    document.getElementById('chatSendBtn').disabled = false;
+    CONFIRM_PENDING = false;
+    if (_directSSEController) { _directSSEController.abort(); _directSSEController = null; }
+  }
+}
+
+function finalizeToolCards(container, finalState, statusText) {
+  var cards = container.querySelectorAll('.tool-card.running, .timeline-tool-card.running');
+  cards.forEach(function(card) {
+    if (card._timer) { clearInterval(card._timer); card._timer = null; }
+    card.classList.remove('running');
+    card.classList.add(finalState);
+    var s = card.querySelector('.card-status');
+    if (s) { s.className = 'card-status ' + finalState; s.textContent = statusText; }
+  });
+  var blocks = container.querySelectorAll('.tool-block:not(.done)');
+  blocks.forEach(function(block) {
+    var s = block.querySelector('.tool-status');
+    if (s) { s.className = 'tool-status done'; s.textContent = 'done'; }
+    block.classList.add('done');
+  });
+}
+
+function savePartialContent(ev) {
+  if (!ev.session_id) return;
+  if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
+  if (PENDING_TOOL_CALLS.length > 0) {
+    SESSION_MESSAGES[ev.session_id].push({
+      role: 'tool-calls',
+      content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
+        return {name: tc.name, params: tc.params, result: tc.result};
+      })),
+      created_at: new Date().toISOString(),
+      _run_id: ev.run_id
+    });
+  }
+  if (STREAMING_CONTENT) {
+    SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
+  }
+}
 function handleStateChangeEvent(ev) {
   var isCurrentSession = ev.session_id === CURRENT_SESSION;
   var newState = ev.payload.state;
   if (newState === 'done') {
-    if (ev.run_id === CURRENT_RUN_ID) {
-      CURRENT_RUN_ID = null;
-      document.getElementById('chatStopBtn').style.display = 'none';
-      document.getElementById('chatSendBtn').disabled = false;
-      CONFIRM_PENDING = false;
-      // Close direct SSE stream — run is finished
-      if (_directSSEController) {
-        _directSSEController.abort();
-        _directSSEController = null;
-      }
-    }
+    resetCurrentRun(ev);
     // Tool calls are already rendered inline in STREAMING_DIV during execution.
     // No need to render a separate group.
     if (STREAMING_DIV) {
@@ -2142,24 +2177,7 @@ function handleStateChangeEvent(ev) {
         } // end of dedup check
       }
       // Finalize any still-running tool cards (stop timers, mark done)
-      var runningCards = STREAMING_DIV.querySelectorAll('.timeline-tool-card.running, .tool-card.running');
-      runningCards.forEach(function(card) {
-        if (card._timer) { clearInterval(card._timer); card._timer = null; }
-        card.classList.remove('running');
-        card.classList.add('done');
-        var statusEl = card.querySelector('.card-status');
-        if (statusEl) { statusEl.className = 'card-status done'; statusEl.textContent = LOCALE === 'zh' ? '完成' : 'done'; }
-      });
-      // Also finalize any legacy tool-blocks from handleSSEEvent
-      var runningBlocks = STREAMING_DIV.querySelectorAll('.tool-block:not(.done)');
-      runningBlocks.forEach(function(block) {
-        var statusEl = block.querySelector('.tool-status');
-        if (statusEl) {
-          statusEl.className = 'tool-status done';
-          statusEl.textContent = 'done';
-        }
-        block.classList.add('done');
-      });
+      finalizeToolCards(STREAMING_DIV, 'done', LOCALE === 'zh' ? '完成' : 'done');
       scrollToBottom();
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
@@ -2167,43 +2185,15 @@ function handleStateChangeEvent(ev) {
     PENDING_TOOL_CALLS = [];
   } else if (newState === 'error') {
     if (isCurrentSession) showError(ev.payload.error_message);
-    if (ev.run_id === CURRENT_RUN_ID) {
-      CURRENT_RUN_ID = null;
-      document.getElementById('chatStopBtn').style.display = 'none';
-      document.getElementById('chatSendBtn').disabled = false;
-      CONFIRM_PENDING = false;
-      if (_directSSEController) { _directSSEController.abort(); _directSSEController = null; }
-    }
+    resetCurrentRun(ev);
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
       if (contentEl) contentEl.classList.remove('streaming-cursor');
       // Save partial content + tool calls to prevent poll re-rendering duplicates
-      if (ev.session_id) {
-        if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
-        if (PENDING_TOOL_CALLS.length > 0) {
-          SESSION_MESSAGES[ev.session_id].push({
-            role: 'tool-calls',
-            content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
-              return {name: tc.name, params: tc.params, result: tc.result};
-            })),
-            created_at: new Date().toISOString(),
-            _run_id: ev.run_id
-          });
-        }
-        if (STREAMING_CONTENT) {
-          SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
-        }
-      }
+      savePartialContent(ev);
       // Finalize running tool cards
-      var runningCards = STREAMING_DIV.querySelectorAll('.tool-card.running');
-      runningCards.forEach(function(card) {
-        if (card._timer) { clearInterval(card._timer); card._timer = null; }
-        card.classList.remove('running');
-        card.classList.add('error');
-        var statusEl = card.querySelector('.card-status');
-        if (statusEl) { statusEl.className = 'card-status error'; statusEl.textContent = LOCALE === 'zh' ? '错误' : 'error'; }
-      });
+      finalizeToolCards(STREAMING_DIV, 'error', LOCALE === 'zh' ? '错误' : 'error');
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
@@ -2211,53 +2201,15 @@ function handleStateChangeEvent(ev) {
     if (ev.run_id) STOPPED_RUNS.add(ev.run_id);
     _pendingStopSession = null;
     if (isCurrentSession) showError(LOCALE === 'zh' ? '已停止' : 'Stopped');
-    if (ev.run_id === CURRENT_RUN_ID) {
-      CURRENT_RUN_ID = null;
-      document.getElementById('chatStopBtn').style.display = 'none';
-      document.getElementById('chatSendBtn').disabled = false;
-      CONFIRM_PENDING = false;
-      if (_directSSEController) { _directSSEController.abort(); _directSSEController = null; }
-    }
+    resetCurrentRun(ev);
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
       if (contentEl) contentEl.classList.remove('streaming-cursor');
       // Save partial content + tool calls to prevent poll re-rendering duplicates
-      if (ev.session_id) {
-        if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
-        if (PENDING_TOOL_CALLS.length > 0) {
-          SESSION_MESSAGES[ev.session_id].push({
-            role: 'tool-calls',
-            content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
-              return {name: tc.name, params: tc.params, result: tc.result};
-            })),
-            created_at: new Date().toISOString(),
-            _run_id: ev.run_id
-          });
-        }
-        if (STREAMING_CONTENT) {
-          SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
-        }
-      }
+      savePartialContent(ev);
       // Finalize running tool cards
-      var runningCards = STREAMING_DIV.querySelectorAll('.tool-card.running');
-      runningCards.forEach(function(card) {
-        if (card._timer) { clearInterval(card._timer); card._timer = null; }
-        card.classList.remove('running');
-        card.classList.add('done');
-        var statusEl = card.querySelector('.card-status');
-        if (statusEl) { statusEl.className = 'card-status done'; statusEl.textContent = LOCALE === 'zh' ? '完成' : 'done'; }
-      });
-      // Also finalize legacy tool-blocks
-      var runningBlocks = STREAMING_DIV.querySelectorAll('.tool-block:not(.done)');
-      runningBlocks.forEach(function(block) {
-        var statusEl = block.querySelector('.tool-status');
-        if (statusEl) {
-          statusEl.className = 'tool-status done';
-          statusEl.textContent = 'done';
-        }
-        block.classList.add('done');
-      });
+      finalizeToolCards(STREAMING_DIV, 'done', LOCALE === 'zh' ? '完成' : 'done');
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }

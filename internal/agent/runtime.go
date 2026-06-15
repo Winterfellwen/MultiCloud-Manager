@@ -78,6 +78,7 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 	// Register shell executor tools
 	shellExecutor := shell.NewExecutor(shell.Config{
 		TimeoutSeconds: 300,
+		WorkspaceDir:    "/app",
 	})
 	registry.Register(&shellToolWrapper{shellTool: shell.NewShellTool(shellExecutor)})
 

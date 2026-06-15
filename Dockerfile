@@ -14,6 +14,7 @@ RUN apk add --no-cache ca-certificates tzdata curl jq && adduser -D -u 1000 app
 WORKDIR /app
 COPY --from=go-builder /out/multicloud /app/multicloud
 COPY web /app/web
+COPY docs /app/docs
 USER app
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -qO- http://localhost:${PORT:-8088}/api/health || exit 1
 EXPOSE 8088

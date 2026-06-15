@@ -1,4 +1,4 @@
-#!/bin/sh
+﻿#!/bin/sh
 # Agent Vault 初始化脚本
 
 set -e
@@ -59,7 +59,7 @@ EOF
     # 将凭据写入文件供后端服务读取
     echo "VAULT_ROLE_ID=$ROLE_ID" > /vault/credentials.env
     echo "VAULT_SECRET_ID=$SECRET_ID" >> /vault/credentials.env
-    echo "VAULT_ADDR=http://localhost:8200" >> /vault/credentials.env
+    echo "VAULT_ADDR=https://localhost:8200" >> /vault/credentials.env
     
     # 标记已初始化
     touch /vault/data/initialized

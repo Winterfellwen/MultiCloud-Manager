@@ -68,3 +68,4 @@ project.private.config.json
 
 # Debug artifacts
 prompt.json
+.git-rewrite/
