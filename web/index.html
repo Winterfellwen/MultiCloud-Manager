@@ -2023,7 +2023,7 @@ function handleToolResultEvent(ev) {
           var body = card.querySelector('.tool-card-body');
           if (body && result) {
             var resultText = result;
-            try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { console.warn('[MCM]', e); }
+            try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
             var resultDiv = document.createElement('div');
             resultDiv.className = 'field-label';
             resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
@@ -3711,7 +3711,7 @@ function buildToolCard(tc) {
   var paramsStr = '';
   try { paramsStr = JSON.stringify(JSON.parse(tc.params || '{}'), null, 2); } catch(e) { paramsStr = tc.params || ''; }
   var resultText = tc.result || '';
-  try { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } catch(e) { console.warn('[MCM]', e); }
+  try { resultText = JSON.stringify(JSON.parse(resultText), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
 
   var loc = LOCALE === 'zh';
   var summary = getToolSummary(tc.name, tc.params);

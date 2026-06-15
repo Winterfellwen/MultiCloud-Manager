@@ -47,13 +47,13 @@ func (e *Executor) lookupCloudAPIDoc(ctx context.Context, args map[string]interf
 			sections := e.docIndex.ListSections(provider)
 			return fmt.Sprintf(`{"error": "section '%s' not found", "available_sections": %q}`, section, sections), nil
 		}
-		return content, nil
+		return fmt.Sprintf(`{"provider": %q, "section": %q, "content": %q}`, provider, section, content), nil
 	}
 	doc := e.docIndex.GetFullDoc(provider)
 	if doc == "" {
 		return fmt.Sprintf(`{"error": "no documentation for provider '%s'", "available": %q}`, provider, e.docIndex.ListProviders()), nil
 	}
-	return doc, nil
+	return fmt.Sprintf(`{"provider": %q, "content": %q}`, provider, doc), nil
 }
 
 // NewExecutor creates a new tool executor.
