@@ -3400,9 +3400,13 @@ async function switchSession(sid) {
   container.innerHTML = '';
   var msgCount = 0;
 
-  // Priority: global in-memory store > DB
+  var sessData = await apiFetch(API + '/agent/sessions/' + sid);
+  var isRunning = sessData && (sessData.state === 'running' || sessData.state === 'waiting_confirm' || sessData.state === 'queued' || sessData.status === 'running');
+
+  // Use cache for running sessions (streaming continuity).
+  // For completed sessions, use API data as source of truth.
   var liveMsgs = SESSION_MESSAGES[sid];
-  if (liveMsgs && liveMsgs.length > 0) {
+  if (isRunning && liveMsgs && liveMsgs.length > 0) {
     // Render from live memory (has streaming data)
     liveMsgs.forEach(function(m) {
       var ts = m.created_at || '';
@@ -3437,15 +3441,41 @@ async function switchSession(sid) {
         msgCount++;
       }
     });
+  } else if (sessData && sessData.messages && sessData.messages.length > 0) {
+    // Render from API data (completed session — source of truth)
+    SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
+      return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
+    });
+    sessData.messages.forEach(function(m) {
+      var ts = m.created_at || m.timestamp || '';
+      if (m.role === 'user') {
+        appendMessage('user', escHtml(m.content), ts);
+        msgCount++;
+      } else if (m.role === 'agent' || m.role === 'assistant') {
+        appendMessage('agent', renderMarkdown(m.content), ts);
+        msgCount++;
+      } else if (m.role === 'tool-calls') {
+        var prevAgent = container.querySelector('.msg.agent:last-of-type');
+        if (prevAgent) {
+          renderToolCallsInline(m.content, prevAgent);
+        } else {
+          renderToolCallsGroup(m.content, container);
+        }
+        msgCount++;
+      } else if (m.role === 'system') {
+        var div = document.createElement('div');
+        div.className = 'msg system';
+        div.textContent = m.content;
+        container.appendChild(div);
+        msgCount++;
+      }
+    });
   }
 
   if (msgCount === 0) {
     appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>', new Date().toISOString());
   }
 
-  var sessData = await apiFetch(API + '/agent/sessions/' + sid);
-  var isRunning = sessData && (sessData.state === 'running' || sessData.state === 'waiting_confirm' || sessData.state === 'queued' || sessData.status === 'running');
-  
   // If session is running and no streaming div exists, create one with "thinking" indicator
   if (isRunning && !STREAMING_DIV) {
     document.getElementById('chatStopBtn').style.display = '';
@@ -3454,49 +3484,6 @@ async function switchSession(sid) {
     thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
     container.appendChild(thinkDiv);
     STREAMING_DIV = thinkDiv;
-  }
-  
-  if (!liveMsgs) {
-    if (isRunning) {
-      document.getElementById('chatStopBtn').style.display = '';
-      if (!sessData.messages || sessData.messages.length === 0) {
-        var thinkDiv = document.createElement('div');
-        thinkDiv.className = 'msg agent streaming';
-        thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
-        container.appendChild(thinkDiv);
-        STREAMING_DIV = thinkDiv;
-        msgCount++;
-      }
-    }
-    if (sessData && sessData.messages && sessData.messages.length > 0) {
-      SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
-        return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
-      });
-      sessData.messages.forEach(function(m) {
-        var ts = m.created_at || m.timestamp || '';
-        if (m.role === 'user') {
-          appendMessage('user', escHtml(m.content), ts);
-          msgCount++;
-        } else if (m.role === 'agent' || m.role === 'assistant') {
-          appendMessage('agent', renderMarkdown(m.content), ts);
-          msgCount++;
-        } else if (m.role === 'tool-calls') {
-          var prevAgent = container.querySelector('.msg.agent:last-of-type');
-          if (prevAgent) {
-            renderToolCallsInline(m.content, prevAgent);
-          } else {
-            renderToolCallsGroup(m.content, container);
-          }
-          msgCount++;
-        } else if (m.role === 'system') {
-          var div = document.createElement('div');
-          div.className = 'msg system';
-          div.textContent = m.content;
-          container.appendChild(div);
-          msgCount++;
-        }
-      });
-    }
   }
 
   CURRENT_SESSION_USER = (sessData && sessData.user_id) ? sessData.user_id : null;
