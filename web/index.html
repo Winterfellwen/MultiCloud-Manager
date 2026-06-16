@@ -2175,7 +2175,7 @@ function handleToolResultEvent(ev) {
   if (ev.payload) {
     var name = ev.payload.tool_name || 'tool';
     var result = ev.payload.result || ev.payload.error || '';
-    var hasError = !!(ev.payload.error || (result && result.toLowerCase().indexOf('error') !== -1));
+    var hasError = !!ev.payload.error;
     for (var i = PENDING_TOOL_CALLS.length - 1; i >= 0; i--) {
       if (PENDING_TOOL_CALLS[i].name === name && !PENDING_TOOL_CALLS[i].result) {
         PENDING_TOOL_CALLS[i].result = result;
@@ -2187,7 +2187,7 @@ function handleToolResultEvent(ev) {
     if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
     // Update tool card in the timeline
     if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-      var cards = STREAMING_DIV.querySelectorAll('.timeline-tool-card.running');
+      var cards = STREAMING_DIV.querySelectorAll('.timeline-tool-card');
       cards.forEach(function(card) {
         var nameEl = card.querySelector('.card-name');
         if (nameEl && nameEl.textContent === name) {
@@ -2203,6 +2203,10 @@ function handleToolResultEvent(ev) {
           if (body && result) {
             var resultText = result;
             try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
+            var existingLabel = body.querySelector('.field-label');
+            var existingResult = body.querySelector('.field-result');
+            if (existingLabel) existingLabel.remove();
+            if (existingResult) existingResult.remove();
             var resultDiv = document.createElement('div');
             resultDiv.className = 'field-label';
             resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
@@ -2238,10 +2242,10 @@ function resetCurrentRun(ev) {
 }
 
 function finalizeToolCards(container, finalState, statusText) {
-  var cards = container.querySelectorAll('.tool-card.running, .timeline-tool-card.running');
+  var cards = container.querySelectorAll('.tool-card.running, .timeline-tool-card.running, .timeline-tool-card.error');
   cards.forEach(function(card) {
     if (card._timer) { clearInterval(card._timer); card._timer = null; }
-    card.classList.remove('running');
+    card.classList.remove('running', 'error');
     card.classList.add(finalState);
     var s = card.querySelector('.card-status');
     if (s) { s.className = 'card-status ' + finalState; s.textContent = statusText; }
