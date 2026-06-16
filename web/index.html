@@ -3383,7 +3383,6 @@ async function switchSession(sid) {
     _directSSEController.abort();
     _directSSEController = null;
   }
-  lastSyncedMsgCount = 0;
   CURRENT_SESSION = sid;
   STREAMING_DIV = null;
   STREAMING_CONTENT = '';
@@ -3438,12 +3437,10 @@ async function switchSession(sid) {
         msgCount++;
       }
     });
-    lastSyncedMsgCount = msgCount;
   }
 
   if (msgCount === 0) {
     appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>', new Date().toISOString());
-    lastSyncedMsgCount = 1;
   }
 
   var sessData = await apiFetch(API + '/agent/sessions/' + sid);
@@ -3499,10 +3496,9 @@ async function switchSession(sid) {
           msgCount++;
         }
       });
-      lastSyncedMsgCount = msgCount;
     }
   }
-  
+
   CURRENT_SESSION_USER = (sessData && sessData.user_id) ? sessData.user_id : null;
   updateSendButtonState();
   if (sessData) {
