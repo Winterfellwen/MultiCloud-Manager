@@ -2289,6 +2289,13 @@ function finalizeToolCards(container, finalState, statusText) {
 function savePartialContent(ev) {
   if (!ev.session_id) return;
   if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
+  // Save agent content FIRST, then tool-calls. This matches the order
+  // used by handleStateChangeEvent's done branch and ensures renderToolCallsInline
+  // can attach tool cards to the preceding agent message (not a standalone group).
+  // Mark partial saves as streaming:true so the done handler can replace them.
+  if (STREAMING_CONTENT) {
+    SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id, streaming: true});
+  }
   if (PENDING_TOOL_CALLS.length > 0) {
     SESSION_MESSAGES[ev.session_id].push({
       role: 'tool-calls',
@@ -2296,11 +2303,9 @@ function savePartialContent(ev) {
         return {name: tc.name, params: tc.params, result: tc.result};
       })),
       created_at: new Date().toISOString(),
-      _run_id: ev.run_id
+      _run_id: ev.run_id,
+      streaming: true
     });
-  }
-  if (STREAMING_CONTENT) {
-    SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id});
   }
 }
 function handleStateChangeEvent(ev) {
@@ -2310,6 +2315,8 @@ function handleStateChangeEvent(ev) {
     resetCurrentRun(ev);
     // Tool calls are already rendered inline in STREAMING_DIV during execution.
     // No need to render a separate group.
+    // Note: STREAMING_DIV may be null if user switched sessions during streaming.
+    // In that case, use STREAMING_CONTENT directly to save final state.
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       // Finalize all .msg-content blocks — render markdown and remove streaming cursor
@@ -2325,74 +2332,85 @@ function handleStateChangeEvent(ev) {
       // Also remove any orphaned inline-status at STREAMING_DIV level
       var orphanStatus = STREAMING_DIV.querySelector(':scope > .inline-status');
       if (orphanStatus) orphanStatus.remove();
-      // Save to in-memory cache — walk the timeline to capture all blocks
-      if (ev.session_id) {
-        if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
-        // Deduplicate: skip if this run_id was already saved
-        var runId = ev.run_id || '';
-        var alreadySaved = SESSION_MESSAGES[ev.session_id].some(function(m) { return m._run_id === runId; });
-        if (alreadySaved) {
-          // Don't save again — prevents duplication on page refresh or session switch
-        } else {
-        // Collect all content blocks and tool cards from STREAMING_DIV in order
-        var timeEl = STREAMING_DIV ? STREAMING_DIV.querySelector('.msg-time') : null;
-        var blocks = [];
-        if (STREAMING_DIV) {
-          var children = STREAMING_DIV.children;
-          for (var bi = 0; bi < children.length; bi++) {
-            var child = children[bi];
-            if (child === timeEl) continue; // skip time element
-            if (child.classList.contains('msg-role') || child.classList.contains('agent-copy-btn')) continue;
-            if (child.classList.contains('msg-content')) {
-              var text = child.textContent.trim();
-              if (text) blocks.push({role: 'agent', content: text});
-            } else if (child.classList.contains('timeline-tool-card')) {
-              var tcName = child.querySelector('.card-name');
-              var tcResult = child.querySelector('.field-result');
-              var tcParams = child.querySelector('.field-args');
-              var tcTimestamp = child.querySelector('.card-timestamp');
-              blocks.push({
-                role: 'tool-calls',
-                content: JSON.stringify([{
-                  name: tcName ? tcName.textContent : 'unknown',
-                  params: tcParams ? tcParams.textContent : '',
-                  result: tcResult ? tcResult.textContent : '',
-                  timestamp: tcTimestamp ? tcTimestamp.textContent : ''
-                }])
-              });
-            }
+    }
+    // Save to in-memory cache — always do this for the run's session
+    // even if STREAMING_DIV is null (user switched sessions during streaming).
+    if (ev.session_id) {
+      if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
+      var runId = ev.run_id || '';
+      // Strategy: always replace partial saves for this run with final content.
+      // Delete all messages with this run_id (partial saves have streaming:true,
+      // which distinguishes them from truly finalized messages).
+      if (runId) {
+        SESSION_MESSAGES[ev.session_id] = SESSION_MESSAGES[ev.session_id].filter(function(m) {
+          // Keep messages without run_id (e.g., user messages, old finalized messages)
+          // Delete messages with matching run_id (they're partial saves to be replaced)
+          return m._run_id !== runId;
+        });
+      }
+      // Collect all content blocks and tool cards from STREAMING_DIV in order
+      var timeEl = STREAMING_DIV ? STREAMING_DIV.querySelector('.msg-time') : null;
+      var blocks = [];
+      if (STREAMING_DIV) {
+        var children = STREAMING_DIV.children;
+        for (var bi = 0; bi < children.length; bi++) {
+          var child = children[bi];
+          if (child === timeEl) continue; // skip time element
+          if (child.classList.contains('msg-role') || child.classList.contains('agent-copy-btn')) continue;
+          if (child.classList.contains('msg-content')) {
+            var text = child.textContent.trim();
+            if (text) blocks.push({role: 'agent', content: text});
+          } else if (child.classList.contains('timeline-tool-card')) {
+            var tcName = child.querySelector('.card-name');
+            var tcResult = child.querySelector('.field-result');
+            var tcParams = child.querySelector('.field-args');
+            var tcTimestamp = child.querySelector('.card-timestamp');
+            blocks.push({
+              role: 'tool-calls',
+              content: JSON.stringify([{
+                name: tcName ? tcName.textContent : 'unknown',
+                params: tcParams ? tcParams.textContent : '',
+                result: tcResult ? tcResult.textContent : '',
+                timestamp: tcTimestamp ? tcTimestamp.textContent : ''
+              }])
+            });
           }
         }
-        // Also save pending tool calls that may not have DOM cards
-        if (PENDING_TOOL_CALLS.length > 0) {
-          var savedTcNames = {};
-          blocks.forEach(function(b) {
-            if (b.role === 'tool-calls') {
-              try { var arr = JSON.parse(b.content); arr.forEach(function(t) { savedTcNames[t.name] = true; }); } catch(e) { console.warn('[MCM]', e); }
-            }
-          });
-          PENDING_TOOL_CALLS.forEach(function(tc) {
-            if (!savedTcNames[tc.name]) {
-              blocks.push({
-                role: 'tool-calls',
-                content: JSON.stringify([{name: tc.name, params: tc.params, result: tc.result}])
-              });
-            }
-          });
-        }
-        blocks.forEach(function(b) {
-          b.created_at = new Date().toISOString();
-          b._run_id = ev.run_id;
-          SESSION_MESSAGES[ev.session_id].push(b);
-        });
-        } // end of dedup check
       }
+      // Also save pending tool calls that may not have DOM cards
+      if (PENDING_TOOL_CALLS.length > 0) {
+        var savedTcNames = {};
+        blocks.forEach(function(b) {
+          if (b.role === 'tool-calls') {
+            try { var arr = JSON.parse(b.content); arr.forEach(function(t) { savedTcNames[t.name] = true; }); } catch(e) { console.warn('[MCM]', e); }
+          }
+        });
+        PENDING_TOOL_CALLS.forEach(function(tc) {
+          if (!savedTcNames[tc.name]) {
+            blocks.push({
+              role: 'tool-calls',
+              content: JSON.stringify([{name: tc.name, params: tc.params, result: tc.result}])
+            });
+          }
+        });
+      }
+      // If STREAMING_DIV is null (switched sessions), use STREAMING_CONTENT directly
+      if (!STREAMING_DIV && STREAMING_CONTENT) {
+        blocks.push({role: 'agent', content: STREAMING_CONTENT});
+      }
+      blocks.forEach(function(b) {
+        b.created_at = new Date().toISOString();
+        b._run_id = ev.run_id;
+        SESSION_MESSAGES[ev.session_id].push(b);
+      });
+    }
+    if (STREAMING_DIV) {
       // Finalize any still-running tool cards (stop timers, mark done)
       finalizeToolCards(STREAMING_DIV, 'done', LOCALE === 'zh' ? '完成' : 'done');
       scrollToBottom();
       STREAMING_DIV = null;
-      STREAMING_CONTENT = '';
     }
+    STREAMING_CONTENT = '';
     PENDING_TOOL_CALLS = [];
   } else if (newState === 'error') {
     if (isCurrentSession) showError(ev.payload.error_message);
@@ -2400,7 +2418,11 @@ function handleStateChangeEvent(ev) {
     if (STREAMING_DIV) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
-      if (contentEl) contentEl.classList.remove('streaming-cursor');
+      if (contentEl) {
+        contentEl.classList.remove('streaming-cursor');
+        var errorMsg = ev.payload.error_message || (LOCALE === 'zh' ? '发生错误' : 'Error occurred');
+        contentEl.innerHTML = '<div style="color:var(--error);padding:8px 0">' + escHtml(errorMsg) + '</div>';
+      }
       // Save partial content + tool calls to prevent poll re-rendering duplicates
       savePartialContent(ev);
       // Finalize running tool cards
@@ -3493,23 +3515,31 @@ async function switchSession(sid) {
     _directSSEController.abort();
     _directSSEController = null;
   }
-  // Save streaming state of current session before switching
+  lastSyncedMsgCount = 0;
+  // Save streaming state of current session before switching.
+  // Order: agent content FIRST, then tool-calls. This matches
+  // handleStateChangeEvent's done branch and ensures renderToolCallsInline
+  // can attach to the preceding agent message instead of creating a standalone group.
   if (CURRENT_SESSION && STREAMING_DIV && STREAMING_DIV.isConnected) {
     if (!SESSION_MESSAGES[CURRENT_SESSION]) SESSION_MESSAGES[CURRENT_SESSION] = [];
-    // Save pending tool calls as tool-calls message
+    // Save partial streaming content first
+    if (STREAMING_CONTENT) {
+      SESSION_MESSAGES[CURRENT_SESSION].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), streaming: true, _run_id: CURRENT_RUN_ID});
+    }
+    // Then save pending tool calls
     if (PENDING_TOOL_CALLS.length > 0) {
       SESSION_MESSAGES[CURRENT_SESSION].push({
         role: 'tool-calls',
         content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
-          return {name: tc.name, params: tc.params, result: tc.result};
+          var status = 'done';
+          if (!tc.result) status = 'running';
+          else if (tc.error || (tc.result && String(tc.result).toLowerCase().indexOf('error') !== -1)) status = 'error';
+          return {name: tc.name, params: tc.params, result: tc.result, status: status};
         })),
         created_at: new Date().toISOString(),
-        streaming: true
+        streaming: true,
+        _run_id: CURRENT_RUN_ID
       });
-    }
-    // Save partial streaming content
-    if (STREAMING_CONTENT) {
-      SESSION_MESSAGES[CURRENT_SESSION].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), streaming: true});
     }
   }
   CURRENT_SESSION = sid;
@@ -3543,6 +3573,7 @@ async function switchSession(sid) {
           div.className = 'msg agent streaming';
           div.innerHTML = aiRoleHeader() + '<div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton();
           container.appendChild(div);
+          STREAMING_DIV = div;
         } else {
           appendMessage('agent', renderMarkdown(m.content), ts);
         }
@@ -3564,20 +3595,31 @@ async function switchSession(sid) {
         msgCount++;
       }
     });
-    // If streaming, also restore STREAMING_MSG
-    if (liveMsgs.length > 0 && liveMsgs[liveMsgs.length - 1].streaming) {
-      STREAMING_MSG = {type: 'agent', content: liveMsgs[liveMsgs.length - 1].content};
-      document.getElementById('chatStopBtn').style.display = '';
-    }
     lastSyncedMsgCount = msgCount;
-  } else {
-    // Fallback: load from DB
-    const data = await apiFetch(API + '/agent/sessions/' + sid);
-    var isRunning = data && (data.state === 'running' || data.state === 'waiting_confirm' || data.state === 'queued' || data.status === 'running');
+  }
+
+  if (msgCount === 0) {
+    appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>', new Date().toISOString());
+    lastSyncedMsgCount = 1;
+  }
+
+  var sessData = await apiFetch(API + '/agent/sessions/' + sid);
+  var isRunning = sessData && (sessData.state === 'running' || sessData.state === 'waiting_confirm' || sessData.state === 'queued' || sessData.status === 'running');
+  
+  // If session is running and no streaming div exists, create one with "thinking" indicator
+  if (isRunning && !STREAMING_DIV) {
+    document.getElementById('chatStopBtn').style.display = '';
+    var thinkDiv = document.createElement('div');
+    thinkDiv.className = 'msg agent streaming';
+    thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
+    container.appendChild(thinkDiv);
+    STREAMING_DIV = thinkDiv;
+  }
+  
+  if (!liveMsgs) {
     if (isRunning) {
       document.getElementById('chatStopBtn').style.display = '';
-      // Show "thinking" indicator for running sessions with no messages yet
-      if (!data.messages || data.messages.length === 0) {
+      if (!sessData.messages || sessData.messages.length === 0) {
         var thinkDiv = document.createElement('div');
         thinkDiv.className = 'msg agent streaming';
         thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
@@ -3586,12 +3628,11 @@ async function switchSession(sid) {
         msgCount++;
       }
     }
-    if (data && data.messages && data.messages.length > 0) {
-      // Store DB messages in global cache
-      SESSION_MESSAGES[sid] = data.messages.map(function(m) {
+    if (sessData && sessData.messages && sessData.messages.length > 0) {
+      SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
         return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
       });
-      data.messages.forEach(function(m) {
+      sessData.messages.forEach(function(m) {
         var ts = m.created_at || m.timestamp || '';
         if (m.role === 'user') {
           appendMessage('user', escHtml(m.content), ts);
@@ -3618,29 +3659,66 @@ async function switchSession(sid) {
       lastSyncedMsgCount = msgCount;
     }
   }
-
-  if (msgCount === 0) {
-    appendMessage('agent', '<p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p>', new Date().toISOString());
-    lastSyncedMsgCount = 1;
-  }
-
-  // Fetch full session data from API (includes active_run_events, etc.)
-  var sessData = await apiFetch(API + '/agent/sessions/' + sid);
+  
   CURRENT_SESSION_USER = (sessData && sessData.user_id) ? sessData.user_id : null;
   updateSendButtonState();
   if (sessData) {
-    // Render active run events as live continuation
+    // Set CURRENT_RUN_ID if session is running
+    if (sessData.active_run_id && isRunning) {
+      CURRENT_RUN_ID = sessData.active_run_id;
+    }
+    // Render active run events - but avoid duplicating tool calls that
+    // were already saved/rendered from SESSION_MESSAGES (liveMsgs).
     if (sessData.active_run_id && sessData.active_run_events && sessData.active_run_events.length > 0) {
-      var runDiv = document.createElement('div');
-      runDiv.id = 'run-' + sessData.active_run_id;
-      runDiv.className = 'run-events';
-        renderRunEvents(runDiv, sessData.active_run_events);
-        container.appendChild(runDiv);
-        CURRENT_RUN_ID = sessData.active_run_id;
-        // Reset streaming state so SSE events create a fresh streaming div
-  STREAMING_DIV = null;
-  STREAMING_CONTENT = '';
-  _pendingStopSession = null;
+      var runDivId = 'run-' + sessData.active_run_id;
+      if (!document.getElementById(runDivId)) {
+        // If liveMsgs already has tool-calls with the same run_id, the
+        // tool calls have already been rendered inline. Only process
+        // token events from active_run_events to continue streaming.
+        var alreadyHasToolCalls = false;
+        if (liveMsgs && liveMsgs.length > 0) {
+          for (var _k = 0; _k < liveMsgs.length; _k++) {
+            var _m = liveMsgs[_k];
+            if (_m.role === 'tool-calls') {
+                  alreadyHasToolCalls = true;
+              break;
+            }
+          }
+        }
+        var runDiv = document.createElement('div');
+        runDiv.id = runDivId;
+        runDiv.className = 'run-events';
+        if (alreadyHasToolCalls) {
+          // Only render token events to avoid duplicating tool cards
+          var tokenBuf = '';
+          for (var _ei = 0; _ei < sessData.active_run_events.length; _ei++) {
+            var _ev = sessData.active_run_events[_ei];
+            if (_ev.event_type === 'token' && _ev.payload && _ev.payload.content) {
+              tokenBuf += _ev.payload.content;
+            }
+          }
+          if (tokenBuf) {
+            // Append to existing agent msg or create one
+            var _lastAgent = container.querySelector('.msg.agent:last-of-type');
+            if (_lastAgent) {
+              var _content = _lastAgent.querySelector('.msg-content');
+              if (_content) {
+                _content.innerHTML = renderMarkdown(_content.textContent + tokenBuf);
+              } else {
+                var _newContent = document.createElement('div');
+                _newContent.className = 'msg-content';
+                _newContent.innerHTML = renderMarkdown(tokenBuf);
+                _lastAgent.appendChild(_newContent);
+              }
+            } else {
+              appendMessage('agent', renderMarkdown(tokenBuf));
+            }
+          }
+        } else {
+          renderRunEvents(runDiv, sessData.active_run_events);
+          container.appendChild(runDiv);
+        }
+      }
     }
     // Render pending queue indicator
     if (sessData.pending_runs && sessData.pending_runs.length > 0) {
@@ -3664,27 +3742,10 @@ async function switchSession(sid) {
         container.appendChild(details);
       });
     }
-    // If cache was stale and API has newer messages, render them
-    // Skip this if we already rendered from live memory cache (SESSION_MESSAGES)
-    if (!liveMsgs && sessData.messages && sessData.messages.length > lastSyncedMsgCount) {
-      for (var i = lastSyncedMsgCount; i < sessData.messages.length; i++) {
-        var m = sessData.messages[i];
-        var ts = m.created_at || m.timestamp || '';
-        if (m.role === 'user') {
-          appendMessage('user', escHtml(m.content), ts);
-        } else if (m.role === 'agent' || m.role === 'assistant') {
-          appendMessage('agent', renderMarkdown(m.content), ts);
-        } else if (m.role === 'tool-calls') {
-          renderToolCallsGroup(m.content, container);
-        }
-      }
-      SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
-        return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
-      });
-      lastSyncedMsgCount = sessData.messages.length;
-    }
   }
 
+  // Scroll to bottom when loading a session to show latest messages
+  // User can scroll up to read history if needed
   container.scrollTop = container.scrollHeight;
 
   // If the target session has an active run, open a direct SSE stream
@@ -3745,7 +3806,6 @@ function appendMessage(type, html, timestamp) {
     div.innerHTML = '<div class="msg-content">' + html + '</div>' + timeHtml;
   }
   container.appendChild(div);
-  scrollToBottom(container);
 }
 
 // Build the copy button HTML for an AI message. The button calls
