@@ -450,6 +450,8 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-card.done .tool-card-header .card-status { background: rgba(0,200,83,.15); color: var(--success); }
 .tool-card.error { border-left: 3px solid var(--danger); }
 .tool-card.error .tool-card-header .card-status { background: rgba(255,59,48,.15); color: var(--danger); }
+.tool-card.pending { border-left: 3px solid var(--border); opacity: .6; }
+.tool-card.pending .tool-card-header .card-status { background: rgba(128,128,128,.1); color: var(--text-muted); }
 /* Card header - always visible, clickable to expand */
 .tool-card-header { display: flex; align-items: center; gap: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; color: var(--text); transition: background .1s; user-select: none; min-height: auto; }
 .tool-card-header:hover { background: rgba(255,255,255,.03); min-height: auto; }
@@ -2084,61 +2086,71 @@ function handleTokenEvent(ev) {
 }
 
 function handleToolStartEvent(ev) {
-  if (ev.payload && ev.payload.tool_calls) {
-    ev.payload.tool_calls.forEach(function(tc) {
-      var fn = tc.function || tc;
-      var name = fn.name || 'unknown';
-      var args = fn.arguments || '';
-      // Use tool_call_id for dedup (if available), fall back to name+index combo
-      var callKey = tc.id || (name + '_' + PENDING_TOOL_CALLS.length);
-      var isDuplicate = PENDING_TOOL_CALLS.some(function(t) { return t._callKey === callKey; });
-      if (isDuplicate) return;
+  if (!ev.payload || !ev.payload.tool_calls) return;
 
-      PENDING_TOOL_CALLS.push({name: name, params: args, result: '', _callKey: callKey});
+  // Don't manipulate DOM for non-current sessions
+  if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
 
-      // Don't manipulate DOM for non-current sessions
-      if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
+  // Filter out duplicate tool calls before creating any DOM
+  var newCalls = [];
+  ev.payload.tool_calls.forEach(function(tc) {
+    var fn = tc.function || tc;
+    var name = fn.name || 'unknown';
+    var args = fn.arguments || '';
+    var callKey = tc.id || (name + '_' + PENDING_TOOL_CALLS.length);
 
-      // Check if tool card already exists in STREAMING_DIV (by unique callKey)
-      if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-        var alreadyRendered = Array.from(STREAMING_DIV.querySelectorAll('.timeline-tool-card')).some(function(el) {
-          return el.dataset.callKey === callKey;
-        });
-        if (alreadyRendered) return;
-      }
+    var isDuplicate = PENDING_TOOL_CALLS.some(function(t) { return t._callKey === callKey; });
+    if (isDuplicate) return;
 
-      _ensureStreamingDiv();
+    // Check DOM dedup
+    if (STREAMING_DIV && STREAMING_DIV.isConnected) {
+      var alreadyRendered = Array.from(STREAMING_DIV.querySelectorAll('.timeline-tool-card')).some(function(el) {
+        return el.dataset.callKey === callKey;
+      });
+      if (alreadyRendered) return;
+    }
 
-      // Insert tool card directly into the timeline (before .msg-time)
-      // Each tool call is its own standalone card in chronological order
-      var card = buildToolCard({name: name, params: fn.arguments || '', result: '', status: 'running', timestamp: new Date().toISOString()});
-      card.classList.add('timeline-tool-card');
-      card.dataset.callKey = callKey;
+    PENDING_TOOL_CALLS.push({name: name, params: args, result: '', _callKey: callKey});
+    newCalls.push({fn: fn, name: name, args: args, callKey: callKey});
+  });
 
-      var timeEl = STREAMING_DIV.querySelector('.msg-time');
-      if (timeEl) {
-        STREAMING_DIV.insertBefore(card, timeEl);
-      } else {
-        STREAMING_DIV.appendChild(card);
-      }
+  if (newCalls.length === 0) return;
 
-      // Reset content block state so next token creates a NEW content block after this tool card
-      STREAMING_DIV._lastRenderedLen = 0;
-      STREAMING_CONTENT = '';
+  _ensureStreamingDiv();
+  if (!STREAMING_DIV._toolCardOrder) STREAMING_DIV._toolCardOrder = [];
 
-      // Insert a fresh .msg-content after the tool card so post-tool AI text
-      // appears after the card (not in the pre-tool content block)
-      var newContent = document.createElement('div');
-      newContent.className = 'msg-content streaming-cursor';
-      if (timeEl) {
-        STREAMING_DIV.insertBefore(newContent, timeEl);
-      } else {
-        STREAMING_DIV.appendChild(newContent);
-      }
+  newCalls.forEach(function(item, index) {
+    var status = index === 0 ? 'running' : 'pending';
+    var card = buildToolCard({name: item.name, params: item.fn.arguments || '', result: '', status: status, timestamp: new Date().toISOString()});
+    card.classList.add('timeline-tool-card');
+    card.dataset.callKey = item.callKey;
 
-      scrollToBottom();
-    });
+    var timeEl = STREAMING_DIV.querySelector('.msg-time');
+    if (timeEl) {
+      STREAMING_DIV.insertBefore(card, timeEl);
+    } else {
+      STREAMING_DIV.appendChild(card);
+    }
+
+    STREAMING_DIV._toolCardOrder.push(card);
+  });
+
+  // Reset content block state so next token creates a NEW content block after tool cards
+  STREAMING_DIV._lastRenderedLen = 0;
+  STREAMING_CONTENT = '';
+
+  // Insert a fresh .msg-content after the tool cards so post-tool AI text
+  // appears after the cards (not in the pre-tool content block)
+  var timeEl = STREAMING_DIV.querySelector('.msg-time');
+  var newContent = document.createElement('div');
+  newContent.className = 'msg-content streaming-cursor';
+  if (timeEl) {
+    STREAMING_DIV.insertBefore(newContent, timeEl);
+  } else {
+    STREAMING_DIV.appendChild(newContent);
   }
+
+  scrollToBottom();
 }
 
 // handleToolOutputEvent — real-time streaming output from running tools (e.g., shell_exec)
@@ -2180,61 +2192,104 @@ function handleToolOutputEvent(ev) {
 }
 
 function handleToolResultEvent(ev) {
-  if (ev.payload) {
-    var name = ev.payload.tool_name || 'tool';
-    var result = ev.payload.result || ev.payload.error || '';
-    var hasError = !!ev.payload.error;
-    for (var i = PENDING_TOOL_CALLS.length - 1; i >= 0; i--) {
-      if (PENDING_TOOL_CALLS[i].name === name && !PENDING_TOOL_CALLS[i].result) {
-        PENDING_TOOL_CALLS[i].result = result;
-        PENDING_TOOL_CALLS[i].error = hasError;
-        break;
-      }
-    }
-    // Don't manipulate DOM for non-current sessions
-    if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
-    // Update the last tool card matching this name (supports multiple same-name tools)
-    if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-      var cards = STREAMING_DIV.querySelectorAll('.timeline-tool-card');
-      var targetCard = null;
-      for (var i = cards.length - 1; i >= 0; i--) {
-        var nameEl = cards[i].querySelector('.card-name');
-        if (nameEl && nameEl.textContent === name) {
-          targetCard = cards[i];
-          break;
-        }
-      }
-      if (targetCard) {
-        if (targetCard._timer) { clearInterval(targetCard._timer); targetCard._timer = null; }
-        targetCard.classList.remove('running');
-        targetCard.classList.add(hasError ? 'error' : 'done');
-        var statusEl = targetCard.querySelector('.card-status');
-        if (statusEl) {
-          statusEl.className = 'card-status ' + (hasError ? 'error' : 'done');
-          statusEl.textContent = hasError ? (LOCALE === 'zh' ? '错误' : 'error') : (LOCALE === 'zh' ? '完成' : 'done');
-        }
-        var body = targetCard.querySelector('.tool-card-body');
-        if (body && result) {
-          var resultText = result;
-          try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
-          var existingLabel = body.querySelector('.field-label');
-          var existingResult = body.querySelector('.field-result');
-          if (existingLabel) existingLabel.remove();
-          if (existingResult) existingResult.remove();
-          var resultDiv = document.createElement('div');
-          resultDiv.className = 'field-label';
-          resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
-          body.appendChild(resultDiv);
-          var resultContent = document.createElement('div');
-          resultContent.className = 'field-result';
-          resultContent.setAttribute('data-result', escHtml(resultText));
-          resultContent.textContent = resultText;
-          body.appendChild(resultContent);
-        }
-      }
-      scrollToBottom();
+  if (!ev.payload) return;
+
+  var name = ev.payload.tool_name || 'tool';
+  var result = ev.payload.result || ev.payload.error || '';
+  var hasError = !!ev.payload.error;
+
+  for (var i = PENDING_TOOL_CALLS.length - 1; i >= 0; i--) {
+    if (PENDING_TOOL_CALLS[i].name === name && !PENDING_TOOL_CALLS[i].result) {
+      PENDING_TOOL_CALLS[i].result = result;
+      PENDING_TOOL_CALLS[i].error = hasError;
+      break;
     }
   }
+
+  // Don't manipulate DOM for non-current sessions
+  if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
+
+  if (!STREAMING_DIV || !STREAMING_DIV.isConnected) return;
+
+  // Find the first tool card matching this name that is still running/pending
+  // (use _toolCardOrder to respect execution order for same-name tools)
+  var order = STREAMING_DIV._toolCardOrder || [];
+  var targetCard = null;
+  var targetIdx = -1;
+  for (var i = 0; i < order.length; i++) {
+    var nameEl = order[i].querySelector('.card-name');
+    if (nameEl && nameEl.textContent === name && (order[i].classList.contains('running') || order[i].classList.contains('pending'))) {
+      targetCard = order[i];
+      targetIdx = i;
+      break;
+    }
+  }
+  if (!targetCard) return;
+
+  // Mark current card as done/error with accurate duration
+  if (targetCard._timer) { clearInterval(targetCard._timer); targetCard._timer = null; }
+  targetCard.classList.remove('running', 'pending');
+  targetCard.classList.add(hasError ? 'error' : 'done');
+  var statusEl = targetCard.querySelector('.card-status');
+  if (statusEl) {
+    statusEl.className = 'card-status ' + (hasError ? 'error' : 'done');
+    statusEl.textContent = hasError ? (LOCALE === 'zh' ? '错误' : 'error') : (LOCALE === 'zh' ? '完成' : 'done');
+  }
+  // Update final duration
+  if (targetCard._startTime) {
+    var durEl = targetCard.querySelector('.summary-duration');
+    if (durEl) {
+      var elapsed = ((Date.now() - targetCard._startTime) / 1000).toFixed(1);
+      durEl.textContent = '⏱ ' + elapsed + 's';
+    }
+  }
+
+  var body = targetCard.querySelector('.tool-card-body');
+  if (body && result) {
+    var resultText = result;
+    try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
+    var existingLabel = body.querySelector('.field-label');
+    var existingResult = body.querySelector('.field-result');
+    if (existingLabel) existingLabel.remove();
+    if (existingResult) existingResult.remove();
+    var resultDiv = document.createElement('div');
+    resultDiv.className = 'field-label';
+    resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
+    body.appendChild(resultDiv);
+    var resultContent = document.createElement('div');
+    resultContent.className = 'field-result';
+    resultContent.setAttribute('data-result', escHtml(resultText));
+    resultContent.textContent = resultText;
+    body.appendChild(resultContent);
+  }
+
+  // Advance next pending card to "running"
+  var order = STREAMING_DIV._toolCardOrder || [];
+  var orderIdx = order.indexOf(targetCard);
+  if (orderIdx >= 0 && orderIdx + 1 < order.length) {
+    var nextCard = order[orderIdx + 1];
+    nextCard.classList.remove('pending');
+    nextCard.classList.add('running');
+
+    // Update status element
+    var nextStatus = nextCard.querySelector('.card-status');
+    if (nextStatus) {
+      nextStatus.className = 'card-status running';
+      nextStatus.textContent = LOCALE === 'zh' ? '运行中' : 'running';
+    }
+
+    // Start timer for the next card
+    nextCard._startTime = Date.now();
+    var nextDurEl = nextCard.querySelector('.summary-duration');
+    if (nextDurEl) {
+      nextCard._timer = setInterval(function() {
+        var elapsed = ((Date.now() - nextCard._startTime) / 1000).toFixed(1);
+        nextDurEl.textContent = '⏱ ' + elapsed + 's';
+      }, 100);
+    }
+  }
+
+  scrollToBottom();
 }
 
 function handleConfirmRequiredEvent(ev) {
@@ -2255,13 +2310,21 @@ function resetCurrentRun(ev) {
 }
 
 function finalizeToolCards(container, finalState, statusText) {
-  var cards = container.querySelectorAll('.tool-card.running, .timeline-tool-card.running, .timeline-tool-card.error');
+  var cards = container.querySelectorAll('.tool-card.running, .timeline-tool-card.running, .timeline-tool-card.error, .timeline-tool-card.pending');
   cards.forEach(function(card) {
     if (card._timer) { clearInterval(card._timer); card._timer = null; }
-    card.classList.remove('running', 'error');
+    card.classList.remove('running', 'error', 'pending');
     card.classList.add(finalState);
     var s = card.querySelector('.card-status');
     if (s) { s.className = 'card-status ' + finalState; s.textContent = statusText; }
+    // Calculate final duration for pending/error cards that had a start time
+    if (card._startTime) {
+      var durEl = card.querySelector('.summary-duration');
+      if (durEl) {
+        var elapsed = ((Date.now() - card._startTime) / 1000).toFixed(1);
+        durEl.textContent = '⏱ ' + elapsed + 's';
+      }
+    }
   });
   var blocks = container.querySelectorAll('.tool-block:not(.done)');
   blocks.forEach(function(block) {
@@ -3865,8 +3928,9 @@ function getToolIcon(name) {
 function buildToolCard(tc) {
   var card = document.createElement('div');
   var isRunning = tc.status === 'running';
+  var isPending = tc.status === 'pending';
   var hasError = tc.status === 'error';
-  card.className = 'tool-card' + (isRunning ? ' running' : (hasError ? ' error' : ' done'));
+  card.className = 'tool-card' + (isRunning ? ' running' : (isPending ? ' pending' : (hasError ? ' error' : ' done')));
 
   var paramsStr = '';
   try { paramsStr = JSON.stringify(JSON.parse(tc.params || '{}'), null, 2); } catch(e) { paramsStr = tc.params || ''; }
@@ -3876,8 +3940,8 @@ function buildToolCard(tc) {
   var loc = LOCALE === 'zh';
   var summary = getToolSummary(tc.name, tc.params);
   var icon = getToolIcon(tc.name);
-  var statusLabel = isRunning ? (loc ? '运行中' : 'running') : (hasError ? (loc ? '错误' : 'error') : (loc ? '完成' : 'done'));
-  var statusClass = isRunning ? 'running' : (hasError ? 'error' : 'done');
+  var statusLabel = isRunning ? (loc ? '运行中' : 'running') : (isPending ? (loc ? '等待中' : 'pending') : (hasError ? (loc ? '错误' : 'error') : (loc ? '完成' : 'done')));
+  var statusClass = isRunning ? 'running' : (isPending ? 'pending' : (hasError ? 'error' : 'done'));
 
   // Build compact collapsed view (always visible)
   // Build expandable detail view (hidden by default)
@@ -3926,11 +3990,13 @@ function buildToolCard(tc) {
   // Start duration timer for running cards
   if (isRunning) {
     var durEl = card.querySelector('.summary-duration');
-    var startTime = Date.now();
+    card._startTime = Date.now();
     card._timer = setInterval(function() {
-      var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      var elapsed = ((Date.now() - card._startTime) / 1000).toFixed(1);
       durEl.textContent = '⏱ ' + elapsed + 's';
     }, 100);
+  } else if (isPending) {
+    // Pending cards show no timer initially
   } else if (tc.duration) {
     var durEl = card.querySelector('.summary-duration');
     durEl.textContent = '⏱ ' + (tc.duration / 1000).toFixed(1) + 's';
