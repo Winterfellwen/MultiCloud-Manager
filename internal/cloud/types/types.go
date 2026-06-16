@@ -139,16 +139,46 @@ type Network struct {
 }
 
 type Database struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	CloudType   string                 `json:"cloud_type"`
-	Region      string                 `json:"region"`
-	Status      string                 `json:"status"`
-	Engine      string                 `json:"engine"`
-	EngineVer   string                 `json:"engine_version"`
-	InstanceCls string                 `json:"instance_class"`
-	Spec        map[string]interface{} `json:"spec"`
-	Tags        map[string]string      `json:"tags"`
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	CloudType    string                 `json:"cloud_type"`
+	Region       string                 `json:"region"`
+	Status       string                 `json:"status"`
+	Engine       string                 `json:"engine"`
+	EngineVer    string                 `json:"engine_version"`
+	InstanceCls  string                 `json:"instance_class"`
+	StorageGB    int                    `json:"storage_gb,omitempty"`
+	Endpoint     string                 `json:"endpoint,omitempty"`
+	Port         int                    `json:"port,omitempty"`
+	MasterUser   string                 `json:"master_user,omitempty"`
+	MultiAZ      bool                   `json:"multi_az,omitempty"`
+	PubliclyAccessible bool             `json:"publicly_accessible,omitempty"`
+	StorageEncrypted bool               `json:"storage_encrypted,omitempty"`
+	BackupRetention int                 `json:"backup_retention_days,omitempty"`
+	PreferredBackup string              `json:"preferred_backup_window,omitempty"`
+	// 通用增强字段
+	LastModified string                 `json:"last_modified,omitempty"`
+	Description  string                 `json:"description,omitempty"`
+	// AWS RDS 特定字段
+	DBName         string               `json:"db_name,omitempty"`
+	AutoMinorVersionUpgrade bool       `json:"auto_minor_version_upgrade,omitempty"`
+	CACertificateID string             `json:"ca_certificate_id,omitempty"`
+	DBSubnetGroup  string              `json:"db_subnet_group,omitempty"`
+	// Azure SQL 特定字段
+	Edition         string             `json:"edition,omitempty"`
+	ServiceObjective string            `json:"service_objective,omitempty"`
+	SkuName         string             `json:"sku_name,omitempty"`
+	// 阿里云 RDS 特定字段
+	DBInstanceType string              `json:"db_instance_type,omitempty"`
+	PayType        string              `json:"pay_type,omitempty"`
+	ExpiredTime    string              `json:"expired_time,omitempty"`
+	// 腾讯云 CDB 特定字段
+	Vip            string              `json:"vip,omitempty"`
+	Vport          int                 `json:"vport,omitempty"`
+	DeviceInfo     string              `json:"device_info,omitempty"`
+	// 通用字段
+	Spec           map[string]interface{} `json:"spec"`
+	Tags           map[string]string      `json:"tags"`
 }
 
 type LoadBalancer struct {

@@ -776,6 +776,17 @@ type rdsDBInstance struct {
 	EngineVersion         string   `json:"EngineVersion"`
 	DBInstanceStatus      string   `json:"DBInstanceStatus"`
 	RegionID              string   `json:"RegionId"`
+	DBInstanceType        string   `json:"DBInstanceType"`
+	PayType               string   `json:"PayType"`
+	CreateTime            string   `json:"CreateTime"`
+	ExpiredTime           string   `json:"ExpiredTime"`
+	ConnectionString      string   `json:"ConnectionString"`
+	Port                  int      `json:"Port"`
+	LockMode              string   `json:"LockMode"`
+	Category              string   `json:"Category"`
+	VpcId                 string   `json:"VpcId"`
+	VSwitchId             string   `json:"VSwitchId"`
+	StorageGB              int      `json:"StorageGB"`
 	Tags                  *rdsTags `json:"Tags"`
 }
 
@@ -909,17 +920,36 @@ func (p *AlicloudProvider) GetDatabase(ctx context.Context, databaseID string) (
 		status = strings.ToLower(db.DBInstanceStatus)
 	}
 	return &types.Database{
-		ID:          db.DBInstanceID,
-		Name:        name,
-		CloudType:   "alicloud",
-		Region:      db.RegionID,
-		Status:      status,
-		Engine:      db.Engine,
-		EngineVer:   db.EngineVersion,
-		InstanceCls: db.DBInstanceClass,
+		ID:            db.DBInstanceID,
+		Name:          name,
+		CloudType:     "alicloud",
+		Region:        db.RegionID,
+		Status:        status,
+		Engine:        db.Engine,
+		EngineVer:     db.EngineVersion,
+		InstanceCls:   db.DBInstanceClass,
+		StorageGB:     db.StorageGB,
+		Endpoint:      db.ConnectionString,
+		Port:          db.Port,
+		DBInstanceType: db.DBInstanceType,
+		PayType:       db.PayType,
+		ExpiredTime:   db.ExpiredTime,
+		Description:   db.DBInstanceDescription,
 		Spec: map[string]interface{}{
-			"class":  db.DBInstanceClass,
-			"engine": db.Engine,
+			"class":            db.DBInstanceClass,
+			"engine":           db.Engine,
+			"engine_ver":       db.EngineVersion,
+			"db_instance_type": db.DBInstanceType,
+			"pay_type":         db.PayType,
+			"create_time":      db.CreateTime,
+			"expired_time":     db.ExpiredTime,
+			"connection_string": db.ConnectionString,
+			"port":             db.Port,
+			"lock_mode":        db.LockMode,
+			"category":         db.Category,
+			"vpc_id":           db.VpcId,
+			"vswitch_id":       db.VSwitchId,
+			"storage_gb":       db.StorageGB,
 		},
 		Tags: tags,
 	}, nil

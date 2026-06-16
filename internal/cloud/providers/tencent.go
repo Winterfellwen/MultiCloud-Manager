@@ -833,12 +833,23 @@ func (p *TencentProvider) GetDatabase(ctx context.Context, databaseID string) (*
 		Response struct {
 			Items []struct {
 				InstanceId    string `json:"InstanceId"`
-				InstanceName  string `json:"InstanceName"`
+				InstanceName string `json:"InstanceName"`
 				Cpu           int    `json:"Cpu"`
 				Memory        int    `json:"Memory"`
 				EngineVersion string `json:"EngineVersion"`
 				Status        int    `json:"Status"`
+				TaskStatus    int    `json:"TaskStatus"`
 				DeviceType    string `json:"DeviceType"`
+				InstanceType  string `json:"InstanceType"`
+				Vip           string `json:"Vip"`
+				Vport         int    `json:"Vport"`
+				Volume        int    `json:"Volume"`
+				PayType       int    `json:"PayType"`
+				CreateTime    string `json:"CreateTime"`
+				DeadlineTime  string `json:"DeadlineTime"`
+				AutoRenew     int    `json:"AutoRenew"`
+				Region        string `json:"Region"`
+				Zone          string `json:"Zone"`
 				ResourceTags  []struct {
 					TagKey   string `json:"TagKey"`
 					TagValue string `json:"TagValue"`
@@ -861,6 +872,8 @@ func (p *TencentProvider) GetDatabase(ctx context.Context, databaseID string) (*
 		status = "running"
 	case 4:
 		status = "isolated"
+	case 5:
+		status = "deleting"
 	case -2:
 		status = "stopped"
 	default:
@@ -870,20 +883,41 @@ func (p *TencentProvider) GetDatabase(ctx context.Context, databaseID string) (*
 	for _, t := range db.ResourceTags {
 		tags[t.TagKey] = t.TagValue
 	}
+	payTypeStr := "postpaid"
+	if db.PayType == 1 {
+		payTypeStr = "prepaid"
+	}
 	return &types.Database{
 		ID:          db.InstanceId,
 		Name:        db.InstanceName,
 		CloudType:   "tencent",
+		Region:      db.Region,
 		Status:      status,
 		Engine:      "MySQL",
 		EngineVer:   db.EngineVersion,
 		InstanceCls: db.DeviceType,
+		StorageGB:   db.Volume,
+		Endpoint:    db.Vip,
+		Port:        db.Vport,
+		Vip:         db.Vip,
+		Vport:       db.Vport,
+		DeviceInfo:  db.DeviceType,
+		Description: db.InstanceName,
+		LastModified: db.CreateTime,
 		Spec: map[string]interface{}{
-			"cpu":         db.Cpu,
-			"memory_mb":   db.Memory,
-			"device_type": db.DeviceType,
-			"engine":      "MySQL",
-			"engine_ver":  db.EngineVersion,
+			"cpu":          db.Cpu,
+			"memory_mb":    db.Memory,
+			"device_type":  db.DeviceType,
+			"instance_type": db.InstanceType,
+			"engine":       "MySQL",
+			"engine_ver":   db.EngineVersion,
+			"volume":       db.Volume,
+			"pay_type":     payTypeStr,
+			"create_time":  db.CreateTime,
+			"deadline_time": db.DeadlineTime,
+			"auto_renew":   db.AutoRenew,
+			"task_status":  db.TaskStatus,
+			"zone":         db.Zone,
 		},
 		Tags: tags,
 	}, nil

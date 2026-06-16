@@ -842,16 +842,30 @@ func (p *AWSProvider) GetDatabase(ctx context.Context, databaseID string) (*type
 	var result struct {
 		DescribeDBInstancesResult struct {
 			DBInstances []struct {
-				DBInstanceIdentifier string `xml:"DBInstanceIdentifier"`
-				DBInstanceClass      string `xml:"DBInstanceClass"`
-				Engine               string `xml:"Engine"`
-				EngineVersion        string `xml:"EngineVersion"`
-				DBInstanceStatus     string `xml:"DBInstanceStatus"`
-				Endpoint             struct {
+				DBInstanceIdentifier     string `xml:"DBInstanceIdentifier"`
+				DBInstanceClass          string `xml:"DBInstanceClass"`
+				DBName                   string `xml:"DBName"`
+				Engine                   string `xml:"Engine"`
+				EngineVersion            string `xml:"EngineVersion"`
+				DBInstanceStatus         string `xml:"DBInstanceStatus"`
+				MasterUsername           string `xml:"MasterUsername"`
+				Endpoint                 struct {
 					Address string `xml:"Address"`
 					Port    int    `xml:"Port"`
 				} `xml:"Endpoint"`
-				DBInstanceArn string `xml:"DBInstanceArn"`
+				DBInstanceArn            string            `xml:"DBInstanceArn"`
+				InstanceCreateTime       string            `xml:"InstanceCreateTime"`
+				MultiAZ                  bool              `xml:"MultiAZ"`
+				PubliclyAccessible       bool              `xml:"PubliclyAccessible"`
+				StorageEncrypted         bool              `xml:"StorageEncrypted"`
+				KmsKeyId                 string            `xml:"KmsKeyId"`
+				BackupRetentionPeriod    int               `xml:"BackupRetentionPeriod"`
+				PreferredBackupWindow    string            `xml:"PreferredBackupWindow"`
+				PreferredMaintenanceWindow string          `xml:"PreferredMaintenanceWindow"`
+				AutoMinorVersionUpgrade   bool             `xml:"AutoMinorVersionUpgrade"`
+				CACertificateId           string           `xml:"CACertificateId"`
+				DBSubnetGroup             string           `xml:"DBSubnetGroup"`
+				AllocatedStorage          int              `xml:"AllocatedStorage"`
 			} `xml:"DBInstance"`
 		} `xml:"DescribeDBInstancesResult"`
 	}
@@ -870,20 +884,45 @@ func (p *AWSProvider) GetDatabase(ctx context.Context, databaseID string) (*type
 	}
 	log.Printf("AWS RDS: got database %s", databaseID)
 	return &types.Database{
-		ID:          db.DBInstanceIdentifier,
-		Name:        db.DBInstanceIdentifier,
-		CloudType:   "aws",
-		Region:      p.region,
-		Status:      db.DBInstanceStatus,
-		Engine:      db.Engine,
-		EngineVer:   db.EngineVersion,
-		InstanceCls: db.DBInstanceClass,
+		ID:           db.DBInstanceIdentifier,
+		Name:         db.DBInstanceIdentifier,
+		CloudType:    "aws",
+		Region:       p.region,
+		Status:       db.DBInstanceStatus,
+		Engine:       db.Engine,
+		EngineVer:    db.EngineVersion,
+		InstanceCls:  db.DBInstanceClass,
+		StorageGB:    db.AllocatedStorage,
+		Endpoint:     db.Endpoint.Address,
+		Port:         db.Endpoint.Port,
+		MasterUser:   db.MasterUsername,
+		MultiAZ:      db.MultiAZ,
+		PubliclyAccessible: db.PubliclyAccessible,
+		StorageEncrypted:    db.StorageEncrypted,
+		BackupRetention:    db.BackupRetentionPeriod,
+		PreferredBackup:     db.PreferredBackupWindow,
+		LastModified:   db.InstanceCreateTime,
+		DBName:        db.DBName,
+		AutoMinorVersionUpgrade: db.AutoMinorVersionUpgrade,
+		CACertificateID:        db.CACertificateId,
+		DBSubnetGroup:           db.DBSubnetGroup,
 		Spec: map[string]interface{}{
-			"endpoint":     endpointStr,
-			"engine":       db.Engine,
-			"engine_ver":   db.EngineVersion,
-			"instance_cls": db.DBInstanceClass,
-			"db_arn":       db.DBInstanceArn,
+			"endpoint":                endpointStr,
+			"engine":                  db.Engine,
+			"engine_ver":              db.EngineVersion,
+			"instance_cls":            db.DBInstanceClass,
+			"db_arn":                  db.DBInstanceArn,
+			"multi_az":                db.MultiAZ,
+			"publicly_accessible":     db.PubliclyAccessible,
+			"storage_encrypted":       db.StorageEncrypted,
+			"kms_key_id":              db.KmsKeyId,
+			"backup_retention_period": db.BackupRetentionPeriod,
+			"preferred_backup_window": db.PreferredBackupWindow,
+			"preferred_maintenance_window": db.PreferredMaintenanceWindow,
+			"auto_minor_version_upgrade":  db.AutoMinorVersionUpgrade,
+			"ca_certificate_id":           db.CACertificateId,
+			"db_subnet_group":            db.DBSubnetGroup,
+			"allocated_storage":          db.AllocatedStorage,
 		},
 		Tags: map[string]string{},
 	}, nil
