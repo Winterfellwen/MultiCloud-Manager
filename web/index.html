@@ -427,6 +427,10 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .inline-status svg { animation: statusPulse 1.5s ease-in-out infinite; }
 .inline-status .thinking-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; }
 
+/* Streaming status bar — always at bottom of STREAMING_DIV */
+.streaming-status { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 4px; }
+.streaming-status svg { width: 14px; height: 14px; animation: statusPulse 1.5s ease-in-out infinite; }
+
 /* Tool calls - inline display */
 .msg.tools { padding: 4px 20px 4px 16px; margin: 2px 0; min-height: auto; }
 .tool-calls-body { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; min-height: auto; }
@@ -2020,7 +2024,8 @@ function _ensureStreamingDiv() {
   STREAMING_DIV = document.createElement('div');
   STREAMING_DIV.className = 'msg agent streaming';
   // No .msg-content yet — it will be created on first token
-  STREAMING_DIV.innerHTML = aiRoleHeader() + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
+  var initialStatus = LOCALE === 'zh' ? '思考中…' : 'Thinking…';
+  STREAMING_DIV.innerHTML = aiRoleHeader() + buildAgentCopyButton() + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + initialStatus + '</span></div><div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
   container.appendChild(STREAMING_DIV);
   STREAMING_DIV._toolCallsContainer = null;
   STREAMING_DIV._toolCallsHeader = null;
@@ -2051,10 +2056,29 @@ function _getOrCreateContentBlock() {
   return contentEl;
 }
 
+function _setStreamingStatus(iconId, text) {
+  if (!STREAMING_DIV) return;
+  var el = STREAMING_DIV.querySelector('.streaming-status');
+  if (!el) return;
+  el.innerHTML = '<svg width="14" height="14"><use href="/static/icons.svg#' + iconId + '"/></svg><span>' + text + '</span>';
+}
+
+function _hasActiveTools() {
+  if (!STREAMING_DIV || !STREAMING_DIV._toolCardOrder) return false;
+  return STREAMING_DIV._toolCardOrder.some(function(c) {
+    return c.classList.contains('running') || c.classList.contains('pending');
+  });
+}
+
 function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
   if (ev.run_id && STOPPED_RUNS.has(ev.run_id)) return;
   if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
+
+  // Update status to "Thinking" if no tools are running
+  if (!_hasActiveTools()) {
+    _setStreamingStatus('icon-sync', LOCALE === 'zh' ? '思考中…' : 'Thinking…');
+  }
 
   _ensureStreamingDiv();
 
@@ -2134,6 +2158,11 @@ function handleToolStartEvent(ev) {
 
     STREAMING_DIV._toolCardOrder.push(card);
   });
+
+  // Update status to show the currently running tool
+  var firstTool = newCalls[0];
+  var toolIcon = getToolIcon(firstTool.name);
+  _setStreamingStatus('icon-sync', (LOCALE === 'zh' ? '正在执行 ' : 'Running ') + firstTool.name + '…');
 
   // Reset content block state so next token creates a NEW content block after tool cards
   STREAMING_DIV._lastRenderedLen = 0;
@@ -2271,7 +2300,7 @@ function handleToolResultEvent(ev) {
     nextCard.classList.remove('pending');
     nextCard.classList.add('running');
 
-    // Update status element
+    // Update card status element
     var nextStatus = nextCard.querySelector('.card-status');
     if (nextStatus) {
       nextStatus.className = 'card-status running';
@@ -2287,6 +2316,14 @@ function handleToolResultEvent(ev) {
         nextDurEl.textContent = '⏱ ' + elapsed + 's';
       }, 100);
     }
+
+    // Update streaming status bar to show the next tool
+    var nextNameEl = nextCard.querySelector('.card-name');
+    var nextName = nextNameEl ? nextNameEl.textContent : 'tool';
+    _setStreamingStatus('icon-sync', (LOCALE === 'zh' ? '正在执行 ' : 'Running ') + nextName + '…');
+  } else {
+    // All tools complete — show Thinking until next event
+    _setStreamingStatus('icon-sync', LOCALE === 'zh' ? '思考中…' : 'Thinking…');
   }
 
   scrollToBottom();
@@ -2354,6 +2391,9 @@ function handleStateChangeEvent(ev) {
         // If content block is empty (was only showing 思考中), remove it entirely
         if (!el.textContent.trim()) el.remove();
       });
+      // Remove streaming status bar
+      var statusBar = STREAMING_DIV.querySelector('.streaming-status');
+      if (statusBar) statusBar.remove();
       // Also remove any orphaned inline-status at STREAMING_DIV level
       var orphanStatus = STREAMING_DIV.querySelector(':scope > .inline-status');
       if (orphanStatus) orphanStatus.remove();
@@ -2370,11 +2410,9 @@ function handleStateChangeEvent(ev) {
     if (STREAMING_DIV && isCurrentSession) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
-      if (contentEl) {
-        contentEl.classList.remove('streaming-cursor');
-        var errorMsg = ev.payload.error_message || (LOCALE === 'zh' ? '发生错误' : 'Error occurred');
-        contentEl.innerHTML = '<div style="color:var(--error);padding:8px 0">' + escHtml(errorMsg) + '</div>';
-      }
+      // Remove streaming status bar
+      var statusBar = STREAMING_DIV.querySelector('.streaming-status');
+      if (statusBar) statusBar.remove();
       // Finalize running tool cards
       finalizeToolCards(STREAMING_DIV, 'error', LOCALE === 'zh' ? '错误' : 'error');
       STREAMING_DIV = null;
@@ -2389,6 +2427,9 @@ function handleStateChangeEvent(ev) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
       if (contentEl) contentEl.classList.remove('streaming-cursor');
+      // Remove streaming status bar
+      var statusBar = STREAMING_DIV.querySelector('.streaming-status');
+      if (statusBar) statusBar.remove();
       // Finalize running tool cards
       finalizeToolCards(STREAMING_DIV, 'done', LOCALE === 'zh' ? '完成' : 'done');
       STREAMING_DIV = null;
@@ -3067,7 +3108,8 @@ async function sendChat() {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'msg agent streaming';
-    div.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
+    var initialStatus = LOCALE === 'zh' ? '思考中…' : 'Thinking…';
+    div.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor"></span></div>' + buildAgentCopyButton() + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + initialStatus + '</span></div>' + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
     container.appendChild(div);
     STREAMING_DIV = div;
     scrollToBottom(container);
