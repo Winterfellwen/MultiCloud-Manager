@@ -2046,7 +2046,6 @@ function _getOrCreateContentBlock() {
     STREAMING_DIV.appendChild(contentEl);
   }
   STREAMING_DIV._lastRenderedLen = 0;
-  STREAMING_CONTENT = ''; // reset for new content block
   return contentEl;
 }
 
@@ -2127,6 +2126,16 @@ function handleToolStartEvent(ev) {
       // Reset content block state so next token creates a NEW content block after this tool card
       STREAMING_DIV._lastRenderedLen = 0;
       STREAMING_CONTENT = '';
+
+      // Insert a fresh .msg-content after the tool card so post-tool AI text
+      // appears after the card (not in the pre-tool content block)
+      var newContent = document.createElement('div');
+      newContent.className = 'msg-content streaming-cursor';
+      if (timeEl) {
+        STREAMING_DIV.insertBefore(newContent, timeEl);
+      } else {
+        STREAMING_DIV.appendChild(newContent);
+      }
 
       scrollToBottom();
     });
@@ -3852,7 +3861,7 @@ function getToolIcon(name) {
 function buildToolCard(tc) {
   var card = document.createElement('div');
   var isRunning = tc.status === 'running';
-  var hasError = tc.status === 'error' || (tc.result && String(tc.result).toLowerCase().indexOf('error') !== -1);
+  var hasError = tc.status === 'error';
   card.className = 'tool-card' + (isRunning ? ' running' : (hasError ? ' error' : ' done'));
 
   var paramsStr = '';

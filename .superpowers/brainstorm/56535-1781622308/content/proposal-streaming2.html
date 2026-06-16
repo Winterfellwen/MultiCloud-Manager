@@ -1,0 +1,154 @@
+<h2>运行中展开效果 — 实时输出流</h2>
+<p class="subtitle">当前工具自动展开，实时显示输出，完成后自动折叠</p>
+
+<div class="section">
+  <h3>Streaming 实时状态</h3>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">正在执行 — 实时输出自动展开</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px; line-height: 1.6;">
+    <div style="background:#f0f7ff;border-radius:8px;padding:12px;">
+
+      <div><strong>🤖 AI</strong></div>
+
+      <div style="margin-top:8px;">
+        让我搜索配置文件，然后检查内容...
+      </div>
+
+      <!-- Tool 1: done, collapsed -->
+      <div style="margin:8px 0 0 20px;padding:5px 0;border-bottom:1px solid #eee;">
+        <code style="font-size:12px;">📁 glob</code>
+        <span style="font-size:12px;color:#666;margin-left:8px;">Search: **/*config*</span>
+        <span style="margin-left:8px;color:#00c853;">✓</span>
+        <span style="font-size:10px;color:#999;margin-left:6px;">0.3s</span>
+        <span style="font-size:10px;color:#bbb;margin-left:8px;">▸</span>
+      </div>
+
+      <!-- Tool 2: running, auto-expanded with live output -->
+      <div style="margin:0 0 0 20px;padding:5px 0;">
+        <code style="font-size:12px;">📄 read_file</code>
+        <span style="font-size:12px;color:#666;margin-left:8px;">Read: src/config.ts</span>
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff9f0a;animation:pulse 1s infinite;margin-left:8px;vertical-align:middle;"></span>
+        <span style="font-size:10px;color:#999;margin-left:6px;">1.2s</span>
+        <span style="font-size:10px;color:#2563eb;margin-left:8px;">▾</span>
+      </div>
+
+      <!-- Live output block (auto-expanded during running) -->
+      <div style="margin:0 0 8px 20px;background:#1e1e1e;border-radius:6px;overflow:hidden;">
+        <div style="display:flex;align-items:center;padding:6px 10px;background:#2d2d2d;font-size:10px;color:#999;">
+          <span>📄 read_file src/config.ts</span>
+          <span style="margin-left:auto;font-size:9px;">live</span>
+        </div>
+        <pre style="margin:0;padding:8px 10px;font-family:monospace;font-size:11px;color:#d4d4d4;white-space:pre-wrap;max-height:120px;overflow-y:auto;line-height:1.5;">
+<span style="color:#6a9955;">// Configuration file</span>
+<span style="color:#569cd6;">const</span> config <span style="color:#b5cea8;">=</span> <span style="color:#dcdcaa;">require</span>(<span style="color:#ce9178;">'./config.json'</span>);
+<span style="color:#569cd6;">const</span> port <span style="color:#b5cea8;">=</span> config.port <span style="color:#b5cea8;">||</span> <span style="color:#b5cea8;">3000</span>;
+
+<span style="color:#6a9955;">// Server setup</span>
+app.<span style="color:#dcdcaa;">listen</span>(port, () <span style="color:#b5cea8;">=></span> {
+  <span style="color:#dcdcaa;">console</span>.<span style="color:#dcdcaa;">log</span>(<span style="color:#ce9178;">`Server running on port ${port}`</span>);</pre>
+        <!-- Animated scroll indicator -->
+        <div style="height:3px;background:#333;overflow:hidden;">
+          <div style="height:100%;width:40%;background:#ffd60a;animation:slide 1.5s ease-in-out infinite;"></div>
+        </div>
+      </div>
+
+      <!-- AI text continues -->
+      <div style="margin-top:4px;">
+        配置中监听了端口 3000，继续检查路由...
+        <span style="display:inline-block;width:2px;height:14px;background:#2563eb;animation:blink 0.8s infinite;vertical-align:text-bottom;"></span>
+      </div>
+
+    </div>
+    <div style="font-size:10px;color:#999;margin-top:4px;text-align:right;">12:35:01</div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>完成后 — 全部折叠，干净整洁</h3>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">完成后 — 默认折叠，点击 ▸ 展开细节</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px; line-height: 1.6;">
+    <div style="background:#f0f7ff;border-radius:8px;padding:12px;">
+
+      <div><strong>🤖 AI</strong></div>
+
+      <div style="margin-top:8px;">
+        让我搜索配置文件，然后检查内容...
+      </div>
+
+      <div style="margin:8px 0 0 20px;padding:5px 0;border-bottom:1px solid #eee;">
+        <code style="font-size:12px;">📁 glob</code>
+        <span style="font-size:12px;color:#666;margin-left:8px;">Search: **/*config*</span>
+        <span style="margin-left:8px;color:#00c853;">✓</span>
+        <span style="font-size:10px;color:#999;margin-left:6px;">0.3s</span>
+        <span style="font-size:10px;color:#bbb;margin-left:8px;">▸</span>
+      </div>
+
+      <div style="margin:0 0 0 20px;padding:5px 0;">
+        <code style="font-size:12px;">📄 read_file</code>
+        <span style="font-size:12px;color:#666;margin-left:8px;">Read: src/config.ts</span>
+        <span style="margin-left:8px;color:#00c853;">✓</span>
+        <span style="font-size:10px;color:#999;margin-left:6px;">0.2s</span>
+        <span style="font-size:10px;color:#bbb;margin-left:8px;">▸</span>
+      </div>
+
+      <!-- Clicked to expand -->
+      <div style="margin:0 0 0 20px;padding:8px 10px;background:#f5f5f5;border-radius:6px;font-size:11px;">
+        <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">PARAMS</div>
+        <pre style="font-family:monospace;font-size:10px;margin:0 0 6px 0;color:#333;">{ "path": "src/config.ts" }</pre>
+        <div style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">RESULT</div>
+        <pre style="font-family:monospace;font-size:10px;margin:0;color:#333;position:relative;">const config = require('./config.json');
+const port = config.port || 3000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
+<button style="position:absolute;top:0;right:0;padding:2px 6px;font-size:9px;border:1px solid #ddd;border-radius:3px;background:white;cursor:pointer;">📋</button></pre>
+      </div>
+
+      <div style="margin-top:8px;">
+        配置显示服务器监听 3000 端口...
+      </div>
+
+    </div>
+    <div style="font-size:10px;color:#999;margin-top:4px;text-align:right;">12:35:03</div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>交互规则总结</h3>
+</div>
+
+<table style="width:100%;font-size:12px;border-collapse:collapse;">
+  <tr style="border-bottom:1px solid #eee;">
+    <td style="padding:6px 8px;font-weight:600;">状态</td>
+    <td style="padding:6px 8px;font-weight:600;">默认展示</td>
+    <td style="padding:6px 8px;font-weight:600;">展开</td>
+    <td style="padding:6px 8px;font-weight:600;">点击行为</td>
+  </tr>
+  <tr style="border-bottom:1px solid #eee;">
+    <td style="padding:6px 8px;">🟡 running</td>
+    <td style="padding:6px 8px;">一行文本 + 展开细节（自动）</td>
+    <td style="padding:6px 8px;">自动</td>
+    <td style="padding:6px 8px;">点击可收起/展开</td>
+  </tr>
+  <tr style="border-bottom:1px solid #eee;">
+    <td style="padding:6px 8px;">🟢 done</td>
+    <td style="padding:6px 8px;">一行文本（折叠）</td>
+    <td style="padding:6px 8px;">点击 ▸</td>
+    <td style="padding:6px 8px;">点击展开 PARAMS + RESULT</td>
+  </tr>
+  <tr>
+    <td style="padding:6px 8px;">🔴 error</td>
+    <td style="padding:6px 8px;">一行文本 + 错误详情（自动）</td>
+    <td style="padding:6px 8px;">自动</td>
+    <td style="padding:6px 8px;">点击可收起/展开</td>
+  </tr>
+</table>
+
+<style>
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+</style>

@@ -1,0 +1,96 @@
+<h2>运行中视图 — Streaming 实时状态</h2>
+<p class="subtitle">AI 正在思考 + 执行工具时的界面</p>
+
+<div class="section">
+  <h3>运行中: AI 消息流</h3>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Streaming 实时状态（用户看到的样子）</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+    <!-- AI message bubble - streaming -->
+    <div style="background:#f0f7ff;border-radius:8px;overflow:hidden;border:1px solid #dbeafe;">
+      <div style="padding:12px 12px 0 12px;line-height:1.5;">
+        <strong>🤖 AI</strong>
+        <!-- Streaming text with cursor -->
+        <div style="margin-top:6px;">
+          让我先搜索相关文件，然后读取配置...
+          <span style="display:inline-block;width:2px;height:14px;background:#2563eb;animation:blink 0.8s infinite;vertical-align:text-bottom;"></span>
+        </div>
+      </div>
+
+      <!-- Tool 1: ✅ completed, collapsed -->
+      <div style="margin:8px 12px 0 12px;border:1px solid #e8e8e8;border-radius:6px;border-left:2px solid #00c853;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:12px;">
+          <span>📁</span>
+          <span style="color:#2563eb;font-weight:600;font-family:monospace;font-size:11px;">glob</span>
+          <span style="font-size:10px;color:#666;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Search: **/*.ts</span>
+          <span style="font-size:11px;color:#00c853;">✓</span>
+          <span style="font-size:9px;color:#999;">0.3s</span>
+        </div>
+      </div>
+
+      <!-- Tool 2: ⏳ currently running, auto-expanded with live output -->
+      <div style="margin:6px 12px 0 12px;border:1px solid #ffd60a;border-radius:6px;border-left:2px solid #ffd60a;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:12px;border-bottom:1px solid #fff3cd;">
+          <span>📄</span>
+          <span style="color:#2563eb;font-weight:600;font-family:monospace;font-size:11px;">read_file</span>
+          <span style="font-size:10px;color:#666;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Read: src/config.ts</span>
+          <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#ff9f0a;animation:pulse 1s infinite;"></span>
+          <span style="font-size:10px;color:#999;">▶</span>
+        </div>
+        <!-- Auto-expanded: live output -->
+        <div style="padding:8px 10px;font-size:11px;">
+          <div style="color:#999;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">OUTPUT</div>
+          <pre style="font-family:monospace;font-size:10px;color:#333;background:#1e1e1e;color:#d4d4d4;padding:6px 8px;border-radius:4px;margin:0;white-space:pre-wrap;max-height:80px;overflow-y:auto;">
+<span style="color:#6a9955;"># reading src/config.ts...</span>
+<span>const API_KEY = process.env.API_KEY;</span>
+<span>const PORT = process.env.PORT || 3000;</span>
+          </pre>
+        </div>
+      </div>
+
+      <!-- Streaming text continues below -->
+      <div style="padding:0 12px 12px 12px;margin-top:6px;line-height:1.5;">
+        <span style="color:#666;">根据配置，接下来我需要检查环境变量...</span>
+        <span style="display:inline-block;width:2px;height:14px;background:#2563eb;animation:blink 0.8s infinite;vertical-align:text-bottom;"></span>
+      </div>
+    </div>
+    <!-- Timestamp -->
+    <div style="font-size:10px;color:#999;margin-top:4px;text-align:right;">12:34:56</div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>运行中行为规则</h3>
+  <ul>
+    <li>当前正在执行的 tool → <strong>自动展开</strong>，显示实时 OUTPUT（来自 tool_output 事件）</li>
+    <li>已完成的 tool → 自动<strong>折叠</strong>为单行，显示绿色 ✓ + 耗时</li>
+    <li>AI 文本继续在 tool 之间流动 —— tool 行嵌在 AI 消息内容中</li>
+    <li>闪烁光标表示 AI 仍在生成</li>
+    <li>自动滚动到最新的活动区域</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>三种状态的视觉编码</h3>
+  <table style="width:100%;font-size:12px;border-collapse:collapse;">
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px 8px;width:80px;"><span style="border-left:2px solid #ffd60a;padding-left:8px;">🟡 运行中</span></td>
+      <td style="padding:6px 8px;color:#666;">黄色左边框，脉冲圆点，自动展开显示实时输出</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px 8px;"><span style="border-left:2px solid #00c853;padding-left:8px;">🟢 已完成</span></td>
+      <td style="padding:6px 8px;color:#666;">绿色左边框，✓ 标记，默认折叠，可点击展开看完整结果</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 8px;"><span style="border-left:2px solid #ff3b30;padding-left:8px;">🔴 错误</span></td>
+      <td style="padding:6px 8px;color:#666;">红色左边框，✗ 标记，自动展开显示错误信息</td>
+    </tr>
+  </table>
+</div>
+
+<style>
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
