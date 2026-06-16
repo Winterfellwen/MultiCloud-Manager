@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -336,6 +337,14 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 		}
 
 		messages = compactMessages(messages)
+
+		var summarized bool
+		messages, summarized = h.maybeSummarize(ctx, messages)
+		if summarized {
+			h.rm.persistEvent(r, EventToken, map[string]interface{}{
+				"content": "\n\n---\n> 🔄 对话已自动摘要压缩以节省上下文\n---\n\n",
+			})
+		}
 	}
 
 done:
@@ -427,10 +436,24 @@ done:
 	h.terminateRun(r, "")
 }
 
+const (
+	maxRetryDuration    = 15 * time.Minute
+	maxRetryAttempts    = 20
+	baseRetryDelay      = 2 * time.Second
+	maxRetryDelay       = 60 * time.Second
+)
+
+func isRetryableStatus(code int) bool {
+	return code == 408 || code == 429 || code == 500 || code == 502 || code == 503 || code == 504
+}
+
 func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client, req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var lastErr error
-	for retry := 0; retry < 3; retry++ {
+	retry := 0
+	startTime := time.Now()
+
+	for {
 		if req.GetBody != nil {
 			body, err := req.GetBody()
 			if err != nil {
@@ -440,34 +463,56 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 		}
 		resp, lastErr = client.Do(req)
 		if lastErr != nil {
-			if retry < 2 {
-				select {
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				case <-time.After(time.Duration(1<<uint(retry)) * time.Second):
-				}
+			// Network error - always retry
+			if time.Since(startTime) >= maxRetryDuration || retry >= maxRetryAttempts {
+				return nil, lastErr
 			}
+			delay := calculateRetryDelay(retry)
+			log.Printf("Network error (attempt %d/%d), retrying in %v: %v", retry+1, maxRetryAttempts, delay, lastErr)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+			retry++
 			continue
 		}
+
 		if resp.StatusCode == 200 {
 			return resp, nil
 		}
-		if resp.StatusCode == 400 || resp.StatusCode == 429 || resp.StatusCode >= 500 {
-			respBody, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			log.Printf("API request failed (HTTP %d, attempt %d/3): %s", resp.StatusCode, retry+1, strings.TrimSpace(string(respBody)))
-			if retry < 2 {
-				select {
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				case <-time.After(time.Duration(1<<uint(retry)) * time.Second):
-				}
+
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if isRetryableStatus(resp.StatusCode) {
+			if time.Since(startTime) >= maxRetryDuration || retry >= maxRetryAttempts {
+				return resp, fmt.Errorf("API error after retries (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 			}
+			delay := calculateRetryDelay(retry)
+			log.Printf("API request failed (HTTP %d, attempt %d/%d), retrying in %v: %s", resp.StatusCode, retry+1, maxRetryAttempts, delay, strings.TrimSpace(string(respBody)))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+			retry++
 			continue
 		}
-		return resp, nil
+
+		// Non-retryable error (401, 403, 404, etc.)
+		return resp, fmt.Errorf("API error (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
-	return resp, lastErr
+}
+
+func calculateRetryDelay(attempt int) time.Duration {
+	delay := baseRetryDelay * time.Duration(1<<uint(attempt))
+	if delay > maxRetryDelay {
+		delay = maxRetryDelay
+	}
+	// Add jitter (±25%)
+	jitter := float64(delay) * 0.25 * (2*rand.Float64() - 1)
+	return time.Duration(float64(delay) + jitter)
 }
 
 func (h *ChatStreamHandler) collectStreamResponse(body io.ReadCloser, c *gin.Context, flusher http.Flusher) (string, []map[string]interface{}, string) {
@@ -1139,11 +1184,107 @@ func (h *ChatStreamHandler) Stop(c *gin.Context) {
 }
 
 const (
-	compactionLimit    = 100000
-	pruneProtectTokens = 40000
-	pruneMinTokens     = 20000
-	protectRounds      = 2
+	compactionLimit      = 100000
+	summarizeThreshold   = 80000
+	pruneProtectTokens   = 40000
+	pruneMinTokens       = 20000
+	protectRounds        = 2
+	maxContextTokens     = 100000
 )
+
+func (h *ChatStreamHandler) maybeSummarize(ctx context.Context, messages []map[string]interface{}) ([]map[string]interface{}, bool) {
+	if len(messages) <= 2 {
+		return messages, false
+	}
+	tokenCount := countMessagesTokens(messages)
+	if tokenCount < summarizeThreshold {
+		return messages, false
+	}
+
+	systemMsg := messages[0]
+	var conversationMsgs []map[string]interface{}
+	for i := 1; i < len(messages); i++ {
+		conversationMsgs = append(conversationMsgs, messages[i])
+	}
+
+	summary, err := h.summarizeWithLLM(ctx, conversationMsgs)
+	if err != nil {
+		log.Printf("Summarization failed, falling back to pruning: %v", err)
+		return compactMessages(messages), true
+	}
+
+	newMessages := []map[string]interface{}{
+		systemMsg,
+		{
+			"role":    "system",
+			"content": fmt.Sprintf("Conversation summary (previous context compacted):\n%s", summary),
+		},
+	}
+	log.Printf("Conversation summarized: %d tokens -> summary", tokenCount)
+	return newMessages, true
+}
+
+func (h *ChatStreamHandler) summarizeWithLLM(ctx context.Context, messages []map[string]interface{}) (string, error) {
+	cfg := GetAIConfigValue()
+	if cfg.APIEndpoint == "" || cfg.APIKey == "" || cfg.Model == "" {
+		return "", fmt.Errorf("AI config not available")
+	}
+
+	prompt := "Summarize the following conversation concisely, preserving key facts, decisions, and pending tasks. Focus on what was accomplished and what remains:\n\n"
+	for _, m := range messages {
+		role, _ := m["role"].(string)
+		content, _ := m["content"].(string)
+		if content != "" {
+			prompt += fmt.Sprintf("%s: %s\n", role, content)
+		}
+	}
+
+	body := map[string]interface{}{
+		"model":      cfg.Model,
+		"messages":   []map[string]interface{}{{"role": "user", "content": prompt}},
+		"stream":     false,
+		"max_tokens": 2000,
+		"temperature": 0.3,
+	}
+	bodyBytes, _ := json.Marshal(body)
+
+	baseURL := strings.TrimSuffix(strings.TrimRight(cfg.APIEndpoint, "/"), "/chat/completions")
+	apiURL := baseURL + "/chat/completions"
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("summarization API error (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("empty summarization response")
+	}
+	return result.Choices[0].Message.Content, nil
+}
 
 func estimateTokens(text string) int {
 	return len(text)/4 + 1
