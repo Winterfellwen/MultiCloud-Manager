@@ -507,3 +507,17 @@ func IsSupportedResourceType(rt string) bool {
 	}
 	return false
 }
+
+// ResourceGroup represents a group of cloud resources for analysis.
+type ResourceGroup struct {
+	Instances    []Instance    `json:"instances"`
+	Volumes      []Volume      `json:"volumes"`
+	Networks     []Network     `json:"networks"`
+	Databases    []Database    `json:"databases"`
+	LoadBalancers []LoadBalancer `json:"load_balancers"`
+	Buckets      []Bucket      `json:"buckets"`
+	Clusters     []Cluster     `json:"clusters"`
+	Functions    []Function    `json:"functions"`
+	DNSZones     []DNSZone     `json:"dns_zones"`
+	Certificates []Certificate  `json:"certificates"`
+}
