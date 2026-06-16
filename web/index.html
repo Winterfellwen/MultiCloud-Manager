@@ -427,13 +427,9 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .inline-status svg { animation: statusPulse 1.5s ease-in-out infinite; }
 .inline-status .thinking-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; }
 
-/* Tool calls - Claude Code style */
+/* Tool calls - inline display */
 .msg.tools { padding: 4px 20px 4px 16px; margin: 2px 0; min-height: auto; }
-.tool-calls-header { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); transition: all .15s; user-select: none; font-family: var(--font-mono); min-height: auto; }
-.tool-calls-header:hover { border-color: var(--primary); color: var(--primary); min-height: auto; }
-.tool-calls-header::before { content: ''; display: inline-block; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 3px solid transparent; border-bottom: 3px solid transparent; margin-right: 2px; transition: transform .15s; min-height: auto; }
-.tool-calls-header.expanded::before { transform: rotate(90deg); min-height: auto; }
-.tool-calls-body { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; min-height: auto; }
+.tool-calls-body { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; min-height: auto; }
 .tool-calls-body .tool-block.done { display: flex; border-radius: 4px; min-height: auto; }
 .tool-calls-body .tool-block.done .tool-result { display: none; min-height: auto; }
 .tool-calls-body .tool-block.expanded .tool-result { display: block; min-height: auto; }
@@ -444,7 +440,6 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 /* Inline tool calls inside AI message */
 .msg.agent .tool-calls-inline { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; min-height: auto; }
-.msg.agent .tool-calls-inline .tool-calls-header { font-size: 11px; }
 
 /* Tool card - compact collapsed by default */
 .tool-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; min-height: auto; }
@@ -4088,28 +4083,17 @@ function renderToolCallsGroup(jsonContent, container) {
         if (body) body.appendChild(card);
       }
     });
-    var header = existing.querySelector('.tool-calls-header');
-    if (header) {
-      header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
-    }
     return;
   }
   var msgDiv = document.createElement('div');
   msgDiv.className = 'msg tools';
-  var header = document.createElement('div');
-  header.className = 'tool-calls-header collapsed';
-  header.textContent = (LOCALE === 'zh' ? '工具调用 (' : 'Tool Calls (') + toolCalls.length + ')';
   var body = document.createElement('div');
   body.className = 'tool-calls-body';
-  body.style.display = 'none';
-  toolCalls.forEach(function(tc) { body.appendChild(buildToolCard(tc)); });
-  header.onclick = function(e) {
-    e.stopPropagation();
-    var isCollapsed = body.style.display === 'none';
-    body.style.display = isCollapsed ? 'flex' : 'none';
-    header.className = 'tool-calls-header' + (isCollapsed ? ' expanded' : ' collapsed');
-  };
-  msgDiv.appendChild(header);
+  toolCalls.forEach(function(tc) {
+    var card = buildToolCard(tc);
+    card.classList.add('timeline-tool-card');
+    body.appendChild(card);
+  });
   msgDiv.appendChild(body);
   container.appendChild(msgDiv);
 }
@@ -5024,7 +5008,7 @@ function renderAccounts(list) {
             '<svg width="16" height="16"><use href="/static/icons.svg#icon-sync"/></svg>' +
           '</button>' +
           '<button class="action-btn delete-btn" onclick="deleteAccount(\'' + a.id + '\')" title="' + t('account.delete') + '">' +
-            '<svg width="16" height="16"><use href="/static/icons.svg#icon-trash"/></svg>' +
+            '<svg width="16" height="16"><use href="/static/icons.svg#icon-delete"/></svg>' +
           '</button>' +
         '</div>' +
       '</div>';
