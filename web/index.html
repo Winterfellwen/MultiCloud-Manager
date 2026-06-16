@@ -9,6 +9,9 @@
 <script src="/static/js/g6.min.js"></script>
 <link rel="prefetch" href="/static/icons.svg">
 <title>MultiCloud Manager</title>
+<link rel="stylesheet" href="/static/xterm/xterm.min.css">
+<script src="/static/xterm/xterm.min.js"></script>
+<script src="/static/xterm/xterm-addon-fit.min.js"></script>
 <style>
 :root {
   --primary: #007aff;
@@ -1030,6 +1033,64 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 .msg-pagination button{padding:4px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px}
 .msg-pagination button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .msg-pagination button:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---------- Global Terminal Panel ---------- */
+#globalTerminal { position: fixed; left: 0; right: 0; bottom: 0; height: 20vh; background: #0e1116; border-top: 2px solid #374151; z-index: 1000; display: none; flex-direction: column; box-shadow: 0 -4px 24px rgba(0,0,0,0.3); }
+#globalTerminal.active { display: flex; }
+#terminalResize { height: 6px; background: #1f2937; cursor: row-resize; user-select: none; border-bottom: 1px solid #374151; }
+#terminalResize:hover { background: #374151; }
+#terminalHeader { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #111827; border-bottom: 1px solid #374151; flex-wrap: wrap; }
+#terminalTitle { font-weight: 600; color: #60a5fa; font-family: ui-monospace, Menlo, Consolas, monospace; }
+#terminalCwd { color: #d1d5db; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85em; padding: 2px 8px; background: #1f2937; border-radius: 4px; }
+.term-btn { padding: 3px 10px; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 4px; cursor: pointer; font-size: 0.85em; transition: all 0.15s; }
+.term-btn:hover { background: #374151; color: #fff; border-color: #4b5563; }
+.term-btn.primary { background: #1e40af; border-color: #2563eb; color: #fff; }
+.term-btn.primary:hover { background: #2563eb; }
+.term-btn.danger { background: #7f1d1d; border-color: #dc2626; color: #fff; }
+.term-btn.danger:hover { background: #dc2626; }
+#terminalMain { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+#terminalOutputCol { flex: 1; display: flex; flex-direction: column; min-width: 0; border-right: 1px solid #374151; }
+#terminalOutput { flex: 1; overflow-y: auto; padding: 10px 14px; background: #000; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.55; }
+#terminalOutput .prompt { color: #4ade80; }
+#terminalOutput .stdout { color: #e5e7eb; white-space: pre-wrap; word-break: break-word; }
+#terminalOutput .stderr { color: #f87171; white-space: pre-wrap; word-break: break-word; }
+#terminalOutput .info { color: #60a5fa; white-space: pre-wrap; }
+#terminalOutput .error { color: #ef4444; white-space: pre-wrap; }
+#terminalInputRow { display: flex; align-items: center; padding: 6px 14px; background: #111827; border-top: 1px solid #374151; gap: 8px; }
+#terminalInputRow .prompt { color: #4ade80; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; white-space: nowrap; }
+#terminalInput { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+#terminalFileCol { width: 320px; display: flex; flex-direction: column; min-width: 0; background: #111827; }
+#terminalFileHeader { padding: 8px 10px; border-bottom: 1px solid #374151; font-size: 0.9em; color: #d1d5db; font-weight: 600; }
+#terminalFileHeader .quota { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-weight: 400; font-size: 0.85em; color: #9ca3af; }
+#terminalFileHeader .quota-bar { flex: 1; height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; }
+#terminalFileHeader .quota-fill { height: 100%; background: #10b981; transition: width 0.3s; }
+#terminalFileHeader .quota-fill.warn { background: #f59e0b; }
+#terminalFileHeader .quota-fill.full { background: #ef4444; }
+#terminalFileList { flex: 1; overflow-y: auto; padding: 4px; }
+.file-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 4px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #e5e7eb; }
+.file-item:hover { background: #1f2937; }
+.file-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .fsize { color: #9ca3af; font-size: 0.9em; }
+.file-item .ficon { font-size: 1.1em; }
+.file-item .btn-mini { padding: 1px 6px; font-size: 10px; background: #1f2937; color: #d1d5db; border: 1px solid #374151; border-radius: 3px; cursor: pointer; }
+.file-item .btn-mini:hover { background: #374151; color: #fff; }
+.file-item .btn-mini.danger { color: #f87171; }
+.file-item .btn-mini.danger:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+#terminalFileFooter { padding: 8px; border-top: 1px solid #374151; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Terminal Toggle Button (top-right) */
+#terminalToggle { position: fixed; top: 12px; right: 12px; z-index: 999; padding: 6px 12px; background: #1e40af; color: #fff; border: 1px solid #2563eb; border-radius: 6px; cursor: pointer; font-size: 0.85em; font-family: ui-monospace, Menlo, Consolas, monospace; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.15s; }
+#terminalToggle:hover { background: #2563eb; transform: translateY(-1px); }
+#terminalToggle.active { background: #15803d; border-color: #22c55e; }
+
+/* File Editor Modal */
+#fileEditorModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
+#fileEditorModal.active { display: flex; }
+#fileEditorBox { background: #0e1116; border: 1px solid #374151; border-radius: 8px; width: 700px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+#fileEditorHeader { padding: 12px 16px; border-bottom: 1px solid #374151; display: flex; align-items: center; justify-content: space-between; }
+#fileEditorName { color: #60a5fa; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; }
+#fileEditorArea { flex: 1; width: 100%; padding: 12px 16px; background: #000; color: #e5e7eb; border: none; outline: none; resize: none; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+#fileEditorFooter { padding: 10px 16px; border-top: 1px solid #374151; display: flex; justify-content: flex-end; gap: 8px; }
 </style>
 </head>
 <body>
@@ -1065,6 +1126,7 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
   <div class="topbar-right">
     <button class="topbar-action-btn" id="langToggleBtn" onclick="switchLang(LOCALE==='zh'?'en':'zh')" title="English" aria-label="Switch language"><svg width="16" height="16"><use href="/static/icons.svg#icon-language"/></svg> <span class="lang-label">EN</span></button>
     <button class="topbar-action-btn" onclick="toggleTheme()" title="切换主题" aria-label="Toggle theme"><span class="theme-icon"><svg width="16" height="16"><use href="/static/icons.svg#icon-moon"/></svg></span></button>
+    <button class="topbar-action-btn" id="topbarTerminalBtn" onclick="gtermToggle()" title="打开/关闭底部终端面板" aria-label="Toggle terminal"><svg width="16" height="16"><use href="/static/icons.svg#icon-terminal"/></svg> <span>终端</span></button>
     <button class="topbar-action-btn err-btn" onclick="toggleErrPanel()" title="消息" aria-label="Messages"><svg width="16" height="16"><use href="/static/icons.svg#icon-bell"/></svg><span class="badge" id="errBadge" style="display:none">0</span></button>
     <button class="avatar" onclick="showPage('profile')" aria-label="Profile settings">U</button>
   </div>
@@ -1508,32 +1570,40 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 
   <!-- Terminal -->
   <div id="page-terminal" class="page">
-    <div class="section-title">Web Terminal <span id="terminalStatus" style="font-size:12px;color:var(--text-muted);margin-left:8px">加载中...</span></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-      <button class="res-sync-btn" onclick="terminalExecCommand('ls -la')">ls -la</button>
-      <button class="res-sync-btn" onclick="terminalExecCommand('pwd')">pwd</button>
-      <button class="res-sync-btn" onclick="terminalExecCommand('date')">date</button>
-      <button class="res-sync-btn" onclick="terminalExecCommand('uname -a')">uname -a</button>
-      <button class="res-sync-btn" onclick="terminalExecCommand('id')">id</button>
-      <button class="res-sync-btn" onclick="terminalExecCommand('cat /etc/os-release')">os</button>
-      <button class="res-sync-btn" onclick="terminalClear()" style="background:#222;color:#fff">清屏</button>
-      <span style="font-size:12px;color:var(--text-muted);margin-left:auto">Session: <span id="terminalSessionId">—</span></span>
+    <div class="section-title">Web Terminal</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <button class="res-sync-btn" onclick="gtermQuickCloud('ls -la')">ls -la</button>
+      <button class="res-sync-btn" onclick="gtermQuickCloud('pwd')">pwd</button>
+      <button class="res-sync-btn" onclick="gtermQuickCloud('date')">date</button>
+      <button class="res-sync-btn" onclick="gtermQuickCloud('uname -a')">uname -a</button>
+      <button class="res-sync-btn" onclick="gtermQuickCloud('cloud-help')">cloud-help</button>
+      <button class="res-sync-btn" onclick="gtermRefreshFiles()">🔄 刷新文件</button>
+      <button class="res-sync-btn" onclick="gtermUploadFile()">📤 上传文件</button>
+      <button class="res-sync-btn" onclick="gtermResetConfirm()">♻️ 重置沙箱</button>
     </div>
-    <div id="terminalContainer" style="width:100%;height:calc(100vh - 240px);min-height:400px;background:#0a0a0e;border:1px solid #222;border-radius:8px;display:flex;flex-direction:column;overflow:hidden;font-family:&quot;Berkeley Mono&quot;,&quot;IBM Plex Mono&quot;,monospace;font-size:13px">
-      <div style="background:#1a1a1e;padding:8px 12px;border-bottom:1px solid #2a2a2e;color:#9cdcfe;font-size:12px;display:flex;gap:8px;align-items:center">
-        <span style="width:8px;height:8px;background:#ff5f57;border-radius:50%;display:inline-block"></span>
-        <span style="width:8px;height:8px;background:#febc2e;border-radius:50%;display:inline-block"></span>
-        <span style="width:8px;height:8px;background:#28c840;border-radius:50%;display:inline-block"></span>
-        <span style="margin-left:8px">MultiCloud Shell</span>
-      </div>
-      <div id="terminalOutput" style="flex:1;overflow-y:auto;padding:12px;color:#e0e0e0;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.5"></div>
-      <div style="display:flex;gap:8px;padding:8px 12px;border-top:1px solid #2a2a2e;background:#0a0a0e;align-items:center">
-        <span style="color:#50fa7b;font-weight:bold">$</span>
-        <input id="terminalInput" type="text" style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:inherit;font-size:inherit" placeholder="输入命令后按回车执行..." autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')terminalExecCommandFromInput()"/>
+    <div id="page-terminal-main" style="width:100%;height:calc(100vh - 220px);min-height:420px;display:flex;gap:0;background:#0a0a0e;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div id="page-terminal-xterm" style="flex:1;min-width:0;overflow:hidden;background:#0a0a0e"></div>
+      <div id="page-terminal-files" style="width:280px;display:flex;flex-direction:column;min-width:0;background:#111827;border-left:1px solid #374151">
+        <div style="padding:10px 12px;border-bottom:1px solid #374151;color:#d1d5db;font-size:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          📁 /home/shell
+          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span id="page-terminal-quota" style="color:#9ca3af;font-size:11px">0 MB / 20 MB</span>
+            <div style="width:100px;height:4px;background:#374151;border-radius:2px;overflow:hidden"><div id="page-terminal-quota-fill" style="height:100%;width:0%;background:#60a5fa;transition:width 0.3s"></div></div>
+          </div>
+        </div>
+        <div id="page-terminal-file-list" style="flex:1;overflow-y:auto;padding:4px"></div>
+        <div style="padding:8px;border-top:1px solid #374151;display:flex;gap:4px;flex-wrap:wrap">
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-info')">cloud-info</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-accounts')">cloud-accounts</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-resources')">cloud-resources</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-sync')">cloud-sync</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-cost')">cloud-cost</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-help')">cloud-help</button>
+        </div>
       </div>
     </div>
-    <div style="margin-top:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-muted);line-height:1.6">
-      <strong style="color:var(--text)">说明：</strong>在容器环境内执行 shell 命令。适合测试网络连接、检查文件系统、调试云 provider SDK 等。需要 admin 角色。
+    <div style="margin-top:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-muted);line-height:1.6">
+      <strong style="color:var(--text)">说明：</strong>在容器环境内执行 shell 命令，工作目录限制在 /home/shell。支持云管理快捷命令：cloud-info / cloud-accounts / cloud-resources / cloud-sync / cloud-cost。需要 admin 角色。
     </div>
   </div>
 
@@ -2853,7 +2923,7 @@ function showPage(page) {
   if (page === 'terraform') loadTerraform();
   if (page === 'cost') loadCostData();
   if (page === 'messages') loadCloudEvents(1);
-  if (page === 'terminal') { terminalInitPage(); }
+  if (page === 'terminal') { setTimeout(gtermInitPageTerminal, 50); gtermRefreshFiles(); }
   applyRolePermissions();
 }
 
@@ -6589,10 +6659,19 @@ function triggerAnalysis(type) {
    Terminal Functions
    ============================================================ */
 var TERMINAL_INIT_DONE = false;
+var TERMINAL_CURRENT_DIR = '';
 
 function terminalGetToken() {
   var token = localStorage.getItem('token') || '';
   return token;
+}
+
+function terminalUpdateStatus() {
+  var statusEl = document.getElementById('terminalStatus');
+  if (!statusEl) return;
+  var info = TERMINAL_CURRENT_DIR || 'not set';
+  statusEl.textContent = '工作目录: ' + info;
+  statusEl.style.color = 'var(--text-muted)';
 }
 
 function terminalInitPage() {
@@ -6605,16 +6684,17 @@ function terminalInitPage() {
   if (out && !TERMINAL_INIT_DONE) {
     out.innerHTML = '';
     terminalAppendLine('╔══════════════════════════════════════════════════════════╗', 'info');
-    terminalAppendLine('║  MultiCloud Shell  v1.0                                  ║', 'info');
+    terminalAppendLine('║  MultiCloud Shell  v1.1                                  ║', 'info');
     terminalAppendLine('╚══════════════════════════════════════════════════════════╝', 'info');
     terminalAppendLine('', 'stdout');
-    terminalAppendLine('在后端容器内执行命令。支持基本 shell 语法。', 'info');
-    terminalAppendLine('输入命令后按回车执行。点击上方快捷按钮快速执行常用命令。', 'info');
+    terminalAppendLine('提示: 每个命令独立执行，但 cd 会保持工作目录状态。', 'info');
+    terminalAppendLine('支持: ls pwd cd cat echo head tail grep env whoami date uname find du df', 'info');
     terminalAppendLine('', 'stdout');
   }
   TERMINAL_INIT_DONE = true;
+  terminalUpdateStatus();
 
-  // 检查 terminal 状态
+  // 检查 terminal 状态 & 当前工作目录
   fetch('/api/terminal/info', {
     headers: {
       'Content-Type': 'application/json',
@@ -6626,10 +6706,13 @@ function terminalInitPage() {
   }).then(function(data) {
     if (data && data.enabled) {
       if (statusEl) {
-        statusEl.textContent = 'Ready · ' + (data.platform || '') + ' · ' + (data.shell || '');
+        statusEl.textContent = 'Ready · ' + (data.platform || '') + ' · ' + (data.shell || '') + (data.cwd ? ' · ' + data.cwd : '');
         statusEl.style.color = 'var(--success)';
       }
-      terminalAppendLine('[系统] Terminal 已就绪 · ' + (data.platform || 'linux') + ' · ' + (data.shell || '/bin/sh'), 'info');
+      if (data.cwd) {
+        TERMINAL_CURRENT_DIR = data.cwd;
+      }
+      terminalAppendLine('[系统] ' + (data.platform || 'linux') + ' · ' + (data.shell || '/bin/sh') + (data.cwd ? ' · ' + data.cwd : ''), 'info');
     } else {
       if (statusEl) {
         statusEl.textContent = 'Disabled (需 admin 权限)';
@@ -6692,8 +6775,9 @@ function terminalClear() {
 function terminalExecCommand(cmd) {
   if (!cmd || cmd.trim() === '') return;
 
-  // 显示命令提示符
-  terminalAppendLine('$ ' + cmd, 'prompt');
+  // 显示命令提示符（带当前目录）
+  var prompt = TERMINAL_CURRENT_DIR ? ('[' + TERMINAL_CURRENT_DIR + ']$ ') : '$ ';
+  terminalAppendLine(prompt + cmd, 'prompt');
 
   fetch('/api/terminal/exec', {
     method: 'POST',
@@ -6718,6 +6802,11 @@ function terminalExecCommand(cmd) {
     }
     if (data.exit_code !== undefined && data.exit_code !== 0) {
       terminalAppendLine('[exit ' + data.exit_code + ']', 'error');
+    }
+    // 更新工作目录
+    if (data.cwd && data.cwd !== TERMINAL_CURRENT_DIR) {
+      TERMINAL_CURRENT_DIR = data.cwd;
+      terminalUpdateStatus();
     }
   }).catch(function(err) {
     terminalAppendLine('[错误] ' + err.message, 'error');
@@ -6812,7 +6901,744 @@ function formatTimeAgo(ts) {
   if (diff < 86400) return Math.floor(diff/3600) + t('msg.hours_ago');
   return Math.floor(diff/86400) + t('msg.days_ago');
 }
+
+/* ============================================================
+   Global Terminal Panel —— xterm.js 驱动的真正交互式终端
+   ============================================================ */
+var GTERM = {
+  visible: false,
+  term: null,         // xterm 实例
+  fitAddon: null,
+  sessionId: null,    // exec 模式下不必需，但保留作 ID
+  currentLine: '',    // 当前正在输入的命令行
+  cursorPos: 0,       // 当前光标在 currentLine 中的位置
+  history: [],        // 命令历史
+  historyIdx: -1,
+  tabCandidates: null,
+  cwd: '/home/shell',
+  inDrag: false,
+};
+
+function gtermGetToken() { return localStorage.getItem('token') || ''; }
+
+// ---------- 面板开关 ----------
+function gtermToggle() {
+  if (GTERM.visible) { gtermHide(); } else { gtermShow(); }
+}
+
+function gtermShow() {
+  document.getElementById('gterm-panel').style.display = 'flex';
+  var btn = document.getElementById('topbarTerminalBtn');
+  if (btn) btn.classList.add('active');
+  GTERM.visible = true;
+  if (!GTERM.term) gtermInitXterm();
+  // 等布局完成后 fit + focus，确保 xterm 文本框能拿到焦点
+  setTimeout(function() {
+    if (GTERM.term && GTERM.fitAddon) {
+      try { GTERM.fitAddon.fit(); } catch(e) {}
+    }
+    if (GTERM.term) {
+      GTERM.term.focus();
+    }
+  }, 80);
+  gtermRefreshFiles();
+  gtermFetchInfo();
+}
+
+function gtermHide() {
+  document.getElementById('gterm-panel').style.display = 'none';
+  var btn = document.getElementById('topbarTerminalBtn');
+  if (btn) btn.classList.remove('active');
+  GTERM.visible = false;
+}
+
+function gtermFetchInfo() {
+  fetch('/api/terminal/info', {
+    headers: { 'Authorization': 'Bearer ' + gtermGetToken() }
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data && data.cwd) GTERM.cwd = data.cwd;
+  }).catch(function() {});
+}
+
+// ---------- xterm 工厂（可以创建多个互相独立的终端实例） ----------
+function gtermCreateTerminal(containerEl) {
+  if (!containerEl) return null;
+  var term = new Terminal({
+    cols: 80,
+    rows: 24,
+    fontFamily: 'ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace',
+    fontSize: 13,
+    cursorBlink: true,
+    cursorStyle: 'block',
+    theme: {
+      background: '#0a0a0e',
+      foreground: '#e5e7eb',
+      cursor: '#60a5fa',
+      cursorAccent: '#0a0a0e',
+      selectionBackground: '#374151',
+      black: '#111827',
+      red: '#f87171',
+      green: '#4ade80',
+      yellow: '#fbbf24',
+      blue: '#60a5fa',
+      magenta: '#c084fc',
+      cyan: '#22d3ee',
+      white: '#e5e7eb',
+      brightBlack: '#6b7280',
+      brightRed: '#ef4444',
+      brightGreen: '#22c55e',
+      brightYellow: '#facc15',
+      brightBlue: '#3b82f6',
+      brightMagenta: '#a855f7',
+      brightCyan: '#06b6d4',
+      brightWhite: '#fff',
+    },
+    scrollback: 5000,
+    allowProposedApi: true,
+  });
+  var fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(containerEl);
+
+  // 绑定公共输入/输出 handler
+  var state = { term: term, fitAddon: fit, currentLine: '', cursorPos: 0, history: [], historyIdx: -1, cwd: '/home/shell', exec: null, promptShown: false };
+
+  // 点击终端区域时强制 focus（避免外层元素吃掉 click）
+  containerEl.addEventListener('click', function() {
+    try { term.focus(); } catch(e) {}
+  });
+
+  // 按键
+  term.onData(function(data) { gtermOnDataCore(state, data); });
+
+  // 欢迎横幅
+  term.writeln('\x1b[1;32m╔══════════════════════════════════════════════════════════╗\x1b[0m');
+  term.writeln('\x1b[1;32m║   MultiCloud Sandbox Terminal                            ║\x1b[0m');
+  term.writeln('\x1b[1;32m╚══════════════════════════════════════════════════════════╝\x1b[0m');
+  term.writeln('');
+  term.writeln('\x1b[90m· 工作目录限制在 /home/shell 内\x1b[0m');
+  term.writeln('\x1b[90m· 已启用命令白名单 + 危险命令黑名单 + 路径安全扫描\x1b[0m');
+  term.writeln('\x1b[90m· 支持 cloud-info / cloud-accounts / cloud-resources / cloud-sync / cloud-cost / cloud-help\x1b[0m');
+  term.writeln('\x1b[90m· 快捷键：Ctrl+C 中断  |  Ctrl+L 清屏  |  ↑/↓ 历史  |  ←/→ 移动光标  |  Tab 补全\x1b[0m');
+  term.writeln('');
+
+  gtermPromptCore(state);
+  try { fit.fit(); } catch(e) {}
+
+  return state;
+}
+
+// ---------- 全局面板 xterm 初始化 ----------
+function gtermInitXterm() {
+  var container = document.getElementById('gterm-xterm');
+  if (!container) return;
+  GTERM.term = gtermCreateTerminal(container);
+  GTERM.fitAddon = GTERM.term.fitAddon;
+
+  // 窗口 resize → fit
+  window.addEventListener('resize', function() {
+    if (GTERM.visible && GTERM.term && GTERM.fitAddon) {
+      try { GTERM.fitAddon.fit(); } catch(e) {}
+    }
+  });
+
+  // 启动拖拽
+  gtermEnableResize();
+}
+
+// ---------- 单独页面 terminal 初始化 ----------
+function gtermInitPageTerminal() {
+  var container = document.getElementById('page-terminal-xterm');
+  if (!container) return;
+  if (GTERM.pageTerm) return; // 只初始化一次
+  GTERM.pageTerm = gtermCreateTerminal(container);
+  // 页面加载时也刷一下文件列表
+  gtermRefreshFiles();
+  gtermFetchInfo();
+}
+
+// ---------- 显示命令提示符（核心版，支持任意 state） ----------
+function gtermPromptCore(state) {
+  state.term.write('\r\x1b[1;32m[' + state.cwd + ']$\x1b[0m ');
+  state.currentLine = '';
+  state.cursorPos = 0;
+}
+
+function gtermPrompt() {
+  if (GTERM.term) gtermPromptCore(GTERM.term);
+}
+
+// ---------- 按键处理（核心版，支持任意 state） ----------
+function gtermOnDataCore(state, data) {
+  // 普通可打印字符
+  if (data.length === 1 && data.charCodeAt(0) >= 0x20 && data.charCodeAt(0) !== 0x7f) {
+    var before = state.currentLine.substring(0, state.cursorPos);
+    var after = state.currentLine.substring(state.cursorPos);
+    state.currentLine = before + data + after;
+    state.cursorPos++;
+    state.term.write(data + after);
+    if (after.length > 0) state.term.write('\x1b[' + after.length + 'D');
+    return;
+  }
+
+  switch (data) {
+    case '\r':
+    case '\n':
+      gtermExecLineCore(state);
+      break;
+    case '\x7f': // Backspace
+    case '\x08': // Ctrl+H
+      if (state.cursorPos > 0) {
+        var before = state.currentLine.substring(0, state.cursorPos - 1);
+        var after = state.currentLine.substring(state.cursorPos);
+        state.currentLine = before + after;
+        state.cursorPos--;
+        state.term.write('\x1b[D' + after + ' ');
+        if (after.length + 1 > 0) state.term.write('\x1b[' + (after.length + 1) + 'D');
+      }
+      break;
+    case '\x03': // Ctrl+C
+      state.term.write('^C\r\n');
+      state.currentLine = '';
+      state.cursorPos = 0;
+      gtermPromptCore(state);
+      break;
+    case '\x0c': // Ctrl+L — 清屏
+      state.term.clear();
+      gtermPromptCore(state);
+      break;
+    case '\x15': // Ctrl+U — 清空至行首
+      if (state.cursorPos > 0) {
+        var erased = state.currentLine.substring(0, state.cursorPos);
+        state.currentLine = state.currentLine.substring(state.cursorPos);
+        state.cursorPos = 0;
+        state.term.write('\x1b[D'.repeat(erased.length) + state.currentLine + ' '.repeat(erased.length));
+        state.term.write('\x1b[D'.repeat(erased.length + state.currentLine.length));
+      }
+      break;
+    case '\x1b[A': // Up arrow
+      gtermHistoryCore(state, -1);
+      break;
+    case '\x1b[B': // Down arrow
+      gtermHistoryCore(state, 1);
+      break;
+    case '\x1b[C': // Right arrow
+      if (state.cursorPos < state.currentLine.length) {
+        state.cursorPos++;
+        state.term.write('\x1b[C');
+      }
+      break;
+    case '\x1b[D': // Left arrow
+      if (state.cursorPos > 0) {
+        state.cursorPos--;
+        state.term.write('\x1b[D');
+      }
+      break;
+    case '\x1b[H': case '\x01': // Home / Ctrl+A
+      state.term.write('\x1b[' + state.cursorPos + 'D');
+      state.cursorPos = 0;
+      break;
+    case '\x1b[F': case '\x05': // End / Ctrl+E
+      state.term.write('\x1b[' + (state.currentLine.length - state.cursorPos) + 'C');
+      state.cursorPos = state.currentLine.length;
+      break;
+    case '\t': // Tab — 简单补全
+      gtermTabCompleteCore(state);
+      break;
+    default:
+      break;
+  }
+}
+
+// ---------- 历史命令（核心版） ----------
+function gtermHistoryCore(state, delta) {
+  if (state.history.length === 0) return;
+  if (delta < 0) {
+    if (state.historyIdx === -1) state.historyIdx = state.history.length - 1;
+    else if (state.historyIdx > 0) state.historyIdx--;
+    else return;
+  } else {
+    if (state.historyIdx === -1) return;
+    if (state.historyIdx < state.history.length - 1) {
+      state.historyIdx++;
+    } else {
+      state.historyIdx = -1;
+      gtermReplaceCurrentLineCore(state, '');
+      return;
+    }
+  }
+  gtermReplaceCurrentLineCore(state, state.history[state.historyIdx]);
+}
+
+function gtermReplaceCurrentLineCore(state, newLine) {
+  if (state.cursorPos > 0) state.term.write('\x1b[' + state.cursorPos + 'D');
+  for (var i = 0; i < state.currentLine.length; i++) state.term.write(' ');
+  state.term.write('\x1b[' + state.currentLine.length + 'D');
+  state.term.write(newLine);
+  state.currentLine = newLine;
+  state.cursorPos = newLine.length;
+}
+
+// ---------- 向后兼容：保留旧签名（仅用于全局面板） ----------
+function gtermOnData(data) {
+  if (GTERM.term) gtermOnDataCore(GTERM.term, data);
+}
+function gtermHistory(delta) {
+  if (GTERM.term) gtermHistoryCore(GTERM.term, delta);
+}
+function gtermReplaceCurrentLine(newLine) {
+  if (GTERM.term) gtermReplaceCurrentLineCore(GTERM.term, newLine);
+}
+
+// ---------- Tab 补全（核心版） ----------
+function gtermTabCompleteCore(state) {
+  var prefix = state.currentLine.substring(0, state.cursorPos);
+  if (!prefix) return;
+  var common = ['ls', 'pwd', 'cd', 'cat', 'echo', 'mkdir', 'rm', 'cp', 'mv',
+    'touch', 'file', 'find', 'grep', 'head', 'tail', 'sort', 'wc', 'cut',
+    'sed', 'awk', 'tree', 'du', 'df', 'env', 'whoami', 'uname', 'date',
+    'clear', 'wget', 'curl', 'python3', 'python', 'bash',
+    'cloud-info', 'cloud-accounts', 'cloud-resources', 'cloud-sync', 'cloud-cost', 'cloud-help',
+    'download'];
+  var matches = common.filter(function(c) { return c.indexOf(prefix) === 0 && c !== prefix; });
+  if (matches.length === 0) return;
+  if (matches.length === 1) {
+    gtermReplaceCurrentLineCore(state, matches[0]);
+  } else {
+    state.term.write('\r\n\x1b[90m' + matches.join('  ') + '\x1b[0m\r\n');
+    gtermPromptCore(state);
+    gtermReplaceCurrentLineCore(state, prefix);
+  }
+}
+
+function gtermTabComplete() {
+  if (GTERM.term) gtermTabCompleteCore(GTERM.term);
+}
+
+// ---------- 执行一行命令（核心版） ----------
+function gtermExecLineCore(state) {
+  var cmd = state.currentLine.trim();
+  state.term.write('\r\n');
+  if (!cmd) { gtermPromptCore(state); return; }
+
+  // 保留历史
+  if (state.history[state.history.length - 1] !== state.currentLine) {
+    state.history.push(state.currentLine);
+  }
+  state.historyIdx = -1;
+  state.currentLine = '';
+  state.cursorPos = 0;
+
+  fetch('/api/terminal/exec', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + gtermGetToken() },
+    body: JSON.stringify({ command: cmd })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.stdout) {
+      var lines = data.stdout.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        state.term.write(lines[i]);
+        if (i < lines.length - 1) state.term.write('\r\n');
+      }
+      if (!data.stdout.endsWith('\n')) state.term.write('\r\n');
+    }
+    if (data.stderr) {
+      state.term.write('\x1b[31m');
+      var eLines = data.stderr.split('\n');
+      for (var i = 0; i < eLines.length; i++) {
+        state.term.write(eLines[i]);
+        if (i < eLines.length - 1) state.term.write('\r\n');
+      }
+      if (!data.stderr.endsWith('\n')) state.term.write('\r\n');
+      state.term.write('\x1b[0m');
+    }
+    if (data.cwd) state.cwd = data.cwd;
+    gtermRefreshFiles();
+    gtermPromptCore(state);
+  }).catch(function(e) {
+    state.term.write('\x1b[31m[网络错误] ' + e.message + '\x1b[0m\r\n');
+    gtermPromptCore(state);
+  });
+}
+
+function gtermExecLine() {
+  if (GTERM.term) gtermExecLineCore(GTERM.term);
+}
+
+// ---------- 快速命令按钮：先找 pageTerm，再找 panel term ----------
+function gtermGetActiveState() {
+  // 如果用户在 terminal 页面，用页面的终端；否则用全局面板
+  var pageContainer = document.getElementById('page-terminal-main');
+  if (pageContainer && pageContainer.offsetParent !== null) {
+    if (GTERM.pageTerm) return GTERM.pageTerm;
+  }
+  return GTERM.term;
+}
+
+function gtermQuickCloud(cmd) {
+  var active = gtermGetActiveState();
+  if (!active) {
+    gtermShow();
+    setTimeout(function() {
+      if (GTERM.term) { gtermReplaceCurrentLineCore(GTERM.term, cmd); gtermExecLineCore(GTERM.term); }
+    }, 100);
+    return;
+  }
+  gtermReplaceCurrentLineCore(active, cmd);
+  gtermExecLineCore(active);
+}
+
+// ---------- 渲染单个文件行（两个面板共用） ----------
+function gtermMakeFileRow(f) {
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid #1f2937;font-size:11px;color:#d1d5db;cursor:pointer;font-family:ui-monospace,Menlo,Consolas,monospace';
+  row.onmouseover = function() { this.style.background = '#1f2937'; };
+  row.onmouseout = function() { this.style.background = ''; };
+  var icon = document.createElement('span');
+  icon.textContent = f.is_dir ? '📁' : '📄';
+  var name = document.createElement('span');
+  name.textContent = f.name;
+  name.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+  var size = document.createElement('span');
+  size.style.cssText = 'color:#6b7280;font-size:10px';
+  size.textContent = f.is_dir ? 'DIR' : formatSizeShort(f.size || 0);
+  row.appendChild(icon);
+  row.appendChild(name);
+  row.appendChild(size);
+  if (!f.is_dir) {
+    var editBtn = document.createElement('button');
+    editBtn.textContent = '✏';
+    editBtn.title = '编辑';
+    editBtn.style.cssText = 'background:transparent;border:1px solid #374151;color:#9ca3af;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:3px';
+    editBtn.onmouseover = function() { this.style.borderColor = '#60a5fa'; this.style.color = '#60a5fa'; };
+    editBtn.onmouseout = function() { this.style.borderColor = '#374151'; this.style.color = '#9ca3af'; };
+    editBtn.onclick = (function(fn) { return function(ev) { ev.stopPropagation(); gtermEditFile(fn); }; })(f.name);
+    var dlBtn = document.createElement('button');
+    dlBtn.textContent = '⬇';
+    dlBtn.title = '下载';
+    dlBtn.style.cssText = 'background:transparent;border:1px solid #374151;color:#9ca3af;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:3px';
+    dlBtn.onmouseover = function() { this.style.borderColor = '#60a5fa'; this.style.color = '#60a5fa'; };
+    dlBtn.onmouseout = function() { this.style.borderColor = '#374151'; this.style.color = '#9ca3af'; };
+    dlBtn.onclick = (function(fn) { return function(ev) { ev.stopPropagation(); gtermDownloadFile(fn); }; })(f.name);
+    row.appendChild(editBtn);
+    row.appendChild(dlBtn);
+  }
+  var delBtn = document.createElement('button');
+  delBtn.textContent = '🗑';
+  delBtn.title = '删除';
+  delBtn.style.cssText = 'background:transparent;border:1px solid #374151;color:#9ca3af;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:3px';
+  delBtn.onmouseover = function() { this.style.borderColor = '#f87171'; this.style.color = '#f87171'; };
+  delBtn.onmouseout = function() { this.style.borderColor = '#374151'; this.style.color = '#9ca3af'; };
+  delBtn.onclick = (function(fn) { return function(ev) { ev.stopPropagation(); gtermDeleteFile(fn); }; })(f.name);
+  row.appendChild(delBtn);
+  return row;
+}
+
+function gtermPopulateFileList(listEl, data) {
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!data || !data.files || data.files.length === 0) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'padding:16px;text-align:center;color:#6b7280;font-size:11px';
+    empty.textContent = '（空目录 · 上传或 mkdir 创建）';
+    listEl.appendChild(empty);
+  } else {
+    for (var i = 0; i < data.files.length; i++) {
+      listEl.appendChild(gtermMakeFileRow(data.files[i]));
+    }
+  }
+  // quota
+  if (data && data.used_bytes != null) {
+    var mb = (data.used_bytes / 1024 / 1024).toFixed(2);
+    var quotaMb = (data.quota || 20971520) / 1024 / 1024;
+    var pct = Math.min(100, (data.used_bytes / (data.quota || 20971520)) * 100).toFixed(0);
+    var el1 = document.getElementById('gterm-quota-text');
+    if (el1) el1.textContent = mb + ' MB / ' + quotaMb.toFixed(0) + ' MB (' + pct + '%)';
+    var el2 = document.getElementById('page-terminal-quota');
+    if (el2) el2.textContent = mb + ' MB / ' + quotaMb.toFixed(0) + ' MB (' + pct + '%)';
+  }
+}
+
+// ---------- 文件面板（同时刷新全局面板 + 单独页面） ----------
+function gtermRefreshFiles() {
+  var listA = document.getElementById('gterm-file-list');
+  var listB = document.getElementById('page-terminal-file-list');
+  if (!listA && !listB) return;
+  [listA, listB].forEach(function(list) {
+    if (list) list.innerHTML = '<div style="padding:8px 12px;color:#6b7280;font-size:11px">加载中...</div>';
+  });
+  fetch('/api/terminal/files', {
+    headers: { 'Authorization': 'Bearer ' + gtermGetToken() }
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    gtermPopulateFileList(listA, data);
+    gtermPopulateFileList(listB, data);
+  }).catch(function(e) {
+    [listA, listB].forEach(function(list) {
+      if (list) list.innerHTML = '<div style="padding:16px;color:#f87171;text-align:center;font-size:11px">加载失败: ' + e.message + '</div>';
+    });
+  });
+}
+
+function formatSizeShort(bytes) {
+  if (bytes == null) return '-';
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'K';
+  return (bytes / 1024 / 1024).toFixed(1) + 'M';
+}
+
+// ---------- 同时写消息到 panel terminal 和 standalone page terminal ----------
+function gtermWriteAll(msg) {
+  if (GTERM.term && GTERM.term.term) GTERM.term.term.write(msg);
+  if (GTERM.pageTerm && GTERM.pageTerm.term) GTERM.pageTerm.term.write(msg);
+}
+function gtermPromptAll() {
+  if (GTERM.term) gtermPromptCore(GTERM.term);
+  if (GTERM.pageTerm) gtermPromptCore(GTERM.pageTerm);
+}
+
+function gtermUploadFile() {
+  document.getElementById('gterm-file-input').click();
+}
+
+function gtermHandleFileUpload(ev) {
+  var file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('单文件最大 10 MB');
+    return;
+  }
+  var fd = new FormData();
+  fd.append('file', file);
+  gtermWriteAll('\r\n\x1b[90m[上传] ' + file.name + ' (' + formatSizeShort(file.size) + ')...\x1b[0m\r\n');
+  fetch('/api/terminal/files', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + gtermGetToken() },
+    body: fd
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      gtermWriteAll('\x1b[32m[上传完成] ' + data.name + '\x1b[0m\r\n');
+      gtermRefreshFiles();
+    } else {
+      gtermWriteAll('\x1b[31m[上传错误] ' + (data.error || '') + '\x1b[0m\r\n');
+    }
+  }).catch(function(e) {
+    gtermWriteAll('\x1b[31m[上传错误] ' + e.message + '\x1b[0m\r\n');
+  }).finally(function() {
+    document.getElementById('gterm-file-input').value = '';
+    gtermPromptAll();
+  });
+}
+
+function gtermDownloadFile(name) {
+  var token = gtermGetToken();
+  var url = '/api/terminal/files/' + encodeURIComponent(name);
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + token } }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.blob();
+  }).then(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 200);
+    gtermWriteAll('\x1b[32m[下载完成] ' + name + '\x1b[0m\r\n');
+  }).catch(function(e) {
+    gtermWriteAll('\x1b[31m[下载错误] ' + e.message + '\x1b[0m\r\n');
+  });
+}
+
+function gtermDeleteFile(name) {
+  if (!confirm('确定删除 ' + name + ' ?')) return;
+  fetch('/api/terminal/files/' + encodeURIComponent(name), {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + gtermGetToken() }
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      gtermWriteAll('\x1b[32m[已删除] ' + name + '\x1b[0m\r\n');
+      gtermRefreshFiles();
+    } else {
+      gtermWriteAll('\x1b[31m[删除错误] ' + (data.error || '') + '\x1b[0m\r\n');
+    }
+  }).catch(function(e) {
+    gtermWriteAll('\x1b[31m[删除错误] ' + e.message + '\x1b[0m\r\n');
+  });
+}
+
+// ---------- 文件编辑器（浏览器内编辑文本）----------
+function gtermEditFile(name) {
+  fetch('/api/terminal/files/' + encodeURIComponent(name) + '/content', {
+    headers: { 'Authorization': 'Bearer ' + gtermGetToken() }
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) {
+      gtermWriteAll('\x1b[31m[读取失败] ' + data.error + '\x1b[0m\r\n');
+      return;
+    }
+    document.getElementById('gterm-editor-filename').textContent = name;
+    document.getElementById('gterm-editor-area').value = data.content || '';
+    document.getElementById('gterm-editor-status').textContent = '大小: ' + formatSizeShort(data.size || 0);
+    document.getElementById('gterm-editor').style.display = 'flex';
+    document.getElementById('gterm-editor').dataset.file = name;
+  }).catch(function(e) {
+    gtermWriteAll('\x1b[31m[编辑错误] ' + e.message + '\x1b[0m\r\n');
+  });
+}
+
+function gtermSaveEditor() {
+  var name = document.getElementById('gterm-editor').dataset.file;
+  if (!name) return;
+  var content = document.getElementById('gterm-editor-area').value;
+  document.getElementById('gterm-editor-status').textContent = '保存中...';
+  fetch('/api/terminal/files/' + encodeURIComponent(name), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + gtermGetToken() },
+    body: JSON.stringify({ content: content })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      document.getElementById('gterm-editor-status').textContent = '✓ 已保存 (' + formatSizeShort(data.size || 0) + ')';
+      gtermRefreshFiles();
+      gtermWriteAll('\x1b[32m[已保存] ' + name + '\x1b[0m\r\n');
+      setTimeout(gtermCloseEditor, 400);
+    } else {
+      document.getElementById('gterm-editor-status').textContent = '✗ ' + (data.error || '保存失败');
+    }
+  }).catch(function(e) {
+    document.getElementById('gterm-editor-status').textContent = '✗ ' + e.message;
+  });
+}
+
+function gtermCloseEditor() {
+  document.getElementById('gterm-editor').style.display = 'none';
+}
+
+// ---------- 重置沙箱 ----------
+function gtermResetConfirm() {
+  if (!confirm('⚠ 确定清空 /home/shell 的所有文件？不可恢复。')) return;
+  fetch('/api/terminal/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + gtermGetToken() }
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      gtermWriteAll('\x1b[32m[♻ 已重置] 删除 ' + (data.deleted || 0) + ' 项\x1b[0m\r\n');
+      gtermRefreshFiles();
+    } else {
+      gtermWriteAll('\x1b[31m[重置错误] ' + (data.error || '') + '\x1b[0m\r\n');
+    }
+  }).catch(function(e) {
+    gtermWriteAll('\x1b[31m[重置错误] ' + e.message + '\x1b[0m\r\n');
+  });
+}
+
+// ---------- 面板高度拖动 ----------
+function gtermEnableResize() {
+  var panel = document.getElementById('gterm-panel');
+  var handle = document.getElementById('gterm-resize');
+  if (!panel || !handle) return;
+  handle.addEventListener('mousedown', function(e) {
+    GTERM.inDrag = true;
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!GTERM.inDrag) return;
+    var h = window.innerHeight - e.clientY;
+    var minH = 180;
+    var maxH = window.innerHeight * 0.85;
+    if (h < minH) h = minH;
+    if (h > maxH) h = maxH;
+    panel.style.height = h + 'px';
+    if (GTERM.term && GTERM.fitAddon) {
+      try { GTERM.fitAddon.fit(); } catch(err) {}
+    }
+  });
+  document.addEventListener('mouseup', function() {
+    if (GTERM.inDrag) {
+      GTERM.inDrag = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  });
+}
 </script>
+
+  <!-- ========== Global Terminal Panel ========== -->
+
+  <div id="gterm-panel" style="position:fixed;left:0;right:0;bottom:0;height:20vh;background:#0e1116;border-top:2px solid #374151;z-index:1000;display:none;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,0.3)">
+    <div id="gterm-resize" title="拖动调整高度" style="height:6px;background:#1f2937;cursor:row-resize;user-select:none;border-bottom:1px solid #374151" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='#1f2937'"></div>
+    <div id="gterm-header" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#111827;border-bottom:1px solid #374151;flex-wrap:wrap">
+      <span style="color:#60a5fa;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;font-weight:bold">▶ Terminal</span>
+      <span id="gterm-cwd" style="color:#9ca3af;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace">/home/shell</span>
+      <div style="flex:1"></div>
+      <button class="gterm-btn gterm-btn-primary" onclick="gtermRefreshFiles()">🔄 刷新文件</button>
+      <button class="gterm-btn" onclick="gtermUploadFile()">📤 上传文件</button>
+      <button class="gterm-btn gterm-btn-danger" onclick="gtermResetConfirm()">♻️ 重置沙箱</button>
+      <button class="gterm-btn" onclick="gtermToggle()">✕ 关闭</button>
+    </div>
+    <div id="gterm-main" style="flex:1;display:flex;min-height:0;overflow:hidden">
+      <div id="gterm-output-col" style="flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid #374151">
+        <div id="gterm-xterm" style="flex:1;overflow:hidden;background:#000"></div>
+      </div>
+      <div id="gterm-file-col" style="width:320px;display:flex;flex-direction:column;min-width:0;background:#111827">
+        <div id="gterm-file-header" style="padding:8px 12px;border-bottom:1px solid #374151;color:#d1d5db;font-size:12.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          📁 文件 /home/shell
+          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span id="gterm-quota-text" style="color:#9ca3af;font-size:11px">0 MB / 20 MB</span>
+            <div style="width:100px;height:4px;background:#374151;border-radius:2px;overflow:hidden"><div id="gterm-quota-fill" style="height:100%;width:0%;background:#60a5fa;transition:width 0.3s"></div></div>
+          </div>
+        </div>
+        <div id="gterm-file-list" style="flex:1;overflow-y:auto;padding:4px"></div>
+        <div id="gterm-file-footer" style="padding:8px;border-top:1px solid #374151;display:flex;gap:4px;flex-wrap:wrap">
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-info')">cloud-info</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-accounts')">cloud-accounts</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-resources')">cloud-resources</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-sync')">cloud-sync</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-cost')">cloud-cost</button>
+          <button class="gterm-btn" onclick="gtermQuickCloud('cloud-help')">cloud-help</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="gterm-file-input" style="display:none" onchange="gtermHandleFileUpload(event)"/>
+  </div>
+
+  <!-- File Editor Modal -->
+  <div id="gterm-editor" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2000;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)gtermCloseEditor()">
+    <div id="gterm-editor-box" style="background:#111827;border:1px solid #374151;border-radius:8px;width:90%;max-width:800px;max-height:80vh;display:flex;flex-direction:column">
+      <div id="gterm-editor-header" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #374151">
+        <span id="gterm-editor-filename" style="color:#d1d5db;font-weight:bold;font-size:13px">✏️ 编辑文件</span>
+        <button class="gterm-btn" onclick="gtermCloseEditor()">✕ 关闭</button>
+      </div>
+      <textarea id="gterm-editor-area" spellcheck="false" placeholder="文件内容..." style="flex:1;background:#000;color:#e5e7eb;border:none;outline:none;padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;min-height:300px;resize:vertical"></textarea>
+      <div id="gterm-editor-footer" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid #374151">
+        <span id="gterm-editor-status" style="color:#9ca3af;font-size:12px;margin-right:auto">就绪</span>
+        <button class="gterm-btn gterm-btn-danger" onclick="gtermCloseEditor()">取消</button>
+        <button class="gterm-btn gterm-btn-primary" onclick="gtermSaveEditor()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .gterm-btn { padding:3px 10px;background:#1f2937;color:#d1d5db;border:1px solid #374151;border-radius:4px;cursor:pointer;font-size:11px;transition:all 0.15s;font-family:ui-monospace,Menlo,Consolas,monospace }
+    .gterm-btn:hover { background:#374151;color:#fff;border-color:#4b5563 }
+    .gterm-btn-primary { background:#1e40af;border-color:#2563eb;color:#fff }
+    .gterm-btn-primary:hover { background:#2563eb }
+    .gterm-btn-danger { background:#7f1d1d;border-color:#dc2626;color:#fff }
+    .gterm-btn-danger:hover { background:#dc2626 }
+    .gterm-file-item { display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #1f2937;font-size:12px;color:#e5e7eb;font-family:ui-monospace,Menlo,Consolas,monospace }
+    .gterm-file-item:hover { background:#1f2937 }
+    .gterm-file-name { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+    .gterm-file-size { color:#9ca3af;font-size:11px;min-width:60px;text-align:right }
+    .gterm-btn-mini { background:transparent;border:1px solid #374151;border-radius:3px;padding:2px 6px;font-size:10px;color:#9ca3af;cursor:pointer;font-family:inherit;transition:all 0.15s }
+    .gterm-btn-mini:hover { border-color:#60a5fa;color:#60a5fa }
+    .gterm-btn-mini.gterm-btn-danger:hover { border-color:#dc2626;color:#dc2626 }
+    #gterm-toggle.active { background:#15803d;border-color:#22c55e }
+    #gterm-output .gterm-line-prompt { color:#4ade80 }
+    #gterm-output .gterm-line-stdout { color:#e5e7eb;white-space:pre-wrap;word-break:break-word }
+    #gterm-output .gterm-line-stderr { color:#f87171;white-space:pre-wrap;word-break:break-word }
+    #gterm-output .gterm-line-info { color:#60a5fa;white-space:pre-wrap }
+    #gterm-output .gterm-line-error { color:#ef4444;white-space:pre-wrap }
+  </style>
 <script src="/static/anime.min.js"></script>
 <script src="/static/animations.js"></script>
 </body>

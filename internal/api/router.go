@@ -74,6 +74,14 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	r.POST("/api/terminal/exec", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalExec())
 	r.GET("/api/terminal/sessions", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalListSessions())
 	r.GET("/api/terminal/history", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalGetHistory())
+	// Terminal Files API
+	r.GET("/api/terminal/files", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalListFiles())
+	r.GET("/api/terminal/files/:name", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalDownloadFile())
+	r.GET("/api/terminal/files/:name/content", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalReadFile())
+	r.PUT("/api/terminal/files/:name", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalWriteFile())
+	r.POST("/api/terminal/files", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalUploadFile())
+	r.DELETE("/api/terminal/files/:name", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalDeleteFile())
+	r.POST("/api/terminal/reset", AuthMiddleware(jwtSecret), RequireRole("admin"), TerminalReset())
 
 	// Built-in vault — no external dependency
 	vaultService, err := vault.NewService(db)
@@ -313,6 +321,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	r.StaticFile("/static/anime.min.js", filepath.Join(webDir, "anime.min.js"))
 	r.StaticFile("/static/animations.js", filepath.Join(webDir, "animations.js"))
 	r.Static("/static/js", filepath.Join(webDir, "js"))
+	r.Static("/static/xterm", filepath.Join(webDir, "xterm"))
 
 	// React app assets
 	r.Static("/assets", filepath.Join(webDir, "assets"))
