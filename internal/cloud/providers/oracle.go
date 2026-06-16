@@ -82,28 +82,51 @@ func NewOracleProvider(creds map[string]string) *OracleProvider {
 func (p *OracleProvider) GetType() string { return "oracle" }
 
 func (p *OracleProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	if region == "" {
+		region = p.region
+	}
 	base := "https://cloud.oracle.com"
 	switch resourceType {
 	case types.ResourceTypeInstance:
-		return fmt.Sprintf("%s/compute/instances/%s", base, id)
+		return fmt.Sprintf("%s/compute/instance/%s?region=%s", base, id, region)
 	case types.ResourceTypeVolume:
-		return fmt.Sprintf("%s/block-storage/volumes/%s", base, id)
+		return fmt.Sprintf("%s/block-storage/bootvolume/%s?region=%s", base, id, region)
 	case types.ResourceTypeNetwork:
-		return fmt.Sprintf("%s/networking/vcns/%s", base, id)
+		return fmt.Sprintf("%s/networking/vcn/%s?region=%s", base, id, region)
 	case types.ResourceTypeDatabase:
-		return fmt.Sprintf("%s/database/dbSystems/%s", base, id)
+		return fmt.Sprintf("%s/database/dedicated/%s?region=%s", base, id, region)
 	case types.ResourceTypeLoadBalancer:
-		return fmt.Sprintf("%s/networking/load-balancers/%s", base, id)
+		return fmt.Sprintf("%s/networking/loadbalancer/%s?region=%s", base, id, region)
 	case types.ResourceTypeBucket:
-		return fmt.Sprintf("%s/object-storage/buckets/%s", base, id)
+		return fmt.Sprintf("%s/object-storage/buckets/%s?region=%s", base, id, region)
 	case types.ResourceTypeCluster:
-		return fmt.Sprintf("%s/containers/clusters/%s", base, id)
+		return fmt.Sprintf("%s/containers-kubernetes-engine/clusters/%s?region=%s", base, id, region)
 	case types.ResourceTypeFunction:
-		return fmt.Sprintf("%s/functions/applications/%s", base, id)
+		return fmt.Sprintf("%s/functions/applications/%s?region=%s", base, id, region)
 	case types.ResourceTypeDNSZone:
-		return fmt.Sprintf("%s/dns/zones/%s", base, id)
+		return fmt.Sprintf("%s/dns/zone/%s?region=%s", base, id, region)
 	case types.ResourceTypeCertificate:
-		return fmt.Sprintf("%s/certificates/certificates/%s", base, id)
+		return fmt.Sprintf("%s/certificates/overview", base)
+	case types.ResourceTypeRedis:
+		return fmt.Sprintf("%s/mysql/replicas/%s?region=%s", base, id, region)
+	case types.ResourceTypeMQ:
+		return fmt.Sprintf("%s/messaging/queues/%s?region=%s", base, id, region)
+	case types.ResourceTypeCDN:
+		return fmt.Sprintf("%s/cdn/overview", base)
+	case types.ResourceTypeWAF:
+		return fmt.Sprintf("%s/waf/overview", base)
+	case types.ResourceTypeNATGateway:
+		return fmt.Sprintf("%s/networking/natgateway/%s?region=%s", base, id, region)
+	case types.ResourceTypeImage:
+		return fmt.Sprintf("%s/compute/images/%s?region=%s", base, id, region)
+	case types.ResourceTypeAPIGateway:
+		return fmt.Sprintf("%s/api-management/gateways/%s?region=%s", base, id, region)
+	case types.ResourceTypeLogService:
+		return fmt.Sprintf("%s/logging/overview", base)
+	case types.ResourceTypeSecurity:
+		return fmt.Sprintf("%s/vcn/security/%s?region=%s", base, id, region)
+	case types.ResourceTypeRegistry:
+		return fmt.Sprintf("%s/registry/overview", base)
 	default:
 		return base
 	}

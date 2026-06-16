@@ -62,27 +62,48 @@ func (p *AzureProvider) GetType() string { return "azure" }
 
 func (p *AzureProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
 	base := "https://portal.azure.com"
+	// Azure 使用资源 ID 格式：/subscriptions/{subId}/resourceGroups/{rg}/providers/{provider}/{type}/{name}
 	switch resourceType {
 	case types.ResourceTypeInstance:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeVolume:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeNetwork:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeDatabase:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeLoadBalancer:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeBucket:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeCluster:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeFunction:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeDNSZone:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	case types.ResourceTypeCertificate:
-		return fmt.Sprintf("%s/#@/resource/%s", base, id)
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeRedis:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeMQ:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeCDN:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeWAF:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeNATGateway:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeImage:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeAPIGateway:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeLogService:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeSecurity:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
+	case types.ResourceTypeRegistry:
+		return fmt.Sprintf("%s/#@/resource%s", base, id)
 	default:
 		return base
 	}

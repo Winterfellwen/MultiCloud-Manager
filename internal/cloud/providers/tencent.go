@@ -36,29 +36,54 @@ func NewTencentProvider(creds map[string]string) *TencentProvider {
 func (p *TencentProvider) GetType() string { return "tencent" }
 
 func (p *TencentProvider) GetConsoleURL(resourceType types.ResourceType, id, region string) string {
+	base := "https://console.cloud.tencent.com"
 	switch resourceType {
 	case types.ResourceTypeInstance:
 		// Lighthouse instances have IDs starting with "lhins-"
 		if strings.HasPrefix(id, "lhins-") {
-			return fmt.Sprintf("https://console.cloud.tencent.com/lighthouse/instance/index")
+			return fmt.Sprintf("%s/lighthouse/instance/index", base)
 		}
-		return fmt.Sprintf("https://console.cloud.tencent.com/cvm/instance/detail?Id=%s", id)
+		return fmt.Sprintf("%s/cvm/instance/detail?Id=%s&region=%s", base, id, region)
 	case types.ResourceTypeDatabase:
-		return fmt.Sprintf("https://console.cloud.tencent.com/cdb/instance/%s/detail", id)
+		return fmt.Sprintf("%s/cdb/instance/%s/detail", base, id)
 	case types.ResourceTypeNetwork:
-		return "https://console.cloud.tencent.com/vpc"
+		return fmt.Sprintf("%s/vpc/vpc/%s?region=%s", base, id, region)
 	case types.ResourceTypeLoadBalancer:
-		return "https://console.cloud.tencent.com/clb"
+		return fmt.Sprintf("%s/clb/overview?region=%s", base, region)
 	case types.ResourceTypeBucket:
-		return "https://console.cloud.tencent.com/cos"
+		return fmt.Sprintf("%s/cos5/bucket/%s", base, id)
 	case types.ResourceTypeCluster:
-		return "https://console.cloud.tencent.com/tke2"
+		return fmt.Sprintf("%s/tke/cluster/%s/overview", base, id)
 	case types.ResourceTypeVolume:
-		return "https://console.cloud.tencent.com/cvm/cbs"
+		return fmt.Sprintf("%s/cbs/overview?region=%s", base, region)
 	case types.ResourceTypeFunction:
-		return "https://console.cloud.tencent.com/scf"
+		return fmt.Sprintf("%s/scf/list?region=%s", base, region)
+	case types.ResourceTypeDNSZone:
+		return fmt.Sprintf("%s/cns/overview?region=%s", base, region)
+	case types.ResourceTypeCertificate:
+		return fmt.Sprintf("%s/ssl/certificate/%s", base, id)
+	case types.ResourceTypeRedis:
+		return fmt.Sprintf("%s/redis/redis/%s", base, id)
+	case types.ResourceTypeMQ:
+		return fmt.Sprintf("%s/cmq/overview?region=%s", base, region)
+	case types.ResourceTypeCDN:
+		return fmt.Sprintf("%s/cdn/console?region=%s", base, region)
+	case types.ResourceTypeWAF:
+		return fmt.Sprintf("%s/cls/overview?region=%s", base, region)
+	case types.ResourceTypeNATGateway:
+		return fmt.Sprintf("%s/vpc/nat/%s?region=%s", base, id, region)
+	case types.ResourceTypeImage:
+		return fmt.Sprintf("%s/image/list?region=%s", base, region)
+	case types.ResourceTypeAPIGateway:
+		return fmt.Sprintf("%s/apigateway/service?region=%s", base, region)
+	case types.ResourceTypeLogService:
+		return fmt.Sprintf("%s/cls/overview?region=%s", base, region)
+	case types.ResourceTypeSecurity:
+		return fmt.Sprintf("%s/vpc/security?region=%s", base, region)
+	case types.ResourceTypeRegistry:
+		return fmt.Sprintf("%s/tcr/repository?region=%s", base, region)
 	default:
-		return "https://console.cloud.tencent.com"
+		return base
 	}
 }
 

@@ -68,6 +68,26 @@ func (p *AlicloudProvider) GetConsoleURL(resourceType types.ResourceType, id, re
 		return fmt.Sprintf("%s/dns/zone/%s", base, id)
 	case types.ResourceTypeCertificate:
 		return fmt.Sprintf("%s/cas/certificate/%s", base, id)
+	case types.ResourceTypeRedis:
+		return fmt.Sprintf("%s/kvstore/shopping/%s", base, id)
+	case types.ResourceTypeMQ:
+		return fmt.Sprintf("%s/ons/consumer/%s", base, id)
+	case types.ResourceTypeCDN:
+		return fmt.Sprintf("%s/cdn/dashboard/%s", base, id)
+	case types.ResourceTypeWAF:
+		return fmt.Sprintf("%s/waf/s_instances/%s", base, id)
+	case types.ResourceTypeNATGateway:
+		return fmt.Sprintf("%s/vpc/nat/%s", base, id)
+	case types.ResourceTypeImage:
+		return fmt.Sprintf("%s/ecs/image/%s", base, id)
+	case types.ResourceTypeAPIGateway:
+		return fmt.Sprintf("%s/api-gateway/signature/%s", base, id)
+	case types.ResourceTypeLogService:
+		return fmt.Sprintf("%s/log/osslog/%s", base, id)
+	case types.ResourceTypeSecurity:
+		return fmt.Sprintf("%s/vpc/security/%s", base, id)
+	case types.ResourceTypeRegistry:
+		return fmt.Sprintf("%s/cr/instance/%s", base, id)
 	default:
 		return base
 	}
