@@ -6349,9 +6349,8 @@ if (langBtnInit) langBtnInit.textContent = LOCALE === 'zh' ? 'EN' : '中文';
 applyLang();
 loadDashboard();
 
-/* Session polling — keeps chat in sync across page switches/refreshes */
+/* Session polling — checks session state (runs only when no SSE is connected) */
 var sessionPollTimer = null;
-var lastSyncedMsgCount = 0;
 
 function startSessionPoll() {
   stopSessionPoll();
@@ -6362,8 +6361,8 @@ function startSessionPoll() {
     if (document.querySelector('.msg.streaming')) return;
     try {
       var data = await apiFetch(API + '/agent/sessions/' + CURRENT_SESSION);
-      if (!data || !data.messages) return;
-      // Always refresh session list to update running/done state
+      if (!data) return;
+      // Update session state (running/done/etc)
       var currentState = data.state || data.status || 'idle';
       if (currentState !== lastKnownState) {
         lastKnownState = currentState;
@@ -6374,48 +6373,9 @@ function startSessionPoll() {
         if (_pendingStopSession === CURRENT_SESSION) _pendingStopSession = null;
         document.getElementById('chatStopBtn').style.display = 'none';
       }
-      if (data.messages.length !== lastSyncedMsgCount) {
-        // Merge DB data into global store (DB is source of truth after stream ends)
-        SESSION_MESSAGES[CURRENT_SESSION] = data.messages.map(function(m) {
-          return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
-        });
-        // Incremental append: only add new messages, never clear existing DOM
-        var container = document.getElementById('chatMessages');
-        var wasNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 150;
-        var appended = 0;
-        var existingCount = container.querySelectorAll('.msg').length;
-        data.messages.forEach(function(m, idx) {
-          if (idx < existingCount) return; // already rendered
-          var ts = m.created_at || m.timestamp || '';
-          if (m.role === 'user') {
-            appendMessage('user', escHtml(m.content), ts);
-            appended++;
-          } else if (m.role === 'agent' || m.role === 'assistant') {
-            appendMessage('agent', renderMarkdown(m.content), ts);
-            appended++;
-          } else if (m.role === 'tool-calls') {
-            var prevAgent = container.querySelector('.msg.agent:last-of-type');
-            if (prevAgent) {
-              renderToolCallsInline(m.content, prevAgent);
-            } else {
-              renderToolCallsGroup(m.content, container);
-            }
-            appended++;
-          } else if (m.role === 'system') {
-            var div = document.createElement('div');
-            div.className = 'msg system';
-            div.textContent = m.content;
-            container.appendChild(div);
-            appended++;
-          }
-        });
-        lastSyncedMsgCount = data.messages.length;
-        // If still running, show status indicator (but not if user just clicked stop)
-        if (data.status === 'running' && _pendingStopSession !== CURRENT_SESSION) {
-          document.getElementById('chatStopBtn').style.display = '';
-        }
-        // Auto-scroll to show new messages
-        if (appended > 0) scrollToBottom(container);
+      // If still running, show status indicator (but not if user just clicked stop)
+      if (data.status === 'running' && _pendingStopSession !== CURRENT_SESSION) {
+        document.getElementById('chatStopBtn').style.display = '';
       }
     } catch(e) { console.warn('[MCM]', e); }
   }, SESSION_POLL_INTERVAL_MS);
@@ -6426,7 +6386,6 @@ function stopSessionPoll() {
     clearInterval(sessionPollTimer);
     sessionPollTimer = null;
   }
-  lastSyncedMsgCount = 0;
 }
 
 /* Resizable sidebar */
