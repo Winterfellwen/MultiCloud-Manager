@@ -5,7 +5,7 @@ services:
     dockerfilePath: ./Dockerfile
     plan: starter
     region: singapore
-    branch: main
+    branch: cloud
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     numInstances: 1
@@ -34,6 +34,8 @@ services:
           property: connectionString
       - key: ENCRYPTION_KEY
         generateValue: true
+      - key: TERMINAL_ENABLED
+        value: "true"
 
 databases:
   - name: multicloud-db
