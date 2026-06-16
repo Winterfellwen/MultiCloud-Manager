@@ -1132,11 +1132,13 @@ type ossBucketsXML struct {
 }
 
 type ossBucketXML struct {
-	Name             string `xml:"Name"`
-	Location         string `xml:"Location"`
-	CreationDate     string `xml:"CreationDate"`
-	ExtranetEndpoint string `xml:"ExtranetEndpoint"`
-	IntranetEndpoint string `xml:"IntranetEndpoint"`
+	Name              string `xml:"Name"`
+	Location          string `xml:"Location"`
+	CreationDate      string `xml:"CreationDate"`
+	ExtranetEndpoint  string `xml:"ExtranetEndpoint"`
+	IntranetEndpoint  string `xml:"IntranetEndpoint"`
+	StorageClass      string `xml:"StorageClass"`
+	DataRedundancyType string `xml:"DataRedundancyType"`
 }
 
 // ossRequest sends a signed request to the OSS REST API.
@@ -1186,16 +1188,29 @@ func (p *AlicloudProvider) ListBuckets(ctx context.Context, opts types.ListOptio
 		if loc == "" {
 			loc = region
 		}
+		storageCls := b.StorageClass
+		if storageCls == "" {
+			storageCls = "Standard"
+		}
 		buckets = append(buckets, types.Bucket{
-			ID:        b.Name,
-			Name:      b.Name,
-			CloudType: "alicloud",
-			Region:    loc,
-			Status:    "active",
+			ID:                 b.Name,
+			Name:               b.Name,
+			CloudType:          "alicloud",
+			Region:             loc,
+			Status:             "active",
+			StorageCls:         storageCls,
+			CreationDate:       b.CreationDate,
+			ExtranetEndpoint:   b.ExtranetEndpoint,
+			IntranetEndpoint:   b.IntranetEndpoint,
+			DataRedundancyType: b.DataRedundancyType,
+			Endpoint:           b.ExtranetEndpoint,
 			Spec: map[string]interface{}{
-				"location":          b.Location,
-				"extranet_endpoint": b.ExtranetEndpoint,
-				"intranet_endpoint": b.IntranetEndpoint,
+				"location":           b.Location,
+				"extranet_endpoint":  b.ExtranetEndpoint,
+				"intranet_endpoint":  b.IntranetEndpoint,
+				"storage_class":      b.StorageClass,
+				"data_redundancy_type": b.DataRedundancyType,
+				"creation_date":      b.CreationDate,
 			},
 		})
 	}
@@ -1204,16 +1219,67 @@ func (p *AlicloudProvider) ListBuckets(ctx context.Context, opts types.ListOptio
 }
 
 func (p *AlicloudProvider) GetBucket(ctx context.Context, bucketID string) (*types.Bucket, error) {
-	buckets, err := p.ListBuckets(ctx, types.ListOptions{Region: p.region})
+	// Use GetBucketInfo API to get detailed bucket info
+	resp, err := p.ossRequest(ctx, "GET", "/"+bucketID+"?bucketInfo", p.region)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("alicloud: get bucket info failed: %w", err)
 	}
-	for _, b := range buckets {
-		if b.ID == bucketID {
-			return &b, nil
-		}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("alicloud: read bucket info response: %w", err)
 	}
-	return nil, fmt.Errorf("alicloud: bucket %s not found", bucketID)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("alicloud: OSS get bucket info error (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+	var result struct {
+		BucketInfo struct {
+			Bucket struct {
+				Name             string `json:"Name"`
+				Region           string `json:"Region"`
+				CreationDate     string `json:"CreationDate"`
+				ExtranetEndpoint string `json:"ExtranetEndpoint"`
+				IntranetEndpoint string `json:"IntranetEndpoint"`
+				StorageClass     string `json:"StorageClass"`
+				DataRedundancyType string `json:"DataRedundancyType"`
+			} `json:"Bucket"`
+		} `json:"BucketInfo"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("alicloud: parse bucket info JSON: %w", err)
+	}
+
+	b := result.BucketInfo.Bucket
+	storageCls := b.StorageClass
+	if storageCls == "" {
+		storageCls = "Standard"
+	}
+	loc := b.Region
+	if loc == "" {
+		loc = p.region
+	}
+
+	return &types.Bucket{
+		ID:                 b.Name,
+		Name:               b.Name,
+		CloudType:          "alicloud",
+		Region:             loc,
+		Status:             "active",
+		StorageCls:         storageCls,
+		CreationDate:       b.CreationDate,
+		ExtranetEndpoint:   b.ExtranetEndpoint,
+		IntranetEndpoint:   b.IntranetEndpoint,
+		DataRedundancyType: b.DataRedundancyType,
+		Endpoint:           b.ExtranetEndpoint,
+		Spec: map[string]interface{}{
+			"location":            b.Region,
+			"extranet_endpoint":  b.ExtranetEndpoint,
+			"intranet_endpoint":  b.IntranetEndpoint,
+			"storage_class":      b.StorageClass,
+			"data_redundancy_type": b.DataRedundancyType,
+			"creation_date":      b.CreationDate,
+		},
+	}, nil
 }
 
 // --- Clusters (ACK / Container Service) ---

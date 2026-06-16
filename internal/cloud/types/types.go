@@ -202,8 +202,20 @@ type Bucket struct {
 	StorageCls  string                 `json:"storage_class,omitempty"`
 	Versioning  bool                   `json:"versioning"`
 	Encrypted   bool                   `json:"encrypted"`
-	Spec        map[string]interface{} `json:"spec"`
-	Tags        map[string]string      `json:"tags"`
+	Endpoint    string                 `json:"endpoint,omitempty"`
+	CreationDate string                `json:"creation_date,omitempty"`
+	// AWS S3 特定字段
+	Location   string                 `json:"location,omitempty"`
+	Owner      string                 `json:"owner,omitempty"`
+	// 阿里云 OSS 特定字段
+	ExtranetEndpoint string           `json:"extranet_endpoint,omitempty"`
+	IntranetEndpoint string           `json:"intranet_endpoint,omitempty"`
+	DataRedundancyType string         `json:"data_redundancy_type,omitempty"`
+	// 腾讯云 COS 特定字段
+	BucketID   string                 `json:"bucket_id,omitempty"`
+	// 通用字段
+	Spec           map[string]interface{} `json:"spec"`
+	Tags           map[string]string      `json:"tags"`
 }
 
 type Cluster struct {

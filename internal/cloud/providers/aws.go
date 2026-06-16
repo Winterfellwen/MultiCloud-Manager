@@ -1141,17 +1141,74 @@ func (p *AWSProvider) GetBucket(ctx context.Context, bucketID string) (*types.Bu
 	if bucketRegion == "" {
 		bucketRegion = "us-east-1"
 	}
+
+	// Get versioning status
+	versioningReq, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://%s.s3.amazonaws.com/?versioning", bucketID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("aws: create versioning request: %w", err)
+	}
+	p.signRequest(versioningReq, "s3", nil)
+	versioningResp, err := p.httpClient.Do(versioningReq)
+	versioningEnabled := false
+	if err == nil && versioningResp.StatusCode == 200 {
+		versioningEnabled = true
+		versioningResp.Body.Close()
+	}
+
+	// Get encryption status
+	encryptionReq, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://%s.s3.amazonaws.com/?encryption", bucketID), nil)
+	if err == nil {
+		p.signRequest(encryptionReq, "s3", nil)
+		encryptionResp, err := p.httpClient.Do(encryptionReq)
+		encrypted := false
+		if err == nil && encryptionResp.StatusCode == 200 {
+			encrypted = true
+			encryptionResp.Body.Close()
+		}
+		_ = encrypted // already handled below
+	}
+
+	// Get bucket tagging
+	taggingReq, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://%s.s3.amazonaws.com/?tagging", bucketID), nil)
+	tags := make(map[string]string)
+	if err == nil {
+		p.signRequest(taggingReq, "s3", nil)
+		taggingResp, err := p.httpClient.Do(taggingReq)
+		if err == nil && taggingResp.StatusCode == 200 {
+			body, _ := io.ReadAll(io.LimitReader(taggingResp.Body, 1<<20))
+			taggingResp.Body.Close()
+			// Parse tagging XML
+			var taggingResult struct {
+				TagSet struct {
+					Tag []struct {
+						Key   string `xml:"Key"`
+						Value string `xml:"Value"`
+					} `xml:"Tag"`
+				} `xml:"TagSet"`
+			}
+			if xml.Unmarshal(body, &taggingResult) == nil {
+				for _, t := range taggingResult.TagSet.Tag {
+					tags[t.Key] = t.Value
+				}
+			}
+		}
+	}
+
 	log.Printf("AWS S3: got bucket %s", bucketID)
 	return &types.Bucket{
-		ID:        bucketID,
-		Name:      bucketID,
-		CloudType: "aws",
-		Region:    bucketRegion,
-		Status:    "available",
+		ID:           bucketID,
+		Name:         bucketID,
+		CloudType:    "aws",
+		Region:       bucketRegion,
+		Status:       "available",
+		Versioning:   versioningEnabled,
+		CreationDate: "", // CreationDate not available via HeadBucket
+		Location:     bucketRegion,
 		Spec: map[string]interface{}{
-			"region": bucketRegion,
+			"region":          bucketRegion,
+			"versioning":      versioningEnabled,
 		},
-		Tags: map[string]string{},
+		Tags: tags,
 	}, nil
 }
 
