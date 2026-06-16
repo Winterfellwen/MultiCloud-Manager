@@ -15,11 +15,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"multicloud/internal/cloud/types"
 )
+
 
 type OracleProvider struct {
 	userOCID        string
@@ -1704,6 +1706,330 @@ func (p *OracleProvider) GetResourceDetail(ctx context.Context, resourceType typ
 		}
 	}
 	return map[string]interface{}{"provider": "oracle"}, nil
+}
+
+// SignedRequest performs an authenticated OCI request and returns raw bytes plus
+// HTTP status.  It is the public, AI-friendly entry point that other internal
+// callers (AI tools, batch operations) can use without dealing with OCI
+// Request Signature details.  Errors are returned together with the status code
+// so the caller can decide how to surface a 4xx vs 5xx.
+func (p *OracleProvider) SignedRequest(ctx context.Context, method, reqURL string, body []byte) (status int, respBody []byte, err error) {
+	if p.privateKey == nil {
+		return 0, nil, fmt.Errorf("oracle: private key not loaded")
+	}
+	var bodyReader io.Reader
+	if body != nil {
+		bodyReader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, bodyReader)
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Host = req.URL.Host
+	date := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	req.Header.Set("Date", date)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	signedHeaders := []string{"(request-target)", "date", "host"}
+	signingParts := []string{
+		fmt.Sprintf("(request-target): %s %s", strings.ToLower(method), req.URL.RequestURI()),
+		fmt.Sprintf("date: %s", date),
+		fmt.Sprintf("host: %s", req.Host),
+	}
+	if body != nil {
+		hash := sha256.Sum256(body)
+		b64 := base64.StdEncoding.EncodeToString(hash[:])
+		req.Header.Set("x-content-sha256", b64)
+		signedHeaders = append(signedHeaders, "x-content-sha256")
+		signingParts = append(signingParts, fmt.Sprintf("x-content-sha256: %s", b64))
+	}
+	sigBase := strings.Join(signingParts, "\n")
+	hash := sha256.Sum256([]byte(sigBase))
+	sigBytes, err := rsa.SignPKCS1v15(rand.Reader, p.privateKey, crypto.SHA256, hash[:])
+	if err != nil {
+		return 0, nil, fmt.Errorf("oracle signing: %w", err)
+	}
+	b64Sig := base64.StdEncoding.EncodeToString(sigBytes)
+	authHeader := fmt.Sprintf(
+		`Signature version="1",keyId="%s",algorithm="rsa-sha256",headers="%s",signature="%s"`,
+		p.keyID, strings.Join(signedHeaders, " "), b64Sig)
+	req.Header.Set("Authorization", authHeader)
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer resp.Body.Close()
+	respBody, err = io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+	return resp.StatusCode, respBody, nil
+}
+
+// =========================================================================
+// High-level OCI creation helpers — designed for AI agent tools.
+// These methods build OCI's request body internally, so the AI only needs
+// to pass simple parameters (size GB, display name, cidr, shape, etc.).
+// Returns the parsed JSON response and the OCI Request ID on success.
+// =========================================================================
+
+// CreateBlockVolume creates a Block Volume in the given availability domain.
+// sizeGB: 50..32768 (Oracle limits); compartmentID: defaults to provider's
+// compartment if empty.  Returns the parsed volume document.
+func (p *OracleProvider) CreateBlockVolume(ctx context.Context, displayName, availabilityDomain, compartmentID string, sizeGB int) (map[string]interface{}, error) {
+	if compartmentID == "" {
+		compartmentID = p.compartmentOCID
+	}
+	if availabilityDomain == "" {
+		return nil, fmt.Errorf("oracle: availability_domain is required (e.g. 'Uocm:US-ASHBURN-AD-1')")
+	}
+	if sizeGB < 50 || sizeGB > 32768 {
+		return nil, fmt.Errorf("oracle: size_gb must be between 50 and 32768 (got %d)", sizeGB)
+	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"availabilityDomain": availabilityDomain,
+		"compartmentId":      compartmentID,
+		"displayName":        displayName,
+		"sizeInGBs":          sizeGB,
+		"vpusPerGB":          10, // Balanced (10 VPU/GB)
+	})
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/volumes", p.region)
+	status, respBody, err := p.SignedRequest(ctx, "POST", endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("oracle CreateBlockVolume %d: %s", status, string(respBody))
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CreateInstance launches a compute instance.
+// shape: e.g. "VM.Standard.E2.1.Micro" (Oracle Free eligible).
+// imageOCID: OCID of the OS image to boot.  subnetOCID: subnet for VNIC.
+// assignPublicIP: true creates an ephemeral public IP.
+func (p *OracleProvider) CreateInstance(ctx context.Context, displayName, shape, imageOCID, subnetOCID, compartmentID, availabilityDomain, sshKey string, assignPublicIP bool) (map[string]interface{}, error) {
+	if compartmentID == "" {
+		compartmentID = p.compartmentOCID
+	}
+	if availabilityDomain == "" {
+		return nil, fmt.Errorf("oracle: availability_domain is required")
+	}
+	if shape == "" || imageOCID == "" || subnetOCID == "" {
+		return nil, fmt.Errorf("oracle: shape, image_ocid and subnet_ocid are required")
+	}
+	sourceDetails := map[string]interface{}{
+		"sourceType": "image",
+		"imageId":    imageOCID,
+	}
+	vnic := map[string]interface{}{
+		"subnetId":       subnetOCID,
+		"assignPublicIp": assignPublicIP,
+	}
+	launchDetails := map[string]interface{}{
+		"availabilityDomain": availabilityDomain,
+		"compartmentId":      compartmentID,
+		"displayName":        displayName,
+		"shape":              shape,
+		"sourceDetails":      sourceDetails,
+		"createVnicDetails":  vnic,
+	}
+	if sshKey != "" {
+		launchDetails["metadata"] = map[string]interface{}{
+			"ssh_authorized_keys": sshKey,
+		}
+	}
+	body, _ := json.Marshal(launchDetails)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/instances", p.region)
+	status, respBody, err := p.SignedRequest(ctx, "POST", endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("oracle CreateInstance %d: %s", status, string(respBody))
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CreateVCN creates a Virtual Cloud Network in the given compartment.
+func (p *OracleProvider) CreateVCN(ctx context.Context, displayName, cidrBlock, compartmentID, dnsLabel string) (map[string]interface{}, error) {
+	if compartmentID == "" {
+		compartmentID = p.compartmentOCID
+	}
+	if cidrBlock == "" {
+		cidrBlock = "10.0.0.0/16"
+	}
+	body := map[string]interface{}{
+		"cidrBlock":     cidrBlock,
+		"compartmentId": compartmentID,
+		"displayName":   displayName,
+		"dnsLabel":      dnsLabel,
+	}
+	if dnsLabel == "" {
+		// dns_label is technically optional but recommended; leave it as empty
+		// string — OCI rejects > 15 chars and many special chars so we don't
+		// auto-generate to keep things deterministic.
+	}
+	b, _ := json.Marshal(body)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/vcns", p.region)
+	status, respBody, err := p.SignedRequest(ctx, "POST", endpoint, b)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("oracle CreateVCN %d: %s", status, string(respBody))
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CreateSubnet creates a subnet in a VCN.
+func (p *OracleProvider) CreateSubnet(ctx context.Context, displayName, cidrBlock, vcnOCID, compartmentID, dnsLabel, availabilityDomain string, prohibitPublicIP bool) (map[string]interface{}, error) {
+	if compartmentID == "" {
+		compartmentID = p.compartmentOCID
+	}
+	if cidrBlock == "" {
+		cidrBlock = "10.0.1.0/24"
+	}
+	if vcnOCID == "" {
+		return nil, fmt.Errorf("oracle: vcn_ocid is required")
+	}
+	body := map[string]interface{}{
+		"cidrBlock":                  cidrBlock,
+		"compartmentId":              compartmentID,
+		"displayName":                displayName,
+		"vcnId":                      vcnOCID,
+		"prohibitPublicIpOnVnic":     prohibitPublicIP,
+	}
+	if availabilityDomain != "" {
+		body["availabilityDomain"] = availabilityDomain
+	}
+	if dnsLabel != "" {
+		body["dnsLabel"] = dnsLabel
+	}
+	b, _ := json.Marshal(body)
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/subnets", p.region)
+	status, respBody, err := p.SignedRequest(ctx, "POST", endpoint, b)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("oracle CreateSubnet %d: %s", status, string(respBody))
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(respBody, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CreateObjectBucket creates an Object Storage bucket.
+// namespace: required (call ListBuckets first to discover; or use tenancy name).
+func (p *OracleProvider) CreateObjectBucket(ctx context.Context, name, compartmentID, namespace string) (map[string]interface{}, error) {
+	if compartmentID == "" {
+		compartmentID = p.compartmentOCID
+	}
+	if namespace == "" {
+		return nil, fmt.Errorf("oracle: object_storage namespace is required (use get_cloud_credentials to discover or call /n/<namespace>/ endpoint)")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("oracle: bucket name is required")
+	}
+	body, _ := json.Marshal(map[string]interface{}{
+		"name":          name,
+		"compartmentId": compartmentID,
+		"publicAccessType": "NoPublicAccess",
+		"objectEventsEnabled": false,
+		"storageTier":   "Standard",
+		"versioning":    "Disabled",
+	})
+	endpoint := fmt.Sprintf("https://objectstorage.%s.oraclecloud.com/n/%s/b/", p.region, namespace)
+	status, respBody, err := p.SignedRequest(ctx, "PUT", endpoint, body)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("oracle CreateObjectBucket %d: %s", status, string(respBody))
+	}
+	return map[string]interface{}{
+		"name":             name,
+		"compartmentId":    compartmentID,
+		"namespace":        namespace,
+		"status_code":      status,
+		"raw":              string(respBody),
+	}, nil
+}
+
+// ListImageOCIDs returns the most popular platform images in the region
+// so the AI can pick one for CreateInstance.  Returns a map keyed by
+// displayName containing the OCID, OS, shape-compat hints, etc.
+func (p *OracleProvider) ListImageOCIDs(ctx context.Context, operatingSystem, shape string) ([]map[string]interface{}, error) {
+	endpoint := fmt.Sprintf("https://iaas.%s.oraclecloud.com/20160918/images?compartmentId=%s&limit=20&sortBy=TIMECREATED&sortOrder=DESC", p.region, p.tenancyOCID)
+	if operatingSystem != "" {
+		endpoint += "&operatingSystem=" + url.QueryEscape(operatingSystem)
+	}
+	status, respBody, err := p.SignedRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("oracle ListImageOCIDs %d: %s", status, string(respBody))
+	}
+	var resp struct {
+		Items []map[string]interface{} `json:"items"`
+	}
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return nil, err
+	}
+	// Filter by shape compatibility if requested
+	items := resp.Items
+	if shape != "" {
+		filtered := make([]map[string]interface{}, 0, len(items))
+		for _, it := range items {
+			if shapes, ok := it["compatibleShapes"].([]interface{}); ok {
+				for _, s := range shapes {
+					if s == shape {
+						filtered = append(filtered, it)
+						break
+					}
+				}
+			}
+		}
+		items = filtered
+	}
+	return items, nil
+}
+
+// GetObjectStorageNamespace returns the tenancy's Object Storage namespace.
+func (p *OracleProvider) GetObjectStorageNamespace(ctx context.Context) (string, error) {
+	endpoint := fmt.Sprintf("https://objectstorage.%s.oraclecloud.com/20160918/n/", p.region)
+	status, respBody, err := p.SignedRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return "", err
+	}
+	if status >= 400 {
+		return "", fmt.Errorf("oracle GetObjectStorageNamespace %d: %s", status, string(respBody))
+	}
+	// Body is just a JSON string like "abcd1234efgh"
+	var ns string
+	if err := json.Unmarshal(respBody, &ns); err != nil {
+		// fallback: trim quotes
+		ns = strings.Trim(string(respBody), `"`)
+	}
+	return ns, nil
 }
 
 func (p *OracleProvider) DoRawRequest(ctx context.Context, method, reqURL string, headers map[string]string, body []byte) (*types.RawResponse, error) {

@@ -7,11 +7,13 @@ import (
 
 // ReadOnlyTools defines the set of tools that are safe for viewer/read-only users.
 var ReadOnlyTools = map[string]bool{
-	"list_cloud_resources":  true,
-	"get_cloud_stats":       true,
-	"list_cloud_accounts":   true,
-	"get_cloud_credentials": true,
-	"lookup_cloud_api_doc":  true,
+	"list_cloud_resources":             true,
+	"get_cloud_stats":                  true,
+	"list_cloud_accounts":              true,
+	"get_cloud_credentials":            true,
+	"lookup_cloud_api_doc":             true,
+	"oci_list_images":                  true,
+	"oci_get_object_storage_namespace": true,
 }
 
 // BuiltInTool is a convenience implementation of Tool backed by a function.
@@ -201,6 +203,199 @@ Available providers: azure, aws, alicloud, tencent, oracle, render.`,
 		},
 		func(ctx context.Context, args map[string]interface{}) (string, error) {
 			return executor.lookupCloudAPIDoc(ctx, args)
+		},
+	))
+
+	// =====================================================================
+	// Oracle Cloud (OCI) high-level tools
+	// These wrap OCI REST API calls with proper request signing so the AI
+	// doesn't have to construct signed headers itself.  Use these instead of
+	// cloud_api_request whenever possible — the bodies are built server-side
+	// from simple parameters, eliminating LLM-side mistakes on OCI's strict
+	// request body schemas.
+	// =====================================================================
+
+	registry.Register(NewBuiltInTool(
+		"oci_list_images",
+		`List OCI Compute platform images in the current tenancy/region, optionally filtered by operating system and shape compatibility.
+Use this to discover an image OCID before creating an instance.`,
+		map[string]interface{}{
+			"operating_system": map[string]interface{}{
+				"type":        "string",
+				"description": "Filter by OS, e.g. 'Oracle Linux', 'Canonical Ubuntu', 'Windows Server'",
+			},
+			"shape": map[string]interface{}{
+				"type":        "string",
+				"description": "Filter by shape compatibility, e.g. 'VM.Standard.E2.1.Micro'",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociListImages(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"oci_get_object_storage_namespace",
+		`Get the Oracle Cloud Object Storage namespace for the current tenancy. Required before creating an Object Storage bucket.`,
+		map[string]interface{}{},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociGetObjectStorageNamespace(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"oci_create_block_volume",
+		`Create an Oracle Cloud Infrastructure (OCI) Block Volume. Use this to expand storage on Oracle Free Tier or add a new persistent volume.
+The request body and OCI Request Signature are constructed server-side — you only need to pass simple parameters.`,
+		map[string]interface{}{
+			"display_name": map[string]interface{}{
+				"type":        "string",
+				"description": "Display name for the new volume, e.g. 'data-volume-1'",
+			},
+			"size_gb": map[string]interface{}{
+				"type":        "integer",
+				"description": "Size in GB (50-32768; Oracle Free Tier caps at 200GB total across all volumes)",
+			},
+			"availability_domain": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI availability domain, e.g. 'Uocm:US-ASHBURN-AD-1'. Required.",
+			},
+			"compartment_id": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI compartment OCID. Defaults to the account's configured compartment if omitted.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociCreateBlockVolume(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"oci_create_instance",
+		`Create an Oracle Cloud Infrastructure (OCI) compute instance (VM). Supports Oracle Cloud Free Tier shapes such as VM.Standard.E2.1.Micro / VM.Standard.A1.Flex.
+The image_ocid and subnet_ocid must be obtained from oci_list_images and oci_create_subnet respectively.`,
+		map[string]interface{}{
+			"display_name": map[string]interface{}{
+				"type":        "string",
+				"description": "Display name for the new instance",
+			},
+			"shape": map[string]interface{}{
+				"type":        "string",
+				"description": "Compute shape, e.g. 'VM.Standard.E2.1.Micro' or 'VM.Standard.A1.Flex'",
+			},
+			"image_ocid": map[string]interface{}{
+				"type":        "string",
+				"description": "OCID of the OS image to boot (from oci_list_images)",
+			},
+			"subnet_ocid": map[string]interface{}{
+				"type":        "string",
+				"description": "OCID of the subnet to attach the VNIC to (from oci_create_subnet)",
+			},
+			"availability_domain": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI availability domain, e.g. 'Uocm:US-ASHBURN-AD-1'",
+			},
+			"ssh_key": map[string]interface{}{
+				"type":        "string",
+				"description": "Public SSH key (authorized_keys format) to inject into the default user",
+			},
+			"assign_public_ip": map[string]interface{}{
+				"type":        "boolean",
+				"description": "Whether to assign an ephemeral public IP. Defaults to false.",
+			},
+			"compartment_id": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI compartment OCID. Defaults to the account's configured compartment if omitted.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociCreateInstance(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"oci_create_vcn",
+		`Create a Virtual Cloud Network (VCN) in OCI. After creation, use oci_create_subnet to add at least one subnet before creating instances.`,
+		map[string]interface{}{
+			"display_name": map[string]interface{}{
+				"type":        "string",
+				"description": "Display name for the VCN, e.g. 'vcn-main'",
+			},
+			"cidr_block": map[string]interface{}{
+				"type":        "string",
+				"description": "CIDR block for the VCN, e.g. '10.0.0.0/16'. Defaults to 10.0.0.0/16.",
+			},
+			"dns_label": map[string]interface{}{
+				"type":        "string",
+				"description": "DNS label (max 15 chars, alphanumeric). Optional but recommended.",
+			},
+			"compartment_id": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI compartment OCID. Defaults to the account's configured compartment if omitted.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociCreateVCN(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"oci_create_subnet",
+		`Create a subnet in an existing OCI VCN. Returns the subnet OCID which is required to launch instances.`,
+		map[string]interface{}{
+			"display_name": map[string]interface{}{
+				"type":        "string",
+				"description": "Display name for the subnet, e.g. 'subnet-public-1'",
+			},
+			"vcn_ocid": map[string]interface{}{
+				"type":        "string",
+				"description": "OCID of the parent VCN (from oci_create_vcn)",
+			},
+			"cidr_block": map[string]interface{}{
+				"type":        "string",
+				"description": "Subnet CIDR block, e.g. '10.0.1.0/24'. Must overlap with the VCN CIDR.",
+			},
+			"availability_domain": map[string]interface{}{
+				"type":        "string",
+				"description": "Optional OCI availability domain. Required for AD-specific subnets; omit for regional subnets.",
+			},
+			"dns_label": map[string]interface{}{
+				"type":        "string",
+				"description": "DNS label (max 15 chars, alphanumeric)",
+			},
+			"prohibit_public_ip": map[string]interface{}{
+				"type":        "boolean",
+				"description": "If true, VNICs in this subnet cannot have public IPs. Defaults to false.",
+			},
+			"compartment_id": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI compartment OCID. Defaults to the account's configured compartment if omitted.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociCreateSubnet(ctx, args)
+		},
+	))
+
+	registry.Register(NewBuiltInTool(
+		"oci_create_object_bucket",
+		`Create an OCI Object Storage bucket. Requires the tenancy's Object Storage namespace (call oci_get_object_storage_namespace first).`,
+		map[string]interface{}{
+			"name": map[string]interface{}{
+				"type":        "string",
+				"description": "Bucket name (must be unique within namespace, 1-256 chars)",
+			},
+			"namespace": map[string]interface{}{
+				"type":        "string",
+				"description": "Object Storage namespace (from oci_get_object_storage_namespace)",
+			},
+			"compartment_id": map[string]interface{}{
+				"type":        "string",
+				"description": "OCI compartment OCID. Defaults to the account's configured compartment if omitted.",
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return executor.ociCreateObjectBucket(ctx, args)
 		},
 	))
 }
@@ -502,6 +697,131 @@ func GetToolDefinitions() []map[string]interface{} {
 						},
 					},
 					"required": []string{"script"},
+				},
+			},
+		},
+		// ===== Oracle Cloud (OCI) high-level creation tools =====
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_list_images",
+				"description": "List OCI platform images (with their OCIDs) so the AI can pick an image before creating an instance.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id":       map[string]interface{}{"type": "string"},
+						"operating_system": map[string]interface{}{"type": "string"},
+						"shape":            map[string]interface{}{"type": "string"},
+					},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_get_object_storage_namespace",
+				"description": "Get the Oracle Cloud Object Storage namespace (required before creating a bucket).",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id": map[string]interface{}{"type": "string"},
+					},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_create_block_volume",
+				"description": "Create an OCI Block Volume. Server-side constructs the request body and applies OCI Request Signature. size_gb must be 50-32768 (Oracle Free Tier caps at 200GB total).",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id":          map[string]interface{}{"type": "string"},
+						"display_name":        map[string]interface{}{"type": "string"},
+						"size_gb":             map[string]interface{}{"type": "integer"},
+						"availability_domain": map[string]interface{}{"type": "string"},
+						"compartment_id":      map[string]interface{}{"type": "string"},
+					},
+					"required": []string{"display_name", "size_gb", "availability_domain"},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_create_instance",
+				"description": "Create an OCI compute instance. Server-side builds the LaunchInstanceDetails and applies OCI Request Signature. Supports Free Tier shapes like VM.Standard.E2.1.Micro and VM.Standard.A1.Flex.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id":          map[string]interface{}{"type": "string"},
+						"display_name":        map[string]interface{}{"type": "string"},
+						"shape":               map[string]interface{}{"type": "string"},
+						"image_ocid":          map[string]interface{}{"type": "string"},
+						"subnet_ocid":         map[string]interface{}{"type": "string"},
+						"availability_domain": map[string]interface{}{"type": "string"},
+						"ssh_key":             map[string]interface{}{"type": "string"},
+						"assign_public_ip":    map[string]interface{}{"type": "boolean"},
+						"compartment_id":      map[string]interface{}{"type": "string"},
+					},
+					"required": []string{"display_name", "shape", "image_ocid", "subnet_ocid", "availability_domain"},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_create_vcn",
+				"description": "Create an OCI VCN (Virtual Cloud Network). Default CIDR 10.0.0.0/16.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id":     map[string]interface{}{"type": "string"},
+						"display_name":   map[string]interface{}{"type": "string"},
+						"cidr_block":     map[string]interface{}{"type": "string"},
+						"dns_label":      map[string]interface{}{"type": "string"},
+						"compartment_id": map[string]interface{}{"type": "string"},
+					},
+					"required": []string{"display_name"},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_create_subnet",
+				"description": "Create a subnet in an OCI VCN. Returns the subnet OCID needed to launch instances.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id":          map[string]interface{}{"type": "string"},
+						"display_name":        map[string]interface{}{"type": "string"},
+						"vcn_ocid":            map[string]interface{}{"type": "string"},
+						"cidr_block":          map[string]interface{}{"type": "string"},
+						"availability_domain": map[string]interface{}{"type": "string"},
+						"dns_label":           map[string]interface{}{"type": "string"},
+						"prohibit_public_ip":  map[string]interface{}{"type": "boolean"},
+						"compartment_id":      map[string]interface{}{"type": "string"},
+					},
+					"required": []string{"display_name", "vcn_ocid"},
+				},
+			},
+		},
+		{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "oci_create_object_bucket",
+				"description": "Create an OCI Object Storage bucket. Requires the namespace from oci_get_object_storage_namespace.",
+				"parameters": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"account_id":     map[string]interface{}{"type": "string"},
+						"name":           map[string]interface{}{"type": "string"},
+						"namespace":      map[string]interface{}{"type": "string"},
+						"compartment_id": map[string]interface{}{"type": "string"},
+					},
+					"required": []string{"name", "namespace"},
 				},
 			},
 		},

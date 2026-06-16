@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"multicloud/internal/cloud"
+	"multicloud/internal/cloud/providers"
 	"multicloud/internal/cost"
 	"multicloud/internal/vault"
 )
@@ -379,6 +380,13 @@ func (e *Executor) cloudAPIRequest(ctx context.Context, args map[string]interfac
 	// Execute raw request
 	resp, err := prov.DoRawRequest(ctx, method, reqURL, headers, body)
 	if err != nil {
+		// Oracle fallback: DoRawRequest on OracleProvider already signs
+		// internally, but if for any reason the provider doesn't support
+		// a particular request, surface a helpful error pointing at the
+		// dedicated OCI high-level tools.
+		if cloudType == "oracle" && strings.Contains(err.Error(), "private key not loaded") {
+			return "", fmt.Errorf("oracle private key not loaded — verify cloud_accounts.credentials has user_ocid, tenancy_ocid, fingerprint, region, private_key, or use the dedicated oci_create_* tools which handle signing automatically: %w", err)
+		}
 		return "", err
 	}
 
@@ -618,4 +626,257 @@ func parseTimeArg(v interface{}, fallback time.Time) time.Time {
 		return fallback
 	}
 	return t
+}
+
+// =========================================================================
+// Oracle Cloud (OCI) AI tool implementations
+// These wrap the high-level OCI methods on *providers.OracleProvider, so the
+// AI only passes simple parameters and we handle OCI body construction and
+// request signing.
+// =========================================================================
+
+// loadOracleProvider loads credentials from the vault/DB and constructs an
+// OracleProvider.  Returns nil with a friendly error message on failure.
+func (e *Executor) loadOracleProvider(ctx context.Context, accountID string) (*providers.OracleProvider, error) {
+	if accountID == "" {
+		// Fall back to the first active Oracle account
+		var firstID string
+		err := e.db.QueryRowContext(ctx,
+			`SELECT id FROM cloud_accounts WHERE cloud_type = 'oracle' AND is_active = true ORDER BY created_at LIMIT 1`).Scan(&firstID)
+		if err != nil {
+			return nil, fmt.Errorf("no account_id provided and no active Oracle account configured: %w", err)
+		}
+		accountID = firstID
+	}
+
+	var cloudType, credJSON, vaultPath string
+	if err := e.db.QueryRowContext(ctx,
+		`SELECT cloud_type, credentials, COALESCE(vault_path, '') FROM cloud_accounts WHERE id = $1 AND is_active = true`,
+		accountID).Scan(&cloudType, &credJSON, &vaultPath); err != nil {
+		return nil, fmt.Errorf("oracle account %s not found: %w", accountID, err)
+	}
+	if cloudType != "oracle" {
+		return nil, fmt.Errorf("account %s is %q, not oracle", accountID, cloudType)
+	}
+
+	var creds map[string]string
+	if vaultPath != "" && e.vault != nil {
+		if secretData, err := e.vault.GetSecret(vaultPath); err == nil {
+			creds = make(map[string]string, len(secretData))
+			for k, v := range secretData {
+				if s, ok := v.(string); ok {
+					creds[k] = s
+				} else if v != nil {
+					creds[k] = fmt.Sprintf("%v", v)
+				}
+			}
+		}
+	}
+	if creds == nil {
+		if err := json.Unmarshal([]byte(credJSON), &creds); err != nil {
+			return nil, fmt.Errorf("parse oracle credentials: %w", err)
+		}
+	}
+	prov := providers.NewOracleProvider(creds)
+	if prov == nil {
+		return nil, fmt.Errorf("failed to construct OracleProvider")
+	}
+	return prov, nil
+}
+
+func (e *Executor) ociListImages(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	osFilter, _ := args["operating_system"].(string)
+	shapeFilter, _ := args["shape"].(string)
+
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	items, err := prov.ListImageOCIDs(ctx, osFilter, shapeFilter)
+	if err != nil {
+		return "", err
+	}
+	if len(items) > 20 {
+		items = items[:20]
+	}
+	b, _ := json.Marshal(map[string]interface{}{
+		"count":  len(items),
+		"images": items,
+		"hint":   "Pick an image OCID and use it in oci_create_instance. To filter by shape, pass it in the shape parameter.",
+	})
+	return string(b), nil
+}
+
+func (e *Executor) ociGetObjectStorageNamespace(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	ns, err := prov.GetObjectStorageNamespace(ctx)
+	if err != nil {
+		return "", err
+	}
+	b, _ := json.Marshal(map[string]interface{}{
+		"namespace":  ns,
+		"usage_hint": "Pass this namespace to oci_create_object_bucket.",
+	})
+	return string(b), nil
+}
+
+func (e *Executor) ociCreateBlockVolume(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	displayName, _ := args["display_name"].(string)
+	ad, _ := args["availability_domain"].(string)
+	compartment, _ := args["compartment_id"].(string)
+	sizeGB := 0
+	if v, ok := args["size_gb"].(float64); ok {
+		sizeGB = int(v)
+	} else if v, ok := args["size_gb"].(int); ok {
+		sizeGB = v
+	}
+	if displayName == "" {
+		return "", fmt.Errorf("display_name is required")
+	}
+	if sizeGB == 0 {
+		return "", fmt.Errorf("size_gb is required")
+	}
+
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	result, err := prov.CreateBlockVolume(ctx, displayName, ad, compartment, sizeGB)
+	if err != nil {
+		return "", err
+	}
+	return marshalOCICreateResult("block_volume", result, displayName, ad)
+}
+
+func (e *Executor) ociCreateInstance(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	displayName, _ := args["display_name"].(string)
+	shape, _ := args["shape"].(string)
+	imageOCID, _ := args["image_ocid"].(string)
+	subnetOCID, _ := args["subnet_ocid"].(string)
+	ad, _ := args["availability_domain"].(string)
+	sshKey, _ := args["ssh_key"].(string)
+	compartment, _ := args["compartment_id"].(string)
+	assignPublicIP := false
+	if v, ok := args["assign_public_ip"].(bool); ok {
+		assignPublicIP = v
+	}
+
+	if displayName == "" || shape == "" || imageOCID == "" || subnetOCID == "" {
+		return "", fmt.Errorf("display_name, shape, image_ocid and subnet_ocid are all required")
+	}
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	result, err := prov.CreateInstance(ctx, displayName, shape, imageOCID, subnetOCID, compartment, ad, sshKey, assignPublicIP)
+	if err != nil {
+		return "", err
+	}
+	return marshalOCICreateResult("instance", result, displayName, ad)
+}
+
+func (e *Executor) ociCreateVCN(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	displayName, _ := args["display_name"].(string)
+	cidr, _ := args["cidr_block"].(string)
+	dnsLabel, _ := args["dns_label"].(string)
+	compartment, _ := args["compartment_id"].(string)
+	if displayName == "" {
+		return "", fmt.Errorf("display_name is required")
+	}
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	result, err := prov.CreateVCN(ctx, displayName, cidr, compartment, dnsLabel)
+	if err != nil {
+		return "", err
+	}
+	return marshalOCICreateResult("vcn", result, displayName, cidr)
+}
+
+func (e *Executor) ociCreateSubnet(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	displayName, _ := args["display_name"].(string)
+	vcnOCID, _ := args["vcn_ocid"].(string)
+	cidr, _ := args["cidr_block"].(string)
+	ad, _ := args["availability_domain"].(string)
+	dnsLabel, _ := args["dns_label"].(string)
+	compartment, _ := args["compartment_id"].(string)
+	prohibitPublicIP := false
+	if v, ok := args["prohibit_public_ip"].(bool); ok {
+		prohibitPublicIP = v
+	}
+	if vcnOCID == "" {
+		return "", fmt.Errorf("vcn_ocid is required")
+	}
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	result, err := prov.CreateSubnet(ctx, displayName, cidr, vcnOCID, compartment, dnsLabel, ad, prohibitPublicIP)
+	if err != nil {
+		return "", err
+	}
+	return marshalOCICreateResult("subnet", result, displayName, cidr)
+}
+
+func (e *Executor) ociCreateObjectBucket(ctx context.Context, args map[string]interface{}) (string, error) {
+	accountID, _ := args["account_id"].(string)
+	name, _ := args["name"].(string)
+	namespace, _ := args["namespace"].(string)
+	compartment, _ := args["compartment_id"].(string)
+	if name == "" || namespace == "" {
+		return "", fmt.Errorf("name and namespace are required (use oci_get_object_storage_namespace to discover namespace)")
+	}
+	prov, err := e.loadOracleProvider(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+	result, err := prov.CreateObjectBucket(ctx, name, compartment, namespace)
+	if err != nil {
+		return "", err
+	}
+	return marshalOCICreateResult("object_bucket", result, name, namespace)
+}
+
+// marshalOCICreateResult wraps a successful OCI create response with helpful
+// hints for the AI.
+func marshalOCICreateResult(kind string, payload map[string]interface{}, displayName, extra string) (string, error) {
+	ocid, _ := payload["id"].(string)
+	lifeCycleState, _ := payload["lifecycleState"].(string)
+	out := map[string]interface{}{
+		"ok":             true,
+		"kind":           kind,
+		"display_name":   displayName,
+		"ocid":           ocid,
+		"lifecycleState": lifeCycleState,
+		"raw":            payload,
+		"next_steps":     nextStepsForKind(kind, ocid, displayName, extra),
+	}
+	b, _ := json.Marshal(out)
+	return string(b), nil
+}
+
+func nextStepsForKind(kind, ocid, name, extra string) string {
+	switch kind {
+	case "block_volume":
+		return fmt.Sprintf("Block volume %q (OCID: %s) creation submitted. Use list_cloud_resources to check status. Once AVAILABLE, attach via the OCI console (Compute → Instance → Attached Block Volumes → Attach).", name, ocid)
+	case "instance":
+		return fmt.Sprintf("Instance %q (OCID: %s) is being provisioned. Status starts at PROVISIONING and moves to RUNNING. You can poll list_cloud_resources to wait for RUNNING.", name, ocid)
+	case "vcn":
+		return fmt.Sprintf("VCN %q created with CIDR %s. Now call oci_create_subnet to add at least one subnet, then oci_create_instance.", name, extra)
+	case "subnet":
+		return fmt.Sprintf("Subnet %q (OCID: %s) created in VCN. Use this subnet OCID in oci_create_instance.", name, ocid)
+	case "object_bucket":
+		return fmt.Sprintf("Object bucket %q created in namespace %s. OCID: %s. Upload objects via OCI Console → Object Storage → Buckets → %s.", name, extra, ocid, name)
+	}
+	return ""
 }
