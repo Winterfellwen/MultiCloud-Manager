@@ -2010,7 +2010,6 @@ function scrollToBottom(el) {
 
 var STREAMING_DIV = null;
 var STREAMING_CONTENT = '';
-var SESSION_STREAMING_CONTENT = {};
 var PENDING_TOOL_CALLS = [];
 
 function _ensureStreamingDiv() {
@@ -2054,11 +2053,6 @@ function _getOrCreateContentBlock() {
 function handleTokenEvent(ev) {
   if (!ev.payload || !ev.payload.content) return;
   if (ev.run_id && STOPPED_RUNS.has(ev.run_id)) return;
-  // Save tokens per-session so the done handler always has complete content,
-  // even when the user switched sessions during streaming.
-  if (ev.session_id) {
-    SESSION_STREAMING_CONTENT[ev.session_id] = (SESSION_STREAMING_CONTENT[ev.session_id] || '') + ev.payload.content;
-  }
   if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
 
   _ensureStreamingDiv();
@@ -2260,28 +2254,6 @@ function finalizeToolCards(container, finalState, statusText) {
   });
 }
 
-function savePartialContent(ev) {
-  if (!ev.session_id) return;
-  if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
-  // Save agent content FIRST, then tool-calls. This matches the order
-  // used by handleStateChangeEvent's done branch and ensures renderToolCallsInline
-  // can attach tool cards to the preceding agent message (not a standalone group).
-  // Mark partial saves as streaming:true so the done handler can replace them.
-  if (STREAMING_CONTENT) {
-    SESSION_MESSAGES[ev.session_id].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), _run_id: ev.run_id, streaming: true});
-  }
-  if (PENDING_TOOL_CALLS.length > 0) {
-    SESSION_MESSAGES[ev.session_id].push({
-      role: 'tool-calls',
-      content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
-        return {name: tc.name, params: tc.params, result: tc.result};
-      })),
-      created_at: new Date().toISOString(),
-      _run_id: ev.run_id,
-      streaming: true
-    });
-  }
-}
 function handleStateChangeEvent(ev) {
   var isCurrentSession = ev.session_id === CURRENT_SESSION;
   var newState = ev.payload.state;
@@ -2307,28 +2279,8 @@ function handleStateChangeEvent(ev) {
       var orphanStatus = STREAMING_DIV.querySelector(':scope > .inline-status');
       if (orphanStatus) orphanStatus.remove();
     }
-    // For non-current sessions where SESSION_STREAMING_CONTENT was already
-    // deleted (e.g., by else if (!isRunning) in switchSession), this is a late
-    // done event — skip cache push to avoid inflating cache with stale blocks.
-    // Also skip PENDING_TOOL_CALLS processing since they belong to the current
-    // session, not this one.
-    if (ev.session_id && !isCurrentSession && !SESSION_STREAMING_CONTENT[ev.session_id]) {
-      delete SESSION_STREAMING_CONTENT[ev.session_id];
-      // Don't skip finalization of last DOM state if STREAMING_DIV exists
-      if (STREAMING_DIV && isCurrentSession) {
-        finalizeToolCards(STREAMING_DIV, 'done', LOCALE === 'zh' ? '完成' : 'done');
-        scrollToBottom();
-        STREAMING_DIV = null;
-      }
-      // Clear STREAMING_CONTENT only for current session to avoid corrupting it
-      if (isCurrentSession) STREAMING_CONTENT = '';
-      PENDING_TOOL_CALLS = []; // always safe: done events finalize the run
-      return;
-    }
     // Save to in-memory cache — always do this for the run's session
     // even if STREAMING_DIV is null (user switched sessions during streaming).
-    // IMPORTANT: For non-current sessions, use SESSION_STREAMING_CONTENT instead
-    // of STREAMING_DIV, since STREAMING_DIV belongs to the current session.
     if (ev.session_id) {
       if (!SESSION_MESSAGES[ev.session_id]) SESSION_MESSAGES[ev.session_id] = [];
       var runId = ev.run_id || '';
@@ -2368,24 +2320,6 @@ function handleStateChangeEvent(ev) {
             });
           }
         }
-      } else {
-        // STREAMING_DIV is null — user switched sessions during streaming.
-        // Use per-session streaming content which captures all tokens (even those
-        // received after the switch), ensuring the cache has complete content.
-        var sessionContent = SESSION_STREAMING_CONTENT[ev.session_id];
-        if (sessionContent) {
-          // We have complete content — remove partial saves and use this instead.
-          if (runId) {
-            SESSION_MESSAGES[ev.session_id] = SESSION_MESSAGES[ev.session_id].filter(function(m) {
-              return m._run_id !== runId;
-            });
-          }
-          blocks.push({role: 'agent', content: sessionContent});
-          delete SESSION_STREAMING_CONTENT[ev.session_id];
-        }
-        // Without per-session content, partial saves from savePartialContent
-        // remain in the cache (no filter, no replacement). This is the best
-        // available data and prevents the poll from detecting a mismatch.
       }
       // Save pending tool calls that were not captured from DOM (e.g., if
       // STREAMING_DIV was null during a session switch). These are appended
@@ -2434,14 +2368,11 @@ function handleStateChangeEvent(ev) {
       STREAMING_DIV = null;
     }
     // Only clear global streaming state for the current session.
-    // Non-current session cleanup is handled by the per-session
-    // SESSION_STREAMING_CONTENT and PENDING_TOOL_CALLS belongs
-    // to the current streaming session — never clear it for others.
+    // PENDING_TOOL_CALLS belongs to the current streaming session — never clear it for others.
     if (isCurrentSession) {
       STREAMING_CONTENT = '';
       PENDING_TOOL_CALLS = [];
     }
-    if (ev.session_id) delete SESSION_STREAMING_CONTENT[ev.session_id];
   } else if (newState === 'error') {
     if (isCurrentSession) showError(ev.payload.error_message);
     resetCurrentRun(ev);
@@ -2453,14 +2384,11 @@ function handleStateChangeEvent(ev) {
         var errorMsg = ev.payload.error_message || (LOCALE === 'zh' ? '发生错误' : 'Error occurred');
         contentEl.innerHTML = '<div style="color:var(--error);padding:8px 0">' + escHtml(errorMsg) + '</div>';
       }
-      // Save partial content + tool calls to prevent poll re-rendering duplicates
-      savePartialContent(ev);
       // Finalize running tool cards
       finalizeToolCards(STREAMING_DIV, 'error', LOCALE === 'zh' ? '错误' : 'error');
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
-    if (ev.session_id) delete SESSION_STREAMING_CONTENT[ev.session_id];
   } else if (newState === 'stopped') {
     if (ev.run_id) STOPPED_RUNS.add(ev.run_id);
     _pendingStopSession = null;
@@ -2470,14 +2398,11 @@ function handleStateChangeEvent(ev) {
       STREAMING_DIV.classList.remove('streaming');
       var contentEl = STREAMING_DIV.querySelector('.msg-content');
       if (contentEl) contentEl.classList.remove('streaming-cursor');
-      // Save partial content + tool calls to prevent poll re-rendering duplicates
-      savePartialContent(ev);
       // Finalize running tool cards
       finalizeToolCards(STREAMING_DIV, 'done', LOCALE === 'zh' ? '完成' : 'done');
       STREAMING_DIV = null;
       STREAMING_CONTENT = '';
     }
-    if (ev.session_id) delete SESSION_STREAMING_CONTENT[ev.session_id];
   }
   // Update sidebar badge and running indicator directly
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
@@ -3691,12 +3616,8 @@ async function switchSession(sid) {
       lastSyncedMsgCount = msgCount;
     }
   } else if (!isRunning) {
-    // Session completed on backend — use API data as source of truth.
-    // Clear SESSION_STREAMING_CONTENT to prevent delayed done events
-    // (from global EventSource) from adding stale content on top of complete cache.
     // Don't clear PENDING_TOOL_CALLS here — the done handler for non-current
     // sessions needs it to capture tool calls into the correct session's cache.
-    delete SESSION_STREAMING_CONTENT[sid];
     if (sessData && sessData.messages && sessData.messages.length > 0) {
       SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
         return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
