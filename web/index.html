@@ -2089,22 +2089,20 @@ function handleToolStartEvent(ev) {
       var fn = tc.function || tc;
       var name = fn.name || 'unknown';
       var args = fn.arguments || '';
-      // Deduplicate by tool name only (same tool shouldn't be called multiple times in one response)
-      var isDuplicate = PENDING_TOOL_CALLS.some(function(t) { return t.name === name; });
+      // Use tool_call_id for dedup (if available), fall back to name+index combo
+      var callKey = tc.id || (name + '_' + PENDING_TOOL_CALLS.length);
+      var isDuplicate = PENDING_TOOL_CALLS.some(function(t) { return t._callKey === callKey; });
       if (isDuplicate) return;
 
-      PENDING_TOOL_CALLS.push({name: name, params: args, result: ''});
+      PENDING_TOOL_CALLS.push({name: name, params: args, result: '', _callKey: callKey});
 
       // Don't manipulate DOM for non-current sessions
       if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
 
-      // Check if tool card already exists in STREAMING_DIV (e.g., from cache render after switch
-      // where active_run_events replay historical tool_start events). This prevents duplicate
-      // tool cards and avoids corrupting STREAMING_CONTENT via the _lastRenderedLen=0 reset below.
+      // Check if tool card already exists in STREAMING_DIV (by unique callKey)
       if (STREAMING_DIV && STREAMING_DIV.isConnected) {
-        var existingCards = STREAMING_DIV.querySelectorAll('.timeline-tool-card .card-name');
-        var alreadyRendered = Array.from(existingCards).some(function(el) {
-          return el.textContent === name;
+        var alreadyRendered = Array.from(STREAMING_DIV.querySelectorAll('.timeline-tool-card')).some(function(el) {
+          return el.dataset.callKey === callKey;
         });
         if (alreadyRendered) return;
       }
@@ -2115,6 +2113,7 @@ function handleToolStartEvent(ev) {
       // Each tool call is its own standalone card in chronological order
       var card = buildToolCard({name: name, params: fn.arguments || '', result: '', status: 'running', timestamp: new Date().toISOString()});
       card.classList.add('timeline-tool-card');
+      card.dataset.callKey = callKey;
 
       var timeEl = STREAMING_DIV.querySelector('.msg-time');
       if (timeEl) {
@@ -2194,40 +2193,45 @@ function handleToolResultEvent(ev) {
     }
     // Don't manipulate DOM for non-current sessions
     if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
-    // Update tool card in the timeline
+    // Update the last tool card matching this name (supports multiple same-name tools)
     if (STREAMING_DIV && STREAMING_DIV.isConnected) {
       var cards = STREAMING_DIV.querySelectorAll('.timeline-tool-card');
-      cards.forEach(function(card) {
-        var nameEl = card.querySelector('.card-name');
+      var targetCard = null;
+      for (var i = cards.length - 1; i >= 0; i--) {
+        var nameEl = cards[i].querySelector('.card-name');
         if (nameEl && nameEl.textContent === name) {
-          if (card._timer) { clearInterval(card._timer); card._timer = null; }
-          card.classList.remove('running');
-          card.classList.add(hasError ? 'error' : 'done');
-          var statusEl = card.querySelector('.card-status');
-          if (statusEl) {
-            statusEl.className = 'card-status ' + (hasError ? 'error' : 'done');
-            statusEl.textContent = hasError ? (LOCALE === 'zh' ? '错误' : 'error') : (LOCALE === 'zh' ? '完成' : 'done');
-          }
-          var body = card.querySelector('.tool-card-body');
-          if (body && result) {
-            var resultText = result;
-            try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
-            var existingLabel = body.querySelector('.field-label');
-            var existingResult = body.querySelector('.field-result');
-            if (existingLabel) existingLabel.remove();
-            if (existingResult) existingResult.remove();
-            var resultDiv = document.createElement('div');
-            resultDiv.className = 'field-label';
-            resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
-            body.appendChild(resultDiv);
-            var resultContent = document.createElement('div');
-            resultContent.className = 'field-result';
-            resultContent.setAttribute('data-result', escHtml(resultText));
-            resultContent.textContent = resultText;
-            body.appendChild(resultContent);
-          }
+          targetCard = cards[i];
+          break;
         }
-      });
+      }
+      if (targetCard) {
+        if (targetCard._timer) { clearInterval(targetCard._timer); targetCard._timer = null; }
+        targetCard.classList.remove('running');
+        targetCard.classList.add(hasError ? 'error' : 'done');
+        var statusEl = targetCard.querySelector('.card-status');
+        if (statusEl) {
+          statusEl.className = 'card-status ' + (hasError ? 'error' : 'done');
+          statusEl.textContent = hasError ? (LOCALE === 'zh' ? '错误' : 'error') : (LOCALE === 'zh' ? '完成' : 'done');
+        }
+        var body = targetCard.querySelector('.tool-card-body');
+        if (body && result) {
+          var resultText = result;
+          try { resultText = JSON.stringify(JSON.parse(result), null, 2); } catch(e) { /* result is not JSON — display as plain text */ }
+          var existingLabel = body.querySelector('.field-label');
+          var existingResult = body.querySelector('.field-result');
+          if (existingLabel) existingLabel.remove();
+          if (existingResult) existingResult.remove();
+          var resultDiv = document.createElement('div');
+          resultDiv.className = 'field-label';
+          resultDiv.textContent = LOCALE === 'zh' ? '结果' : 'Result';
+          body.appendChild(resultDiv);
+          var resultContent = document.createElement('div');
+          resultContent.className = 'field-result';
+          resultContent.setAttribute('data-result', escHtml(resultText));
+          resultContent.textContent = resultText;
+          body.appendChild(resultContent);
+        }
+      }
       scrollToBottom();
     }
   }
