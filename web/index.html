@@ -2034,21 +2034,21 @@ function _ensureStreamingDiv() {
 }
 
 function _getOrCreateContentBlock() {
-  // Find or create a .msg-content element as the last content block before .msg-time
-  var timeEl = STREAMING_DIV.querySelector('.msg-time');
-  // Walk backwards past non-content elements (copy button, etc.)
-  var lastChild = timeEl ? timeEl.previousElementSibling : STREAMING_DIV.lastElementChild;
+  // Find or create a .msg-content element as the last content block before status bar / .msg-time
+  var anchor = STREAMING_DIV.querySelector('.streaming-status') || STREAMING_DIV.querySelector('.msg-time');
+  // Walk backwards past non-content elements (status bar, copy button, etc.)
+  var lastChild = anchor ? anchor.previousElementSibling : STREAMING_DIV.lastElementChild;
   while (lastChild && !lastChild.classList.contains('msg-content') && lastChild !== STREAMING_DIV.firstElementChild) {
     lastChild = lastChild.previousElementSibling;
   }
   if (lastChild && lastChild.classList.contains('msg-content')) {
     return lastChild;
   }
-  // Create a new content block and insert before .msg-time
+  // Create a new content block and insert before status bar / .msg-time
   var contentEl = document.createElement('div');
   contentEl.className = 'msg-content streaming-cursor';
-  if (timeEl) {
-    STREAMING_DIV.insertBefore(contentEl, timeEl);
+  if (anchor) {
+    STREAMING_DIV.insertBefore(contentEl, anchor);
   } else {
     STREAMING_DIV.appendChild(contentEl);
   }
@@ -2149,9 +2149,10 @@ function handleToolStartEvent(ev) {
     card.classList.add('timeline-tool-card');
     card.dataset.callKey = item.callKey;
 
-    var timeEl = STREAMING_DIV.querySelector('.msg-time');
-    if (timeEl) {
-      STREAMING_DIV.insertBefore(card, timeEl);
+    // Insert before .streaming-status (which is always right before .msg-time)
+    var anchor = STREAMING_DIV.querySelector('.streaming-status') || STREAMING_DIV.querySelector('.msg-time');
+    if (anchor) {
+      STREAMING_DIV.insertBefore(card, anchor);
     } else {
       STREAMING_DIV.appendChild(card);
     }
@@ -2170,11 +2171,11 @@ function handleToolStartEvent(ev) {
 
   // Insert a fresh .msg-content after the tool cards so post-tool AI text
   // appears after the cards (not in the pre-tool content block)
-  var timeEl = STREAMING_DIV.querySelector('.msg-time');
+  var anchor = STREAMING_DIV.querySelector('.streaming-status') || STREAMING_DIV.querySelector('.msg-time');
   var newContent = document.createElement('div');
   newContent.className = 'msg-content streaming-cursor';
-  if (timeEl) {
-    STREAMING_DIV.insertBefore(newContent, timeEl);
+  if (anchor) {
+    STREAMING_DIV.insertBefore(newContent, anchor);
   } else {
     STREAMING_DIV.appendChild(newContent);
   }
@@ -3659,9 +3660,9 @@ async function switchSession(sid) {
               var _newContent = document.createElement('div');
               _newContent.className = 'msg-content';
               _newContent.innerHTML = renderMarkdown(tokenBuf);
-              var _timeEl = STREAMING_DIV.querySelector('.msg-time');
-              if (_timeEl) {
-                STREAMING_DIV.insertBefore(_newContent, _timeEl);
+              var _anchor = STREAMING_DIV.querySelector('.streaming-status') || STREAMING_DIV.querySelector('.msg-time');
+              if (_anchor) {
+                STREAMING_DIV.insertBefore(_newContent, _anchor);
               } else {
                 STREAMING_DIV.appendChild(_newContent);
               }
