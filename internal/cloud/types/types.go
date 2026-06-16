@@ -199,7 +199,36 @@ type Function struct {
 	Handler      string                 `json:"handler,omitempty"`
 	Timeout      int                    `json:"timeout,omitempty"`
 	MemorySize   int                    `json:"memory_size,omitempty"`
-	Spec         map[string]interface{} `json:"spec"`
+	// 通用增强字段
+	LastModified string                 `json:"last_modified,omitempty"`
+	Description  string                 `json:"description,omitempty"`
+	Version      string                 `json:"version,omitempty"`
+	// AWS Lambda 特定字段
+	Architectures    []string           `json:"architectures,omitempty"`
+	EphemeralStorage int                `json:"ephemeral_storage,omitempty"`
+	TracingConfig    string             `json:"tracing_config,omitempty"`
+	PackageType      string             `json:"package_type,omitempty"`
+	Layers           []string           `json:"layers,omitempty"`
+	Environment      map[string]string  `json:"environment,omitempty"`
+	// Azure Functions 特定字段
+	AppServicePlan   string             `json:"app_service_plan,omitempty"`
+	HTTPSOnly        bool               `json:"https_only,omitempty"`
+	AuthEnabled      bool               `json:"auth_enabled,omitempty"`
+	APIDefinitionURL string             `json:"api_definition_url,omitempty"`
+	// 阿里云 FC 特定字段
+	NASConfig     string                `json:"nas_config,omitempty"`
+	VPCConfig     string                `json:"vpc_config,omitempty"`
+	InternetAccess string               `json:"internet_access,omitempty"`
+	// 腾讯云 SCF 特定字段
+	Namespace   string                  `json:"namespace,omitempty"`
+	TriggerNum  int                    `json:"trigger_num,omitempty"`
+	CommitID    string                 `json:"commit_id,omitempty"`
+	// Oracle Functions 特定字段
+	InvokeEndpoint string               `json:"invoke_endpoint,omitempty"`
+	Image         string                `json:"image,omitempty"`
+	Shape         string                `json:"shape,omitempty"`
+	// 通用字段
+	Spec        map[string]interface{} `json:"spec"`
 	Tags         map[string]string      `json:"tags"`
 }
 

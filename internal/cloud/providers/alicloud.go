@@ -1328,7 +1328,92 @@ func (p *AlicloudProvider) ListFunctions(ctx context.Context, opts types.ListOpt
 }
 
 func (p *AlicloudProvider) GetFunction(ctx context.Context, functionID string) (*types.Function, error) {
-	return nil, fmt.Errorf("alicloud: Function Compute API not yet implemented")
+	// functionID format: serviceName/functionName
+	parts := strings.Split(functionID, "/")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("alicloud: invalid function ID format, expected serviceName/functionName")
+	}
+	serviceName := parts[0]
+	functionName := parts[1]
+
+	params := map[string]string{
+		"serviceName":  serviceName,
+		"functionName": functionName,
+	}
+	resp, err := p.signedRequestToService(ctx, "fc", "2016-03-14", params)
+	if err != nil {
+		return nil, fmt.Errorf("alicloud: get function failed: %w", err)
+	}
+	body, err := p.parseResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		FunctionID       string            `json:"functionId"`
+		FunctionName     string            `json:"functionName"`
+		ServiceName      string            `json:"serviceName"`
+		Description      string            `json:"description"`
+		Runtime         string            `json:"runtime"`
+		Handler         string            `json:"handler"`
+		Timeout         int               `json:"timeout"`
+		MemorySize      int               `json:"memorySize"`
+		LastModifiedTime string           `json:"lastModifiedTime"`
+		NASConfig       struct {
+			MountPointDomain string `json:"mountPointDomain"`
+			NASRegion        string `json:"nasRegion"`
+		} `json:"nasConfig"`
+		VPCConfig       struct {
+			VPCID     string `json:"vpcId"`
+			VSwitchID string `json:"vSwitchId"`
+		} `json:"vpcConfig"`
+		InternetAccess  string `json:"internetAccess"`
+		Tags            map[string]string `json:"tags"`
+	}
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("alicloud: parse function response: %w", err)
+	}
+
+	fn := &types.Function{
+		ID:             result.FunctionID,
+		Name:           result.FunctionName,
+		CloudType:      "alicloud",
+		Region:         p.region,
+		Status:         "active",
+		Runtime:        result.Runtime,
+		Handler:        result.Handler,
+		Timeout:        result.Timeout,
+		MemorySize:     result.MemorySize,
+		LastModified:   result.LastModifiedTime,
+		Description:    result.Description,
+	}
+	if result.NASConfig.MountPointDomain != "" {
+		fn.NASConfig = fmt.Sprintf("%s:%s", result.NASConfig.MountPointDomain, result.NASConfig.NASRegion)
+	}
+	if result.VPCConfig.VPCID != "" {
+		fn.VPCConfig = fmt.Sprintf("vpc:%s, vswitch:%s", result.VPCConfig.VPCID, result.VPCConfig.VSwitchID)
+	}
+	fn.InternetAccess = result.InternetAccess
+	if result.Tags != nil {
+		fn.Tags = result.Tags
+	} else {
+		fn.Tags = map[string]string{}
+	}
+	fn.Spec = map[string]interface{}{
+		"service_name":   result.ServiceName,
+		"function_name": result.FunctionName,
+		"runtime":       result.Runtime,
+		"handler":       result.Handler,
+		"timeout":       result.Timeout,
+		"memory_size":   result.MemorySize,
+		"nas_config":    fn.NASConfig,
+		"vpc_config":    fn.VPCConfig,
+		"internet_access": result.InternetAccess,
+	}
+
+	log.Printf("Alicloud FC: got function %s/%s", serviceName, functionName)
+	return fn, nil
 }
 
 // --- DNS Zones (Alibaba Cloud DNS) ---

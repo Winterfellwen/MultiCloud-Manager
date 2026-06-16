@@ -1342,16 +1342,32 @@ func (p *TencentProvider) GetFunction(ctx context.Context, functionID string) (*
 
 	var result struct {
 		Response struct {
-			FunctionId   string `json:"FunctionId"`
-			FunctionName string `json:"FunctionName"`
-			Runtime      string `json:"Runtime"`
-			Handler      string `json:"Handler"`
-			Timeout      int    `json:"Timeout"`
-			MemorySize   int    `json:"MemorySize"`
-			Status       string `json:"Status"`
-			AddTime      string `json:"AddTime"`
-			ModTime      string `json:"ModTime"`
-			Tags         []struct {
+			FunctionId      string `json:"FunctionId"`
+			FunctionName    string `json:"FunctionName"`
+			Namespace       string `json:"Namespace"`
+			Description     string `json:"Description"`
+			Runtime         string `json:"Runtime"`
+			Handler         string `json:"Handler"`
+			Timeout         int    `json:"Timeout"`
+			MemorySize      int    `json:"MemorySize"`
+			Status          string `json:"Status"`
+			AddTime         string `json:"AddTime"`
+			ModTime         string `json:"ModTime"`
+			TriggerNum      int    `json:"TriggerNum"`
+			CommitId        string `json:"CommitId"`
+			CodeSize        int64  `json:"CodeSize"`
+			FunctionArn     string `json:"FunctionArn"`
+			Environment     struct {
+				Variables map[string]string `json:"Variables"`
+			} `json:"Environment"`
+			VpcConfig struct {
+				VpcId        string `json:"VpcId"`
+				SubnetId     string `json:"SubnetId"`
+			} `json:"VpcConfig"`
+			EipConfig struct {
+				EipStatus string `json:"EipStatus"`
+			} `json:"EipConfig"`
+			Tags []struct {
 				Key   string `json:"Key"`
 				Value string `json:"Value"`
 			} `json:"Tags"`
@@ -1368,6 +1384,10 @@ func (p *TencentProvider) GetFunction(ctx context.Context, functionID string) (*
 		status = "active"
 	case "Creating":
 		status = "creating"
+	case "Updating":
+		status = "updating"
+	case "UpdateFailed", "CreateFailed":
+		status = "error"
 	default:
 		status = strings.ToLower(fn.Status)
 	}
@@ -1376,21 +1396,35 @@ func (p *TencentProvider) GetFunction(ctx context.Context, functionID string) (*
 		tags[t.Key] = t.Value
 	}
 	return &types.Function{
-		ID:         fn.FunctionId,
-		Name:       fn.FunctionName,
-		CloudType:  "tencent",
-		Status:     status,
-		Runtime:    fn.Runtime,
-		Handler:    fn.Handler,
-		Timeout:    fn.Timeout,
-		MemorySize: fn.MemorySize,
+		ID:             fn.FunctionId,
+		Name:           fn.FunctionName,
+		CloudType:      "tencent",
+		Status:         status,
+		Runtime:        fn.Runtime,
+		Handler:        fn.Handler,
+		Timeout:        fn.Timeout,
+		MemorySize:     fn.MemorySize,
+		LastModified:   fn.ModTime,
+		Description:    fn.Description,
+		Namespace:       fn.Namespace,
+		TriggerNum:      fn.TriggerNum,
+		CommitID:        fn.CommitId,
+		Environment:     fn.Environment.Variables,
 		Spec: map[string]interface{}{
-			"runtime":     fn.Runtime,
-			"handler":     fn.Handler,
-			"timeout":     fn.Timeout,
-			"memory_size": fn.MemorySize,
-			"add_time":    fn.AddTime,
-			"mod_time":    fn.ModTime,
+			"runtime":        fn.Runtime,
+			"handler":        fn.Handler,
+			"timeout":        fn.Timeout,
+			"memory_size":    fn.MemorySize,
+			"namespace":      fn.Namespace,
+			"description":    fn.Description,
+			"trigger_num":    fn.TriggerNum,
+			"commit_id":      fn.CommitId,
+			"code_size":      fn.CodeSize,
+			"function_arn":   fn.FunctionArn,
+			"add_time":       fn.AddTime,
+			"mod_time":       fn.ModTime,
+			"vpc_config":     fn.VpcConfig,
+			"eip_config":     fn.EipConfig,
 		},
 		Tags: tags,
 	}, nil

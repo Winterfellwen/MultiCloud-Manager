@@ -1381,41 +1381,82 @@ func (p *AWSProvider) GetFunction(ctx context.Context, functionID string) (*type
 
 	var result struct {
 		Configuration struct {
-			FunctionName string `json:"FunctionName"`
-			FunctionArn  string `json:"FunctionArn"`
-			Runtime      string `json:"Runtime"`
-			Handler      string `json:"Handler"`
-			Timeout      int    `json:"Timeout"`
-			MemorySize   int    `json:"MemorySize"`
-			CodeSize     int64  `json:"CodeSize"`
+			FunctionName         string            `json:"FunctionName"`
+			FunctionArn          string            `json:"FunctionArn"`
+			Runtime              string            `json:"Runtime"`
+			Handler             string            `json:"Handler"`
+			Timeout              int               `json:"Timeout"`
+			MemorySize          int               `json:"MemorySize"`
+			CodeSize            int64             `json:"CodeSize"`
+			LastModified        string            `json:"LastModified"`
+			Description         string            `json:"Description"`
+			Version             string            `json:"Version"`
+			Architectures       []string          `json:"Architectures"`
+			EphemeralStorage    struct {
+				Size int `json:"Size"`
+			} `json:"EphemeralStorage"`
+			TracingConfig struct {
+				Mode string `json:"Mode"`
+			} `json:"TracingConfig"`
+			PackageType string `json:"PackageType"`
+			Environment struct {
+				Variables map[string]string `json:"Variables"`
+			} `json:"Environment"`
 		} `json:"Configuration"`
+		Tags map[string]string `json:"Tags"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("aws: parse lambda response: %w", err)
 	}
 
-	fn := result.Configuration
+	cfg := result.Configuration
 	log.Printf("AWS Lambda: got function %s", functionID)
-	return &types.Function{
-		ID:         fn.FunctionArn,
-		Name:       fn.FunctionName,
-		CloudType:  "aws",
-		Region:     p.region,
-		Status:     "active",
-		Runtime:    fn.Runtime,
-		Handler:    fn.Handler,
-		Timeout:    fn.Timeout,
-		MemorySize: fn.MemorySize,
-		Spec: map[string]interface{}{
-			"function_arn": fn.FunctionArn,
-			"runtime":      fn.Runtime,
-			"handler":      fn.Handler,
-			"timeout":      fn.Timeout,
-			"memory_size":  fn.MemorySize,
-			"code_size":    fn.CodeSize,
-		},
-		Tags: map[string]string{},
-	}, nil
+
+	fn := &types.Function{
+		ID:            cfg.FunctionArn,
+		Name:          cfg.FunctionName,
+		CloudType:     "aws",
+		Region:        p.region,
+		Status:        "active",
+		Runtime:       cfg.Runtime,
+		Handler:       cfg.Handler,
+		Timeout:       cfg.Timeout,
+		MemorySize:    cfg.MemorySize,
+		LastModified:  cfg.LastModified,
+		Description:   cfg.Description,
+		Version:       cfg.Version,
+	}
+	if cfg.Architectures != nil {
+		fn.Architectures = cfg.Architectures
+	}
+	fn.EphemeralStorage = cfg.EphemeralStorage.Size
+	fn.TracingConfig = cfg.TracingConfig.Mode
+	fn.PackageType = cfg.PackageType
+	if cfg.Environment.Variables != nil {
+		fn.Environment = cfg.Environment.Variables
+	}
+	if result.Tags != nil {
+		fn.Tags = result.Tags
+	} else {
+		fn.Tags = map[string]string{}
+	}
+	fn.Spec = map[string]interface{}{
+		"function_arn":      cfg.FunctionArn,
+		"runtime":           cfg.Runtime,
+		"handler":           cfg.Handler,
+		"timeout":           cfg.Timeout,
+		"memory_size":       cfg.MemorySize,
+		"code_size":         cfg.CodeSize,
+		"last_modified":     cfg.LastModified,
+		"description":       cfg.Description,
+		"version":          cfg.Version,
+		"architectures":     cfg.Architectures,
+		"ephemeral_storage": cfg.EphemeralStorage.Size,
+		"tracing_config":   cfg.TracingConfig.Mode,
+		"package_type":     cfg.PackageType,
+		"environment":       cfg.Environment.Variables,
+	}
+	return fn, nil
 }
 
 // --- DNS Zones (Route53 ListHostedZones / GetHostedZone) ---
