@@ -3384,35 +3384,10 @@ async function switchSession(sid) {
     _directSSEController = null;
   }
   lastSyncedMsgCount = 0;
-  // Save streaming state of current session before switching.
-  // Order: agent content FIRST, then tool-calls. This matches
-  // handleStateChangeEvent's done branch and ensures renderToolCallsInline
-  // can attach to the preceding agent message instead of creating a standalone group.
-  if (CURRENT_SESSION && STREAMING_DIV && STREAMING_DIV.isConnected) {
-    if (!SESSION_MESSAGES[CURRENT_SESSION]) SESSION_MESSAGES[CURRENT_SESSION] = [];
-    // Save partial streaming content first
-    if (STREAMING_CONTENT) {
-      SESSION_MESSAGES[CURRENT_SESSION].push({role: 'agent', content: STREAMING_CONTENT, created_at: new Date().toISOString(), streaming: true, _run_id: CURRENT_RUN_ID});
-    }
-    // Then save pending tool calls
-    if (PENDING_TOOL_CALLS.length > 0) {
-      SESSION_MESSAGES[CURRENT_SESSION].push({
-        role: 'tool-calls',
-        content: JSON.stringify(PENDING_TOOL_CALLS.map(function(tc) {
-          var status = 'done';
-          if (!tc.result) status = 'running';
-          else if (tc.error || (tc.result && String(tc.result).toLowerCase().indexOf('error') !== -1)) status = 'error';
-          return {name: tc.name, params: tc.params, result: tc.result, status: status};
-        })),
-        created_at: new Date().toISOString(),
-        streaming: true,
-        _run_id: CURRENT_RUN_ID
-      });
-    }
-  }
   CURRENT_SESSION = sid;
   STREAMING_DIV = null;
   STREAMING_CONTENT = '';
+  PENDING_TOOL_CALLS = [];
   closeChatSessions();
   // Update sidebar
   document.querySelectorAll('.chat-session-item').forEach(function(el) {
@@ -3525,32 +3500,6 @@ async function switchSession(sid) {
         }
       });
       lastSyncedMsgCount = msgCount;
-    }
-  } else if (!isRunning) {
-    // Don't clear PENDING_TOOL_CALLS here — the done handler for non-current
-    // sessions needs it to capture tool calls into the correct session's cache.
-    if (sessData && sessData.messages && sessData.messages.length > 0) {
-      SESSION_MESSAGES[sid] = sessData.messages.map(function(m) {
-        return {role: m.role, content: m.content, created_at: m.created_at || m.timestamp || ''};
-      });
-      container.innerHTML = '';
-      msgCount = 0;
-      sessData.messages.forEach(function(m) {
-        var ts = m.created_at || m.timestamp || '';
-        if (m.role === 'user') {
-          appendMessage('user', escHtml(m.content), ts); msgCount++;
-        } else if (m.role === 'agent' || m.role === 'assistant') {
-          appendMessage('agent', renderMarkdown(m.content), ts); msgCount++;
-        } else if (m.role === 'tool-calls') {
-          var prevAgent = container.querySelector('.msg.agent:last-of-type');
-          if (prevAgent) { renderToolCallsInline(m.content, prevAgent); } else { renderToolCallsGroup(m.content, container); }
-          msgCount++;
-        } else if (m.role === 'system') {
-          var div = document.createElement('div'); div.className = 'msg system'; div.textContent = m.content; container.appendChild(div); msgCount++;
-        }
-      });
-      lastSyncedMsgCount = msgCount;
-      STREAMING_DIV = null;
     }
   }
   
