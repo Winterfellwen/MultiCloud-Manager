@@ -2,6 +2,7 @@ import state from './state.js';
 import { api } from './api.js';
 import { Toast } from './components/toast.js';
 import { accountsPage } from './pages/accounts.js';
+import { chatPage } from './pages/chat.js';
 
 const pages = {
   dashboard: null,
@@ -10,7 +11,7 @@ const pages = {
   sync: null,
   cost: null,
   terminal: null,
-  chat: null,
+  chat: chatPage,
   profile: null,
 };
 
