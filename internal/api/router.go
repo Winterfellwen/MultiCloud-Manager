@@ -111,6 +111,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 	teamsHandler := NewTeamsHandler(db)
 	terraformHandler := NewTerraformHandler(db)
 	sessionsHandler := NewSessionsHandler(db, runMgr)
+	mcpServerHandler := NewMCPServerHandler(db)
 
 	eventsHandler := NewEventsSSEHandler(db, runMgr, jwtSecret)
 	r.GET("/api/agent/events", eventsHandler.Stream)
@@ -132,6 +133,11 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.POST("/agent/config/test", RequireRole("admin"), TestAIConfig)
 		auth.GET("/agent/config/:type", RequireRole("admin"), agentConfigHandler.GetConfig)
 		auth.PUT("/agent/config/:type", RequireRole("admin"), agentConfigHandler.UpdateConfig)
+
+		// Model Hub — admin only
+		auth.GET("/model-providers", RequireRole("admin"), ListModelProviders)
+		auth.GET("/model-hub", RequireRole("admin"), GetModelHubConfig)
+		auth.PUT("/model-hub", RequireRole("admin"), UpdateModelHubConfig)
 
 		// Chat endpoints — all roles (viewer: plan only, enforced in handler)
 		chatHandler := NewChatStreamHandler(db, executor, runtime, runMgr)
@@ -290,6 +296,15 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 			}
 			c.JSON(http.StatusOK, gin.H{"migrated": migrated})
 		})
+
+		// MCP Servers — admin only
+		auth.GET("/mcp/servers", RequireRole("admin"), mcpServerHandler.List)
+		auth.GET("/mcp/servers/builtins", RequireRole("admin"), ListBuiltInMCPServers)
+		auth.GET("/mcp/servers/:id", RequireRole("admin"), mcpServerHandler.Get)
+		auth.POST("/mcp/servers", RequireRole("admin"), mcpServerHandler.Create)
+		auth.DELETE("/mcp/servers/:id", RequireRole("admin"), mcpServerHandler.Delete)
+		auth.POST("/mcp/servers/:id/toggle", RequireRole("admin"), mcpServerHandler.Toggle)
+		auth.POST("/mcp/servers/:id/test", RequireRole("admin"), mcpServerHandler.Test)
 	}
 
 	// Skill management routes — admin only
