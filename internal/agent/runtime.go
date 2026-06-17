@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"multicloud/internal/agent/shell"
+	"multicloud/internal/agent/skill"
 	"multicloud/internal/cloud"
 	"multicloud/internal/vault"
 )
@@ -31,12 +32,13 @@ func OutputCallbackFromContext(ctx context.Context) func(chunk string) {
 
 // Runtime combines all agent components into a single usable unit.
 type Runtime struct {
-	registry *ToolRegistry
-	router   *Router
-	prompt   *PromptBuilder
-	executor *Executor
-	docIndex *DocIndex
-	db       *sql.DB
+	registry    *ToolRegistry
+	router      *Router
+	prompt      *PromptBuilder
+	executor    *Executor
+	docIndex    *DocIndex
+	db          *sql.DB
+	skillEngine *skill.Engine
 }
 
 // RuntimeConfig holds configuration for creating a new Runtime.
@@ -46,6 +48,7 @@ type RuntimeConfig struct {
 	Vault      vault.Service
 	BasePrompt string
 	DocsDir    string
+	SkillsDir  string // Directory containing SKILL.md files
 }
 
 // shellToolWrapper wraps shell.ShellTool to implement agent.Tool interface
@@ -103,13 +106,22 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 	docIndex := NewDocIndex(docsDir)
 	executor.SetDocIndex(docIndex)
 
+	// Initialize skill engine
+	skillEngine := skill.NewEngine()
+	if cfg.SkillsDir != "" {
+		if err := skillEngine.LoadSkills(cfg.SkillsDir); err != nil {
+			log.Printf("WARN: failed to load skills from %s: %v", cfg.SkillsDir, err)
+		}
+	}
+
 	return &Runtime{
-		registry: registry,
-		router:   router,
-		prompt:   prompt,
-		executor: executor,
-		docIndex: docIndex,
-		db:       cfg.DB,
+		registry:    registry,
+		router:      router,
+		prompt:      prompt,
+		executor:    executor,
+		docIndex:    docIndex,
+		db:          cfg.DB,
+		skillEngine: skillEngine,
 	}
 }
 
@@ -164,6 +176,23 @@ func (r *Runtime) GetSystemPrompt(mode string, userMessage string) string {
 	if mode != "" {
 		prompt.SetMode(mode)
 	}
+
+	// Inject skill context if a skill matches the user message
+	if r.skillEngine != nil && userMessage != "" {
+		matchedSkill := r.skillEngine.MatchSkill(userMessage, 0.1)
+		if matchedSkill != nil {
+			context := r.skillEngine.GetSkillContext(matchedSkill.Name)
+			if context != "" {
+				prompt.AddSkillContext(matchedSkill.Name, context)
+			}
+			// Set skill tools for filtering
+			tools := r.skillEngine.GetSkillTools(matchedSkill.Name)
+			if len(tools) > 0 {
+				prompt.SetSkillTools(tools)
+			}
+		}
+	}
+
 	if r.docIndex != nil && userMessage != "" {
 		providers := r.docIndex.DetectProviders(userMessage)
 		if len(providers) > 0 {
@@ -181,6 +210,11 @@ func (r *Runtime) GetSystemPrompt(mode string, userMessage string) string {
 		}
 	}
 	return prompt.Build()
+}
+
+// SkillEngine returns the skill engine.
+func (r *Runtime) SkillEngine() *skill.Engine {
+	return r.skillEngine
 }
 
 // ChatSession represents a conversation session with the agent.

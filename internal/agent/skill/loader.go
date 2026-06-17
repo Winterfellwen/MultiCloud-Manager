@@ -5,9 +5,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"multicloud/internal/agent/mcp"
 )
+
+// MCPServerConfig mirrors mcp.ServerConfig to avoid import cycle
+type MCPServerConfig struct {
+	Transport string            `json:"transport"`
+	Command   string            `json:"command"`
+	Args      []string          `json:"args"`
+	URL       string            `json:"url"`
+	Headers   map[string]string `json:"headers"`
+	Env       map[string]string `json:"env"`
+	Enabled   bool              `json:"enabled"`
+	Timeout   int               `json:"timeout"`
+}
 
 type ConfigFile struct {
 	Shell struct {
@@ -15,7 +25,7 @@ type ConfigFile struct {
 		WorkspaceDir   string `json:"workspace_dir"`
 		TimeoutSeconds int    `json:"timeout_seconds"`
 	} `json:"shell"`
-	MCPServers map[string]mcp.ServerConfig `json:"mcp_servers"`
+	MCPServers map[string]MCPServerConfig `json:"mcp_servers"`
 	Skills     map[string]struct {
 		Enabled bool `json:"enabled"`
 	} `json:"skills"`
@@ -36,7 +46,7 @@ func LoadFromFile(path string) (*ConfigFile, error) {
 		return nil, fmt.Errorf("parse config file: %w", err)
 	}
 	if cfg.MCPServers == nil {
-		cfg.MCPServers = make(map[string]mcp.ServerConfig)
+		cfg.MCPServers = make(map[string]MCPServerConfig)
 	}
 	if cfg.Skills == nil {
 		cfg.Skills = make(map[string]struct {
