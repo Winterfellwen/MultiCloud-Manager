@@ -50,9 +50,10 @@ func initPostgres(dsn string) (*Database, error) {
 		return nil, pingErr
 	}
 
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(3)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxIdleConns(2 * time.Hour)
+	db.SetConnMaxLifetime(30 * time.Minute)
 
 	d := &Database{db}
 	if err := d.Migrate(); err != nil {
@@ -434,6 +435,13 @@ func NewRedisClient(url string) (*RedisClient, error) {
 	}
 
 	client := redis.NewClient(opts)
+
+	// Redis connection pool settings
+	client.Options().PoolSize = 20
+	client.Options().MinIdleConns = 5
+	client.Options().PoolTimeout = 10 * time.Second
+	client.Options().ConnMaxIdleTime = 5 * time.Minute
+
 	if err := client.Ping(context.Background()).Err(); err != nil {
 		return nil, err
 	}
