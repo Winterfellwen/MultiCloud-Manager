@@ -291,6 +291,14 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		})
 	}
 
+	// Skill management routes — admin only
+	skillHandler := NewSkillHandler(runtime.SkillEngine())
+	auth.GET("/skills", skillHandler.ListSkills)
+	auth.GET("/skills/:name", skillHandler.GetSkill)
+	auth.POST("/skills/:name/enable", RequireRole("admin"), skillHandler.EnableSkill)
+	auth.POST("/skills/:name/disable", RequireRole("admin"), skillHandler.DisableSkill)
+	auth.PUT("/skills/:name/config", RequireRole("admin"), skillHandler.UpdateSkillConfig)
+
 	// Cost management routes
 	costAPI := NewCostAPI(costEngine)
 
