@@ -320,7 +320,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg { padding: 12px 20px; font-size: 13px; line-height: 1.6; position: relative; }
 
 /* User message — compact bubble, right-aligned */
-.msg.user { display: flex; flex-direction: column; align-items: flex-end; padding: 6px 20px; }
+.msg.user { display: flex; flex-direction: column; align-items: flex-end; padding: 6px 20px; position: relative; }
 .msg.user .msg-bubble { max-width: 75%; background: var(--primary); color: #fff; border-radius: 12px; padding: 10px 14px; border-bottom-right-radius: 4px; }
 .msg.user .msg-bubble p { margin: 0; }
 .msg.user .msg-bubble code { background: rgba(255,255,255,.15); color: #fff; }
@@ -370,6 +370,56 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg-agent-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; min-height: auto; }
 .msg-agent-copy.error { color: #dc2626; border-color: #dc2626; opacity: 1; min-height: auto; }
 .msg-agent-copy .icon { font-size: 11px; line-height: 1; display: inline-flex; align-items: center; }
+
+.msg-user-copy {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s, color .12s, border-color .12s, background .12s;
+  text-transform: none;
+  letter-spacing: 0;
+  user-select: none;
+  min-height: auto;
+  min-width: auto;
+}
+.msg.user:hover .msg-user-copy,
+.msg-user-copy:focus-visible { opacity: 1; min-height: auto; }
+.msg-user-copy:hover { color: var(--primary); border-color: var(--primary); min-height: auto; }
+.msg-user-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; min-height: auto; }
+.msg-user-copy.error { color: #dc2626; border-color: #dc2626; opacity: 1; min-height: auto; }
+.msg-user-copy .icon { font-size: 11px; line-height: 1; display: inline-flex; align-items: center; }
+
+.tool-card-copy {
+  margin-left: auto;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity .12s, color .12s, border-color .12s;
+}
+.tool-card:hover .tool-card-copy,
+.tool-card-copy:focus-visible { opacity: 1; }
+.tool-card-copy:hover { color: var(--primary); border-color: var(--primary); }
+.tool-card-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; }
 
 .msg-time { font-size: 12px; color: var(--text-muted); margin-top: 5px; opacity: 0.85; min-height: auto; }
 .msg.user .msg-time { text-align: right; }
@@ -2026,7 +2076,7 @@ function _ensureStreamingDiv() {
   STREAMING_DIV.className = 'msg agent streaming';
   // No .msg-content yet — it will be created on first token
   var initialStatus = LOCALE === 'zh' ? '思考中…' : 'Thinking…';
-  STREAMING_DIV.innerHTML = aiRoleHeader() + buildAgentCopyButton() + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + initialStatus + '</span></div><div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
+  STREAMING_DIV.innerHTML = aiRoleHeader() + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + initialStatus + '</span></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
   container.appendChild(STREAMING_DIV);
   STREAMING_DIV._toolCallsContainer = null;
   STREAMING_DIV._toolCallsHeader = null;
@@ -3140,7 +3190,7 @@ async function sendChat() {
     var div = document.createElement('div');
     div.className = 'msg agent streaming';
     var initialStatus = LOCALE === 'zh' ? '思考中…' : 'Thinking…';
-    div.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor"></span></div>' + buildAgentCopyButton() + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + initialStatus + '</span></div>' + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
+    div.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor"></span></div>' + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + initialStatus + '</span></div>' + buildAgentCopyButton() + '<div class="msg-time">' + formatMsgTime(new Date().toISOString()) + '</div>';
     container.appendChild(div);
     STREAMING_DIV = div;
     scrollToBottom(container);
@@ -3570,7 +3620,7 @@ async function switchSession(sid) {
         if (m.streaming) {
           var div = document.createElement('div');
           div.className = 'msg agent streaming';
-          div.innerHTML = aiRoleHeader() + '<div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton();
+          div.innerHTML = aiRoleHeader() + '<div class="msg-content streaming-cursor">' + renderMarkdown(m.content) + '</div>' + buildAgentCopyButton() + '<div class="msg-time"></div>';
           container.appendChild(div);
           STREAMING_DIV = div;
         } else {
@@ -3634,7 +3684,7 @@ async function switchSession(sid) {
     document.getElementById('chatStopBtn').style.display = '';
     var thinkDiv = document.createElement('div');
     thinkDiv.className = 'msg agent streaming';
-    thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + buildAgentCopyButton();
+    thinkDiv.innerHTML = aiRoleHeader() + '<div class="msg-content"><span class="ai-text streaming-cursor">' + thinkingIndicator() + '</span></div>' + '<div class="streaming-status"><svg width="14" height="14"><use href="/static/icons.svg#icon-sync"/></svg><span>' + (LOCALE === 'zh' ? '思考中…' : 'Thinking…') + '</span></div>' + buildAgentCopyButton() + '<div class="msg-time"></div>';
     container.appendChild(thinkDiv);
     STREAMING_DIV = thinkDiv;
   }
@@ -3781,7 +3831,7 @@ async function newSession() {
   CURRENT_SESSION = data && data.session_id ? data.session_id : ('session-' + Date.now());
   CURRENT_SESSION_USER = null;
   updateSendButtonState();
-  document.getElementById('chatMessages').innerHTML = '<div class="msg agent">' + aiRoleHeader() + '<div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '</div>';
+  document.getElementById('chatMessages').innerHTML = '<div class="msg agent">' + aiRoleHeader() + '<div class="msg-content"><p>' + (LOCALE === 'zh' ? '新的对话已开始，请问有什么可以帮助您？' : 'New session started. How can I help you?') + '</p></div>' + buildAgentCopyButton() + '<div class="msg-time"></div></div>';
   closeChatSessions();
   await loadSessions();
 }
@@ -3791,7 +3841,7 @@ async function deleteSession(sid) {
   await apiFetch(API + '/agent/sessions/' + sid, { method: 'DELETE' });
   if (CURRENT_SESSION === sid) {
     CURRENT_SESSION = null;
-    document.getElementById('chatMessages').innerHTML = '<div class="msg agent">' + aiRoleHeader() + '<div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '</div>';
+    document.getElementById('chatMessages').innerHTML = '<div class="msg agent">' + aiRoleHeader() + '<div class="msg-content"><p>' + (LOCALE === 'zh' ? '选择一个对话或创建新对话。' : 'Select or create a session.') + '</p></div>' + buildAgentCopyButton() + '<div class="msg-time"></div></div>';
   }
   await loadSessions();
 }
@@ -3812,12 +3862,13 @@ function appendMessage(type, html, timestamp) {
   div.className = 'msg ' + type;
   var timeStr = formatMsgTime(timestamp);
   var timeHtml = timeStr ? '<div class="msg-time">' + timeStr + '</div>' : '';
+  var copyBtn = type === 'agent' ? buildAgentCopyButton() : buildUserCopyButton();
   if (type === 'user') {
-    div.innerHTML = '<div class="msg-bubble">' + html + '</div>' + timeHtml;
+    div.innerHTML = '<div class="msg-bubble">' + html + '</div>' + copyBtn + timeHtml;
   } else if (type === 'agent') {
-    div.innerHTML = aiRoleHeader() + '<div class="msg-content">' + html + '</div>' + timeHtml + buildAgentCopyButton();
+    div.innerHTML = aiRoleHeader() + '<div class="msg-content">' + html + '</div>' + copyBtn + timeHtml;
   } else {
-    div.innerHTML = '<div class="msg-content">' + html + '</div>' + timeHtml;
+    div.innerHTML = '<div class="msg-content">' + html + '</div>' + copyBtn + timeHtml;
   }
   container.appendChild(div);
 }
@@ -3831,6 +3882,50 @@ function buildAgentCopyButton() {
   return '<button type="button" class="msg-agent-copy" onclick="copyAIMessage(this)" title="' +
     (LOCALE === 'zh' ? '复制完整回复（含工具调用）' : 'Copy full reply (incl. tool calls)') + '">' +
     '<span class="icon"><svg class="icon" width="16" height="16"><use href="/static/icons.svg#icon-copy"/></svg></span><span class="label">' + label + '</span></button>';
+}
+
+function buildUserCopyButton() {
+  var label = LOCALE === 'zh' ? '复制' : 'Copy';
+  return '<button type="button" class="msg-user-copy" onclick="copyUserMessage(this)" title="' +
+    (LOCALE === 'zh' ? '复制用户消息' : 'Copy user message') + '">' +
+    '<span class="icon"><svg class="icon" width="16" height="16"><use href="/static/icons.svg#icon-copy"/></svg></span><span class="label">' + label + '</span></button>';
+}
+
+async function copyUserMessage(btn) {
+  var msgEl = btn.closest('.msg.user');
+  if (!msgEl) return;
+  var bubble = msgEl.querySelector('.msg-bubble');
+  if (!bubble) return;
+  var text = bubble.innerText || '';
+  if (!text) return;
+  var copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  } catch (e) {
+    copied = false;
+  }
+  var labelEl = btn.querySelector('.label');
+  var orig = labelEl ? labelEl.textContent : null;
+  if (labelEl) labelEl.textContent = copied
+    ? (LOCALE === 'zh' ? '已复制' : 'Copied')
+    : (LOCALE === 'zh' ? '复制失败' : 'Failed');
+  btn.classList.add(copied ? 'copied' : 'error');
+  setTimeout(function() {
+    if (labelEl && orig != null) labelEl.textContent = orig;
+    btn.classList.remove('copied', 'error');
+  }, COPY_FEEDBACK_MS);
 }
 
 // Copy a complete AI reply to the clipboard. The format is:
@@ -3879,16 +3974,20 @@ async function copyAIMessage(btn) {
 // come from the data-result attribute set when the tool card was rendered, so
 // the copy round-trips the full data the user saw on screen.
 function buildAgentCopyText(msgEl) {
-  var content = msgEl.querySelector('.msg-content');
-  if (!content) return '';
-  // Avoid copying the "Thinking..." / "思考中" placeholder
-  var reply = (content.innerText || '').replace(/\s+$/g, '');
-  if (!reply || /^(Thinking\.\.\.|思考中)$/.test(reply.trim())) return '';
-
-  var lines = [reply];
+  // Collect text from ALL .msg-content blocks (pre-tool, post-tool, etc.)
+  var contents = msgEl.querySelectorAll('.msg-content');
+  if (!contents || contents.length === 0) return '';
+  var lines = [];
+  contents.forEach(function(content) {
+    var text = (content.innerText || '').replace(/\s+$/g, '');
+    // Skip "Thinking..." / "思考中" placeholders
+    if (text && !/^(Thinking\.\.\.|思考中)$/.test(text.trim())) {
+      lines.push(text);
+    }
+  });
+  if (lines.length === 0) return '';
 
   // Collect tool calls from the rendered inline group (card-style).
-  // Each .tool-card holds the tool name, params and raw result JSON.
   var cards = msgEl.querySelectorAll('.tool-card');
   if (cards.length > 0) {
     lines.push('');
@@ -3898,16 +3997,9 @@ function buildAgentCopyText(msgEl) {
     cards.forEach(function(card, idx) {
       var name = (card.querySelector('.card-name') || {}).textContent || '';
       var status = (card.querySelector('.card-status') || {}).textContent || '';
-      // The card body holds field-labels + field-codes in pairs:
-      //   [调用名称, tool-name]  [完整命令, params-json]  [执行结果, result-json]
-      // Skip the first code block (it's the tool name, already in the header)
-      // and use the second as params.
       var codeBlocks = card.querySelectorAll('.field-code');
       var params = codeBlocks.length >= 2 ? codeBlocks[1].textContent : '';
       var resultDiv = card.querySelector('.field-result');
-      // Prefer the data-result attribute, but fall back to textContent (with
-      // the trailing 复制/Copy button label stripped) when the attribute is
-      // missing or was truncated by an HTML-parse error.
       var result = '';
       if (resultDiv) {
         var attrVal = resultDiv.getAttribute('data-result');
@@ -4025,6 +4117,7 @@ function buildToolCard(tc) {
       '<span class="card-status ' + statusClass + '">' + statusLabel + '</span>' +
       '<span class="card-timestamp">' + (tc.timestamp ? formatMsgTime(tc.timestamp) : '') + '</span>' +
       '<span class="expand-arrow" title="' + (loc ? '展开/折叠' : 'Expand/Collapse') + '"></span>' +
+      '<button type="button" class="tool-card-copy" onclick="event.stopPropagation();copyToolCard(this)" title="' + (loc ? '复制整个工具调用' : 'Copy entire tool call') + '"><svg class="icon" width="14" height="14"><use href="/static/icons.svg#icon-copy"/></svg></button>' +
     '</div>' +
     '<div class="tool-card-summary">' +
       '<span class="summary-text">' + escHtml(summary) + '</span>' +
@@ -4129,6 +4222,53 @@ function copyToolResult(btn) {
     navigator.clipboard.writeText(text.trim()).then(function() {
       btn.textContent = (LOCALE === 'zh' ? '已复制' : 'Copied!');
       setTimeout(function() { btn.textContent = (LOCALE === 'zh' ? '复制' : 'Copy'); }, BTN_RESET_MS);
+    });
+  }
+}
+
+function copyToolCard(btn) {
+  var card = btn.closest('.tool-card');
+  if (!card) return;
+  var name = (card.querySelector('.card-name') || {}).textContent || '';
+  var status = (card.querySelector('.card-status') || {}).textContent || '';
+  var timestamp = (card.querySelector('.card-timestamp') || {}).textContent || '';
+  var codeBlocks = card.querySelectorAll('.field-code');
+  var params = codeBlocks.length >= 2 ? codeBlocks[1].textContent : '';
+  var resultDiv = card.querySelector('.field-result');
+  var result = '';
+  if (resultDiv) {
+    var attrVal = resultDiv.getAttribute('data-result');
+    if (attrVal && attrVal.length > 1) {
+      result = attrVal;
+    } else {
+      result = (resultDiv.textContent || '')
+        .replace(/复制\s*$/, '').replace(/Copy\s*$/, '').trim();
+    }
+  }
+
+  var loc = LOCALE === 'zh';
+  var lines = [];
+  lines.push(loc ? '工具调用: ' + name : 'Tool Call: ' + name);
+  if (status) lines.push(loc ? '状态: ' + status : 'Status: ' + status);
+  if (timestamp) lines.push(loc ? '时间: ' + timestamp : 'Time: ' + timestamp);
+  if (params) {
+    lines.push('');
+    lines.push(loc ? '参数:' : 'Params:');
+    lines.push(params);
+  }
+  if (result) {
+    lines.push('');
+    lines.push(loc ? '结果:' : 'Result:');
+    lines.push(result);
+  }
+  var text = lines.join('\n');
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text.trim()).then(function() {
+      var svg = btn.querySelector('svg');
+      var originalHtml = btn.innerHTML;
+      btn.innerHTML = '<span style="font-size:11px;">' + (loc ? '已复制' : 'Copied!') + '</span>';
+      setTimeout(function() { btn.innerHTML = originalHtml; }, BTN_RESET_MS);
     });
   }
 }
