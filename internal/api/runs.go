@@ -36,6 +36,7 @@ const (
 	EventStateChange     EventType = "state_change"
 	EventDone            EventType = "done"
 	EventError           EventType = "error"
+	EventRetry           EventType = "retry"
 )
 
 // Event is a single entry in a Run's event log.

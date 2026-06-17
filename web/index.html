@@ -1905,6 +1905,7 @@ const EVENT_HANDLERS = {
   tool_result: handleToolResultEvent,
   confirm_required: handleConfirmRequiredEvent,
   state_change: handleStateChangeEvent,
+  retry: handleRetryEvent,
 };
 
 var _processedEventIds = new Set(); // Dedup: track event IDs already handled
@@ -2474,6 +2475,35 @@ function handleStateChangeEvent(ev) {
     }
   });
   if (TAB_CHANNEL) TAB_CHANNEL.postMessage({ type: 'session-changed' });
+}
+
+function handleRetryEvent(ev) {
+  if (!ev.payload) return;
+  if (ev.session_id && ev.session_id !== CURRENT_SESSION) return;
+
+  var attempt = ev.payload.attempt || 1;
+  var maxAttempts = ev.payload.maxAttempts || 20;
+  var delaySec = ev.payload.delaySec || 0;
+  var reason = ev.payload.reason || '';
+  var elapsedSec = ev.payload.elapsedSec || 0;
+
+  var msg = LOCALE === 'zh'
+    ? '正在重试... (第 ' + attempt + '/' + maxAttempts + ' 次, ' + delaySec + 's 后重试)'
+    : 'Retrying... (attempt ' + attempt + '/' + maxAttempts + ', retry in ' + delaySec + 's)';
+  if (reason) msg += ' — ' + reason;
+
+  _setStreamingStatus('icon-sync', msg);
+
+  // Also update session badge to show retry state
+  var sessionItem = document.querySelector('.chat-session-item[data-sid="' + ev.session_id + '"]');
+  if (sessionItem) {
+    var badge = sessionItem.querySelector('.session-badge');
+    if (badge) {
+      badge.textContent = LOCALE === 'zh' ? '重试中' : 'Retrying';
+      badge.className = 'session-badge badge-warn';
+      badge.title = msg;
+    }
+  }
 }
 
 function showConfirmModal(runID, payload) {

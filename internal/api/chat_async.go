@@ -174,7 +174,7 @@ func (h *ChatStreamHandler) runLLM(r *Run) {
 			return io.NopCloser(bytes.NewReader(bodyBytes)), nil
 		}
 
-		resp, err := h.doWithRetry(ctx, httpClient, httpReq)
+		resp, err := h.doWithRetry(ctx, r, httpClient, httpReq)
 		if err != nil {
 			stopReason = "connection failed after retries: " + err.Error()
 			break
@@ -447,7 +447,7 @@ func isRetryableStatus(code int) bool {
 	return code == 408 || code == 429 || code == 500 || code == 502 || code == 503 || code == 504
 }
 
-func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client, req *http.Request) (*http.Response, error) {
+func (h *ChatStreamHandler) doWithRetry(ctx context.Context, r *Run, client *http.Client, req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var lastErr error
 	retry := 0
@@ -468,6 +468,13 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 				return nil, lastErr
 			}
 			delay := calculateRetryDelay(retry)
+			h.rm.persistEvent(r, EventRetry, map[string]interface{}{
+				"attempt":     retry + 1,
+				"maxAttempts": maxRetryAttempts,
+				"delaySec":    int(delay.Seconds()),
+				"reason":      "network error: " + lastErr.Error(),
+				"elapsedSec":  int(time.Since(startTime).Seconds()),
+			})
 			log.Printf("Network error (attempt %d/%d), retrying in %v: %v", retry+1, maxRetryAttempts, delay, lastErr)
 			select {
 			case <-ctx.Done():
@@ -490,6 +497,13 @@ func (h *ChatStreamHandler) doWithRetry(ctx context.Context, client *http.Client
 				return resp, fmt.Errorf("API error after retries (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 			}
 			delay := calculateRetryDelay(retry)
+			h.rm.persistEvent(r, EventRetry, map[string]interface{}{
+				"attempt":     retry + 1,
+				"maxAttempts": maxRetryAttempts,
+				"delaySec":    int(delay.Seconds()),
+				"reason":      fmt.Sprintf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody))),
+				"elapsedSec":  int(time.Since(startTime).Seconds()),
+			})
 			log.Printf("API request failed (HTTP %d, attempt %d/%d), retrying in %v: %s", resp.StatusCode, retry+1, maxRetryAttempts, delay, strings.TrimSpace(string(respBody)))
 			select {
 			case <-ctx.Done():
