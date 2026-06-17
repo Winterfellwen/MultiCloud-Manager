@@ -496,6 +496,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 /* Tool card - compact collapsed by default */
 .tool-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; transition: border-color .15s, box-shadow .15s; min-height: auto; }
+.msg-content .timeline-tool-card { margin: 8px 0; }
 .tool-card:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); min-height: auto; }
 .tool-card.running { border-color: var(--warning); border-left: 3px solid var(--warning); }
 .tool-card.running .tool-card-header .card-status { background: rgba(255,159,10,.15); color: var(--warning); }
@@ -2193,42 +2194,30 @@ function handleToolStartEvent(ev) {
   _ensureStreamingDiv();
   if (!STREAMING_DIV._toolCardOrder) STREAMING_DIV._toolCardOrder = [];
 
-  newCalls.forEach(function(item, index) {
-    var status = index === 0 ? 'running' : 'pending';
-    var card = buildToolCard({name: item.name, params: item.fn.arguments || '', result: '', status: status, timestamp: new Date().toISOString()});
-    card.classList.add('timeline-tool-card');
-    card.dataset.callKey = item.callKey;
-
-    // Insert before .streaming-status (which is always right before .msg-time)
-    var anchor = STREAMING_DIV.querySelector('.streaming-status') || STREAMING_DIV.querySelector('.msg-time');
-    if (anchor) {
-      STREAMING_DIV.insertBefore(card, anchor);
-    } else {
-      STREAMING_DIV.appendChild(card);
-    }
-
-    STREAMING_DIV._toolCardOrder.push(card);
-  });
-
-  // Update status to show the currently running tool
-  var firstTool = newCalls[0];
-  var toolIcon = getToolIcon(firstTool.name);
-  _setStreamingStatus('icon-sync', (LOCALE === 'zh' ? '正在执行 ' : 'Running ') + firstTool.name + '…');
-
-  // Reset content block state so next token creates a NEW content block after tool cards
+  // Reset content block state so next token appends to the EXISTING content block
   STREAMING_DIV._lastRenderedLen = 0;
   STREAMING_CONTENT = '';
 
-  // Insert a fresh .msg-content after the tool cards so post-tool AI text
-  // appears after the cards (not in the pre-tool content block)
-  var anchor = STREAMING_DIV.querySelector('.streaming-status') || STREAMING_DIV.querySelector('.msg-time');
-  var newContent = document.createElement('div');
-  newContent.className = 'msg-content streaming-cursor';
-  if (anchor) {
-    STREAMING_DIV.insertBefore(newContent, anchor);
-  } else {
-    STREAMING_DIV.appendChild(newContent);
+  // Insert tool cards INSIDE the .msg-content div (after markdown text)
+  // so text stays visually continuous — cards sit within the same block.
+  var contentEl = STREAMING_DIV.querySelector('.msg-content');
+  if (contentEl) {
+    newCalls.forEach(function(item, index) {
+      var card = buildToolCard({name: item.name, params: item.fn.arguments || '', result: '', status: (index === 0 ? 'running' : 'pending'), timestamp: new Date().toISOString()});
+      card.classList.add('timeline-tool-card');
+      card.dataset.callKey = item.callKey;
+      contentEl.appendChild(card);
+      STREAMING_DIV._toolCardOrder.push(card);
+    });
   }
+
+  // Update status to show the currently running tool
+  var firstTool = newCalls[0];
+  _setStreamingStatus('icon-sync', (LOCALE === 'zh' ? '正在执行 ' : 'Running ') + firstTool.name + '…');
+
+  // Update status to show the currently running tool
+  var firstTool = newCalls[0];
+  _setStreamingStatus('icon-sync', (LOCALE === 'zh' ? '正在执行 ' : 'Running ') + firstTool.name + '…');
 
   scrollToBottom();
 }
@@ -3973,12 +3962,16 @@ async function copyAIMessage(btn) {
 // come from the data-result attribute set when the tool card was rendered, so
 // the copy round-trips the full data the user saw on screen.
 function buildAgentCopyText(msgEl) {
-  // Collect text from ALL .msg-content blocks (pre-tool, post-tool, etc.)
+  // Collect text from ALL .msg-content blocks, excluding tool card elements
+  // (tool cards are now inside .msg-content but their text is collected separately)
   var contents = msgEl.querySelectorAll('.msg-content');
   if (!contents || contents.length === 0) return '';
   var lines = [];
   contents.forEach(function(content) {
-    var text = (content.innerText || '').replace(/\s+$/g, '');
+    // Clone and remove tool cards to get clean text
+    var clone = content.cloneNode(true);
+    clone.querySelectorAll('.timeline-tool-card, .tool-card').forEach(function(el) { el.remove(); });
+    var text = (clone.innerText || '').replace(/\s+$/g, '');
     // Skip "Thinking..." / "思考中" placeholders
     if (text && !/^(Thinking\.\.\.|思考中)$/.test(text.trim())) {
       lines.push(text);
