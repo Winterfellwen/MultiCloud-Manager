@@ -90,6 +90,7 @@ export const accountsAPI = {
 export const resourcesAPI = {
   list: () => api.get('/resources'),
   action: (id, action) => api.post(`/resources/${id}/${action}`),
+  batchAction: (ids, action) => api.post(`/resources/batch/${action}`, { ids }),
 };
 
 export const syncAPI = {

@@ -125,6 +125,78 @@ func (h *ResourcesHandler) Action(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// BatchAction performs an action on multiple resources
+func (h *ResourcesHandler) BatchAction(c *gin.Context) {
+	var req struct {
+		IDs    []string `json:"ids"`
+		Action string   `json:"action"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no resources specified"})
+		return
+	}
+
+	// Validate action
+	switch req.Action {
+	case "start", "stop", "restart", "delete":
+		// valid
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported action: " + req.Action})
+		return
+	}
+
+	ctx := c.Request.Context()
+	results := make(map[string]string)
+	errors := make(map[string]string)
+
+	for _, id := range req.IDs {
+		prov, cloudResID, resourceType, err := h.syncer.GetProviderForResource(ctx, id)
+		if err != nil {
+			errors[id] = err.Error()
+			continue
+		}
+
+		// Validate action for resource type
+		if req.Action == "start" || req.Action == "stop" || req.Action == "restart" {
+			if !isComputeResourceType(resourceType) {
+				errors[id] = fmt.Sprintf("action '%s' is not supported for resource type '%s'", req.Action, resourceType)
+				continue
+			}
+		}
+
+		var opErr error
+		switch req.Action {
+		case "start":
+			opErr = prov.StartInstance(ctx, cloudResID)
+		case "stop":
+			opErr = prov.StopInstance(ctx, cloudResID)
+		case "restart":
+			opErr = prov.RestartInstance(ctx, cloudResID)
+		case "delete":
+			// Delete not implemented for all providers, mark as unsupported
+			errors[id] = "delete action not implemented"
+			continue
+		}
+
+		if opErr != nil {
+			errors[id] = opErr.Error()
+		} else {
+			results[id] = "ok"
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"results": results,
+		"errors":  errors,
+		"summary": fmt.Sprintf("Processed %d resources: %d succeeded, %d failed", len(req.IDs), len(results), len(errors)),
+	})
+}
+
 // isComputeResourceType checks if the resource type supports lifecycle actions
 func isComputeResourceType(resourceType string) bool {
 	computeTypes := []string{"vm", "virtual_machine", "instance", "compute", "ecs", "ec2", "azure_vm", "tvm"}

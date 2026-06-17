@@ -3,11 +3,12 @@ import { api } from './api.js';
 import { Toast } from './components/toast.js';
 import { accountsPage } from './pages/accounts.js';
 import { chatPage } from './pages/chat.js';
+import { resourcesPage } from './pages/resources.js';
 
 const pages = {
   dashboard: null,
   accounts: accountsPage,
-  resources: null,
+  resources: resourcesPage,
   sync: null,
   cost: null,
   terminal: null,

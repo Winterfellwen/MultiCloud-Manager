@@ -160,6 +160,7 @@ func SetupRouter(authHandler *AuthHandler, jwtSecret string, db *sql.DB, runMgr 
 		auth.POST("/resources/sync", RequireRole("admin", "user"), resourcesHandler.Sync)
 		auth.GET("/resources/sync-logs", RequireRole("admin", "user"), resourcesHandler.SyncLogs)
 		auth.POST("/resources/:id/:action", RequireRole("admin", "user"), resourcesHandler.Action)
+		auth.POST("/resources/batch/:action", RequireRole("admin"), resourcesHandler.BatchAction)
 		auth.GET("/stats", resourcesHandler.Stats)
 
 		// Cloud Events — read: all roles; sync: admin + user
