@@ -14,6 +14,7 @@ type PromptBuilder struct {
 	mode       string
 	skills     []string
 	extras     map[string]string
+	skillTools []string // Tools filtered by active skill
 }
 
 // NewPromptBuilder creates a PromptBuilder with the given base prompt.
@@ -34,6 +35,26 @@ func (b *PromptBuilder) SetMode(mode string) *PromptBuilder {
 func (b *PromptBuilder) AddSkill(skill string) *PromptBuilder {
 	b.skills = append(b.skills, skill)
 	return b
+}
+
+// AddSkillContext adds skill context to the prompt
+func (b *PromptBuilder) AddSkillContext(skillName string, context string) *PromptBuilder {
+	if context == "" {
+		return b
+	}
+	b.extras[fmt.Sprintf("Skill: %s", skillName)] = context
+	return b
+}
+
+// SetSkillTools sets the available tool list for the current skill (for filtering)
+func (b *PromptBuilder) SetSkillTools(tools []string) *PromptBuilder {
+	b.skillTools = tools
+	return b
+}
+
+// GetSkillTools returns the current skill's tool filter list
+func (b *PromptBuilder) GetSkillTools() []string {
+	return b.skillTools
 }
 
 // AddExtra adds an extra named section to the prompt.
@@ -75,6 +96,7 @@ func (b *PromptBuilder) Reset() *PromptBuilder {
 	b.mode = ""
 	b.skills = nil
 	b.extras = make(map[string]string)
+	b.skillTools = nil
 	return b
 }
 
@@ -86,11 +108,14 @@ func (b *PromptBuilder) Clone() *PromptBuilder {
 	}
 	skills := make([]string, len(b.skills))
 	copy(skills, b.skills)
+	skillTools := make([]string, len(b.skillTools))
+	copy(skillTools, b.skillTools)
 	return &PromptBuilder{
 		basePrompt: b.basePrompt,
 		mode:       b.mode,
 		skills:     skills,
 		extras:     extras,
+		skillTools: skillTools,
 	}
 }
 
