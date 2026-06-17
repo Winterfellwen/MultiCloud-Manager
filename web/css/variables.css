@@ -1,0 +1,76 @@
+:root {
+  --primary: #007aff;
+  --primary-hover: #0056b3;
+  --primary-subtle: rgba(0,122,255,.12);
+  --danger: #ff453a;
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --bg: #0c0c0e;
+  --surface: #161618;
+  --surface-hover: #1c1c1f;
+  --border: #38383a;
+  --border-light: #2c2c2e;
+  --text: #ffffff;
+  --text-secondary: #c7c7cc;
+  --text-muted: #a1a1a6;
+  --azure: #0078d4;
+  --aws: #ff9900;
+  --tencent: #00a4ff;
+  --alicloud: #ff6a00;
+  --oracle: #f80000;
+  --render: #46e3b7;
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 1px 4px rgba(0,0,0,.4);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,.5);
+  --font-mono: "Berkeley Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --color-surface-elevated: #1e1e20;
+  --color-info: #5ac8fa;
+  --color-info-subtle: rgba(90,200,250,.12);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md: 0 2px 8px rgba(0,0,0,.4);
+  --shadow-xl: 0 8px 32px rgba(0,0,0,.6);
+
+  --radius-xs: 2px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --transition-fast: 100ms ease;
+  --transition-base: 150ms ease;
+  --transition-slow: 250ms ease;
+
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--primary);
+
+  --modal-backdrop: rgba(0,0,0,.6);
+  --modal-shadow: 0 8px 32px rgba(0,0,0,.5);
+
+  --sidebar-width: 200px;
+  --chat-sidebar-width: 280px;
+}
+html.light {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-hover: #f0f0f2;
+  --border: #d1d1d6;
+  --border-light: #e5e5ea;
+  --text: #1d1d1f;
+  --text-secondary: #3a3a3c;
+  --text-muted: #6e6e73;
+  --shadow: 0 1px 4px rgba(0,0,0,.08);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,.12);
+  --color-surface-elevated: #ffffff;
+  --modal-backdrop: rgba(0,0,0,.4);
+  --modal-shadow: 0 8px 32px rgba(0,0,0,.15);
+}
