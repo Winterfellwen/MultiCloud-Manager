@@ -164,6 +164,13 @@ func (e *Engine) getSkillList() []*Skill {
 	return result
 }
 
+// GetAllSkills returns all skills including disabled ones
+func (e *Engine) GetAllSkills() []*Skill {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.getSkillList()
+}
+
 // Legacy methods for backward compatibility
 
 func (e *Engine) LoadSkillsLegacy(skills map[string]*SkillConfig) {

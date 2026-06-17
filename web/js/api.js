@@ -117,10 +117,17 @@ export const chatAPI = {
 
 export const skillsAPI = {
   list: () => api.get('/skills'),
+  listAll: () => api.get('/skills?all=true'),
   get: (name) => api.get(`/skills/${name}`),
   enable: (name) => api.post(`/skills/${name}/enable`),
   disable: (name) => api.post(`/skills/${name}/disable`),
   updateConfig: (name, config) => api.put(`/skills/${name}/config`, { config }),
+};
+
+export const modelHubAPI = {
+  listProviders: () => api.get('/model-providers'),
+  getConfig: () => api.get('/model-hub'),
+  updateConfig: (config) => api.put('/model-hub', config),
 };
 
 export { api, APIError };

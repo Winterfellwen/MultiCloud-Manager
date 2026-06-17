@@ -6,6 +6,8 @@ import { chatPage } from './pages/chat.js';
 import { resourcesPage } from './pages/resources.js';
 import { costPage } from './pages/cost.js';
 import { terraformPage } from './pages/terraform.js';
+import { skillsPage } from './pages/skills.js';
+import { modelHubPage } from './pages/model_hub.js';
 
 const pages = {
   dashboard: null,
@@ -17,6 +19,8 @@ const pages = {
   chat: chatPage,
   profile: null,
   terraform: terraformPage,
+  skills: skillsPage,
+  model_hub: modelHubPage,
 };
 
 let currentPage = null;

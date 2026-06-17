@@ -17,8 +17,13 @@ func NewSkillHandler(engine *skill.Engine) *SkillHandler {
 	return &SkillHandler{engine: engine}
 }
 
-// ListSkills lists all skills
+// ListSkills lists all skills (with optional ?all=true to include disabled)
 func (h *SkillHandler) ListSkills(c *gin.Context) {
+	if c.Query("all") == "true" {
+		skills := h.engine.GetAllSkills()
+		c.JSON(http.StatusOK, gin.H{"skills": skills})
+		return
+	}
 	skills := h.engine.GetActiveSkills()
 	c.JSON(http.StatusOK, gin.H{"skills": skills})
 }
