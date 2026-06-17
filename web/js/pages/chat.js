@@ -31,6 +31,16 @@ export const chatPage = {
         <div class="chat-main">
           <div class="chat-messages" id="chatMessages"></div>
           <div class="chat-input-area">
+            <div class="chat-input-toolbar">
+              <button class="chat-tool-btn" id="voiceInputBtn" title="Voice input">
+                <svg width="16" height="16"><use href="/static/icons.svg#icon-mic"/></svg>
+              </button>
+              <button class="chat-tool-btn" id="screenshotBtn" title="Attach screenshot">
+                <svg width="16" height="16"><use href="/static/icons.svg#icon-image"/></svg>
+              </button>
+              <input type="file" id="screenshotInput" accept="image/*" style="display:none" />
+              <div class="chat-attachments" id="chatAttachments"></div>
+            </div>
             <textarea class="chat-input" id="chatInput" placeholder="Type your message... (Shift+Enter for newline, Enter to send)"></textarea>
             <button class="chat-send-btn" id="chatSendBtn">
               <svg width="18" height="18"><use href="/static/icons.svg#icon-send"/></svg>
@@ -49,6 +59,11 @@ export const chatPage = {
     this.stopBtn = page.querySelector('#chatStopBtn');
     this.sessionsList = page.querySelector('.chat-sessions-list');
     this.newChatBtn = page.querySelector('.new-chat-btn');
+    this.voiceBtn = page.querySelector('#voiceInputBtn');
+    this.screenshotBtn = page.querySelector('#screenshotBtn');
+    this.screenshotInput = page.querySelector('#screenshotInput');
+    this.attachmentsEl = page.querySelector('#chatAttachments');
+    this.pendingAttachments = []; // { type: 'image', data: base64 }
   },
 
   bindEvents() {
@@ -74,6 +89,13 @@ export const chatPage = {
       this.inputEl.style.height = 'auto';
       this.inputEl.style.height = Math.min(this.inputEl.scrollHeight, 200) + 'px';
     });
+
+    // Voice input
+    this.voiceBtn?.addEventListener('click', () => this.toggleVoiceInput());
+
+    // Screenshot upload
+    this.screenshotBtn?.addEventListener('click', () => this.screenshotInput?.click());
+    this.screenshotInput?.addEventListener('change', (e) => this.handleImageUpload(e));
   },
 
   async loadSessions() {
@@ -327,8 +349,139 @@ export const chatPage = {
     Toast.info('Generation stopped');
   },
 
+  // ========== Voice Input ==========
+  toggleVoiceInput() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      Toast.error('Speech recognition not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
+
+    if (this.isRecording) {
+      this.stopVoiceInput();
+      return;
+    }
+
+    this.startVoiceInput();
+  },
+
+  startVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'zh-CN';
+
+    this.recognition.onstart = () => {
+      this.isRecording = true;
+      this.voiceBtn?.classList.add('recording');
+      Toast.info('Listening... Click again to stop');
+    };
+
+    this.recognition.onresult = (e) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (this.inputEl) {
+        const current = this.inputEl.value;
+        // Remove previous interim text (simple heuristic)
+        const base = current.replace(/\[\.\.\.\].*$/, '').trim();
+        if (finalTranscript) {
+          this.inputEl.value = base ? base + ' ' + finalTranscript : finalTranscript;
+        } else if (interimTranscript) {
+          this.inputEl.value = base ? base + ' [...] ' + interimTranscript : interimTranscript;
+        }
+        this.inputEl.dispatchEvent(new Event('input'));
+      }
+    };
+
+    this.recognition.onerror = (e) => {
+      if (e.error !== 'aborted') {
+        Toast.error(`Voice input error: ${e.error}`);
+      }
+      this.stopVoiceInput();
+    };
+
+    this.recognition.onend = () => {
+      this.stopVoiceInput();
+    };
+
+    this.recognition.start();
+  },
+
+  stopVoiceInput() {
+    if (this.recognition) {
+      this.recognition.stop();
+      this.recognition = null;
+    }
+    this.isRecording = false;
+    this.voiceBtn?.classList.remove('recording');
+    // Clean up interim markers
+    if (this.inputEl) {
+      this.inputEl.value = this.inputEl.value.replace(/\s*\[\.\.\.\]\s*/g, ' ').trim();
+    }
+  },
+
+  // ========== Image Upload / Screenshot ==========
+  handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      Toast.error('Image too large. Max 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target.result;
+      this.pendingAttachments.push({ type: 'image', data: base64, name: file.name });
+      this.renderAttachments();
+      Toast.success('Image attached');
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    e.target.value = '';
+  },
+
+  renderAttachments() {
+    if (!this.attachmentsEl) return;
+
+    if (this.pendingAttachments.length === 0) {
+      this.attachmentsEl.innerHTML = '';
+      return;
+    }
+
+    this.attachmentsEl.innerHTML = this.pendingAttachments.map((att, idx) => `
+      <div class="chat-attachment">
+        <img src="${att.data}" alt="attachment" />
+        <button class="attachment-remove" data-idx="${idx}">&times;</button>
+      </div>
+    `).join('');
+
+    this.attachmentsEl.querySelectorAll('.attachment-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.currentTarget.dataset.idx);
+        this.pendingAttachments.splice(idx, 1);
+        this.renderAttachments();
+      });
+    });
+  },
+
   destroy() {
-    // Cleanup if needed
+    if (this.recognition) {
+      this.recognition.stop();
+      this.recognition = null;
+    }
   }
 };
 
