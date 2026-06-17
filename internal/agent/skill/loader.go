@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"multicloud/internal/agent/mcp"
 )
@@ -54,4 +55,38 @@ func SaveToFile(path string, cfg *ConfigFile) error {
 		return fmt.Errorf("write config file: %w", err)
 	}
 	return nil
+}
+
+// LoadSkillsFromDir loads all SKILL.md files from a directory
+func LoadSkillsFromDir(dir string) ([]*Skill, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // Directory does not exist, return empty list
+		}
+		return nil, fmt.Errorf("read skills dir %s: %w", dir, err)
+	}
+
+	var skills []*Skill
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		skillPath := filepath.Join(dir, entry.Name(), "SKILL.md")
+		if _, err := os.Stat(skillPath); os.IsNotExist(err) {
+			continue
+		}
+
+		skill, err := ParseSKILLFile(skillPath)
+		if err != nil {
+			// Log error but continue loading other skills
+			fmt.Printf("WARN: failed to load skill from %s: %v\n", skillPath, err)
+			continue
+		}
+
+		skills = append(skills, skill)
+	}
+
+	return skills, nil
 }
