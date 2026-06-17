@@ -1,24 +1,49 @@
-# Stage 1: build Go binary
-FROM golang:1.25-alpine AS go-builder
-WORKDIR /src
-ENV GOPROXY=https://goproxy.cn,direct \
-    GOSUMDB=sum.golang.org
+# Multi-stage build for Go + static web assets
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
 COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/multicloud .
 
-# Stage 2: runtime (static HTML frontend, no build step at 3794a4909)
-FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata curl jq && adduser -D -u 1000 app && mkdir -p /home/shell && chown app:app /home/shell
+# Copy source code
+COPY . .
+
+# Build the Go binary
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o bin/multicloud main.go
+
+# Production stage
+FROM alpine:3.19
+
 WORKDIR /app
-COPY --from=go-builder /out/multicloud /app/multicloud
-COPY web /app/web
-COPY docs /app/docs
-USER app
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -qO- http://localhost:${PORT:-8088}/api/health || exit 1
-EXPOSE 8088
-ENV PORT=8088 \
-    GIN_MODE=release \
-    ENVIRONMENT=development
+
+# Install ca-certificates for HTTPS requests to cloud APIs
+RUN apk add --no-cache ca-certificates
+
+# Create non-root user
+RUN adduser -D -u 1000 appuser
+
+# Copy binary and web assets
+COPY --from=builder /app/bin/multicloud /app/multicloud
+COPY --from=builder /app/web /app/web
+COPY --from=builder /app/skills /app/skills
+
+# Create data directory
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8099
+
+ENV ENVIRONMENT=production
+ENV PORT=8099
+ENV DB_PATH=/app/data/multicloud.db
+ENV SKILLS_DIR=/app/skills
+
+VOLUME ["/app/data"]
+
 ENTRYPOINT ["/app/multicloud"]

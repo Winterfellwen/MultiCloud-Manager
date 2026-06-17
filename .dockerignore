@@ -1,35 +1,25 @@
-# Git & IDE
+# Build artifacts
+bin/
+web/dist/
+*.db
+
+# Git
 .git/
 .gitignore
+
+# IDE
 .vscode/
 .idea/
 
-# Env & secrets
-.env*
-*.pem
-*.key
-*.pkcs12
-*.crt
-*.csr
+# OS
+.DS_Store
+Thumbs.db
 
-# Tests & reports
-tests/
-test-results/
-playwright-report/
-playwright.config.ts
-
-# CI/CD
-.github/
-render.yaml
-run.sh
-
-# Node (not needed in Go binary image)
-node_modules/
-package*.json
-
-# Misc
-.trae/
-.playwright-mcp/
-project.config.json
-project.private.config.json
+# Logs
 *.log
+
+# Test coverage
+coverage.out
+
+# Local env
+.env
