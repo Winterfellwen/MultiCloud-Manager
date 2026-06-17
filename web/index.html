@@ -320,7 +320,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg { padding: 12px 20px; font-size: 13px; line-height: 1.6; position: relative; }
 
 /* User message — compact bubble, right-aligned */
-.msg.user { display: flex; flex-direction: column; align-items: flex-end; padding: 6px 20px; position: relative; }
+.msg.user { display: flex; flex-direction: column; align-items: flex-end; padding: 6px 20px 32px; position: relative; }
 .msg.user .msg-bubble { max-width: 75%; background: var(--primary); color: #fff; border-radius: 12px; padding: 10px 14px; border-bottom-right-radius: 4px; }
 .msg.user .msg-bubble p { margin: 0; }
 .msg.user .msg-bubble code { background: rgba(255,255,255,.15); color: #fff; }
@@ -329,7 +329,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg.user .msg-role { display: none; }
 
 /* Agent message — left side with accent bar for alternating layout */
-.msg.agent { padding: 14px 20px 14px 16px; border-bottom: 1px solid var(--border-light); border-left: 3px solid var(--primary); margin: 0; }
+.msg.agent { padding: 14px 20px 36px 16px; border-bottom: 1px solid var(--border-light); border-left: 3px solid var(--primary); margin: 0; }
 .msg.agent:last-child { border-bottom: none; }
 .msg.agent .msg-content { color: var(--text); max-width: 100%; }
 
@@ -343,7 +343,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .msg.agent { position: relative; }
 .msg-agent-copy {
   position: absolute;
-  top: 2px;
+  bottom: 2px;
   right: 2px;
   display: inline-flex;
   align-items: center;
@@ -356,16 +356,15 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
-  opacity: 0;
+  opacity: 1;
   transition: opacity .12s, color .12s, border-color .12s, background .12s;
   text-transform: none;
   letter-spacing: 0;
   user-select: none;
   min-height: auto;
   min-width: auto;
+  z-index: 2;
 }
-.msg.agent:hover .msg-agent-copy,
-.msg-agent-copy:focus-visible { opacity: 1; min-height: auto; }
 .msg-agent-copy:hover { color: var(--primary); border-color: var(--primary); min-height: auto; }
 .msg-agent-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; min-height: auto; }
 .msg-agent-copy.error { color: #dc2626; border-color: #dc2626; opacity: 1; min-height: auto; }
@@ -373,7 +372,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
 .msg-user-copy {
   position: absolute;
-  top: 2px;
+  bottom: 2px;
   right: 2px;
   display: inline-flex;
   align-items: center;
@@ -386,16 +385,15 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
-  opacity: 0;
+  opacity: 1;
   transition: opacity .12s, color .12s, border-color .12s, background .12s;
   text-transform: none;
   letter-spacing: 0;
   user-select: none;
   min-height: auto;
   min-width: auto;
+  z-index: 2;
 }
-.msg.user:hover .msg-user-copy,
-.msg-user-copy:focus-visible { opacity: 1; min-height: auto; }
 .msg-user-copy:hover { color: var(--primary); border-color: var(--primary); min-height: auto; }
 .msg-user-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; min-height: auto; }
 .msg-user-copy.error { color: #dc2626; border-color: #dc2626; opacity: 1; min-height: auto; }
@@ -422,6 +420,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tool-card-copy.copied { color: #16a34a; border-color: #16a34a; opacity: 1; }
 
 .msg-time { font-size: 12px; color: var(--text-muted); margin-top: 5px; opacity: 0.85; min-height: auto; }
+.msg.agent .msg-time { padding-right: 32px; }
 .msg.user .msg-time { text-align: right; }
 .msg-content { color: var(--text); min-height: auto; }
 .msg-content p { margin: 2px 0; min-height: auto; }
@@ -478,7 +477,7 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .inline-status .thinking-dots::after { content: ''; animation: streamDots 1.5s steps(4, end) infinite; }
 
 /* Streaming status bar — always at bottom of STREAMING_DIV */
-.streaming-status { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 4px; }
+.streaming-status { display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 4px; padding-right: 36px; }
 .streaming-status svg { width: 14px; height: 14px; animation: statusPulse 1.5s ease-in-out infinite; }
 
 /* Tool calls - inline display */
