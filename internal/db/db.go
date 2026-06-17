@@ -52,7 +52,7 @@ func initPostgres(dsn string) (*Database, error) {
 
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(10)
-	db.SetConnMaxIdleConns(2 * time.Hour)
+	db.SetConnMaxIdleTime(2 * time.Hour)
 	db.SetConnMaxLifetime(30 * time.Minute)
 
 	d := &Database{db}
