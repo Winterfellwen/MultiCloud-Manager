@@ -4,13 +4,14 @@ import { Toast } from './components/toast.js';
 import { accountsPage } from './pages/accounts.js';
 import { chatPage } from './pages/chat.js';
 import { resourcesPage } from './pages/resources.js';
+import { costPage } from './pages/cost.js';
 
 const pages = {
   dashboard: null,
   accounts: accountsPage,
   resources: resourcesPage,
   sync: null,
-  cost: null,
+  cost: costPage,
   terminal: null,
   chat: chatPage,
   profile: null,
