@@ -5,6 +5,7 @@ import { accountsPage } from './pages/accounts.js';
 import { chatPage } from './pages/chat.js';
 import { resourcesPage } from './pages/resources.js';
 import { costPage } from './pages/cost.js';
+import { terraformPage } from './pages/terraform.js';
 
 const pages = {
   dashboard: null,
@@ -15,6 +16,7 @@ const pages = {
   terminal: null,
   chat: chatPage,
   profile: null,
+  terraform: terraformPage,
 };
 
 let currentPage = null;

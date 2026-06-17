@@ -1879,3 +1879,15 @@ button.is-loading::after { content: ''; display: inline-block; width: 12px; heig
 .suggestion-title { font-size: 13px; font-weight: 500; }
 .suggestion-description { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
 .suggestion-meta { display: flex; gap: 16px; font-size: 11px; color: var(--text-muted); }
+
+/* === Terraform Page Styles === */
+.tf-toolbar { margin-bottom: 16px; }
+.tf-templates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.tf-template-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.tf-template-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tf-template-name { font-size: 14px; font-weight: 500; }
+.tf-template-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.tf-template-actions { display: flex; gap: 4px; }
+.tf-template-actions .btn-icon { width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); }
+.tf-destroy-btn:hover { color: var(--danger); background: rgba(255,69,58,.1); }
+.tf-empty { grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--text-muted); }
