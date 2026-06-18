@@ -14,10 +14,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "baseUrl": ".",
-    "paths": {
-      "@cloudops/shared": ["../shared/src"]
-    },
     "customConditions": ["node"]
   },
   "include": ["src/**/*"],
