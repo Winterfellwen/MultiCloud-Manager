@@ -43,9 +43,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./auth-service:/app
-      - /app/node_modules
 
   api-gateway:
     build:

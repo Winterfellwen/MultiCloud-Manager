@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { config } from './config.js';
+import { runMigrations } from './db/migrate.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { auditRoutes } from './routes/audit.js';
@@ -9,6 +10,8 @@ import { AppError } from '@cloudops/shared';
 const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: config.corsOrigin });
+
+await runMigrations();
 
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof AppError) {

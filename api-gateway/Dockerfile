@@ -1,19 +1,20 @@
-# api-gateway/Dockerfile
 FROM node:22-alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache python3 make g++ && npm install -g pnpm
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY shared/package.json shared/tsconfig.json ./shared/
 COPY api-gateway/package.json api-gateway/tsconfig.json ./api-gateway/
 
-RUN cd shared && npm install
-RUN cd api-gateway && npm install
+RUN pnpm install --filter=@cloudops/shared --filter=@cloudops/api-gateway --dangerously-allow-all-builds
 
 COPY shared/ ./shared/
 COPY api-gateway/ ./api-gateway/
 
-RUN cd shared && npm run build
-RUN cd api-gateway && npm run build
+RUN cd shared && pnpm run build
+RUN cd api-gateway && pnpm run build
 
 WORKDIR /app/api-gateway
 

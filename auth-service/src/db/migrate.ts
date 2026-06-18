@@ -1,14 +1,36 @@
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { sql } from 'drizzle-orm';
 import { db } from './index.js';
 
-async function main() {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, '..');
+const migrationsDir = join(__dirname, '..', 'migrations');
+
+export async function runMigrations(): Promise<void> {
   console.log('Running migrations...');
-  await migrate(db, { migrationsFolder: './migrations' });
+  
+  const files = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+  
+  for (const file of files) {
+    console.log(`Applying migration: ${file}`);
+    const sqlText = readFileSync(join(migrationsDir, file), 'utf-8');
+    await db.execute(sql.raw(sqlText));
+  }
+  
   console.log('Migrations complete.');
+}
+
+async function main() {
+  await runMigrations();
   process.exit(0);
 }
 
-main().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+// Only run if executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error('Migration failed:', err);
+    process.exit(1);
+  });
+}
