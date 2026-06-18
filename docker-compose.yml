@@ -69,6 +69,18 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       PORT: 3001
+      # Cloud Provider credentials
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ROLE_ARN: ${AWS_ROLE_ARN:-}
+      ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID:-}
+      ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET:-}
+      ALIYUN_REGION: ${ALIYUN_REGION:-cn-hangzhou}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+      AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,11 +97,22 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       PORT: 3002
+      CLOUD_SERVICE_URL: http://cloud-service:3001
+      METRIC_COLLECT_INTERVAL: 300
+      ALERT_CHECK_INTERVAL: 60
+      COST_COLLECT_INTERVAL: 86400
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-cloudops@noreply.com}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cloud-service:
+        condition: service_started
 
   ai-agent:
     build:
@@ -101,11 +124,54 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       PORT: 3003
+      JWT_SECRET: ${JWT_SECRET}
+      CLOUD_SERVICE_URL: http://cloud-service:3001
+      MONITOR_SERVICE_URL: http://monitor-service:3002
+      AUTH_SERVICE_URL: http://auth-service:3004
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.3}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-4096}
+      AGENT_MAX_ITERATIONS: ${AGENT_MAX_ITERATIONS:-10}
+      AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-120000}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      cloud-service:
+        condition: service_started
+      monitor-service:
+        condition: service_started
+
+  ai-gateway:
+    build:
+      context: .
+      dockerfile: ai-gateway/Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      AI_GATEWAY_PORT: "3005"
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.3}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-4096}
+      CLOUD_SERVICE_URL: http://cloud-service:3001
+      MONITOR_SERVICE_URL: http://monitor-service:3002
+      ACP_MAX_CONCURRENT_SESSIONS: "10"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ai-gateway-data:/app/ai-gateway/data
+    restart: unless-stopped
 
   worker:
     build:
@@ -123,3 +189,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  ai-gateway-data:

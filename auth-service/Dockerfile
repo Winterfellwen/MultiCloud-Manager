@@ -9,13 +9,13 @@ COPY shared/package.json shared/tsconfig.json ./shared/
 COPY auth-service/package.json auth-service/tsconfig.json ./auth-service/
 COPY auth-service/migrations ./auth-service/migrations/
 
-RUN pnpm install --filter=@cloudops/shared --filter=@cloudops/auth-service --dangerously-allow-all-builds
+RUN pnpm install --filter=@cloudops/shared --filter=@cloudops/auth-service --dangerously-allow-all-builds --config.minimumReleaseAge=0
 
 COPY shared/ ./shared/
 COPY auth-service/ ./auth-service/
 
-RUN cd shared && pnpm run build
-RUN cd auth-service && pnpm run build
+RUN cd shared && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
+RUN cd auth-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 
 RUN cp -r auth-service/migrations auth-service/dist/migrations
 

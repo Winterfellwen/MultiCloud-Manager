@@ -5,4 +5,5 @@ packages:
   - 'cloud-service'
   - 'monitor-service'
   - 'ai-agent'
+  - 'ai-gateway'
   - 'worker'

@@ -14,7 +14,7 @@ const routes: ProxyRoute[] = [
   { prefix: '/audit', target: config.authServiceUrl, requireAuth: true },
   { prefix: '/cloud', target: config.cloudServiceUrl, requireAuth: true },
   { prefix: '/monitor', target: config.monitorServiceUrl, requireAuth: true },
-  { prefix: '/ai', target: config.aiAgentUrl, requireAuth: true },
+  { prefix: '/agent', target: config.aiAgentUrl, requireAuth: true },
 ];
 
 export async function proxyRoutes(app: FastifyInstance) {
