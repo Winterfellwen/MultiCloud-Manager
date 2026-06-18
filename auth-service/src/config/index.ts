@@ -11,6 +11,7 @@ const configSchema = z.object({
   adminPassword: z.string().min(8).default('Test.1234'),
   environment: z.enum(['development', 'production', 'test']).default('development'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  corsOrigin: z.string().default('*'),
 });
 
 export type Config = z.infer<typeof configSchema>;

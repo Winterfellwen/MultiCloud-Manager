@@ -29,6 +29,7 @@ export interface CreateAuditLogInput {
 export interface AuditLogQuery {
   userId?: string;
   action?: string;
+  resourceType?: string;
   provider?: string;
   startDate?: Date;
   endDate?: Date;
