@@ -1,0 +1,94 @@
+<h2>方案 B 详细架构</h2>
+<p class="subtitle">微服务 + AI Gateway — 多平台云管理系统</p>
+
+<div class="mockup">
+  <div class="mockup-header">系统架构图</div>
+  <div class="mockup-body" style="padding:20px; font-family:monospace; font-size:12px; line-height:1.7;">
+    <div style="text-align:center; margin-bottom:16px;">
+      <div style="display:inline-block; padding:8px 24px; background:#3b82f6; border-radius:8px; font-weight:bold;">
+        Web 管理控制台 (Vue3 + TypeScript)
+      </div>
+    </div>
+    <div style="text-align:center; color:#666; margin-bottom:8px;">↓ HTTP/WS ↓</div>
+    <div style="text-align:center; margin-bottom:16px;">
+      <div style="display:inline-block; padding:8px 24px; background:#8b5cf6; border-radius:8px; font-weight:bold;">
+        API Gateway (Kong / Nginx)
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; justify-content:center; margin-bottom:16px;">
+      <div style="flex:1; max-width:180px; padding:12px; background:#065f46; border-radius:8px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Cloud Service</div>
+        <div style="font-size:11px; color:#a7f3d0;">
+          资源 CRUD<br>
+          Provider Adapter<br>
+          缓存层 (SQLite)<br>
+          任务队列
+        </div>
+      </div>
+      <div style="flex:1; max-width:180px; padding:12px; background:#92400e; border-radius:8px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Monitor Service</div>
+        <div style="font-size:11px; color:#fde68a;">
+          指标采集<br>
+          告警引擎<br>
+          成本分析<br>
+          优化建议
+        </div>
+      </div>
+      <div style="flex:1; max-width:180px; padding:12px; background:#7c2d12; border-radius:8px;">
+        <div style="font-weight:bold; margin-bottom:8px;">AI Agent Service</div>
+        <div style="font-size:11px; color:#fed7aa;">
+          NLP 理解<br>
+          意图→操作映射<br>
+          对话管理<br>
+          (OpenClaw 改造)
+        </div>
+      </div>
+      <div style="flex:1; max-width:180px; padding:12px; background:#581c87; border-radius:8px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Auth Service</div>
+        <div style="font-size:11px; color:#ddd6fe;">
+          RBAC 权限<br>
+          审计日志<br>
+          SSO 集成<br>
+          API Key 管理
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center; color:#666; margin-bottom:8px;">↓ ↓ ↓</div>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <div style="padding:6px 12px; background:#1e3a5f; border-radius:6px; font-size:11px;">AWS</div>
+      <div style="padding:6px 12px; background:#1e3a5f; border-radius:6px; font-size:11px;">阿里云</div>
+      <div style="padding:6px 12px; background:#1e3a5f; border-radius:6px; font-size:11px;">腾讯云</div>
+      <div style="padding:6px 12px; background:#1e3a5f; border-radius:6px; font-size:11px;">Azure</div>
+      <div style="padding:6px 12px; background:#1e3a5f; border-radius:6px; font-size:11px;">Oracle Cloud</div>
+      <div style="padding:6px 12px; background:#1e3a5f; border-radius:6px; font-size:11px;">Render</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;">
+  <h3>核心改造点</h3>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+    <div style="padding:12px; background:rgba(255,255,255,0.05); border-radius:8px;">
+      <div style="color:#60a5fa; font-weight:bold; margin-bottom:6px;">OpenClaw 复用部分</div>
+      <ul style="font-size:12px; margin:0; padding-left:16px;">
+        <li>Agent Runtime（NLP 理解层）</li>
+        <li>Session 管理（对话上下文）</li>
+        <li>Skill 系统（操作工作流）</li>
+        <li>WebSocket 协议（实时通信）</li>
+        <li>部分 UI 组件</li>
+      </ul>
+    </div>
+    <div style="padding:12px; background:rgba(255,255,255,0.05); border-radius:8px;">
+      <div style="color:#f59e0b; font-weight:bold; margin-bottom:6px;">需要新增/改造部分</div>
+      <ul style="font-size:12px; margin:0; padding-left:16px;">
+        <li>Cloud Provider Adapter 层</li>
+        <li>资源缓存 + 同步引擎</li>
+        <li>监控指标采集管道</li>
+        <li>告警规则引擎</li>
+        <li>成本分析聚合器</li>
+        <li>RBAC + 审计日志</li>
+        <li>Dashboard 管理控制台</li>
+      </ul>
+    </div>
+  </div>
+</div>

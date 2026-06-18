@@ -8,5 +8,4 @@ export const config = {
   monitorServiceUrl: process.env.MONITOR_SERVICE_URL || 'http://localhost:3002',
   aiAgentUrl: process.env.AI_AGENT_URL || 'http://localhost:3003',
   jwtSecret: process.env.JWT_SECRET!,
-  corsOrigin: process.env.CORS_ORIGIN || '*',
 };

@@ -1,16 +1,14 @@
-import type { Request, Response } from 'express';
-import { config } from '../config';
+import type { FastifyInstance } from 'fastify';
+import { config } from '../config.js';
 
-export function healthRoutes(app: any) {
-  app.get('/health', async (req: Request, res: Response) => {
-    res.json({
-      status: 'ok',
-      service: 'api-gateway',
-      timestamp: new Date().toISOString(),
-    });
-  });
+export async function healthRoutes(app: FastifyInstance) {
+  app.get('/health', async () => ({
+    status: 'ok',
+    service: 'api-gateway',
+    timestamp: new Date().toISOString(),
+  }));
 
-  app.get('/health/all', async (req: Request, res: Response) => {
+  app.get('/health/all', async (request, reply) => {
     const services = [
       { name: 'auth-service', url: config.authServiceUrl },
       { name: 'cloud-service', url: config.cloudServiceUrl },
@@ -32,9 +30,6 @@ export function healthRoutes(app: any) {
       }
     }
 
-    res.json({
-      status: 'ok',
-      services: results,
-    });
+    return { status: 'ok', services: results };
   });
 }

@@ -1,111 +1,73 @@
-import bcrypt from 'bcryptjs';
-import { queryOne, query, execute } from '../db/client';
-import { signAccessToken, signRefreshToken, verifyRefreshToken, generateTokenPair, type TokenPayload } from '../auth/jwt';
+import bcrypt from 'bcrypt';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { signAccessToken, signRefreshToken, verifyToken } from '../utils/jwt.js';
 import { UnauthorizedError, ConflictError, NotFoundError } from '@cloudops/shared';
-import type { CreateUserInput, LoginInput, UserRole } from '@cloudops/shared';
+import type { CreateUserInput, LoginInput, AuthTokens, UserRole } from '@cloudops/shared';
 
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = 10;
 
 export class AuthService {
   async register(input: CreateUserInput): Promise<{ id: string; username: string; role: UserRole }> {
-    const existing = await queryOne<{ id: string }>(
-      'SELECT id FROM users WHERE username = $1 OR email = $2',
-      [input.username, input.email]
-    );
-    
-    if (existing) {
-      throw new ConflictError(`Username "${input.username}" or email "${input.email}" already exists`);
+    const existing = await db.select().from(users).where(eq(users.username, input.username)).limit(1);
+    if (existing.length > 0) {
+      throw new ConflictError(`Username "${input.username}" already exists`);
     }
 
     const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-    const result = await queryOne<{ id: string; username: string; role: string }>(
-      `INSERT INTO users (username, email, password_hash, role) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING id, username, role`,
-      [input.username, input.email, passwordHash, input.role || 'viewer']
-    );
+    const result = await db.insert(users).values({
+      username: input.username,
+      email: input.email,
+      passwordHash,
+      role: input.role || 'viewer',
+    }).returning({ id: users.id, username: users.username, role: users.role });
 
-    if (!result) {
-      throw new Error('Failed to create user');
-    }
-
-    return { id: result.id, username: result.username, role: result.role as UserRole };
+    return result[0] as { id: string; username: string; role: UserRole };
   }
 
-  async login(input: LoginInput, ip?: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-    const user = await queryOne<{ id: string; username: string; password_hash: string; role: string }>(
-      'SELECT id, username, password_hash, role FROM users WHERE username = $1 AND is_active = true',
-      [input.username]
-    );
-
-    if (!user) {
-      await this.logAudit(null, 'login', 'user', null, { username: input.username }, 'failure', ip);
+  async login(input: LoginInput, ip?: string): Promise<AuthTokens> {
+    const result = await db.select().from(users).where(eq(users.username, input.username)).limit(1);
+    if (result.length === 0) {
       throw new UnauthorizedError('Invalid username or password');
     }
 
-    const valid = await bcrypt.compare(input.password, user.password_hash);
+    const user = result[0];
+    const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) {
-      await this.logAudit(user.id, 'login', 'user', null, { username: input.username }, 'failure', ip);
       throw new UnauthorizedError('Invalid username or password');
     }
 
-    await execute(
-      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [user.id]
-    );
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
-    const tokenPayload: Omit<TokenPayload, 'exp' | 'iat' | 'typ' | 'iss' | 'aud'> = {
-      sub: user.id,
-      username: user.username,
-      role: user.role,
+    const tokenPayload = { sub: user.id, username: user.username, role: user.role as UserRole };
+    const accessToken = signAccessToken(tokenPayload);
+    const refreshToken = signRefreshToken(tokenPayload);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 86400,
     };
-
-    const tokens = await generateTokenPair(tokenPayload);
-
-    await this.logAudit(user.id, 'login', 'user', user.id, { username: user.username }, 'success', ip);
-
-    return tokens;
   }
 
-  async refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-    const payload = await verifyRefreshToken(refreshToken);
-    
-    const user = await queryOne<{ id: string; username: string; role: string }>(
-      'SELECT id, username, role FROM users WHERE id = $1 AND is_active = true',
-      [payload.sub]
-    );
-
-    if (!user) {
+  async refresh(refreshToken: string): Promise<AuthTokens> {
+    const payload = verifyToken(refreshToken);
+    const result = await db.select().from(users).where(eq(users.id, payload.sub)).limit(1);
+    if (result.length === 0) {
       throw new NotFoundError('User', payload.sub);
     }
 
-    const tokenPayload: Omit<TokenPayload, 'exp' | 'iat' | 'typ' | 'iss' | 'aud'> = {
-      sub: user.id,
-      username: user.username,
-      role: user.role,
+    const user = result[0];
+    const tokenPayload = { sub: user.id, username: user.username, role: user.role as UserRole };
+    const newAccessToken = signAccessToken(tokenPayload);
+    const newRefreshToken = signRefreshToken(tokenPayload);
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      expiresIn: 86400,
     };
-
-    const tokens = await generateTokenPair(tokenPayload);
-
-    await this.logAudit(user.id, 'token_refresh', 'user', user.id, { username: user.username }, 'success');
-
-    return tokens;
-  }
-
-  private async logAudit(
-    userId: string | null,
-    action: string,
-    resourceType: string | null,
-    resourceId: string | null,
-    details: Record<string, unknown>,
-    result: 'success' | 'failure',
-    ip?: string
-  ): Promise<void> {
-    await execute(
-      `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, success, ip_address) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, action, resourceType, resourceId, JSON.stringify(details), result, ip]
-    );
   }
 }
 

@@ -1,0 +1,99 @@
+<h2>选择架构方案</h2>
+<p class="subtitle">三种方式利用 OpenClaw 构建多平台云管理系统</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>方案 A：Gateway + Cloud Plugin（推荐）</h3>
+      <p><strong>思路：</strong>保留 OpenClaw 的 Gateway 和 Agent 核心，将云管理封装为 Plugin 集群</p>
+      <div style="margin-top:12px; padding:12px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:13px;">
+        <div style="margin-bottom:8px; color:#60a5fa;">架构层次：</div>
+        <code style="font-size:12px; line-height:1.6; display:block; white-space:pre;">┌─────────────────────────────────┐
+│  OpenClaw UI (WebChat 扩展)      │
+├─────────────────────────────────┤
+│  Gateway (WebSocket API)         │
+│  ├── Agent Runtime               │
+│  ├── Session Manager             │
+│  └── Plugin Loader               │
+├─────────────────────────────────┤
+│  Cloud Provider Plugins          │
+│  ├── aws-plugin                  │
+│  ├── aliyun-plugin               │
+│  ├── azure-plugin                │
+│  ├── tencent-cloud-plugin        │
+│  ├── oracle-cloud-plugin         │
+│  └── render-plugin               │
+├─────────────────────────────────┤
+│  Cloud Agent Skills              │
+│  ├── resource-ops (NLP→API)      │
+│  ├── monitoring (告警+优化)       │
+│  └── auto-ops (自动扩缩/自愈)     │
+└─────────────────────────────────┘</code>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>复用 Gateway/Agent/Session 全部能力</li><li>Plugin 架构天然支持多云扩展</li><li>AI 对话能力开箱即用</li><li>UI 工作量最小</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>OpenClaw 是单用户设计，需改造多租户</li><li>Agent 面向对话，需适配运维场景</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>方案 B：微服务 + AI Gateway</h3>
+      <p><strong>思路：</strong>拆成独立微服务，OpenClaw 仅作为 AI Agent 层</p>
+      <div style="margin-top:12px; padding:12px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:13px;">
+        <div style="margin-bottom:8px; color:#60a5fa;">架构层次：</div>
+        <code style="font-size:12px; line-height:1.6; display:block; white-space:pre;">┌─────────────────────────────────┐
+│  Vue/React 管理控制台             │
+├─────────────────────────────────┤
+│  API Gateway (Kong/Nginx)        │
+├──────┬──────────┬───────────────┤
+│ Cloud│ Monitor  │ AI Agent      │
+│ Svc  │ Service  │ (OpenClaw)    │
+├──────┼──────────┼───────────────┤
+│ AWS  │Prometheus│ NLP → 操作     │
+│Aliyun│Grafana   │ 监控分析       │
+│Azure │  ...     │ 自动化决策     │
+│ ...  │          │               │
+└──────┴──────────┴───────────────┘</code>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>各服务独立部署扩展</li><li>监控栈成熟（Prometheus+Grafana）</li><li>企业级架构更标准</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>工作量大 3-5 倍</li><li>OpenClaw 复用率低</li><li>需要 K8s 部署自己（吃自己的狗粮问题）</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>方案 C：混合架构</h3>
+      <p><strong>思路：</strong>OpenClaw 做入口 + AI 层，云管理逻辑作为独立服务运行</p>
+      <div style="margin-top:12px; padding:12px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:13px;">
+        <div style="margin-bottom:8px; color:#60a5fa;">架构层次：</div>
+        <code style="font-size:12px; line-height:1.6; display:block; white-space:pre;">┌─────────────────────────────────┐
+│  OpenClaw UI (扩展 Chat+Dashboard)│
+├─────────────────────────────────┤
+│  OpenClaw Gateway                │
+│  ├── Agent (NLP 理解)            │
+│  └── Session                     │
+├─────────────────────────────────┤
+│  Cloud Management Service (CMS)  │
+│  ├── REST API                    │
+│  ├── Provider Adapters           │
+│  ├── Resource Cache (SQLite)     │
+│  └── Monitor Engine              │
+├─────────────────────────────────┤
+│  Provider Adapters               │
+│  AWS / Aliyun / Azure / ...      │
+└─────────────────────────────────┘</code>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>优势</h4><ul><li>AI 和云管理职责清晰</li><li>CMS 可独立测试和部署</li><li>保留 OpenClaw 对话体验</li></ul></div>
+        <div class="cons"><h4>劣势</h4><ul><li>两套服务需要协调</li><li>通信开销增加</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

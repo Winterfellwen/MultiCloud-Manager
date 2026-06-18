@@ -1,25 +1,23 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { FastifyInstance } from 'fastify';
 
-export function loggerMiddleware(req: Request, res: Response, next: NextFunction) {
-  const startTime = Date.now();
-  const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
-  
-  (req as any).requestId = requestId;
-  (req as any).startTime = startTime;
-  
-  res.setHeader('X-Request-ID', requestId);
-
-  res.on('finish', () => {
-    const duration = Date.now() - startTime;
-    console.log({
-      requestId,
-      method: req.method,
-      url: req.url,
-      statusCode: res.statusCode,
-      duration,
-      ip: req.ip,
-    });
+export async function loggerPlugin(app: FastifyInstance) {
+  app.addHook('onRequest', async (request) => {
+    request.startTime = Date.now();
   });
 
-  next();
+  app.addHook('onResponse', async (request, reply) => {
+    const duration = Date.now() - (request.startTime || Date.now());
+    app.log.info({
+      method: request.method,
+      url: request.url,
+      statusCode: reply.statusCode,
+      duration,
+    });
+  });
+}
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    startTime?: number;
+  }
 }

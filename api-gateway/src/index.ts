@@ -1,38 +1,36 @@
-import express from 'express';
-import cors from 'cors';
-import { config } from './config';
-import { loggerMiddleware } from './middleware/logger';
-import { rateLimiter } from './middleware/rate-limit';
-import { healthRoutes } from './routes/health';
-import { proxyRoutes } from './routes/proxy';
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import { config } from './config.js';
+import { loggerPlugin } from './middleware/logger.js';
+import { healthRoutes } from './routes/health.js';
+import { proxyRoutes } from './routes/proxy.js';
 import { AppError } from '@cloudops/shared';
 
-const app = express();
+const app = Fastify({ logger: true });
 
-app.use(cors({ origin: config.corsOrigin }));
-app.use(express.json());
-app.use(loggerMiddleware);
-app.use(rateLimiter);
+await app.register(cors);
+await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+await app.register(loggerPlugin);
 
-app.use((err: Error, req: any, res: any, next: any) => {
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      error: err.code,
-      message: err.message,
-      details: err.details,
+app.setErrorHandler((error, request, reply) => {
+  if (error instanceof AppError) {
+    return reply.status(error.statusCode).send({
+      error: error.code,
+      message: error.message,
     });
   }
-
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'INTERNAL_ERROR',
-    message: 'Internal server error',
-  });
+  app.log.error(error);
+  return reply.status(500).send({ error: 'INTERNAL_ERROR' });
 });
 
-app.use(healthRoutes);
-app.use(proxyRoutes);
+await app.register(healthRoutes);
+await app.register(proxyRoutes);
 
-app.listen(config.port, '0.0.0.0', () => {
-  console.log(`API Gateway running on port ${config.port}`);
-});
+try {
+  await app.listen({ port: config.port, host: '0.0.0.0' });
+  app.log.info(`API Gateway running on port ${config.port}`);
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}
