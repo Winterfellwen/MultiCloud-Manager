@@ -1,0 +1,8 @@
+packages:
+  - 'shared'
+  - 'auth-service'
+  - 'api-gateway'
+  - 'cloud-service'
+  - 'monitor-service'
+  - 'ai-agent'
+  - 'worker'

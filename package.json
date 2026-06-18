@@ -1,0 +1,12 @@
+{
+  "name": "cloudops-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "db:migrate": "pnpm -r run db:migrate",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  }
+}
