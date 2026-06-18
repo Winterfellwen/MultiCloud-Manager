@@ -1,22 +1,28 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyToken, type TokenPayload } from './jwt';
+import { verifyAccessToken, verifyRefreshToken, type TokenPayload } from './jwt';
 import { AppError, UnauthorizedError, ForbiddenError } from '@cloudops/shared';
 
 export interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
 }
 
+function extractTokenFromHeader(authHeader: string | undefined): string | null {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.slice(7);
+}
+
 export function authMiddleware() {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authHeader = req.headers.authorization;
+      const token = extractTokenFromHeader(req.headers.authorization);
       
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!token) {
         throw new UnauthorizedError('Missing or invalid authorization header');
       }
       
-      const token = authHeader.slice(7);
-      const payload = await verifyToken(token);
+      const payload = await verifyAccessToken(token);
       
       req.user = payload;
       next();
@@ -33,18 +39,20 @@ export function authMiddleware() {
 export function optionalAuthMiddleware() {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const authHeader = req.headers.authorization;
+      const token = extractTokenFromHeader(req.headers.authorization);
       
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!token) {
         return next();
       }
       
-      const token = authHeader.slice(7);
-      const payload = await verifyToken(token);
+      const payload = await verifyAccessToken(token);
       
       req.user = payload;
       next();
-    } catch {
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       next();
     }
   };
@@ -87,9 +95,4 @@ export function requirePermission(...requiredPermissions: string[]) {
   };
 }
 
-export function extractTokenFromHeader(authHeader: string | undefined): string | null {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-  return authHeader.slice(7);
-}
+export { extractTokenFromHeader };
