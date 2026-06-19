@@ -2,7 +2,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++ && npm install -g pnpm
+# better-sqlite3 编译需要 sqlite-dev
+RUN apk add --no-cache python3 make g++ sqlite-dev && npm install -g pnpm
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/

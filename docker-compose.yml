@@ -156,14 +156,21 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      # LLM 默认 provider（向后兼容）
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o}
       LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.3}
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-4096}
+      # 多 provider 配置（JSON 数组，可选）
+      LLM_PROVIDERS: ${LLM_PROVIDERS:-}
+      # MCP 服务器配置（JSON 对象，可选）
+      MCP_SERVERS: ${MCP_SERVERS:-}
       CLOUD_SERVICE_URL: http://cloud-service:3001
       MONITOR_SERVICE_URL: http://monitor-service:3002
       ACP_MAX_CONCURRENT_SESSIONS: "10"
+      AGENT_MAX_ITERATIONS: ${AGENT_MAX_ITERATIONS:-10}
+      AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-120000}
     depends_on:
       postgres:
         condition: service_healthy
