@@ -180,19 +180,6 @@ services:
       - ai-gateway-data:/app/ai-gateway/data
     restart: unless-stopped
 
-  worker:
-    build:
-      context: .
-      dockerfile: worker/Dockerfile
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   web-console:
     build:
       context: .
