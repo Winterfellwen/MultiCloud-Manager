@@ -35,6 +35,19 @@ export interface ChatSendParams {
   sessionKey: string;
   message: string;
   clientRunId?: string;
+  /** 附件列表（content 为 base64 编码） */
+  attachments?: ChatSendAttachment[];
+  model?: string;
+}
+
+/** chat.send 附件载荷（wire 格式） */
+export interface ChatSendAttachment {
+  /** 附件类型分类：image / audio / file */
+  type: string;
+  mimeType: string;
+  fileName?: string;
+  /** base64 编码内容（不含 data: 前缀） */
+  content: string;
 }
 
 export interface ChatHistoryParams {

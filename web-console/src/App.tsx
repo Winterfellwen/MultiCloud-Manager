@@ -11,6 +11,8 @@ import ChatReact from '@/pages/ChatReact';
 import ChatLit from '@/pages/ChatLit';
 import Users from '@/pages/Users';
 import Audit from '@/pages/Audit';
+import ToolsCatalog from '@/pages/ToolsCatalog';
+import McpConfig from '@/pages/McpConfig';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient({
@@ -78,6 +80,22 @@ export default function App() {
               element={
                 <ProtectedRoute permission={{ resource: 'audit', action: 'view' }}>
                   <Audit />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tools"
+              element={
+                <ProtectedRoute permission={{ resource: 'instance', action: 'view' }}>
+                  <ToolsCatalog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mcp"
+              element={
+                <ProtectedRoute permission={{ resource: 'mcp', action: 'manage' }}>
+                  <McpConfig />
                 </ProtectedRoute>
               }
             />

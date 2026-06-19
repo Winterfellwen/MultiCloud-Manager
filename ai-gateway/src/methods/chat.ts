@@ -16,7 +16,7 @@ import { appendToBuffer, cleanupRun } from '../gateway/server-chat-state.js';
 import { broadcastEvent } from '../gateway/server-broadcast.js';
 import { sessionManager } from '../acp/control-plane/manager.js';
 import { recordEvent, readReplay } from '../acp/event-ledger.js';
-import { runAgentTurn } from '../agent/runner.js';
+import { runAgentTurn, type Attachment } from '../agent/runner.js';
 
 export interface ChatMethodContext {
   clients: Map<string, ClientConnection>;
@@ -28,6 +28,19 @@ export interface ChatSendParams {
   sessionKey: string;
   message: string;
   clientRunId?: string;
+  /** 模型覆盖（支持 "provider/model" 格式） */
+  model?: string;
+  /** 附件列表（图片附件会以多模态格式发送给 LLM） */
+  attachments?: Array<{
+    type: string;
+    mimeType: string;
+    fileName?: string;
+    content: string;
+  }>;
+  /** 温度覆盖 */
+  temperature?: number;
+  /** 最大 token 覆盖 */
+  maxTokens?: number;
 }
 
 export interface ChatHistoryParams {
@@ -83,6 +96,12 @@ export async function handleChatSend(
             runId,
             userMessage: params.message,
             signal: controller.signal,
+            model: params.model,
+            attachments: params.attachments as Attachment[] | undefined,
+            temperature: params.temperature,
+            maxTokens: params.maxTokens,
+            // 审批上下文：用于 dangerous 工具调用前的审批流程
+            approvalContext: { clients: context.clients },
           },
           {
             onDelta: (delta) => {

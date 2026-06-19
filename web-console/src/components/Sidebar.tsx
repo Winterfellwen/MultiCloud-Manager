@@ -7,6 +7,8 @@ import {
   MessageSquare,
   Users,
   ScrollText,
+  Wrench,
+  Plug,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,6 +51,18 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'React 版', to: '/chat/react' },
       { label: 'Lit 版', to: '/chat/lit' },
     ],
+  },
+  {
+    label: '工具目录',
+    to: '/tools',
+    icon: Wrench,
+    permission: { resource: 'instance', action: 'view' },
+  },
+  {
+    label: 'MCP 配置',
+    to: '/mcp',
+    icon: Plug,
+    permission: { resource: 'mcp', action: 'manage' },
   },
   {
     label: '用户管理',

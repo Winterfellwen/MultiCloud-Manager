@@ -20,6 +20,14 @@ import {
   handleSessionsUnsubscribe,
   handleSessionsMessagesSubscribe,
 } from './methods/sessions.js';
+import { handleModelsList } from './methods/models.js';
+import { handleToolsCatalog } from './methods/tools-catalog.js';
+import { handleCommandsList } from './methods/commands.js';
+import {
+  handleExecApprovalList,
+  handleExecApprovalResolve,
+  type ExecApprovalContext,
+} from './methods/exec-approval.js';
 
 // 全局状态
 const clients = new Map<string, ClientConnection>();
@@ -27,6 +35,8 @@ const chatRunState = createChatRunState();
 const chatAbortControllers = new Map<string, ChatAbortControllerEntry>();
 
 const chatContext: ChatMethodContext = { clients, chatRunState, chatAbortControllers };
+// 审批上下文（复用 clients Map）
+const execApprovalContext: ExecApprovalContext = { clients };
 
 const app = Fastify({ logger: true });
 
@@ -83,6 +93,21 @@ app.get('/ws', { websocket: true }, (socket, request) => {
           break;
         case 'sessions.messages.subscribe':
           handleSessionsMessagesSubscribe(client, params, respond);
+          break;
+        case 'models.list':
+          handleModelsList(respond);
+          break;
+        case 'tools.catalog':
+          handleToolsCatalog(respond);
+          break;
+        case 'commands.list':
+          handleCommandsList(respond);
+          break;
+        case 'exec.approval.list':
+          handleExecApprovalList(client, params, execApprovalContext, respond);
+          break;
+        case 'exec.approval.resolve':
+          handleExecApprovalResolve(client, params, execApprovalContext, respond);
           break;
         default:
           respond(false, { error: `Unknown method: ${method}` });

@@ -13,7 +13,13 @@ import type {
   ChatSendResponse,
   WsConnectionStatus,
   AcpEvent,
+  ChatSendAttachment,
 } from '../types/chat';
+import {
+  getChatAttachmentDataUrl,
+  discardChatAttachmentDataUrls,
+} from '../lib/openclaw/attachment-payload-store';
+import type { ChatAttachment } from '../lib/openclaw/ui-types';
 
 interface ChatState {
   // 连接
@@ -32,6 +38,8 @@ interface ChatState {
   inputText: string;
   // 是否正在发送
   isSending: boolean;
+  // 当前选中的模型（provider/model 格式）
+  selectedModel: string | null;
 
   // Actions
   connect: () => void;
@@ -44,10 +52,12 @@ interface ChatState {
   selectSession: (sessionKey: string) => void;
   loadSessionHistory: (sessionKey: string) => Promise<void>;
 
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   abortRun: (runId: string) => Promise<void>;
 
   setInputText: (text: string) => void;
+  setModel: (model: string | null) => void;
+  clearMessages: () => void;
 }
 
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:3005/ws';
@@ -65,6 +75,35 @@ function generateRunId(): string {
 
 function generateMessageId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** 从 data URL 中提取 base64 内容（去除 data:xxx;base64, 前缀） */
+function extractBase64Content(dataUrl: string): string {
+  const commaIdx = dataUrl.indexOf(',');
+  return commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+}
+
+/** 根据 mimeType 推断附件类型分类 */
+function resolveAttachmentType(mimeType: string): string {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+
+/** 将 ChatAttachment[] 转换为 chat.send 的 wire 格式载荷 */
+function buildAttachmentPayload(attachments: ChatAttachment[]): ChatSendAttachment[] {
+  const payload: ChatSendAttachment[] = [];
+  for (const attachment of attachments) {
+    const dataUrl = getChatAttachmentDataUrl(attachment);
+    if (!dataUrl) continue;
+    payload.push({
+      type: resolveAttachmentType(attachment.mimeType),
+      mimeType: attachment.mimeType,
+      ...(attachment.fileName ? { fileName: attachment.fileName } : {}),
+      content: extractBase64Content(dataUrl),
+    });
+  }
+  return payload;
 }
 
 /** ACP 事件 → ChatMessage 转换（处理 eventType 命名差异） */
@@ -184,6 +223,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingBuffers: {},
   inputText: '',
   isSending: false,
+  selectedModel: null,
 
   connect: () => {
     const { wsClient } = get();
@@ -428,9 +468,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text) => {
-    const { wsClient, currentSessionKey } = get();
-    if (!wsClient || !currentSessionKey || !text.trim()) return;
+  sendMessage: async (text, attachments) => {
+    const { wsClient, currentSessionKey, selectedModel } = get();
+    const hasAttachments = attachments && attachments.length > 0;
+    if (!wsClient || !currentSessionKey || (!text.trim() && !hasAttachments)) return;
 
     const sessionKey = currentSessionKey;
     const runId = generateRunId();
@@ -478,12 +519,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ),
     }));
 
+    // 构建附件 wire 载荷
+    const attachmentPayload = hasAttachments ? buildAttachmentPayload(attachments!) : undefined;
+
     try {
       await wsClient.request<ChatSendResponse>('chat.send', {
         sessionKey,
         message: text,
         clientRunId: runId,
+        ...(attachmentPayload && attachmentPayload.length > 0
+          ? { attachments: attachmentPayload }
+          : {}),
+        ...(selectedModel ? { model: selectedModel } : {}),
       });
+      // 发送成功后清理 base64 数据（保留 previewUrl 供 UI 使用）
+      if (hasAttachments) {
+        discardChatAttachmentDataUrls(attachments!);
+      }
     } catch (err) {
       // 发送失败，标记 assistant 消息为错误
       const errorMsg = err instanceof Error ? err.message : '发送失败';
@@ -511,4 +563,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setInputText: (text) => set({ inputText: text }),
+
+  setModel: (model) => set({ selectedModel: model }),
+
+  clearMessages: () => {
+    const { currentSessionKey } = get();
+    if (!currentSessionKey) return;
+    set((state) => ({
+      messagesBySession: { ...state.messagesBySession, [currentSessionKey]: [] },
+      streamingBuffers: {},
+      isSending: false,
+    }));
+  },
 }));

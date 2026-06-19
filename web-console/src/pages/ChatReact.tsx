@@ -1,10 +1,12 @@
 // AI 对话页（React 版）：WebSocket 流式 + 断线恢复
 // 组合 SessionList + MessageList + ChatInput，管理 WsClient 生命周期
+// 集成 ApprovalPrompt 审批弹窗（监听 exec.approval.requested 事件，轮询获取待审批列表）
 import { useEffect } from 'react';
 import { useChatStore } from '../stores/chat';
 import { SessionList } from '../components/chat/SessionList';
 import { MessageList } from '../components/chat/MessageList';
 import { ChatInput } from '../components/chat/ChatInput';
+import { ApprovalPrompt } from '../components/chat/ApprovalPrompt';
 import { cn } from '../lib/utils';
 import type { WsConnectionStatus } from '../types/chat';
 
@@ -65,7 +67,7 @@ export default function ChatReact() {
         {/* 消息列表 */}
         <div className="min-h-0 flex-1">
           {currentSessionKey ? (
-            <MessageList messages={messages} />
+            <MessageList messages={messages} sessionKey={currentSessionKey} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               选择或新建对话
@@ -76,6 +78,9 @@ export default function ChatReact() {
         {/* 输入区 */}
         {currentSessionKey && <ChatInput />}
       </div>
+
+      {/* 审批弹窗：有待审批请求时显示 */}
+      <ApprovalPrompt />
     </div>
   );
 }
