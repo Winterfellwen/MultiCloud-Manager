@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && cp openclaw-ui/dist/cloudops-chat.js dist/cloudops-chat.js",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit"
   },

@@ -8,3 +8,4 @@ packages:
   - 'ai-gateway'
   - 'worker'
   - 'web-console'
+  - 'web-console/openclaw-ui'
