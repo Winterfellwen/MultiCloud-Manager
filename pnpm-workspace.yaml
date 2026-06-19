@@ -7,3 +7,4 @@ packages:
   - 'ai-agent'
   - 'ai-gateway'
   - 'worker'
+  - 'web-console'
