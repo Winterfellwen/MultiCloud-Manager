@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cloudops}
+      POSTGRES_USER: ${POSTGRES_USER:-cloudops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cloudops123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloudops}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.unified
+    ports:
+      - "80:80"
+      - "3000:3000"
+      - "3001:3001"
+      - "3002:3002"
+      - "3003:3003"
+      - "3004:3004"
+      - "3005:3005"
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cloudops}:${POSTGRES_PASSWORD:-cloudops123}@postgres:5432/${POSTGRES_DB:-cloudops}
+      # Redis
+      REDIS_URL: redis://redis:6379
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      # Server ports
+      AUTH_SERVICE_PORT: 3004
+      API_GATEWAY_PORT: 3000
+      CLOUD_SERVICE_PORT: 3001
+      MONITOR_SERVICE_PORT: 3002
+      AI_AGENT_PORT: 3003
+      AI_GATEWAY_PORT: 3005
+      # Cloud provider credentials
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID:-}
+      ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+      # LLM
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
