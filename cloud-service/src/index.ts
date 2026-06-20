@@ -7,6 +7,7 @@ import { instanceRoutes } from "./routes/instances.js";
 import { resourceRoutes } from "./routes/resources.js";
 import { providerRoutes, accountRoutes } from "./routes/providers.js";
 import { AppError } from "@cloudops/shared";
+import { runMigrations } from "./db/migrate.js";
 
 const app = Fastify({ logger: true });
 
@@ -49,6 +50,9 @@ await app.register(instanceRoutes, { prefix: "/cloud/instances" });
 await app.register(resourceRoutes, { prefix: "/cloud/resources" });
 await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
+
+// 运行数据库迁移
+await runMigrations();
 
 // 启动时注册环境变量配置的 Provider
 accountService.registerFromEnv();

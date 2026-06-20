@@ -1,11 +1,15 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 import { config } from '../config.js';
 
-async function migrate() {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, '..');
+
+export async function runMigrations(): Promise<void> {
   const sql = postgres(config.databaseUrl, { max: 1 });
-  const migrationsDir = join(process.cwd(), 'migrations');
+  const migrationsDir = join(__dirname, '..', 'migrations');
 
   const files = readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
@@ -21,7 +25,9 @@ async function migrate() {
   await sql.end();
 }
 
-migrate().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runMigrations().catch((err) => {
+    console.error('Migration failed:', err);
+    process.exit(1);
+  });
+}

@@ -8,6 +8,7 @@ import { metricRoutes } from './routes/metrics.js';
 import { alertRoutes } from './routes/alerts.js';
 import { costRoutes } from './routes/costs.js';
 import { AppError } from '@cloudops/shared';
+import { runMigrations } from './db/migrate.js';
 
 const app = Fastify({ logger: true });
 
@@ -39,6 +40,9 @@ app.get('/health', async () => ({
 await app.register(metricRoutes, { prefix: '/monitor/metrics' });
 await app.register(alertRoutes, { prefix: '/monitor/alerts' });
 await app.register(costRoutes, { prefix: '/monitor/costs' });
+
+// 运行数据库迁移
+await runMigrations();
 
 // 启动后台任务
 metricCollector.start();
