@@ -54,6 +54,9 @@ export function ApprovalPrompt() {
         if (isReadOnlyTool(approval.toolName)) {
           resolvedRef.current.add(approval.approvalId);
           resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'approve' });
+        } else {
+          resolvedRef.current.add(approval.approvalId);
+          resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'reject' });
         }
       }
     }
@@ -100,7 +103,13 @@ export function ApprovalPrompt() {
     [currentApproval, resolveApproval]
   );
 
-  if (!currentApproval) return null;
+  if (!currentApproval) {
+    return (
+      <div className="fixed bottom-4 right-4 z-40">
+        <ModeSelector />
+      </div>
+    );
+  }
 
   const dangerConfig = DANGER_CONFIG[currentApproval.dangerLevel] || DANGER_CONFIG.moderate;
 
