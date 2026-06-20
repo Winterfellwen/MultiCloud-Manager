@@ -84,7 +84,7 @@ interface ChatState {
   clearMessages: () => void;
 }
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:3005/ws';
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || (import.meta.env.PROD ? 'ws://localhost/ws' : 'ws://localhost:3005/ws');
 
 function generateSessionKey(): string {
   const userId = useAuthStore.getState().user?.id || 'anonymous';

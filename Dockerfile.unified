@@ -48,7 +48,11 @@ RUN cd ai-agent && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 RUN cd ai-gateway && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 
 # 复制数据库迁移文件
-RUN cp -r auth-service/migrations auth-service/dist/migrations
+RUN cp -r auth-service/migrations auth-service/dist/migrations && \
+    cp -r ai-gateway/migrations ai-gateway/dist/migrations && \
+    cp -r ai-agent/migrations ai-agent/dist/migrations && \
+    cp -r cloud-service/migrations cloud-service/dist/migrations && \
+    cp -r monitor-service/migrations monitor-service/dist/migrations
 
 # 最终阶段：构建前端和nginx
 FROM node:22-alpine AS frontend-builder
@@ -106,6 +110,10 @@ COPY --from=builder /app/monitor-service/dist ./monitor-service/dist
 COPY --from=builder /app/ai-agent/dist ./ai-agent/dist
 COPY --from=builder /app/ai-gateway/dist ./ai-gateway/dist
 COPY --from=builder /app/auth-service/dist/migrations ./auth-service/migrations
+COPY --from=builder /app/ai-gateway/dist/migrations ./ai-gateway/migrations
+COPY --from=builder /app/ai-agent/dist/migrations ./ai-agent/migrations
+COPY --from=builder /app/cloud-service/dist/migrations ./cloud-service/migrations
+COPY --from=builder /app/monitor-service/dist/migrations ./monitor-service/migrations
 
 # 复制前端构建产物
 COPY --from=frontend-builder /app/web-console/dist ./web-console/dist
