@@ -3,6 +3,8 @@
 // 流式缓冲、连接状态、断线恢复（chat.history + inFlightRun）
 
 import { create } from 'zustand';
+
+export type Mode = 'plan' | 'action' | 'confirm';
 import { WsClient } from '../lib/ws-client';
 import { useAuthStore } from './auth';
 import type {
@@ -56,6 +58,8 @@ interface ChatState {
   enableThinking: boolean;
   // 推理努力程度：low / medium / high
   reasoningEffort: 'low' | 'medium' | 'high';
+  // 模式状态：plan / action / confirm
+  mode: Mode;
 
   // Actions
   connect: () => void;
@@ -76,6 +80,7 @@ interface ChatState {
   setModel: (model: string | null) => void;
   setEnableThinking: (enabled: boolean) => void;
   setReasoningEffort: (effort: 'low' | 'medium' | 'high') => void;
+  setMode: (mode: Mode) => void;
   clearMessages: () => void;
 }
 
@@ -130,6 +135,7 @@ function buildAttachmentPayload(attachments: ChatAttachment[]): ChatSendAttachme
 const LS_KEY_SESSIONS = 'cloudops:chat:sessions';
 const LS_KEY_CURRENT = 'cloudops:chat:currentSessionKey';
 const LS_KEY_RUN_MAP = 'cloudops:chat:runIdToSession';
+const LS_KEY_MODE = 'chat-mode';
 
 /** 安全读取 localStorage 中的 JSON 值 */
 function readLocalStorage<T>(key: string, fallback: T): T {
@@ -166,6 +172,7 @@ function persistChatState(state: {
 const initialSessions = readLocalStorage<ChatSession[]>(LS_KEY_SESSIONS, []);
 const initialCurrentSessionKey = readLocalStorage<string | null>(LS_KEY_CURRENT, null);
 const initialRunIdToSession = readLocalStorage<Record<string, string>>(LS_KEY_RUN_MAP, {});
+const initialMode = (localStorage.getItem(LS_KEY_MODE) as Mode) || 'plan';
 
 // 正在加载历史的 session 集合（防止并发调用 loadSessionHistory 导致竞态）
 const loadingSessions = new Set<string>();
@@ -286,6 +293,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   selectedModel: null,
   enableThinking: true,
   reasoningEffort: 'high',
+  mode: initialMode,
 
   connect: () => {
     const { wsClient } = get();
@@ -860,6 +868,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setEnableThinking: (enabled) => set({ enableThinking: enabled }),
 
   setReasoningEffort: (effort) => set({ reasoningEffort: effort }),
+
+  setMode: (mode) => {
+    localStorage.setItem(LS_KEY_MODE, mode);
+    set({ mode });
+  },
 
   clearMessages: () => {
     const { currentSessionKey } = get();
