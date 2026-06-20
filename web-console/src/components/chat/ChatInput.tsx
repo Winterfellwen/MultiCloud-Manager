@@ -20,6 +20,7 @@ export function ChatInput() {
   const setEnableThinking = useChatStore((s) => s.setEnableThinking);
   const enableThinking = useChatStore((s) => s.enableThinking);
   const streamingBuffers = useChatStore((s) => s.streamingBuffers);
+  const mode = useChatStore((s) => s.mode);
 
   const { matchCommands } = useSlashCommands();
 
@@ -198,6 +199,13 @@ export function ChatInput() {
               发送
             </Button>
           )}
+        </div>
+
+        {/* 模式指示器 */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {mode === 'plan' && '🔒 Plan mode: Only read-only tools will be executed'}
+          {mode === 'action' && '⚡ Action mode: All tools will be executed automatically'}
+          {mode === 'confirm' && '✋ Confirm mode: All tools require manual approval'}
         </div>
       </div>
     </div>
