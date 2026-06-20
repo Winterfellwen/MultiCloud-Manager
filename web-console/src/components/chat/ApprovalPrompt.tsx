@@ -1,14 +1,23 @@
 // 审批弹窗组件：当有待审批请求时显示弹窗，展示工具名、参数、风险级别
 // 提供"允许"和"拒绝"按钮，支持倒计时自动拒绝
-// 支持自动同意模式（dangerous 级别工具仍需手动确认）
+// 根据当前模式（Plan/Action/Confirm）自动处理或要求手动审批
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AlertTriangle, Check, X, Clock, Loader2, Zap } from 'lucide-react';
+import { AlertTriangle, Check, X, Clock, Loader2 } from 'lucide-react';
 import { usePendingApprovals, useResolveApproval } from '@/hooks/useExecApproval';
 import type { ApprovalRequest } from '@/hooks/useExecApproval';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+
+import { ModeSelector } from './ModeSelector';
+import { useChatStore } from '@/stores/chat';
+
+const READ_ONLY_PATTERNS = ['list', 'get', 'search', 'find', 'query', 'read', 'analyze'];
+
+function isReadOnlyTool(toolName: string): boolean {
+  const lowerName = toolName.toLowerCase();
+  return READ_ONLY_PATTERNS.some(pattern => lowerName.includes(pattern));
+}
 
 // 倒计时秒数（超时自动拒绝）
 const COUNTDOWN_SECONDS = 60;
@@ -30,19 +39,25 @@ export function ApprovalPrompt() {
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   // 防止同一审批被重复处理（倒计时超时与用户点击竞态）
   const resolvedRef = useRef<Set<string>>(new Set());
-  // 自动同意模式（moderate 级别自动同意，dangerous 仍需手动）
-  const [autoApproveMode, setAutoApproveMode] = useState(false);
+  const mode = useChatStore((s) => s.mode);
 
-  // 自动处理 moderate 级别审批（当 autoApproveMode 开启时）
+  // 根据模式自动处理审批
   useEffect(() => {
-    if (!autoApproveMode || !approvals) return;
+    if (!approvals) return;
     for (const approval of approvals) {
-      if (approval.dangerLevel === 'moderate' && !resolvedRef.current.has(approval.approvalId)) {
+      if (resolvedRef.current.has(approval.approvalId)) continue;
+
+      if (mode === 'action') {
         resolvedRef.current.add(approval.approvalId);
         resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'approve' });
+      } else if (mode === 'plan') {
+        if (isReadOnlyTool(approval.toolName)) {
+          resolvedRef.current.add(approval.approvalId);
+          resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'approve' });
+        }
       }
     }
-  }, [approvals, autoApproveMode, resolveApproval]);
+  }, [approvals, mode, resolveApproval]);
 
   // 当有待审批请求且当前没有展示时，设置当前审批
   useEffect(() => {
@@ -103,21 +118,9 @@ export function ApprovalPrompt() {
 
   return (
     <>
-      {/* 自动同意模式切换按钮（固定在右下角） */}
-      <button
-        type="button"
-        onClick={() => setAutoApproveMode((v) => !v)}
-        className={cn(
-          'fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs shadow-lg transition-colors',
-          autoApproveMode
-            ? 'border-green-500 bg-green-500/10 text-green-600'
-            : 'border-border bg-background text-muted-foreground hover:bg-accent'
-        )}
-        title={autoApproveMode ? '自动同意已开启（仅 moderate 级别），点击关闭' : '点击开启自动同意（moderate 级别自动通过）'}
-      >
-        <Zap className="h-3.5 w-3.5" />
-        <span>{autoApproveMode ? '自动同意中' : '自动同意'}</span>
-      </button>
+      <div className="fixed bottom-4 right-4 z-40">
+        <ModeSelector />
+      </div>
 
       <Dialog
         open={!!currentApproval}
