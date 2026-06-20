@@ -1,6 +1,8 @@
 // 执行审批 React Query hooks
 // usePendingApprovals：轮询 exec.approval.list RPC 获取待审批列表
 // useResolveApproval：调用 exec.approval.resolve RPC 提交审批结果
+// Note: Mode logic is handled in ApprovalPrompt component, not here.
+// This hook is mode-agnostic and provides the data layer for approvals.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '../stores/chat';
 

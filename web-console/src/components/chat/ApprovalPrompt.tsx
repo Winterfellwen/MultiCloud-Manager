@@ -54,10 +54,8 @@ export function ApprovalPrompt() {
         if (isReadOnlyTool(approval.toolName)) {
           resolvedRef.current.add(approval.approvalId);
           resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'approve' });
-        } else {
-          resolvedRef.current.add(approval.approvalId);
-          resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'reject' });
         }
+        // Non-read-only tools remain pending for manual approval
       }
     }
   }, [approvals, mode, resolveApproval]);
