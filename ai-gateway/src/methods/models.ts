@@ -1,7 +1,10 @@
 // models.list RPC 方法
-// 返回所有已配置 provider 的模型列表
+// 返回所有已配置 provider 的模型列表（从 provider store 读取）
+// 含 thinkingFormat / thinkingLevelMap 等能力信息
 
-import { config } from '../config.js';
+import { listProvidersFromStore } from '../acp/provider-store.js';
+import { detectThinkingFormat } from '../agent/thinking-format.js';
+import type { ThinkingFormat } from '../config.js';
 
 /** 模型列表项 */
 export interface ModelListItem {
@@ -19,45 +22,55 @@ export interface ModelListItem {
   input?: string[];
   /** 是否可用（apiKey 是否已配置） */
   available: boolean;
+  /** 生效的 thinkingFormat（模型级 > provider compat > 自动检测） */
+  thinkingFormat: ThinkingFormat;
+  /** 模型级 thinkingLevelMap */
+  thinkingLevelMap?: Record<string, string | null>;
+  /** 该模型支持的思考级别列表 */
+  supportedReasoningEfforts?: string[];
+  /** provider 级 compat 配置 */
+  providerCompat?: Record<string, unknown>;
 }
 
 /**
  * models.list - 返回所有已配置 provider 的模型列表
- *
- * 包含：
- * - 默认 provider（从 config.llm 合成）
- * - 多 provider（从 config.llmProviders 读取）
+ * 从 provider store 读取（支持运行时 CRUD）
+ * 含 thinkingFormat 方言信息（前端可据此渲染思考级别选项）
  */
-export function handleModelsList(
+export async function handleModelsList(
   respond: (ok: boolean, payload: unknown) => void
-): void {
-  const models: ModelListItem[] = [];
+): Promise<void> {
+  try {
+    const providers = await listProvidersFromStore();
+    const models: ModelListItem[] = [];
 
-  // 默认 provider（向后兼容）
-  if (config.llm.baseUrl) {
-    models.push({
-      id: `default/${config.llm.model}`,
-      name: config.llm.model,
-      provider: 'default',
-      available: Boolean(config.llm.apiKey),
-    });
-  }
+    for (const provider of providers) {
+      const available = Boolean(provider.apiKey);
+      for (const model of provider.models) {
+        // 计算生效的 thinkingFormat：模型级 > provider compat > 自动检测
+        const thinkingFormat: ThinkingFormat =
+          model.thinkingFormat ??
+          provider.compat?.thinkingFormat ??
+          detectThinkingFormat(provider.id, provider.baseUrl);
 
-  // 多 provider 配置
-  for (const provider of config.llmProviders) {
-    const available = Boolean(provider.apiKey);
-    for (const model of provider.models) {
-      models.push({
-        id: `${provider.id}/${model.id}`,
-        name: model.name,
-        provider: provider.id,
-        contextWindow: model.contextWindow,
-        reasoning: model.reasoning,
-        input: model.input,
-        available,
-      });
+        models.push({
+          id: `${provider.id}/${model.id}`,
+          name: model.name,
+          provider: provider.id,
+          contextWindow: model.contextWindow,
+          reasoning: model.reasoning,
+          input: model.input,
+          available,
+          thinkingFormat,
+          thinkingLevelMap: model.thinkingLevelMap,
+          supportedReasoningEfforts: model.supportedReasoningEfforts,
+          providerCompat: provider.compat as Record<string, unknown> | undefined,
+        });
+      }
     }
-  }
 
-  respond(true, { models });
+    respond(true, { models });
+  } catch (e) {
+    respond(false, { error: 'MODELS_LIST_FAILED', message: (e as Error).message });
+  }
 }

@@ -3,17 +3,29 @@ import { z } from "zod";
 import { accountService } from "../services/account.service.js";
 import { getProvider, listProviders } from "../providers/registry.js";
 import { NotFoundError } from "@cloudops/shared";
+import { CLOUD_PROVIDERS } from "@cloudops/shared";
 
 const createAccountSchema = z.object({
   name: z.string().min(1).max(128),
-  provider: z.enum(["aws", "aliyun", "azure"]),
+  provider: z.enum(["aws", "aliyun", "azure", "tencent", "huawei"]),
   config: z.record(z.unknown()),
+});
+
+const updateAccountSchema = z.object({
+  name: z.string().min(1).max(128).optional(),
+  config: z.record(z.unknown()).optional(),
+  status: z.string().min(1).max(16).optional(),
 });
 
 export async function providerRoutes(app: FastifyInstance) {
   // 列出已注册的 Provider
   app.get("/", async () => {
     return { providers: accountService.getRegisteredProviders() };
+  });
+
+  // 列出支持的云厂商元数据（前端用于动态渲染表单）
+  app.get("/meta", async () => {
+    return { providers: CLOUD_PROVIDERS };
   });
 
   // 列出指定 Provider 的可用区域
@@ -45,12 +57,12 @@ export async function providerRoutes(app: FastifyInstance) {
 }
 
 export async function accountRoutes(app: FastifyInstance) {
-  // 列出云账号
+  // 列出云账号（凭证已脱敏）
   app.get("/", async () => {
     return accountService.list();
   });
 
-  // 获取单个云账号
+  // 获取单个云账号（凭证已脱敏）
   app.get("/:id", async (request) => {
     const { id } = request.params as { id: string };
     return accountService.getById(id);
@@ -68,5 +80,25 @@ export async function accountRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     await accountService.delete(id);
     return { ok: true, id };
+  });
+
+  // 更新云账号（名称、配置、状态）
+  app.put("/:id", async (request) => {
+    const { id } = request.params as { id: string };
+    const input = updateAccountSchema.parse(request.body);
+    return accountService.update(id, input);
+  });
+
+  // PATCH 别名（同 PUT）
+  app.patch("/:id", async (request) => {
+    const { id } = request.params as { id: string };
+    const input = updateAccountSchema.parse(request.body);
+    return accountService.update(id, input);
+  });
+
+  // 测试云账号连通性
+  app.post("/:id/test", async (request) => {
+    const { id } = request.params as { id: string };
+    return accountService.testConnection(id);
   });
 }

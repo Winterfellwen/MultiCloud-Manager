@@ -1,5 +1,5 @@
 export type InstanceStatus = 'running' | 'stopped' | 'terminated' | 'pending' | 'error';
-export type CloudProvider = 'aws' | 'aliyun' | 'azure';
+export type CloudProvider = 'aws' | 'aliyun' | 'azure' | 'tencent' | 'huawei';
 
 export interface InstanceRow {
   id: string;
@@ -86,6 +86,8 @@ export interface CloudAccount {
   name: string;
   provider: CloudProvider;
   config: Record<string, unknown>;
+  /** 凭证脱敏提示（如 AKIA****wX9z），永不返回明文 */
+  credentialHint?: Record<string, string>;
   status: string | null;
   createdAt: string;
   updatedAt: string;
@@ -95,4 +97,32 @@ export interface SyncResult {
   provider: string;
   synced: number;
   errors: string[];
+}
+
+/** 测试连接结果 */
+export interface TestConnectionResult {
+  ok: boolean;
+  message: string;
+  details?: unknown;
+}
+
+/** 云厂商凭证字段定义（从后端 /cloud/providers/meta 获取） */
+export interface CredentialField {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'textarea';
+  required: boolean;
+  placeholder?: string;
+  default?: string;
+  help?: string;
+}
+
+/** 云厂商元数据 */
+export interface ProviderMeta {
+  id: CloudProvider;
+  label: string;
+  description: string;
+  color: string;
+  fields: CredentialField[];
+  docsUrl?: string;
 }

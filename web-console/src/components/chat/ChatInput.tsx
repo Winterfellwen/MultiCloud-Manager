@@ -1,6 +1,6 @@
-// 输入框 + 发送 + 中止按钮 + 模型选择 + 斜杠命令
+// 输入框 + 发送 + 中止按钮 + 模型选择 + 斜杠命令 + 深度思考开关
 import { useState, useEffect, type KeyboardEvent } from 'react';
-import { Send, Square } from 'lucide-react';
+import { Send, Square, Brain } from 'lucide-react';
 import { useChatStore } from '../../stores/chat';
 import { useSlashCommands, type SlashCommand } from '../../hooks/useSlashCommands';
 import { Button } from '../ui/button';
@@ -17,6 +17,8 @@ export function ChatInput() {
   const createSession = useChatStore((s) => s.createSession);
   const clearMessages = useChatStore((s) => s.clearMessages);
   const setModel = useChatStore((s) => s.setModel);
+  const setEnableThinking = useChatStore((s) => s.setEnableThinking);
+  const enableThinking = useChatStore((s) => s.enableThinking);
   const streamingBuffers = useChatStore((s) => s.streamingBuffers);
 
   const { matchCommands } = useSlashCommands();
@@ -151,9 +153,23 @@ export function ChatInput() {
           />
         )}
 
-        {/* 工具栏：模型选择 */}
-        <div className="flex items-center gap-2">
+        {/* 工具栏：模型选择 + 深度思考开关 */}
+        <div className="flex flex-wrap items-center gap-2">
           <ModelSelect />
+          <button
+            type="button"
+            onClick={() => setEnableThinking(!enableThinking)}
+            className={cn(
+              'flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs transition-colors',
+              enableThinking
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-input bg-background text-muted-foreground hover:bg-accent'
+            )}
+            title={enableThinking ? '深度思考已开启（点击关闭）' : '深度思考已关闭（点击开启）'}
+          >
+            <Brain className="h-3 w-3" />
+            <span>深度思考</span>
+          </button>
         </div>
 
         {/* 输入框 + 发送按钮 */}

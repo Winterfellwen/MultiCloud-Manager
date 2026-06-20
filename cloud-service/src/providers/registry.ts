@@ -2,6 +2,8 @@ import { ICloudProvider } from './types.js';
 import { AWSProvider } from './aws/index.js';
 import { AliyunProvider } from './aliyun/index.js';
 import { AzureProvider } from './azure/index.js';
+import { TencentProvider } from './tencent/index.js';
+import { HuaweiProvider } from './huawei/index.js';
 
 const providers = new Map<string, ICloudProvider>();
 
@@ -23,6 +25,17 @@ export interface ProviderConfig {
     clientSecret: string;
     subscriptionId: string;
   };
+  tencent?: {
+    secretId: string;
+    secretKey: string;
+    region: string;
+  };
+  huawei?: {
+    accessKeyId: string;
+    accessKeySecret: string;
+    region: string;
+    projectId?: string;
+  };
 }
 
 export function registerProviders(config: ProviderConfig): void {
@@ -34,6 +47,12 @@ export function registerProviders(config: ProviderConfig): void {
   }
   if (config.azure) {
     providers.set('azure', new AzureProvider(config.azure));
+  }
+  if (config.tencent) {
+    providers.set('tencent', new TencentProvider(config.tencent));
+  }
+  if (config.huawei) {
+    providers.set('huawei', new HuaweiProvider(config.huawei));
   }
 }
 

@@ -4,7 +4,9 @@ import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import cors from '@fastify/cors';
 import { config } from './config.js';
+import { runMigrations } from './db/migrate.js';
 import { initEventLedger } from './acp/event-ledger.js';
+import { initProviderStore, seedFromEnv } from './acp/provider-store.js';
 import { createChatRunState } from './gateway/server-chat-state.js';
 import type { ChatAbortControllerEntry } from './gateway/chat-abort.js';
 import type { ClientConnection } from './gateway/server-broadcast.js';
@@ -19,10 +21,20 @@ import {
   handleSessionsSubscribe,
   handleSessionsUnsubscribe,
   handleSessionsMessagesSubscribe,
+  handleSessionsDelete,
+  type SessionsMethodContext,
 } from './methods/sessions.js';
 import { handleModelsList } from './methods/models.js';
 import { handleToolsCatalog } from './methods/tools-catalog.js';
 import { handleCommandsList } from './methods/commands.js';
+import {
+  handleProvidersList,
+  handleProvidersCreate,
+  handleProvidersUpdate,
+  handleProvidersDelete,
+  handleProvidersTest,
+  handleProvidersThinkingFormats,
+} from './methods/providers.js';
 import {
   handleExecApprovalList,
   handleExecApprovalResolve,
@@ -36,7 +48,9 @@ const chatAbortControllers = new Map<string, ChatAbortControllerEntry>();
 
 const chatContext: ChatMethodContext = { clients, chatRunState, chatAbortControllers };
 // 审批上下文（复用 clients Map）
-const execApprovalContext: ExecApprovalContext = { clients };
+const execApprovalContext: ExecApprovalContext = { clients, chatAbortControllers };
+// sessions 上下文（需要 chatAbortControllers 用于删除会话时中止 run）
+const sessionsContext: SessionsMethodContext = { clients, chatAbortControllers };
 
 const app = Fastify({ logger: true });
 
@@ -80,7 +94,7 @@ app.get('/ws', { websocket: true }, (socket, request) => {
           await handleChatSend(client, params, chatContext, respond);
           break;
         case 'chat.history':
-          handleChatHistory(client, params, chatContext, respond);
+          await handleChatHistory(client, params, chatContext, respond);
           break;
         case 'chat.abort':
           handleChatAbort(client, params, chatContext, respond);
@@ -94,8 +108,29 @@ app.get('/ws', { websocket: true }, (socket, request) => {
         case 'sessions.messages.subscribe':
           handleSessionsMessagesSubscribe(client, params, respond);
           break;
+        case 'sessions.delete':
+          await handleSessionsDelete(client, params, sessionsContext, respond);
+          break;
         case 'models.list':
-          handleModelsList(respond);
+          await handleModelsList(respond);
+          break;
+        case 'providers.list':
+          await handleProvidersList(respond);
+          break;
+        case 'providers.create':
+          await handleProvidersCreate(params, respond);
+          break;
+        case 'providers.update':
+          await handleProvidersUpdate(params, respond);
+          break;
+        case 'providers.delete':
+          await handleProvidersDelete(params, respond);
+          break;
+        case 'providers.test':
+          await handleProvidersTest(params, respond);
+          break;
+        case 'providers.thinkingFormats':
+          await handleProvidersThinkingFormats(respond);
           break;
         case 'tools.catalog':
           handleToolsCatalog(respond);
@@ -118,8 +153,11 @@ app.get('/ws', { websocket: true }, (socket, request) => {
   });
 });
 
-// 初始化 ACP 事件账本
-initEventLedger();
+// 初始化数据库（运行 migrations + seed 初始 provider）
+await runMigrations();
+await initEventLedger();
+await initProviderStore();
+await seedFromEnv();
 
 // 优雅关闭
 const shutdown = () => {

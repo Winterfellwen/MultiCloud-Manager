@@ -9,6 +9,20 @@ import { AppError } from '@cloudops/shared';
 
 const app = Fastify({ logger: true });
 
+// 允许空 JSON body（POST 请求无 body 时 content-type: application/json 不报错）
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  try {
+    const text = body as string;
+    if (!text || text.trim() === '') {
+      done(null, null);
+    } else {
+      done(null, JSON.parse(text));
+    }
+  } catch (err) {
+    done(err as Error, undefined);
+  }
+});
+
 await app.register(cors);
 await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 await app.register(loggerPlugin);

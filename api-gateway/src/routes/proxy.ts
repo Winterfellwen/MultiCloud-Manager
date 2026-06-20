@@ -28,17 +28,17 @@ export async function proxyRoutes(app: FastifyInstance) {
       }
 
       const targetUrl = `${route.target}${request.url}`;
+      const hasBody = ['POST', 'PUT', 'PATCH'].includes(request.method) && request.body != null;
       const response = await fetch(targetUrl, {
         method: request.method,
         headers: {
-          'content-type': request.headers['content-type'] || 'application/json',
+          // 仅在有 body 时设置 content-type，避免 Fastify 报 FST_ERR_CTP_EMPTY_JSON_BODY
+          ...(hasBody && { 'content-type': request.headers['content-type'] || 'application/json' }),
           ...(request.headers.authorization && {
             authorization: request.headers.authorization,
           }),
         },
-        body: ['POST', 'PUT', 'PATCH'].includes(request.method)
-          ? JSON.stringify(request.body)
-          : undefined,
+        body: hasBody ? JSON.stringify(request.body) : undefined,
       });
 
       const data = await response.json();
@@ -54,17 +54,16 @@ export async function proxyRoutes(app: FastifyInstance) {
       }
 
       const targetUrl = `${route.target}${request.url}`;
+      const hasBody = ['POST', 'PUT', 'PATCH'].includes(request.method) && request.body != null;
       const response = await fetch(targetUrl, {
         method: request.method,
         headers: {
-          'content-type': request.headers['content-type'] || 'application/json',
+          ...(hasBody && { 'content-type': request.headers['content-type'] || 'application/json' }),
           ...(request.headers.authorization && {
             authorization: request.headers.authorization,
           }),
         },
-        body: ['POST', 'PUT', 'PATCH'].includes(request.method)
-          ? JSON.stringify(request.body)
-          : undefined,
+        body: hasBody ? JSON.stringify(request.body) : undefined,
       });
 
       const data = await response.json();

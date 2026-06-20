@@ -68,6 +68,22 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),
+      // 从持久化存储恢复时，从 accessToken 重新派生 user 和 isAuthenticated
+      onRehydrateStorage: () => (state) => {
+        if (state?.accessToken) {
+          const user = extractUser(state.accessToken);
+          if (user) {
+            state.user = user;
+            state.isAuthenticated = true;
+          } else {
+            // token 无效，清除
+            state.accessToken = null;
+            state.refreshToken = null;
+            state.user = null;
+            state.isAuthenticated = false;
+          }
+        }
+      },
     }
   )
 );

@@ -51,5 +51,17 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* 移动端：禁用双击缩放（已通过 viewport 控制），优化触摸滚动 */
+  @media (max-width: 767px) {
+    body {
+      overscroll-behavior: none;
+    }
+    /* 防止移动端输入框聚焦时页面缩放（字体 >= 16px） */
+    textarea, input {
+      font-size: 16px;
+    }
   }
 }

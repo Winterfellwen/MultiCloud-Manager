@@ -9,6 +9,10 @@ import {
   RebootInstancesCommand,
   RunInstancesCommand,
   TerminateInstancesCommand,
+  DescribeVolumesCommand,
+  DescribeSecurityGroupsCommand,
+  DescribeVpcsCommand,
+  DeleteVolumeCommand,
 } from "@aws-sdk/client-ec2";
 import {
   CloudWatchClient,
@@ -18,6 +22,15 @@ import {
   CostExplorerClient,
   GetCostAndUsageCommand,
 } from "@aws-sdk/client-cost-explorer";
+import { S3Client, ListBucketsCommand, DeleteBucketCommand } from "@aws-sdk/client-s3";
+import { RDSClient, DescribeDBInstancesCommand } from "@aws-sdk/client-rds";
+import { ElastiCacheClient, DescribeCacheClustersCommand } from "@aws-sdk/client-elasticache";
+import {
+  ElasticLoadBalancingV2Client,
+  DescribeLoadBalancersCommand,
+} from "@aws-sdk/client-elastic-load-balancing-v2";
+import { EKSClient, ListClustersCommand, DescribeClusterCommand } from "@aws-sdk/client-eks";
+import { CloudFrontClient, ListDistributionsCommand } from "@aws-sdk/client-cloudfront";
 import type {
   ICloudProvider,
   Instance,
@@ -31,6 +44,17 @@ import type {
   CostSummary,
   CostBreakdown,
   InstanceStatus,
+  CloudResource,
+  ResourceType,
+  Disk,
+  Bucket,
+  DatabaseInstance,
+  CacheInstance,
+  LoadBalancer,
+  Vpc,
+  SecurityGroup,
+  CdnDistribution,
+  Cluster,
 } from "../types.js";
 
 interface AwsCredentials {
@@ -344,5 +368,298 @@ export class AWSProvider implements ICloudProvider {
       }
     }
     return result;
+  }
+
+  // ===== 通用资源管理 =====
+
+  getSupportedResourceTypes(): ResourceType[] {
+    return ['instance', 'disk', 'bucket', 'database', 'cache', 'loadbalancer', 'vpc', 'securitygroup', 'cdn', 'cluster'];
+  }
+
+  async listResources(resourceType: ResourceType, region?: string): Promise<CloudResource[]> {
+    switch (resourceType) {
+      case 'instance': return this.listInstancesAsResources(region);
+      case 'disk': return this.listDisks(region);
+      case 'bucket': return this.listBuckets();
+      case 'database': return this.listDatabases(region);
+      case 'cache': return this.listCacheClusters(region);
+      case 'loadbalancer': return this.listLoadBalancers(region);
+      case 'vpc': return this.listVpcs(region);
+      case 'securitygroup': return this.listSecurityGroups(region);
+      case 'cdn': return this.listCdnDistributions();
+      case 'cluster': return this.listEksClusters(region);
+      default: return [];
+    }
+  }
+
+  async getResource(resourceType: ResourceType, id: string): Promise<CloudResource> {
+    const resources = await this.listResources(resourceType);
+    const found = resources.find(r => r.providerResourceId === id || r.id === id);
+    if (!found) throw new Error(`${resourceType} ${id} not found`);
+    return found;
+  }
+
+  async deleteResource(resourceType: ResourceType, id: string): Promise<void> {
+    switch (resourceType) {
+      case 'instance': return this.deleteInstance(id);
+      case 'disk': {
+        const ec2 = this.ec2ForRegion(this.defaultRegion);
+        await ec2.send(new DeleteVolumeCommand({ VolumeId: id }));
+        return;
+      }
+      case 'bucket': {
+        const s3 = new S3Client({ region: this.defaultRegion, credentials: this.credentials });
+        await s3.send(new DeleteBucketCommand({ Bucket: id }));
+      return;
+    }
+    default: throw new Error(`Delete ${resourceType} not implemented for AWS`);
+    }
+  }
+
+  private async listInstancesAsResources(region?: string): Promise<CloudResource[]> {
+    const instances = await this.listInstances(region);
+    return instances.map(i => ({
+      id: i.id,
+      provider: 'aws',
+      resourceType: 'instance' as const,
+      providerResourceId: i.providerInstanceId,
+      name: i.name,
+      region: i.region,
+      status: i.status,
+      createdAt: i.createdAt,
+      tags: i.tags,
+      attributes: {
+        cpu: i.spec.cpu,
+        memoryMb: i.spec.memoryMb,
+        diskGb: i.spec.diskGb,
+        publicIp: i.publicIp,
+        privateIp: i.privateIp,
+        monthlyCost: i.monthlyCost,
+      },
+    }));
+  }
+
+  private async listDisks(region?: string): Promise<Disk[]> {
+    const ec2 = this.ec2ForRegion(region || this.defaultRegion);
+    const response = await ec2.send(new DescribeVolumesCommand({}));
+    return (response.Volumes || []).map(vol => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'disk' as const,
+      providerResourceId: vol.VolumeId || '',
+      name: vol.Tags?.find(t => t.Key === 'Name')?.Value || vol.VolumeId || '',
+      region: region || this.defaultRegion,
+      status: vol.State || 'unknown',
+      attributes: {
+        sizeGb: vol.Size || 0,
+        diskType: vol.VolumeType || 'gp2',
+        iops: vol.Iops,
+        encrypted: vol.Encrypted || false,
+        attachedInstanceId: vol.Attachments?.[0]?.InstanceId,
+        attachmentStatus: vol.Attachments?.[0]?.State,
+      },
+      tags: this.convertTags(vol.Tags),
+      createdAt: vol.CreateTime || new Date(),
+    }));
+  }
+
+  private async listBuckets(): Promise<Bucket[]> {
+    const s3 = new S3Client({ region: this.defaultRegion, credentials: this.credentials });
+    const response = await s3.send(new ListBucketsCommand({}));
+    return (response.Buckets || []).map(bucket => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'bucket' as const,
+      providerResourceId: bucket.Name || '',
+      name: bucket.Name || '',
+      region: this.defaultRegion,
+      status: 'active',
+      attributes: {
+        storageClass: 'standard',
+        objectCount: 0,
+        sizeBytes: 0,
+        versioning: false,
+        publicAccess: true,
+      },
+      tags: {},
+      createdAt: bucket.CreationDate || new Date(),
+    }));
+  }
+
+  private async listDatabases(region?: string): Promise<DatabaseInstance[]> {
+    const rds = new RDSClient({ region: region || this.defaultRegion, credentials: this.credentials });
+    const response = await rds.send(new DescribeDBInstancesCommand({}));
+    return (response.DBInstances || []).map(db => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'database' as const,
+      providerResourceId: db.DBInstanceIdentifier || '',
+      name: db.DBInstanceIdentifier || '',
+      region: region || this.defaultRegion,
+      status: db.DBInstanceStatus || 'unknown',
+      attributes: {
+        engine: db.Engine || '',
+        engineVersion: db.EngineVersion || '',
+        instanceClass: db.DBInstanceClass || '',
+        storageGb: db.AllocatedStorage || 0,
+        multiAz: db.MultiAZ || false,
+        endpoint: db.Endpoint?.Address,
+        port: db.Endpoint?.Port,
+      },
+      tags: {},
+      createdAt: db.InstanceCreateTime || new Date(),
+    }));
+  }
+
+  private async listCacheClusters(region?: string): Promise<CacheInstance[]> {
+    const client = new ElastiCacheClient({ region: region || this.defaultRegion, credentials: this.credentials });
+    const response = await client.send(new DescribeCacheClustersCommand({ ShowCacheNodeInfo: true }));
+    return (response.CacheClusters || []).map(cache => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'cache' as const,
+      providerResourceId: cache.CacheClusterId || '',
+      name: cache.CacheClusterId || '',
+      region: region || this.defaultRegion,
+      status: cache.CacheClusterStatus || 'unknown',
+      attributes: {
+        engine: cache.Engine || '',
+        engineVersion: cache.EngineVersion || '',
+        instanceClass: cache.CacheNodeType || '',
+        memoryMb: 0,
+        nodeType: cache.CacheNodeType,
+        shardCount: cache.NumCacheNodes,
+        endpoint: (cache.CacheNodes?.[0] as any)?.CacheNodeEndpoint?.Address,
+        port: (cache.CacheNodes?.[0] as any)?.CacheNodeEndpoint?.Port,
+      },
+      tags: {},
+      createdAt: new Date(),
+    }));
+  }
+
+  private async listLoadBalancers(region?: string): Promise<LoadBalancer[]> {
+    const elb = new ElasticLoadBalancingV2Client({ region: region || this.defaultRegion, credentials: this.credentials });
+    const response = await elb.send(new DescribeLoadBalancersCommand({}));
+    return (response.LoadBalancers || []).map(lb => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'loadbalancer' as const,
+      providerResourceId: lb.LoadBalancerArn || lb.LoadBalancerName || '',
+      name: lb.LoadBalancerName || '',
+      region: region || this.defaultRegion,
+      status: lb.State?.Code || 'unknown',
+      attributes: {
+        type: lb.Type || 'application',
+        scheme: lb.Scheme || 'internet-facing',
+        dnsName: lb.DNSName,
+        vpcId: lb.VpcId as string | undefined,
+        listenerCount: 0,
+        targetCount: 0,
+      },
+      tags: {},
+      createdAt: lb.CreatedTime || new Date(),
+    }));
+  }
+
+  private async listVpcs(region?: string): Promise<Vpc[]> {
+    const ec2 = this.ec2ForRegion(region || this.defaultRegion);
+    const response = await ec2.send(new DescribeVpcsCommand({}));
+    return (response.Vpcs || []).map(vpc => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'vpc' as const,
+      providerResourceId: vpc.VpcId || '',
+      name: vpc.Tags?.find(t => t.Key === 'Name')?.Value || vpc.VpcId || '',
+      region: region || this.defaultRegion,
+      status: vpc.State || 'available',
+      attributes: {
+        cidrBlock: vpc.CidrBlock || '',
+        subnetCount: 0,
+        isDefault: vpc.IsDefault || false,
+        state: vpc.State || 'available',
+      },
+      tags: this.convertTags(vpc.Tags),
+      createdAt: new Date(),
+    }));
+  }
+
+  private async listSecurityGroups(region?: string): Promise<SecurityGroup[]> {
+    const ec2 = this.ec2ForRegion(region || this.defaultRegion);
+    const response = await ec2.send(new DescribeSecurityGroupsCommand({}));
+    return (response.SecurityGroups || []).map(sg => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'securitygroup' as const,
+      providerResourceId: sg.GroupId || '',
+      name: sg.GroupName || '',
+      region: region || this.defaultRegion,
+      status: 'active',
+      attributes: {
+        vpcId: sg.VpcId,
+        ruleCount: (sg.IpPermissions?.length || 0) + (sg.IpPermissionsEgress?.length || 0),
+        ingressRules: sg.IpPermissions?.length || 0,
+        egressRules: sg.IpPermissionsEgress?.length || 0,
+        description: sg.Description,
+      },
+      tags: this.convertTags(sg.Tags),
+      createdAt: new Date(),
+    }));
+  }
+
+  private async listCdnDistributions(): Promise<CdnDistribution[]> {
+    const cf = new CloudFrontClient({ region: 'us-east-1', credentials: this.credentials });
+    const response = await cf.send(new ListDistributionsCommand({}));
+    return (response.DistributionList?.Items || []).map(dist => ({
+      id: '',
+      provider: 'aws',
+      resourceType: 'cdn' as const,
+      providerResourceId: dist.Id || '',
+      name: dist.Id || '',
+      region: 'global',
+      status: dist.Status || 'unknown',
+      attributes: {
+        domainName: dist.DomainName || '',
+        originDomain: dist.Origins?.Items?.[0]?.DomainName,
+        originType: dist.Origins?.Items?.[0]?.S3OriginConfig ? 's3' : 'custom',
+        enabled: dist.Enabled || false,
+        priceClass: dist.PriceClass,
+        sslCertificate: dist.ViewerCertificate?.ACMCertificateArn,
+      },
+      tags: {},
+      createdAt: dist.LastModifiedTime || new Date(),
+    }));
+  }
+
+  private async listEksClusters(region?: string): Promise<Cluster[]> {
+    const eks = new EKSClient({ region: region || this.defaultRegion, credentials: this.credentials });
+    const response = await eks.send(new ListClustersCommand({}));
+    const clusterNames = response.clusters || [];
+    const clusters: Cluster[] = [];
+    for (const name of clusterNames) {
+      const detail = await eks.send(new DescribeClusterCommand({ name }));
+      if (detail.cluster) {
+        const c = detail.cluster;
+        clusters.push({
+          id: '',
+          provider: 'aws',
+          resourceType: 'cluster' as const,
+          providerResourceId: c.name || name,
+          name: c.name || name,
+          region: region || this.defaultRegion,
+          status: c.status || 'unknown',
+          attributes: {
+            clusterType: 'eks',
+            kubernetesVersion: c.version || '',
+            nodeCount: 0,
+            status: c.status || 'unknown',
+            endpoint: c.endpoint,
+            vpcId: c.resourcesVpcConfig?.vpcId,
+          },
+          tags: {},
+          createdAt: c.createdAt || new Date(),
+        });
+      }
+    }
+    return clusters;
   }
 }

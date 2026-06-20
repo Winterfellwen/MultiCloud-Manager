@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { accountService } from "./services/account.service.js";
 import { syncService } from "./services/sync.service.js";
 import { instanceRoutes } from "./routes/instances.js";
+import { resourceRoutes } from "./routes/resources.js";
 import { providerRoutes, accountRoutes } from "./routes/providers.js";
 import { AppError } from "@cloudops/shared";
 
@@ -45,11 +46,14 @@ app.get("/health", async () => ({
 
 // 注册路由（API Gateway 转发 /cloud/* 到本服务）
 await app.register(instanceRoutes, { prefix: "/cloud/instances" });
+await app.register(resourceRoutes, { prefix: "/cloud/resources" });
 await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
 
 // 启动时注册环境变量配置的 Provider
 accountService.registerFromEnv();
+// 启动时从数据库加载已保存的云账户并注册 Provider（服务重启后恢复内存 registry）
+await accountService.registerFromDb();
 
 // 启动时执行一次全量同步（异步，不阻塞启动）
 syncService

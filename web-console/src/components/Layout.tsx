@@ -1,14 +1,59 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { useChatStore } from '@/stores/chat';
+import { useIsMobile } from '@/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
 
 export function Layout() {
+  // 全局初始化 WebSocket 连接（所有页面共享，如 AiSettings 的 provider 管理、Chat 的对话）
+  const connect = useChatStore((s) => s.connect);
+  useEffect(() => {
+    connect();
+  }, [connect]);
+
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // 路由切换时自动关闭移动端侧边栏
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  // 聊天页面需要全屏布局（无 padding、无 overflow-auto），其他页面保持默认
+  const isChatPage = location.pathname.startsWith('/chat');
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+      {/* 桌面端：固定侧边栏 */}
+      {!isMobile && <Sidebar />}
+
+      {/* 移动端：抽屉式侧边栏 */}
+      {isMobile && sidebarOpen && (
+        <>
+          {/* 遮罩层 */}
+          <div
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={closeSidebar}
+          />
+          {/* 抽屉 */}
+          <div className="fixed inset-y-0 left-0 z-50 animate-in slide-in-from-left duration-200">
+            <Sidebar />
+          </div>
+        </>
+      )}
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-auto p-6">
+        <Topbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
+        <main className={cn(
+          'flex-1 overflow-hidden',
+          isChatPage ? 'p-0' : 'overflow-auto p-3 md:p-6'
+        )}>
           <Outlet />
         </main>
       </div>

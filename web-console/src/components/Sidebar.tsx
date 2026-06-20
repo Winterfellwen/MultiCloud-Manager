@@ -9,6 +9,9 @@ import {
   ScrollText,
   Wrench,
   Plug,
+  Settings2,
+  Cloud,
+  Boxes,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,6 +35,18 @@ const NAV_ITEMS: NavItem[] = [
     permission: { resource: 'instance', action: 'list' },
   },
   {
+    label: '资源管理',
+    to: '/resources',
+    icon: Boxes,
+    permission: { resource: 'instance', action: 'list' },
+  },
+  {
+    label: '云厂商管理',
+    to: '/cloud-accounts',
+    icon: Cloud,
+    permission: { resource: 'instance', action: 'list' },
+  },
+  {
     label: '监控告警',
     to: '/monitor',
     icon: Activity,
@@ -51,6 +66,11 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'React 版', to: '/chat/react' },
       { label: 'Lit 版', to: '/chat/lit' },
     ],
+  },
+  {
+    label: 'AI 设置',
+    to: '/ai-settings',
+    icon: Settings2,
   },
   {
     label: '工具目录',
@@ -88,7 +108,7 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="w-60 border-r bg-card flex flex-col">
+    <aside className="w-60 border-r bg-card flex flex-col h-full shadow-lg">
       <div className="h-14 flex items-center px-6 border-b">
         <span className="font-bold text-lg">CloudOps AI</span>
       </div>

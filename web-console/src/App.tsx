@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Instances from '@/pages/Instances';
+import Resources from '@/pages/Resources';
 import Monitor from '@/pages/Monitor';
 import Costs from '@/pages/Costs';
 import ChatReact from '@/pages/ChatReact';
@@ -13,6 +14,8 @@ import Users from '@/pages/Users';
 import Audit from '@/pages/Audit';
 import ToolsCatalog from '@/pages/ToolsCatalog';
 import McpConfig from '@/pages/McpConfig';
+import AiSettings from '@/pages/AiSettings';
+import CloudAccounts from '@/pages/CloudAccounts';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient({
@@ -50,6 +53,14 @@ export default function App() {
               }
             />
             <Route
+              path="/resources"
+              element={
+                <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
+                  <Resources />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/monitor"
               element={
                 <ProtectedRoute permission={{ resource: 'monitor', action: 'view' }}>
@@ -67,6 +78,8 @@ export default function App() {
             />
             <Route path="/chat/react" element={<ChatReact />} />
             <Route path="/chat/lit" element={<ChatLit />} />
+            <Route path="/ai-settings" element={<AiSettings />} />
+            <Route path="/cloud-accounts" element={<CloudAccounts />} />
             <Route
               path="/users"
               element={

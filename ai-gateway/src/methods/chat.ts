@@ -12,11 +12,23 @@ import {
   resolveInFlightRunSnapshot,
   type ChatAbortControllerEntry,
 } from '../gateway/chat-abort.js';
-import { appendToBuffer, cleanupRun } from '../gateway/server-chat-state.js';
+import { appendToBuffer, appendReasoningToBuffer, cleanupRun } from '../gateway/server-chat-state.js';
 import { broadcastEvent } from '../gateway/server-broadcast.js';
 import { sessionManager } from '../acp/control-plane/manager.js';
 import { recordEvent, readReplay } from '../acp/event-ledger.js';
 import { runAgentTurn, type Attachment } from '../agent/runner.js';
+
+// 按 sessionKey 串行化 recordEvent，确保事件按调用顺序写入 ledger
+// （fire-and-forget 并发写入会导致 seq 分配顺序与调用顺序不一致，刷新后 blocks 排序错乱）
+const recordEventQueue = new Map<string, Promise<unknown>>();
+
+function queuedRecordEvent(sessionKey: string, eventType: string, payload: unknown): void {
+  const prev = recordEventQueue.get(sessionKey) || Promise.resolve();
+  // 确保前一个 promise 的错误不会阻断后续事件
+  const safePrev = prev.catch(() => {});
+  const next = safePrev.then(() => recordEvent(sessionKey, eventType, payload));
+  recordEventQueue.set(sessionKey, next);
+}
 
 export interface ChatMethodContext {
   clients: Map<string, ClientConnection>;
@@ -41,6 +53,10 @@ export interface ChatSendParams {
   temperature?: number;
   /** 最大 token 覆盖 */
   maxTokens?: number;
+  /** 是否启用深度思考（reasoning）模式，默认 true */
+  enableThinking?: boolean;
+  /** 推理努力程度：low / medium / high */
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 export interface ChatHistoryParams {
@@ -60,11 +76,19 @@ export async function handleChatSend(
   const runId = params.clientRunId || `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const sessionKey = params.sessionKey;
 
-  // 幂等性检查
+  // 幂等性检查：相同 clientRunId 返回 in_flight（不重复执行）
   const existing = context.chatAbortControllers.get(runId);
   if (existing) {
     respond(true, { runId, status: 'in_flight' });
     return;
+  }
+
+  // 并发限制：同一 sessionKey 已有 in-flight run 时拒绝
+  for (const [, entry] of context.chatAbortControllers) {
+    if (entry.sessionKey === sessionKey) {
+      respond(false, { error: 'SESSION_BUSY', message: '该会话已有正在进行的生成，请等待完成或中止后再发送' });
+      return;
+    }
   }
 
   // 注册 AbortController
@@ -82,7 +106,7 @@ export async function handleChatSend(
   client.subscribedSessions.add(sessionKey);
 
   // 记录用户消息到 ACP ledger
-  recordEvent(sessionKey, 'user_message', { runId, message: params.message });
+  await recordEvent(sessionKey, 'user_message', { runId, message: params.message });
 
   // fire-and-forget 启动 AI 生成（与连接解耦）
   sessionManager.runSessionTurn({
@@ -100,6 +124,8 @@ export async function handleChatSend(
             attachments: params.attachments as Attachment[] | undefined,
             temperature: params.temperature,
             maxTokens: params.maxTokens,
+            enableThinking: params.enableThinking,
+            reasoningEffort: params.reasoningEffort,
             // 审批上下文：用于 dangerous 工具调用前的审批流程
             approvalContext: { clients: context.clients },
           },
@@ -107,8 +133,8 @@ export async function handleChatSend(
             onDelta: (delta) => {
               // 缓冲到内存
               appendToBuffer(context.chatRunState, runId, delta);
-              // 记录到 ACP ledger
-              recordEvent(sessionKey, 'assistant_delta', { runId, delta });
+              // 记录到 ACP ledger（fire-and-forget，不阻塞流式）
+              queuedRecordEvent(sessionKey, 'assistant_delta', { runId, delta });
               // 广播 chat 事件
               broadcastEvent(context.clients, {
                 event: 'chat',
@@ -116,8 +142,20 @@ export async function handleChatSend(
                 payload: { runId, type: 'text_delta', delta },
               });
             },
+            onReasoning: (delta) => {
+              // 推理过程缓冲到独立的 reasoning 缓冲
+              appendReasoningToBuffer(context.chatRunState, runId, delta);
+              // 记录到 ACP ledger
+              queuedRecordEvent(sessionKey, 'assistant_reasoning', { runId, delta });
+              // 广播 reasoning_delta 事件（与 text_delta 分开）
+              broadcastEvent(context.clients, {
+                event: 'chat',
+                targetSessionKey: sessionKey,
+                payload: { runId, type: 'reasoning_delta', delta },
+              });
+            },
             onToolCall: (toolCall) => {
-              recordEvent(sessionKey, 'tool_call', { runId, toolCall });
+              queuedRecordEvent(sessionKey, 'tool_call', { runId, toolCall });
               broadcastEvent(context.clients, {
                 event: 'chat',
                 targetSessionKey: sessionKey,
@@ -125,15 +163,15 @@ export async function handleChatSend(
               });
             },
             onToolResult: (result) => {
-              recordEvent(sessionKey, 'tool_result', { runId, result });
+              queuedRecordEvent(sessionKey, 'tool_result', { runId, toolCallId: result.toolCallId, result });
               broadcastEvent(context.clients, {
                 event: 'chat',
                 targetSessionKey: sessionKey,
-                payload: { runId, type: 'tool_result', result },
+                payload: { runId, type: 'tool_result', toolCallId: result.toolCallId, result },
               });
             },
             onComplete: (finalText) => {
-              recordEvent(sessionKey, 'assistant_complete', { runId, finalText });
+              queuedRecordEvent(sessionKey, 'assistant_complete', { runId, finalText });
               broadcastEvent(context.clients, {
                 event: 'chat',
                 targetSessionKey: sessionKey,
@@ -143,13 +181,30 @@ export async function handleChatSend(
           }
         );
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        recordEvent(sessionKey, 'error', { runId, error: errorMsg });
-        broadcastEvent(context.clients, {
-          event: 'chat',
-          targetSessionKey: sessionKey,
-          payload: { runId, type: 'error', error: errorMsg },
-        });
+        // 区分 abort 和其他错误
+        const isAborted = error instanceof Error && (
+          error.message === 'Run aborted' ||
+          error.name === 'AbortError' ||
+          error.message.toLowerCase().includes('aborted')
+        );
+
+        if (isAborted) {
+          // 中止：广播 aborted 事件（前端将消息标记为 aborted 而非 error）
+          queuedRecordEvent(sessionKey, 'assistant_complete', { runId, finalText: '', aborted: true });
+          broadcastEvent(context.clients, {
+            event: 'chat',
+            targetSessionKey: sessionKey,
+            payload: { runId, type: 'aborted' },
+          });
+        } else {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          queuedRecordEvent(sessionKey, 'error', { runId, error: errorMsg });
+          broadcastEvent(context.clients, {
+            event: 'chat',
+            targetSessionKey: sessionKey,
+            payload: { runId, type: 'error', error: errorMsg },
+          });
+        }
       } finally {
         completeChatRun(context.chatAbortControllers, runId);
         // 延迟清理缓冲（供短暂断线重连恢复）
@@ -164,12 +219,12 @@ export async function handleChatSend(
 /**
  * chat.history - 获取历史消息 + in-flight run 快照
  */
-export function handleChatHistory(
+export async function handleChatHistory(
   client: ClientConnection,
   params: ChatHistoryParams,
   context: ChatMethodContext,
   respond: (ok: boolean, payload: unknown) => void
-): void {
+): Promise<void> {
   const sessionKey = params.sessionKey;
   const fromSeq = params.fromSeq || 0;
 
@@ -177,7 +232,7 @@ export function handleChatHistory(
   client.subscribedSessions.add(sessionKey);
 
   // 获取 ACP 事件重放
-  const events = readReplay(sessionKey, fromSeq);
+  const events = await readReplay(sessionKey, fromSeq);
 
   // 获取 in-flight run 快照（核心健壮性机制）
   const inFlightRun = resolveInFlightRunSnapshot({
@@ -192,6 +247,7 @@ export function handleChatHistory(
     inFlightRun: inFlightRun ? {
       runId: inFlightRun.runId,
       bufferedText: inFlightRun.bufferedText,
+      bufferedReasoning: inFlightRun.bufferedReasoning,
       isRunning: inFlightRun.isRunning,
       startedAt: inFlightRun.startedAt,
     } : null,
@@ -209,7 +265,9 @@ export function handleChatAbort(
 ): void {
   const entry = context.chatAbortControllers.get(params.runId);
   if (!entry) {
-    respond(false, { error: 'RUN_NOT_FOUND' });
+    // run 可能已完成（completeChatRun 会从 map 中删除条目）
+    // 返回成功但标记为 already_completed，避免客户端报错
+    respond(true, { runId: params.runId, status: 'already_completed' });
     return;
   }
 

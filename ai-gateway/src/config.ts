@@ -3,6 +3,62 @@ dotenv.config();
 
 // ============ 类型定义 ============
 
+/**
+ * Thinking 方言（参考 openclaw）
+ * 不同 provider 的 reasoning 控制参数形状不同，用 thinkingFormat 统一抽象：
+ * - openai:            顶层 reasoning_effort: string
+ * - openrouter:        reasoning: { effort: string }
+ * - deepseek:          thinking: { type: "enabled"|"disabled" } + reasoning_effort
+ * - together:          reasoning: { enabled: boolean } + reasoning_effort
+ * - qwen:              顶层 enable_thinking: boolean
+ * - qwen-chat-template: chat_template_kwargs: { enable_thinking, preserve_thinking }
+ * - zai:               顶层 enable_thinking: boolean（二元 on/off）
+ */
+export const THINKING_FORMATS = [
+  'openai',
+  'openrouter',
+  'deepseek',
+  'together',
+  'qwen',
+  'qwen-chat-template',
+  'zai',
+] as const;
+export type ThinkingFormat = (typeof THINKING_FORMATS)[number];
+
+export function isThinkingFormat(value: string): value is ThinkingFormat {
+  return (THINKING_FORMATS as readonly string[]).includes(value);
+}
+
+/**
+ * 统一思考级别（参考 openclaw ThinkingLevel）
+ * - off: 关闭推理
+ * - low / medium / high: 推理强度
+ */
+export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
+
+/**
+ * 思考级别到 provider 参数的映射
+ * key 为统一级别，value 为 provider 特定参数值，null 表示显式不支持该级别
+ */
+export type ThinkingLevelMap = Partial<Record<ThinkingLevel, string | null>>;
+
+/**
+ * Provider 级 compat 配置（参考 openclaw ModelCompatConfig）
+ * 替代硬编码，允许运行时声明 provider 的兼容性
+ */
+export interface ProviderCompat {
+  /** reasoning 方言，未设置时根据 baseUrl 自动检测 */
+  thinkingFormat?: ThinkingFormat;
+  /** 是否支持 reasoning_effort 参数（OpenAI 风格） */
+  supportsReasoningEffort?: boolean;
+  /** max_tokens 字段名：max_tokens | max_completion_tokens */
+  maxTokensField?: 'max_tokens' | 'max_completion_tokens';
+  /** 是否支持工具调用 */
+  supportsTools?: boolean;
+  /** 是否要求消息 content 为字符串（部分 provider 不接受 null content） */
+  requiresStringContent?: boolean;
+}
+
 export interface LLMModelConfig {
   id: string;
   name: string;
@@ -12,6 +68,12 @@ export interface LLMModelConfig {
   reasoning?: boolean;
   /** 输入类型：text / image / audio 等 */
   input?: string[];
+  /** 覆盖 provider 级 compat.thinkingFormat */
+  thinkingFormat?: ThinkingFormat;
+  /** 各思考级别到 provider 参数的映射 */
+  thinkingLevelMap?: ThinkingLevelMap;
+  /** 该模型支持的思考级别列表 */
+  supportedReasoningEfforts?: string[];
 }
 
 export interface LLMProviderConfig {
@@ -20,6 +82,8 @@ export interface LLMProviderConfig {
   baseUrl: string;
   apiKey: string;
   models: LLMModelConfig[];
+  /** provider 级 compat 配置 */
+  compat?: ProviderCompat;
 }
 
 export interface McpServerConfig {
@@ -91,9 +155,6 @@ export const config = {
 
   // Redis
   redisUrl: process.env.REDIS_URL || 'redis://redis:6379',
-
-  // SQLite（ACP event ledger 本地存储）
-  sqlitePath: process.env.SQLITE_PATH || './data/acp-ledger.db',
 
   // LLM 配置（与 ai-agent 共享）—— 作为默认 provider，向后兼容
   llm: {

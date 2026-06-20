@@ -60,7 +60,7 @@ export function MessageList({ messages, sessionKey }: MessageListProps) {
   };
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full overflow-y-auto">
       <div className="py-4">
         {/* 置顶消息区 */}
         <PinnedMessages items={pinnedItems} onUnpin={handleUnpin} />

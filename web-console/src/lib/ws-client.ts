@@ -126,6 +126,11 @@ export class WsClient {
       this.handleResponse(frame);
     } else if (frame.type === 'event') {
       this.handleEvent(frame);
+    } else if (frame.type === 'error') {
+      // 服务端错误帧（如 AUTH_TOKEN_INVALID），触发状态变更
+      const errMsg = (frame as { error?: string }).error || 'Server error';
+      console.error('[ws] server error frame:', errMsg);
+      this.setStatus('error');
     }
   }
 

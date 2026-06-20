@@ -8,7 +8,17 @@ import Ecs20140526, {
   RebootInstanceRequest,
   DeleteInstanceRequest,
   RunInstancesRequest,
+  DescribeDisksRequest,
+  DescribeDisksResponse,
+  DescribeSecurityGroupsRequest,
+  DescribeSecurityGroupsResponse,
 } from "@alicloud/ecs20140526";
+import Rds20140815 from "@alicloud/rds20140815";
+import Vpc20160428 from "@alicloud/vpc20160428";
+import Slb20140515 from "@alicloud/slb20140515";
+import Cdn20180510 from "@alicloud/cdn20180510";
+import Cs20151215 from "@alicloud/cs20151215";
+import RKvstore20150101 from "@alicloud/r-kvstore20150101";
 import { Config } from "@alicloud/openapi-client";
 import { RuntimeOptions } from "@alicloud/tea-util";
 import type {
@@ -23,6 +33,17 @@ import type {
   MetricData,
   CostSummary,
   InstanceStatus,
+  CloudResource,
+  ResourceType,
+  Disk,
+  Bucket,
+  DatabaseInstance,
+  CacheInstance,
+  LoadBalancer,
+  Vpc,
+  SecurityGroup,
+  CdnDistribution,
+  Cluster,
 } from "../types.js";
 
 export interface AliyunConfig {
@@ -259,5 +280,424 @@ export class AliyunProvider implements ICloudProvider {
       }
     }
     return result;
+  }
+
+  // ===== 通用资源管理 =====
+
+  getSupportedResourceTypes(): ResourceType[] {
+    return [
+      "instance",
+      "disk",
+      "bucket",
+      "database",
+      "cache",
+      "loadbalancer",
+      "vpc",
+      "securitygroup",
+      "cdn",
+      "cluster",
+    ];
+  }
+
+  async listResources(
+    resourceType: ResourceType,
+    region?: string
+  ): Promise<CloudResource[]> {
+    switch (resourceType) {
+      case "instance":
+        return this.listInstancesAsResources(region);
+      case "disk":
+        return this.listDisks(region);
+      case "bucket":
+        return this.listBuckets();
+      case "database":
+        return this.listDatabases(region);
+      case "cache":
+        return this.listCacheClusters(region);
+      case "loadbalancer":
+        return this.listLoadBalancers(region);
+      case "vpc":
+        return this.listVpcs(region);
+      case "securitygroup":
+        return this.listSecurityGroups(region);
+      case "cdn":
+        return this.listCdnDomains();
+      case "cluster":
+        return this.listClusters(region);
+      default:
+        return [];
+    }
+  }
+
+  async getResource(
+    resourceType: ResourceType,
+    id: string
+  ): Promise<CloudResource> {
+    const resources = await this.listResources(resourceType);
+    const found = resources.find(
+      (r) => r.providerResourceId === id || r.id === id
+    );
+    if (!found) {
+      throw new Error(`${resourceType} ${id} not found`);
+    }
+    return found;
+  }
+
+  async deleteResource(
+    resourceType: ResourceType,
+    id: string
+  ): Promise<void> {
+    switch (resourceType) {
+      case "instance":
+        return this.deleteInstance(id);
+      default:
+        throw new Error(`Delete ${resourceType} not implemented for aliyun`);
+    }
+  }
+
+  private async listInstancesAsResources(
+    region?: string
+  ): Promise<CloudResource[]> {
+    const instances = await this.listInstances(region);
+    return instances.map((i) => ({
+      id: i.id,
+      provider: "aliyun",
+      resourceType: "instance" as const,
+      providerResourceId: i.providerInstanceId,
+      name: i.name,
+      region: i.region,
+      status: i.status,
+      createdAt: i.createdAt,
+      tags: i.tags,
+      attributes: {
+        cpu: i.spec.cpu,
+        memoryMb: i.spec.memoryMb,
+        diskGb: i.spec.diskGb,
+        publicIp: i.publicIp,
+        privateIp: i.privateIp,
+        monthlyCost: i.monthlyCost,
+      },
+    }));
+  }
+
+  private async listDisks(region?: string): Promise<Disk[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createClient(regionId);
+    const request = new DescribeDisksRequest({
+      regionId,
+      pageSize: 100,
+      pageNumber: 1,
+    });
+    const response: DescribeDisksResponse = await client.describeDisksWithOptions(
+      request,
+      new RuntimeOptions({})
+    );
+    const raw =
+      (response?.body?.disks?.disk as any[]) || [];
+    return raw.map((d) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "disk" as const,
+      providerResourceId: d.diskId || "",
+      name: d.diskName || d.diskId || "",
+      region: d.regionId || regionId,
+      status: d.status || "unknown",
+      attributes: {
+        sizeGb: d.size || 0,
+        diskType: d.category || d.diskCategory || "",
+        encrypted: d.encrypted || false,
+        attachedInstanceId: d.instanceId || undefined,
+        attachmentStatus: d.status === "In_use" ? "attached" : "detached",
+      },
+      tags: this.convertTags(d.tags?.tag),
+      createdAt: d.creationTime ? new Date(d.creationTime) : new Date(),
+    }));
+  }
+
+  private async listBuckets(): Promise<Bucket[]> {
+    // TODO: OSS 需要独立的签名请求或 @alicloud/oss-client，暂返回空数组
+    return [];
+  }
+
+  private async listDatabases(region?: string): Promise<DatabaseInstance[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createRdsClient(regionId);
+    const response: any = await (client as any).describeDBInstancesWithOptions(
+      { regionId, pageSize: 100, pageNumber: 1 },
+      new RuntimeOptions({})
+    );
+    const raw =
+      (response?.body?.items?.dBInstance as any[]) || [];
+    return raw.map((db) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "database" as const,
+      providerResourceId: db.dBInstanceId || "",
+      name: db.dBInstanceDescription || db.dBInstanceId || "",
+      region: db.regionId || regionId,
+      status: db.dBInstanceStatus || "unknown",
+      attributes: {
+        engine: db.engine || "",
+        engineVersion: db.engineVersion || "",
+        instanceClass: db.dBInstanceClass || "",
+        storageGb: db.dBInstanceStorage || 0,
+        multiAz: db.mutriORsignle || false,
+        endpoint: db.connectionString,
+        port: db.port ? Number(db.port) : undefined,
+      },
+      tags: {},
+      createdAt: db.createTime ? new Date(db.createTime) : new Date(),
+    }));
+  }
+
+  private async listCacheClusters(region?: string): Promise<CacheInstance[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createKvstoreClient(regionId);
+    const response: any = await (client as any).describeInstancesWithOptions(
+      { regionId, pageSize: 100, pageNumber: 1 },
+      new RuntimeOptions({})
+    );
+    const raw =
+      (response?.body?.instances?.instanceKVStore as any[]) || [];
+    return raw.map((c) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "cache" as const,
+      providerResourceId: c.instanceId || "",
+      name: c.instanceName || c.instanceId || "",
+      region: c.regionId || regionId,
+      status: c.instanceStatus || "unknown",
+      attributes: {
+        engine: c.engine || "Redis",
+        engineVersion: c.engineVersion || "",
+        instanceClass: c.instanceClass || "",
+        memoryMb: c.capacity ? Number(c.capacity) : 0,
+        nodeType: c.nodeType,
+        shardCount: c.shardCount,
+        endpoint: c.connectionDomain,
+        port: c.port ? Number(c.port) : undefined,
+      },
+      tags: {},
+      createdAt: c.createTime ? new Date(c.createTime) : new Date(),
+    }));
+  }
+
+  private async listLoadBalancers(
+    region?: string
+  ): Promise<LoadBalancer[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createSlbClient(regionId);
+    const response: any = await (client as any).describeLoadBalancersWithOptions(
+      { regionId, pageSize: 100, pageNumber: 1 },
+      new RuntimeOptions({})
+    );
+    const raw =
+      (response?.body?.loadBalancers?.loadBalancer as any[]) || [];
+    return raw.map((lb) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "loadbalancer" as const,
+      providerResourceId: lb.loadBalancerId || "",
+      name: lb.loadBalancerName || lb.loadBalancerId || "",
+      region: lb.regionId || regionId,
+      status: lb.loadBalancerStatus || "unknown",
+      attributes: {
+        type: lb.loadBalancerSpec || "slb",
+        scheme: lb.addressType || "internet",
+        dnsName: lb.address,
+        vpcId: lb.vpcId,
+        listenerCount: 0,
+        targetCount: 0,
+      },
+      tags: {},
+      createdAt: lb.createTime ? new Date(lb.createTime) : new Date(),
+    }));
+  }
+
+  private async listVpcs(region?: string): Promise<Vpc[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createVpcClient(regionId);
+    const response: any = await (client as any).describeVpcsWithOptions(
+      { regionId, pageSize: 100, pageNumber: 1 },
+      new RuntimeOptions({})
+    );
+    const raw = (response?.body?.vpcs?.vpc as any[]) || [];
+    return raw.map((v) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "vpc" as const,
+      providerResourceId: v.vpcId || "",
+      name: v.vpcName || v.vpcId || "",
+      region: v.regionId || regionId,
+      status: v.status || "available",
+      attributes: {
+        cidrBlock: v.cidrBlock || "",
+        subnetCount: v.vSwitchCount || 0,
+        isDefault: v.isDefault || false,
+        state: v.status || "available",
+      },
+      tags: this.convertTags(v.tags?.tag),
+      createdAt: v.creationTime ? new Date(v.creationTime) : new Date(),
+    }));
+  }
+
+  private async listSecurityGroups(
+    region?: string
+  ): Promise<SecurityGroup[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createClient(regionId);
+    const request = new DescribeSecurityGroupsRequest({
+      regionId,
+      pageSize: 100,
+      pageNumber: 1,
+    });
+    const response: DescribeSecurityGroupsResponse =
+      await client.describeSecurityGroupsWithOptions(
+        request,
+        new RuntimeOptions({})
+      );
+    const raw =
+      (response?.body?.securityGroups?.securityGroup as any[]) || [];
+    return raw.map((sg) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "securitygroup" as const,
+      providerResourceId: sg.securityGroupId || "",
+      name: sg.securityGroupName || sg.securityGroupId || "",
+      region: sg.regionId || regionId,
+      status: "active",
+      attributes: {
+        vpcId: sg.vpcId,
+        ruleCount: 0,
+        ingressRules: 0,
+        egressRules: 0,
+        description: sg.description,
+      },
+      tags: this.convertTags(sg.tags?.tag),
+      createdAt: sg.creationTime ? new Date(sg.creationTime) : new Date(),
+    }));
+  }
+
+  private async listCdnDomains(): Promise<CdnDistribution[]> {
+    const client = this.createCdnClient();
+    const response: any = await (client as any).describeUserDomainsWithOptions(
+      { pageSize: 100, pageNumber: 1 },
+      new RuntimeOptions({})
+    );
+    const raw = (response?.body?.domains?.pageData as any[]) || [];
+    return raw.map((d) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "cdn" as const,
+      providerResourceId: d.domainName || "",
+      name: d.domainName || "",
+      region: "global",
+      status: d.domainStatus || "unknown",
+      attributes: {
+        domainName: d.domainName || "",
+        originDomain: d.sources?.[0]?.content,
+        originType: d.sources?.[0]?.type || "",
+        enabled: d.domainStatus === "online",
+        priceClass: undefined,
+        sslCertificate: undefined,
+      },
+      tags: {},
+      createdAt: d.gmtModified ? new Date(d.gmtModified) : new Date(),
+    }));
+  }
+
+  private async listClusters(region?: string): Promise<Cluster[]> {
+    const regionId = region || this.defaultRegion;
+    const client = this.createCsClient(regionId);
+    const response: any = await (client as any).describeClustersWithOptions(
+      {},
+      new RuntimeOptions({})
+    );
+    const raw = (response?.body?.clusters as any[]) || [];
+    return raw.map((c) => ({
+      id: "",
+      provider: "aliyun",
+      resourceType: "cluster" as const,
+      providerResourceId: c.clusterId || "",
+      name: c.name || c.clusterId || "",
+      region: c.regionId || regionId,
+      status: c.state || "unknown",
+      attributes: {
+        clusterType: c.clusterType || "",
+        kubernetesVersion: c.version || "",
+        nodeCount: c.size || 0,
+        status: c.state || "unknown",
+        endpoint: c.master_url,
+        vpcId: c.vpc_id,
+      },
+      tags: {},
+      createdAt: c.created ? new Date(c.created) : new Date(),
+    }));
+  }
+
+  // ===== 各服务客户端创建方法 =====
+
+  private createRdsClient(regionId?: string): Rds20140815 {
+    const region = regionId || this.defaultRegion;
+    const cfg = new Config({
+      accessKeyId: this.accessKeyId,
+      accessKeySecret: this.accessKeySecret,
+      regionId: region,
+      endpoint: `rds.${region}.aliyuncs.com`,
+    });
+    return new Rds20140815(cfg as any);
+  }
+
+  private createVpcClient(regionId?: string): Vpc20160428 {
+    const region = regionId || this.defaultRegion;
+    const cfg = new Config({
+      accessKeyId: this.accessKeyId,
+      accessKeySecret: this.accessKeySecret,
+      regionId: region,
+      endpoint: `vpc.${region}.aliyuncs.com`,
+    });
+    return new Vpc20160428(cfg as any);
+  }
+
+  private createSlbClient(regionId?: string): Slb20140515 {
+    const region = regionId || this.defaultRegion;
+    const cfg = new Config({
+      accessKeyId: this.accessKeyId,
+      accessKeySecret: this.accessKeySecret,
+      regionId: region,
+      endpoint: `slb.${region}.aliyuncs.com`,
+    });
+    return new Slb20140515(cfg as any);
+  }
+
+  private createCdnClient(): Cdn20180510 {
+    const cfg = new Config({
+      accessKeyId: this.accessKeyId,
+      accessKeySecret: this.accessKeySecret,
+      endpoint: `cdn.aliyuncs.com`,
+    });
+    return new Cdn20180510(cfg as any);
+  }
+
+  private createCsClient(regionId?: string): Cs20151215 {
+    const region = regionId || this.defaultRegion;
+    const cfg = new Config({
+      accessKeyId: this.accessKeyId,
+      accessKeySecret: this.accessKeySecret,
+      regionId: region,
+      endpoint: `cs.${region}.aliyuncs.com`,
+    });
+    return new Cs20151215(cfg as any);
+  }
+
+  private createKvstoreClient(regionId?: string): RKvstore20150101 {
+    const region = regionId || this.defaultRegion;
+    const cfg = new Config({
+      accessKeyId: this.accessKeyId,
+      accessKeySecret: this.accessKeySecret,
+      regionId: region,
+      endpoint: `r-kvstore.${region}.aliyuncs.com`,
+    });
+    return new RKvstore20150101(cfg as any);
   }
 }

@@ -3,7 +3,7 @@
 // WebSocket 断开不 abort 任何任务
 
 import type { ChatRunState } from './server-chat-state.js';
-import { getBuffer } from './server-chat-state.js';
+import { getBuffer, getReasoningBuffer } from './server-chat-state.js';
 
 export interface ChatAbortControllerEntry {
   runId: string;
@@ -20,6 +20,8 @@ export interface InFlightRunSnapshot {
   sessionKey: string;
   /** 已缓冲的文本 */
   bufferedText: string;
+  /** 已缓冲的推理过程文本 */
+  bufferedReasoning: string;
   /** 是否仍在运行 */
   isRunning: boolean;
   /** 开始时间 */
@@ -85,10 +87,12 @@ export function resolveInFlightRunSnapshot(params: {
     if (entry.sessionKey !== requestedSessionKey) continue;
 
     const bufferedText = getBuffer(chatRunState, runId);
+    const bufferedReasoning = getReasoningBuffer(chatRunState, runId);
     return {
       runId,
       sessionKey: entry.sessionKey,
       bufferedText,
+      bufferedReasoning,
       isRunning: true,
       startedAt: entry.createdAt,
     };

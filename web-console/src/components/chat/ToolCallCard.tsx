@@ -72,9 +72,17 @@ function extractResultText(content: unknown): string | undefined {
   return undefined;
 }
 
-/** 序列化参数/结果为可展示字符串 */
+/** 序列化参数/结果为可展示字符串（自动解析 JSON 字符串并格式化） */
 function serializeValue(value: unknown): string {
   if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        return JSON.stringify(JSON.parse(trimmed), null, 2);
+      } catch {
+        // 非合法 JSON，原样返回
+      }
+    }
     return value;
   }
   try {
@@ -136,29 +144,40 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
       </button>
       {isExpanded && (
         <div className="space-y-2 border-t border-border px-3 py-2">
-          {toolCall.args != null && (
-            <div>
-              <div className="mb-1 text-xs text-muted-foreground">参数</div>
+          {/* 参数 */}
+          <div>
+            <div className="mb-1 text-xs text-muted-foreground">参数</div>
+            {toolCall.args != null ? (
               <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-xs">
                 {serializeValue(toolCall.args)}
               </pre>
-            </div>
-          )}
-          {toolCall.result && (
-            <div>
-              <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                结果
-                {isError && (
-                  <span className="text-destructive">
-                    <AlertCircle className="inline h-3 w-3" /> 错误
-                  </span>
-                )}
+            ) : (
+              <div className="rounded bg-background p-2 font-mono text-xs text-muted-foreground">
+                无参数
               </div>
+            )}
+          </div>
+          {/* 结果 */}
+          <div>
+            <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+              结果
+              {isError && (
+                <span className="text-destructive">
+                  <AlertCircle className="inline h-3 w-3" /> 错误
+                </span>
+              )}
+            </div>
+            {toolCall.result ? (
               <pre className="max-h-60 overflow-auto rounded bg-background p-2 font-mono text-xs">
                 {serializeValue(toolCall.result.content)}
               </pre>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center gap-1.5 rounded bg-background p-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>等待执行结果...</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

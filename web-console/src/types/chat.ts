@@ -27,7 +27,13 @@ export interface WsEventFrame {
   payload: unknown;
 }
 
-export type WsServerFrame = WsResFrame | WsEventFrame;
+/** 服务端 → 客户端：错误帧（如认证失败） */
+export interface WsErrorFrame {
+  type: 'error';
+  error: string;
+}
+
+export type WsServerFrame = WsResFrame | WsEventFrame | WsErrorFrame;
 
 // ===== RPC 方法参数 =====
 
@@ -38,6 +44,12 @@ export interface ChatSendParams {
   /** 附件列表（content 为 base64 编码） */
   attachments?: ChatSendAttachment[];
   model?: string;
+  /** 是否启用深度思考（reasoning）模式 */
+  enableThinking?: boolean;
+  /** 温度覆盖 */
+  temperature?: number;
+  /** 最大 token 覆盖 */
+  maxTokens?: number;
 }
 
 /** chat.send 附件载荷（wire 格式） */
@@ -94,22 +106,32 @@ export interface ChatTextDeltaPayload {
   delta: string;
 }
 
+export interface ChatReasoningDeltaPayload {
+  runId: string;
+  type: 'reasoning_delta';
+  delta: string;
+}
+
 export interface ChatToolCallPayload {
   runId: string;
   type: 'tool_call';
   toolCall: {
     id: string;
     name: string;
-    args: unknown;
+    arguments: unknown;
   };
 }
 
 export interface ChatToolResultPayload {
   runId: string;
   type: 'tool_result';
+  /** 关联的工具调用 ID（用于精确匹配 tool_call） */
+  toolCallId?: string;
   result: {
-    name: string;
-    content: unknown;
+    name?: string;
+    success?: boolean;
+    data?: unknown;
+    error?: string;
   };
 }
 
@@ -125,20 +147,30 @@ export interface ChatErrorPayload {
   error: string;
 }
 
+export interface ChatAbortedPayload {
+  runId: string;
+  type: 'aborted';
+}
+
 export type ChatEventPayload =
   | ChatTextDeltaPayload
+  | ChatReasoningDeltaPayload
   | ChatToolCallPayload
   | ChatToolResultPayload
   | ChatDonePayload
-  | ChatErrorPayload;
+  | ChatErrorPayload
+  | ChatAbortedPayload;
 
 // ===== ACP 事件（历史重放，eventType 命名与实时事件有差异） =====
 
 export interface AcpEvent {
   seq: number;
+  /** 事件时间戳（ms） */
+  timestamp: number;
   type:
     | 'user_message'
     | 'assistant_delta'
+    | 'assistant_reasoning'
     | 'assistant_complete'
     | 'tool_call'
     | 'tool_result'
@@ -148,8 +180,11 @@ export interface AcpEvent {
     message?: string;
     delta?: string;
     finalText?: string;
-    toolCall?: { id: string; name: string; args: unknown };
-    result?: { name: string; content: unknown };
+    toolCall?: { id: string; name: string; arguments: unknown };
+    /** 后端 tool_result 实际 payload 结构：{ name, success, data, error? } */
+    result?: { name?: string; success?: boolean; data?: unknown; error?: string };
+    /** 关联的工具调用 ID（用于精确匹配 tool_call 与 tool_result） */
+    toolCallId?: string;
     error?: string;
   };
 }
@@ -159,6 +194,7 @@ export interface AcpEvent {
 export interface InFlightRunSnapshot {
   runId: string;
   bufferedText: string;
+  bufferedReasoning?: string;
   isRunning: boolean;
   startedAt: number;
 }
@@ -173,9 +209,19 @@ export interface ToolCallRecord {
   id: string;
   name: string;
   args: unknown;
+  /** 工具结果（映射后的前端格式：{ name, content }） */
   result?: { name: string; content: unknown };
   status: ToolCallStatus;
 }
+
+/**
+ * 内容块：按事件到达顺序记录 assistant 消息的各个部分
+ * 渲染时按 blocks 数组顺序输出，确保 reasoning / text / tool_call 按实际时间顺序展示
+ */
+export type ContentBlock =
+  | { type: 'reasoning'; id: string; content: string }
+  | { type: 'text'; id: string; content: string }
+  | { type: 'tool_call'; id: string; toolCall: ToolCallRecord };
 
 export type MessageStatus = 'streaming' | 'complete' | 'error' | 'aborted';
 
@@ -186,7 +232,11 @@ export interface ChatMessage {
   runId?: string;
   role: MessageRole;
   content: string;
+  /** AI 深度思考（reasoning）过程，与 content 分开存储 */
+  reasoning?: string;
   toolCalls: ToolCallRecord[];
+  /** 按时间顺序排列的内容块（渲染时优先使用） */
+  blocks?: ContentBlock[];
   status: MessageStatus;
   error?: string;
   createdAt: number;

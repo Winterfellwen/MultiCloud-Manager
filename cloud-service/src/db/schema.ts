@@ -79,6 +79,28 @@ export const alerts = pgTable('alerts', {
   firedIdx: index('idx_alerts_fired').on(table.firedAt),
 }));
 
+export const cloudResources = pgTable('cloud_resources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  provider: varchar('provider', { length: 32 }).notNull(),
+  resourceType: varchar('resource_type', { length: 32 }).notNull(),
+  providerResourceId: varchar('provider_resource_id', { length: 256 }).notNull(),
+  name: varchar('name', { length: 256 }),
+  region: varchar('region', { length: 64 }).notNull(),
+  status: varchar('status', { length: 32 }).notNull(),
+  attributes: jsonb('attributes').$type<Record<string, unknown>>().default({}),
+  tags: jsonb('tags').$type<Record<string, string>>().default({}),
+  lastSyncedAt: timestamp('last_synced_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  cloudAccountId: uuid('cloud_account_id').references(() => cloudAccounts.id, { onDelete: 'cascade' }),
+}, (table) => ({
+  providerResourceIdx: uniqueIndex('idx_cloud_resources_provider_resource').on(table.provider, table.resourceType, table.providerResourceId),
+  providerIdx: index('idx_cloud_resources_provider').on(table.provider),
+  typeIdx: index('idx_cloud_resources_type').on(table.resourceType),
+  regionIdx: index('idx_cloud_resources_region').on(table.region),
+  statusIdx: index('idx_cloud_resources_status').on(table.status),
+  accountIdx: index('idx_cloud_resources_account').on(table.cloudAccountId),
+}));
+
 export const costRecords = pgTable('cost_records', {
   id: uuid('id').primaryKey().defaultRandom(),
   provider: varchar('provider', { length: 32 }).notNull(),
