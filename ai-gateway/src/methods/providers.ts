@@ -217,6 +217,45 @@ export async function handleProvidersThinkingFormats(
   respond(true, { formats: THINKING_FORMATS });
 }
 
+/** providers.discoverModels - 从 provider API 自动发现模型列表 */
+export async function handleProvidersDiscoverModels(
+  params: { id: string },
+  respond: (ok: boolean, payload: unknown) => void
+): Promise<void> {
+  try {
+    const provider = await getProviderFromStore(params.id);
+    if (!provider) {
+      respond(false, { error: 'NOT_FOUND', message: `Provider "${params.id}" 不存在` });
+      return;
+    }
+    const modelsUrl = `${provider.baseUrl.replace(/\/+$/, '')}/models`;
+    const res = await fetch(modelsUrl, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${provider.apiKey}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      respond(false, { error: 'FETCH_FAILED', message: `HTTP ${res.status}: ${errText.slice(0, 200)}` });
+      return;
+    }
+    const data = await res.json() as { data?: Array<{ id: string; name?: string; owned_by?: string }>; error?: { message?: string } };
+    if (data.error) {
+      respond(false, { error: 'API_ERROR', message: data.error.message || 'Provider API 返回错误' });
+      return;
+    }
+    const rawModels = data.data ?? [];
+    const models = rawModels.map(m => ({
+      id: m.id,
+      name: m.name || m.id,
+      ownedBy: m.owned_by,
+    }));
+    respond(true, { models });
+  } catch (e) {
+    respond(false, { error: 'DISCOVER_FAILED', message: (e as Error).message });
+  }
+}
+
 // ============ 辅助函数 ============
 
 function maskApiKey(key: string): string {

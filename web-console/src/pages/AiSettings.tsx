@@ -5,7 +5,7 @@ import { useChatStore } from '@/stores/chat';
 import { useModels } from '@/hooks/useModels';
 import {
   useProviders, useCreateProvider, useUpdateProvider, useDeleteProvider, useTestProvider,
-  useThinkingFormats,
+  useDiscoverModels, useThinkingFormats,
   type LlmProviderConfig, type ProviderCompat, type ThinkingFormat,
 } from '@/hooks/useProviders';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog } from '@/components/ui/dialog';
 import {
   Brain, Check, Settings2, Plus, Pencil, Trash2, Zap, Loader2, Server, ChevronDown, ChevronUp,
+  Search, Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +53,7 @@ export default function AiSettings() {
   const updateProvider = useUpdateProvider();
   const deleteProvider = useDeleteProvider();
   const testProvider = useTestProvider();
+  const discoverModels = useDiscoverModels();
 
   const selectedModel = useChatStore((s) => s.selectedModel);
   const setModel = useChatStore((s) => s.setModel);
@@ -72,6 +74,12 @@ export default function AiSettings() {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; msg: string }>>({});
 
+  // 模型发现对话框
+  const [discoverDialogOpen, setDiscoverDialogOpen] = useState(false);
+  const [discoverProviderId, setDiscoverProviderId] = useState('');
+  const [discoveredModels, setDiscoveredModels] = useState<Array<{ id: string; name: string; ownedBy?: string }>>([]);
+  const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set());
+  const [discoverError, setDiscoverError] = useState('');
   useEffect(() => {
     const savedTemp = localStorage.getItem('ai-temperature');
     const savedTokens = localStorage.getItem('ai-maxTokens');
@@ -173,6 +181,52 @@ export default function AiSettings() {
     });
   };
 
+  const handleOpenDiscover = (providerId: string) => {
+    setDiscoverProviderId(providerId);
+    setDiscoveredModels([]);
+    setSelectedModelIds(new Set());
+    setDiscoverError('');
+    setDiscoverDialogOpen(true);
+    // 自动开始发现
+    discoverModels.mutate(providerId, {
+      onSuccess: (res) => {
+        setDiscoveredModels(res.models);
+      },
+      onError: (e: Error) => {
+        setDiscoverError(e.message);
+      },
+    });
+  };
+
+  const handleToggleModel = (modelId: string) => {
+    setSelectedModelIds(prev => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  };
+
+  const handleSaveDiscoveredModels = () => {
+    const provider = providers.find(p => p.id === discoverProviderId);
+    if (!provider) return;
+    const models = discoveredModels
+      .filter(m => selectedModelIds.has(m.id))
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        reasoning: /reasoning|think|o1|o3|o4/i.test(m.id),
+        input: /vision|omni|vl|image/i.test(m.id) ? ['text', 'image'] : ['text'],
+      }));
+    updateProvider.mutate({
+      id: discoverProviderId,
+      models,
+    }, {
+      onError: (e: Error) => setDiscoverError(e.message),
+      onSuccess: () => setDiscoverDialogOpen(false),
+    });
+  };
+
   return (
     <div className="container mx-auto max-w-4xl space-y-6 p-6">
       <div className="flex items-center gap-2">
@@ -232,6 +286,14 @@ export default function AiSettings() {
                         title="测试连通性"
                       >
                         <Zap className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="sm"
+                        onClick={() => handleOpenDiscover(provider.id)}
+                        disabled={discoverModels.isPending}
+                        title="从 API 发现模型"
+                      >
+                        <Search className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost" size="sm"
@@ -627,6 +689,95 @@ export default function AiSettings() {
               {editingProvider ? '保存' : '添加'}
             </Button>
           </div>
+      </Dialog>
+
+      {/* 模型发现对话框 */}
+      <Dialog
+        open={discoverDialogOpen}
+        onClose={() => setDiscoverDialogOpen(false)}
+        title="发现模型"
+        description={`从 ${providers.find(p => p.id === discoverProviderId)?.name || ''} 的 API 自动获取可用模型列表`}
+        className="max-w-lg"
+      >
+        <div className="space-y-4 py-2">
+          {discoverModels.isPending && (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              正在从 API 获取模型列表...
+            </div>
+          )}
+          {discoverError && (
+            <p className="text-sm text-destructive">{discoverError}</p>
+          )}
+          {!discoverModels.isPending && discoveredModels.length === 0 && !discoverError && (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              未发现任何模型，请检查 API Key 和 Base URL
+            </p>
+          )}
+          {discoveredModels.length > 0 && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  发现 {discoveredModels.length} 个模型，已选 {selectedModelIds.size} 个
+                </span>
+                <Button
+                  variant="ghost" size="sm"
+                  onClick={() => {
+                    if (selectedModelIds.size === discoveredModels.length) {
+                      setSelectedModelIds(new Set());
+                    } else {
+                      setSelectedModelIds(new Set(discoveredModels.map(m => m.id)));
+                    }
+                  }}
+                >
+                  {selectedModelIds.size === discoveredModels.length ? '取消全选' : '全选'}
+                </Button>
+              </div>
+              <div className="max-h-80 space-y-1 overflow-y-auto">
+                {discoveredModels.map((m) => {
+                  const alreadyHas = providers.find(p => p.id === discoverProviderId)?.models?.some(pm => pm.id === m.id);
+                  return (
+                    <label
+                      key={m.id}
+                      className={cn(
+                        'flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition-colors',
+                        alreadyHas ? 'bg-green-50 border-green-200' : 'hover:bg-accent',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5"
+                        checked={selectedModelIds.has(m.id)}
+                        onChange={() => handleToggleModel(m.id)}
+                        disabled={alreadyHas}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-mono text-xs">{m.id}</span>
+                        {m.name !== m.id && (
+                          <span className="ml-2 text-xs text-muted-foreground">{m.name}</span>
+                        )}
+                      </div>
+                      {alreadyHas && (
+                        <span className="text-xs text-green-600">已有</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={() => setDiscoverDialogOpen(false)}>取消</Button>
+          <Button
+            onClick={handleSaveDiscoveredModels}
+            disabled={selectedModelIds.size === 0 || updateProvider.isPending}
+          >
+            {updateProvider.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+            <Download className="mr-1 h-4 w-4" />
+            保存选中模型 ({selectedModelIds.size})
+          </Button>
+        </div>
       </Dialog>
     </div>
   );

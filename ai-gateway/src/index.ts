@@ -34,6 +34,7 @@ import {
   handleProvidersDelete,
   handleProvidersTest,
   handleProvidersThinkingFormats,
+  handleProvidersDiscoverModels,
 } from './methods/providers.js';
 import {
   handleExecApprovalList,
@@ -131,6 +132,9 @@ app.get('/ws', { websocket: true }, (socket, request) => {
           break;
         case 'providers.thinkingFormats':
           await handleProvidersThinkingFormats(respond);
+          break;
+        case 'providers.discoverModels':
+          await handleProvidersDiscoverModels(params, respond);
           break;
         case 'tools.catalog':
           handleToolsCatalog(respond);

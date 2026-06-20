@@ -147,3 +147,20 @@ export function useTestProvider() {
     },
   });
 }
+
+export function useDiscoverModels() {
+  const queryClient = useQueryClient();
+  const wsClient = useChatStore((s) => s.wsClient);
+  return useMutation({
+    mutationFn: async (providerId: string) => {
+      if (!wsClient) throw new Error('WebSocket 未连接');
+      return wsClient.request<{ models: Array<{ id: string; name: string; ownedBy?: string }> }>(
+        'providers.discoverModels',
+        { id: providerId }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+    },
+  });
+}

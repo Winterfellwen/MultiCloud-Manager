@@ -141,7 +141,8 @@ export class WsClient {
     if (frame.ok) {
       pending.resolve(frame.payload);
     } else {
-      const errMsg = (frame.payload as { error?: string })?.error || 'Request failed';
+      const payload = frame.payload as { error?: string; message?: string } | undefined;
+      const errMsg = payload?.message || payload?.error || 'Request failed';
       pending.reject(new Error(errMsg));
     }
   }
