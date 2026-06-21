@@ -2,7 +2,7 @@
 // 返回所有已配置 provider 的模型列表（从 provider store 读取）
 // 含 thinkingFormat / thinkingLevelMap 等能力信息
 
-import { listProvidersFromStore } from '../acp/provider-store.js';
+import { listProvidersFromStore, deleteModelFromStore, getProviderFromStore } from '../acp/provider-store.js';
 import { detectThinkingFormat } from '../agent/thinking-format.js';
 import type { ThinkingFormat } from '../config.js';
 
@@ -72,5 +72,61 @@ export async function handleModelsList(
     respond(true, { models });
   } catch (e) {
     respond(false, { error: 'MODELS_LIST_FAILED', message: (e as Error).message });
+  }
+}
+
+/** models.delete - 删除指定 provider 下的单个模型 */
+export async function handleModelsDelete(
+  params: { providerId: string; modelId: string },
+  respond: (ok: boolean, payload: unknown) => void
+): Promise<void> {
+  try {
+    const deleted = await deleteModelFromStore(params.providerId, params.modelId);
+    if (!deleted) {
+      respond(false, { error: 'NOT_FOUND', message: `模型 "${params.modelId}" 不存在` });
+      return;
+    }
+    respond(true, { ok: true });
+  } catch (e) {
+    respond(false, { error: 'MODEL_DELETE_FAILED', message: (e as Error).message });
+  }
+}
+
+/** models.test - 测试单个模型连通性 */
+export async function handleModelsTest(
+  params: { providerId: string; modelId: string },
+  respond: (ok: boolean, payload: unknown) => void
+): Promise<void> {
+  try {
+    const provider = await getProviderFromStore(params.providerId);
+    if (!provider) {
+      respond(false, { error: 'NOT_FOUND', message: `Provider "${params.providerId}" 不存在` });
+      return;
+    }
+    // 前端 modelId 格式为 "provider/model"，需要去掉 provider 前缀
+    const rawModelId = params.modelId.includes('/')
+      ? params.modelId.slice(params.modelId.indexOf('/') + 1)
+      : params.modelId;
+    const res = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${provider.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: rawModelId,
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 5,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      respond(true, { ok: true, message: '连接成功' });
+    } else {
+      const errText = await res.text().catch(() => '');
+      respond(false, { error: 'TEST_FAILED', message: `HTTP ${res.status}: ${errText.slice(0, 200)}` });
+    }
+  } catch (e) {
+    respond(false, { error: 'TEST_FAILED', message: (e as Error).message });
   }
 }

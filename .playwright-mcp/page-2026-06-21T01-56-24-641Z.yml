@@ -1,0 +1,528 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云资源" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云资源
+      - link "资源管理" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源管理
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - generic [ref=e44]:
+        - link "AI 对话" [ref=e45] [cursor=pointer]:
+          - /url: /chat/react
+          - img [ref=e46]
+          - text: AI 对话
+        - generic [ref=e48]:
+          - link "React 版" [ref=e49] [cursor=pointer]:
+            - /url: /chat/react
+          - link "Lit 版" [ref=e50] [cursor=pointer]:
+            - /url: /chat/lit
+      - link "AI 设置" [ref=e52] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e53]
+        - text: AI 设置
+      - link "工具目录" [ref=e57] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e58]
+        - text: 工具目录
+      - link "MCP 配置" [ref=e61] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e62]
+        - text: MCP 配置
+      - link "用户管理" [ref=e65] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e66]
+        - text: 用户管理
+      - link "审计日志" [ref=e72] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e73]
+        - text: 审计日志
+  - generic [ref=e76]:
+    - banner [ref=e77]:
+      - generic [ref=e79]: 多云管理控制台
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - img [ref=e82]
+          - generic [ref=e85]: admin
+          - generic [ref=e86]: 管理员
+        - button "退出登录" [ref=e87] [cursor=pointer]:
+          - img [ref=e88]
+    - main [ref=e91]:
+      - generic [ref=e92]:
+        - generic [ref=e93]:
+          - img [ref=e94]
+          - heading "AI 模型设置" [level=1] [ref=e97]
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - img [ref=e101]
+              - text: LLM Provider 管理
+            - button "添加 Provider" [ref=e104] [cursor=pointer]:
+              - img [ref=e105]
+              - text: 添加 Provider
+          - generic [ref=e155]:
+            - generic [ref=e156]: "N"
+            - generic [ref=e157]:
+              - generic [ref=e158]:
+                - generic [ref=e159]: Nvidia
+                - generic [ref=e160]: (nvidia)
+              - generic [ref=e161]: https://integrate.api.nvidia.com/v1
+            - generic [ref=e162]: 2 模型
+            - generic [ref=e163]:
+              - button "测试连通性" [ref=e164] [cursor=pointer]:
+                - img [ref=e165]
+              - button "从 API 发现模型" [ref=e167] [cursor=pointer]:
+                - img [ref=e168]
+              - button [ref=e171] [cursor=pointer]:
+                - img [ref=e172]
+              - button [ref=e174] [cursor=pointer]:
+                - img [ref=e175]
+              - button [ref=e178] [cursor=pointer]:
+                - img [ref=e179]
+        - generic [ref=e108]:
+          - generic [ref=e110]: 模型选择
+          - generic [ref=e182]:
+            - generic [ref=e183] [cursor=pointer]:
+              - generic [ref=e186]:
+                - generic [ref=e187]: mistralai/mistral-large-3-675b-instruct-2512
+                - generic [ref=e188]: nvidia
+              - generic [ref=e189]:
+                - generic "Thinking 方言" [ref=e190]: OpenAI
+                - button "删除模型" [ref=e191]:
+                  - img [ref=e192]
+            - generic [ref=e195] [cursor=pointer]:
+              - generic [ref=e198]:
+                - generic [ref=e199]: mistralai/mistral-medium-3.5-128b
+                - generic [ref=e200]: nvidia
+              - generic [ref=e201]:
+                - generic "Thinking 方言" [ref=e202]: OpenAI
+                - button "删除模型" [ref=e203]:
+                  - img [ref=e204]
+        - generic [ref=e113]:
+          - generic [ref=e115]:
+            - img [ref=e116]
+            - text: 深度思考（Reasoning）
+          - generic [ref=e126]:
+            - generic [ref=e127] [cursor=pointer]:
+              - img [ref=e129]
+              - generic [ref=e131]:
+                - generic [ref=e132]: 启用深度思考模式
+                - paragraph [ref=e133]: 开启后，AI 会在回答前进行内部推理（思维链），适合复杂问题求解、代码生成和多步骤任务。
+            - generic [ref=e134]:
+              - text: 推理努力程度（Reasoning Effort）
+              - generic [ref=e135]:
+                - button "低" [ref=e136] [cursor=pointer]
+                - button "中" [ref=e137] [cursor=pointer]
+                - button "高" [ref=e138] [cursor=pointer]
+              - paragraph [ref=e139]: 高：完整推理链，适合复杂问题求解和代码生成
+        - generic [ref=e140]:
+          - generic [ref=e142]: 生成参数
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]: "温度（Temperature）: 0.30"
+              - 'slider "温度（Temperature）: 0.30" [ref=e146]': "0.3"
+              - paragraph [ref=e147]: 控制随机性。0 = 确定性输出，2 = 高度随机。推荐 0.3 用于运维场景。
+            - generic [ref=e148]:
+              - text: 最大 Token 数
+              - spinbutton "最大 Token 数" [ref=e149]: "4096"
+              - paragraph [ref=e150]: 单次回复的最大 token 数。增大可获得更长回复，但会增加延迟和成本。
+            - button "保存配置" [ref=e152] [cursor=pointer]
+        - generic [ref=e209]:
+          - heading "发现模型" [level=2] [ref=e210]
+          - paragraph [ref=e211]: 从 Nvidia 的 API 自动获取可用模型列表
+          - button [ref=e212] [cursor=pointer]:
+            - img [ref=e213]
+          - generic [ref=e216]:
+            - generic [ref=e222]:
+              - generic [ref=e223]: 发现 121 个模型，已选 0 个
+              - button "全选" [ref=e224] [cursor=pointer]
+            - generic [ref=e225]:
+              - generic [ref=e226] [cursor=pointer]:
+                - checkbox "01-ai/yi-large" [ref=e227]
+                - generic [ref=e228]: 01-ai/yi-large
+              - generic [ref=e229] [cursor=pointer]:
+                - checkbox "abacusai/dracarys-llama-3.1-70b-instruct" [ref=e230]
+                - generic [ref=e231]: abacusai/dracarys-llama-3.1-70b-instruct
+              - generic [ref=e232] [cursor=pointer]:
+                - checkbox "adept/fuyu-8b" [ref=e233]
+                - generic [ref=e234]: adept/fuyu-8b
+              - generic [ref=e235] [cursor=pointer]:
+                - checkbox "ai21labs/jamba-1.5-large-instruct" [ref=e236]
+                - generic [ref=e237]: ai21labs/jamba-1.5-large-instruct
+              - generic [ref=e238] [cursor=pointer]:
+                - checkbox "aisingapore/sea-lion-7b-instruct" [ref=e239]
+                - generic [ref=e240]: aisingapore/sea-lion-7b-instruct
+              - generic [ref=e241] [cursor=pointer]:
+                - checkbox "baai/bge-m3" [ref=e242]
+                - generic [ref=e243]: baai/bge-m3
+              - generic [ref=e244] [cursor=pointer]:
+                - checkbox "bigcode/starcoder2-15b" [ref=e245]
+                - generic [ref=e246]: bigcode/starcoder2-15b
+              - generic [ref=e247] [cursor=pointer]:
+                - checkbox "bytedance/seed-oss-36b-instruct" [ref=e248]
+                - generic [ref=e249]: bytedance/seed-oss-36b-instruct
+              - generic [ref=e250] [cursor=pointer]:
+                - checkbox "databricks/dbrx-instruct" [ref=e251]
+                - generic [ref=e252]: databricks/dbrx-instruct
+              - generic [ref=e253] [cursor=pointer]:
+                - checkbox "deepseek-ai/deepseek-coder-6.7b-instruct" [ref=e254]
+                - generic [ref=e255]: deepseek-ai/deepseek-coder-6.7b-instruct
+              - generic [ref=e256] [cursor=pointer]:
+                - checkbox "deepseek-ai/deepseek-v4-flash" [ref=e257]
+                - generic [ref=e258]: deepseek-ai/deepseek-v4-flash
+              - generic [ref=e259] [cursor=pointer]:
+                - checkbox "deepseek-ai/deepseek-v4-pro" [ref=e260]
+                - generic [ref=e261]: deepseek-ai/deepseek-v4-pro
+              - generic [ref=e262] [cursor=pointer]:
+                - checkbox "google/codegemma-1.1-7b" [ref=e263]
+                - generic [ref=e264]: google/codegemma-1.1-7b
+              - generic [ref=e265] [cursor=pointer]:
+                - checkbox "google/codegemma-7b" [ref=e266]
+                - generic [ref=e267]: google/codegemma-7b
+              - generic [ref=e268] [cursor=pointer]:
+                - checkbox "google/deplot" [ref=e269]
+                - generic [ref=e270]: google/deplot
+              - generic [ref=e271] [cursor=pointer]:
+                - checkbox "google/diffusiongemma-26b-a4b-it" [ref=e272]
+                - generic [ref=e273]: google/diffusiongemma-26b-a4b-it
+              - generic [ref=e274] [cursor=pointer]:
+                - checkbox "google/gemma-2-2b-it" [ref=e275]
+                - generic [ref=e276]: google/gemma-2-2b-it
+              - generic [ref=e277] [cursor=pointer]:
+                - checkbox "google/gemma-2b" [ref=e278]
+                - generic [ref=e279]: google/gemma-2b
+              - generic [ref=e280] [cursor=pointer]:
+                - checkbox "google/gemma-3-12b-it" [ref=e281]
+                - generic [ref=e282]: google/gemma-3-12b-it
+              - generic [ref=e283] [cursor=pointer]:
+                - checkbox "google/gemma-3-4b-it" [ref=e284]
+                - generic [ref=e285]: google/gemma-3-4b-it
+              - generic [ref=e286] [cursor=pointer]:
+                - checkbox "google/gemma-3n-e2b-it" [ref=e287]
+                - generic [ref=e288]: google/gemma-3n-e2b-it
+              - generic [ref=e289] [cursor=pointer]:
+                - checkbox "google/gemma-3n-e4b-it" [ref=e290]
+                - generic [ref=e291]: google/gemma-3n-e4b-it
+              - generic [ref=e292] [cursor=pointer]:
+                - checkbox "google/gemma-4-31b-it" [ref=e293]
+                - generic [ref=e294]: google/gemma-4-31b-it
+              - generic [ref=e295] [cursor=pointer]:
+                - checkbox "google/recurrentgemma-2b" [ref=e296]
+                - generic [ref=e297]: google/recurrentgemma-2b
+              - generic [ref=e298] [cursor=pointer]:
+                - checkbox "ibm/granite-3.0-3b-a800m-instruct" [ref=e299]
+                - generic [ref=e300]: ibm/granite-3.0-3b-a800m-instruct
+              - generic [ref=e301] [cursor=pointer]:
+                - checkbox "ibm/granite-3.0-8b-instruct" [ref=e302]
+                - generic [ref=e303]: ibm/granite-3.0-8b-instruct
+              - generic [ref=e304] [cursor=pointer]:
+                - checkbox "ibm/granite-34b-code-instruct" [ref=e305]
+                - generic [ref=e306]: ibm/granite-34b-code-instruct
+              - generic [ref=e307] [cursor=pointer]:
+                - checkbox "ibm/granite-8b-code-instruct" [ref=e308]
+                - generic [ref=e309]: ibm/granite-8b-code-instruct
+              - generic [ref=e310] [cursor=pointer]:
+                - checkbox "meta/codellama-70b" [ref=e311]
+                - generic [ref=e312]: meta/codellama-70b
+              - generic [ref=e313] [cursor=pointer]:
+                - checkbox "meta/llama-3.1-70b-instruct" [ref=e314]
+                - generic [ref=e315]: meta/llama-3.1-70b-instruct
+              - generic [ref=e316] [cursor=pointer]:
+                - checkbox "meta/llama-3.1-8b-instruct" [ref=e317]
+                - generic [ref=e318]: meta/llama-3.1-8b-instruct
+              - generic [ref=e319] [cursor=pointer]:
+                - checkbox "meta/llama-3.2-11b-vision-instruct" [ref=e320]
+                - generic [ref=e321]: meta/llama-3.2-11b-vision-instruct
+              - generic [ref=e322] [cursor=pointer]:
+                - checkbox "meta/llama-3.2-1b-instruct" [ref=e323]
+                - generic [ref=e324]: meta/llama-3.2-1b-instruct
+              - generic [ref=e325] [cursor=pointer]:
+                - checkbox "meta/llama-3.2-3b-instruct" [ref=e326]
+                - generic [ref=e327]: meta/llama-3.2-3b-instruct
+              - generic [ref=e328] [cursor=pointer]:
+                - checkbox "meta/llama-3.2-90b-vision-instruct" [ref=e329]
+                - generic [ref=e330]: meta/llama-3.2-90b-vision-instruct
+              - generic [ref=e331] [cursor=pointer]:
+                - checkbox "meta/llama-3.3-70b-instruct" [ref=e332]
+                - generic [ref=e333]: meta/llama-3.3-70b-instruct
+              - generic [ref=e334] [cursor=pointer]:
+                - checkbox "meta/llama-4-maverick-17b-128e-instruct" [ref=e335]
+                - generic [ref=e336]: meta/llama-4-maverick-17b-128e-instruct
+              - generic [ref=e337] [cursor=pointer]:
+                - checkbox "meta/llama-guard-4-12b" [ref=e338]
+                - generic [ref=e339]: meta/llama-guard-4-12b
+              - generic [ref=e340] [cursor=pointer]:
+                - checkbox "meta/llama2-70b" [ref=e341]
+                - generic [ref=e342]: meta/llama2-70b
+              - generic [ref=e343] [cursor=pointer]:
+                - checkbox "microsoft/kosmos-2" [ref=e344]
+                - generic [ref=e345]: microsoft/kosmos-2
+              - generic [ref=e346] [cursor=pointer]:
+                - checkbox "microsoft/phi-3-vision-128k-instruct" [ref=e347]
+                - generic [ref=e348]: microsoft/phi-3-vision-128k-instruct
+              - generic [ref=e349] [cursor=pointer]:
+                - checkbox "microsoft/phi-3.5-moe-instruct" [ref=e350]
+                - generic [ref=e351]: microsoft/phi-3.5-moe-instruct
+              - generic [ref=e352] [cursor=pointer]:
+                - checkbox "microsoft/phi-4-mini-instruct" [ref=e353]
+                - generic [ref=e354]: microsoft/phi-4-mini-instruct
+              - generic [ref=e355] [cursor=pointer]:
+                - checkbox "microsoft/phi-4-multimodal-instruct" [ref=e356]
+                - generic [ref=e357]: microsoft/phi-4-multimodal-instruct
+              - generic [ref=e358] [cursor=pointer]:
+                - checkbox "minimaxai/minimax-m2.7" [ref=e359]
+                - generic [ref=e360]: minimaxai/minimax-m2.7
+              - generic [ref=e361] [cursor=pointer]:
+                - checkbox "minimaxai/minimax-m3" [ref=e362]
+                - generic [ref=e363]: minimaxai/minimax-m3
+              - generic [ref=e364] [cursor=pointer]:
+                - checkbox "mistralai/codestral-22b-instruct-v0.1" [ref=e365]
+                - generic [ref=e366]: mistralai/codestral-22b-instruct-v0.1
+              - generic [ref=e367] [cursor=pointer]:
+                - checkbox "mistralai/ministral-14b-instruct-2512" [ref=e368]
+                - generic [ref=e369]: mistralai/ministral-14b-instruct-2512
+              - generic [ref=e370] [cursor=pointer]:
+                - checkbox "mistralai/mistral-7b-instruct-v0.3" [ref=e371]
+                - generic [ref=e372]: mistralai/mistral-7b-instruct-v0.3
+              - generic [ref=e373] [cursor=pointer]:
+                - checkbox "mistralai/mistral-large" [ref=e374]
+                - generic [ref=e375]: mistralai/mistral-large
+              - generic [ref=e376] [cursor=pointer]:
+                - checkbox "mistralai/mistral-large-2-instruct" [ref=e377]
+                - generic [ref=e378]: mistralai/mistral-large-2-instruct
+              - generic [ref=e379] [cursor=pointer]:
+                - checkbox "mistralai/mistral-large-3-675b-instruct-2512 已有" [disabled] [ref=e380]
+                - generic [ref=e381]: mistralai/mistral-large-3-675b-instruct-2512
+                - generic [ref=e382]: 已有
+              - generic [ref=e383] [cursor=pointer]:
+                - checkbox "mistralai/mistral-medium-3.5-128b 已有" [disabled] [ref=e384]
+                - generic [ref=e385]: mistralai/mistral-medium-3.5-128b
+                - generic [ref=e386]: 已有
+              - generic [ref=e387] [cursor=pointer]:
+                - checkbox "mistralai/mistral-nemotron" [ref=e388]
+                - generic [ref=e389]: mistralai/mistral-nemotron
+              - generic [ref=e390] [cursor=pointer]:
+                - checkbox "mistralai/mistral-small-4-119b-2603" [ref=e391]
+                - generic [ref=e392]: mistralai/mistral-small-4-119b-2603
+              - generic [ref=e393] [cursor=pointer]:
+                - checkbox "mistralai/mixtral-8x22b-v0.1" [ref=e394]
+                - generic [ref=e395]: mistralai/mixtral-8x22b-v0.1
+              - generic [ref=e396] [cursor=pointer]:
+                - checkbox "mistralai/mixtral-8x7b-instruct-v0.1" [ref=e397]
+                - generic [ref=e398]: mistralai/mixtral-8x7b-instruct-v0.1
+              - generic [ref=e399] [cursor=pointer]:
+                - checkbox "moonshotai/kimi-k2.6" [ref=e400]
+                - generic [ref=e401]: moonshotai/kimi-k2.6
+              - generic [ref=e402] [cursor=pointer]:
+                - checkbox "nv-mistralai/mistral-nemo-12b-instruct" [ref=e403]
+                - generic [ref=e404]: nv-mistralai/mistral-nemo-12b-instruct
+              - generic [ref=e405] [cursor=pointer]:
+                - checkbox "nvidia/ai-synthetic-video-detector" [ref=e406]
+                - generic [ref=e407]: nvidia/ai-synthetic-video-detector
+              - generic [ref=e408] [cursor=pointer]:
+                - checkbox "nvidia/cosmos-reason2-8b" [ref=e409]
+                - generic [ref=e410]: nvidia/cosmos-reason2-8b
+              - generic [ref=e411] [cursor=pointer]:
+                - checkbox "nvidia/embed-qa-4" [ref=e412]
+                - generic [ref=e413]: nvidia/embed-qa-4
+              - generic [ref=e414] [cursor=pointer]:
+                - checkbox "nvidia/gliner-pii" [ref=e415]
+                - generic [ref=e416]: nvidia/gliner-pii
+              - generic [ref=e417] [cursor=pointer]:
+                - checkbox "nvidia/ising-calibration-1-35b-a3b" [ref=e418]
+                - generic [ref=e419]: nvidia/ising-calibration-1-35b-a3b
+              - generic [ref=e420] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemoguard-8b-content-safety" [ref=e421]
+                - generic [ref=e422]: nvidia/llama-3.1-nemoguard-8b-content-safety
+              - generic [ref=e423] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemoguard-8b-topic-control" [ref=e424]
+                - generic [ref=e425]: nvidia/llama-3.1-nemoguard-8b-topic-control
+              - generic [ref=e426] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemotron-51b-instruct" [ref=e427]
+                - generic [ref=e428]: nvidia/llama-3.1-nemotron-51b-instruct
+              - generic [ref=e429] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemotron-70b-instruct" [ref=e430]
+                - generic [ref=e431]: nvidia/llama-3.1-nemotron-70b-instruct
+              - generic [ref=e432] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemotron-nano-8b-v1" [ref=e433]
+                - generic [ref=e434]: nvidia/llama-3.1-nemotron-nano-8b-v1
+              - generic [ref=e435] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemotron-nano-vl-8b-v1" [ref=e436]
+                - generic [ref=e437]: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
+              - generic [ref=e438] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemotron-safety-guard-8b-v3" [ref=e439]
+                - generic [ref=e440]: nvidia/llama-3.1-nemotron-safety-guard-8b-v3
+              - generic [ref=e441] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.1-nemotron-ultra-253b-v1" [ref=e442]
+                - generic [ref=e443]: nvidia/llama-3.1-nemotron-ultra-253b-v1
+              - generic [ref=e444] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1" [ref=e445]
+                - generic [ref=e446]: nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1
+              - generic [ref=e447] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.2-nv-embedqa-1b-v1" [ref=e448]
+                - generic [ref=e449]: nvidia/llama-3.2-nv-embedqa-1b-v1
+              - generic [ref=e450] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.3-nemotron-super-49b-v1" [ref=e451]
+                - generic [ref=e452]: nvidia/llama-3.3-nemotron-super-49b-v1
+              - generic [ref=e453] [cursor=pointer]:
+                - checkbox "nvidia/llama-3.3-nemotron-super-49b-v1.5" [ref=e454]
+                - generic [ref=e455]: nvidia/llama-3.3-nemotron-super-49b-v1.5
+              - generic [ref=e456] [cursor=pointer]:
+                - checkbox "nvidia/llama-nemotron-embed-1b-v2" [ref=e457]
+                - generic [ref=e458]: nvidia/llama-nemotron-embed-1b-v2
+              - generic [ref=e459] [cursor=pointer]:
+                - checkbox "nvidia/llama-nemotron-embed-vl-1b-v2" [ref=e460]
+                - generic [ref=e461]: nvidia/llama-nemotron-embed-vl-1b-v2
+              - generic [ref=e462] [cursor=pointer]:
+                - checkbox "nvidia/llama3-chatqa-1.5-70b" [ref=e463]
+                - generic [ref=e464]: nvidia/llama3-chatqa-1.5-70b
+              - generic [ref=e465] [cursor=pointer]:
+                - checkbox "nvidia/mistral-nemo-minitron-8b-8k-instruct" [ref=e466]
+                - generic [ref=e467]: nvidia/mistral-nemo-minitron-8b-8k-instruct
+              - generic [ref=e468] [cursor=pointer]:
+                - checkbox "nvidia/nemoretriever-parse" [ref=e469]
+                - generic [ref=e470]: nvidia/nemoretriever-parse
+              - generic [ref=e471] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-3-content-safety" [ref=e472]
+                - generic [ref=e473]: nvidia/nemotron-3-content-safety
+              - generic [ref=e474] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-3-nano-30b-a3b" [ref=e475]
+                - generic [ref=e476]: nvidia/nemotron-3-nano-30b-a3b
+              - generic [ref=e477] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning" [ref=e478]
+                - generic [ref=e479]: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+              - generic [ref=e480] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-3-super-120b-a12b" [ref=e481]
+                - generic [ref=e482]: nvidia/nemotron-3-super-120b-a12b
+              - generic [ref=e483] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-3-ultra-550b-a55b" [ref=e484]
+                - generic [ref=e485]: nvidia/nemotron-3-ultra-550b-a55b
+              - generic [ref=e486] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-3.5-content-safety" [ref=e487]
+                - generic [ref=e488]: nvidia/nemotron-3.5-content-safety
+              - generic [ref=e489] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-4-340b-instruct" [ref=e490]
+                - generic [ref=e491]: nvidia/nemotron-4-340b-instruct
+              - generic [ref=e492] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-4-340b-reward" [ref=e493]
+                - generic [ref=e494]: nvidia/nemotron-4-340b-reward
+              - generic [ref=e495] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-content-safety-reasoning-4b" [ref=e496]
+                - generic [ref=e497]: nvidia/nemotron-content-safety-reasoning-4b
+              - generic [ref=e498] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-mini-4b-instruct" [ref=e499]
+                - generic [ref=e500]: nvidia/nemotron-mini-4b-instruct
+              - generic [ref=e501] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-nano-12b-v2-vl" [ref=e502]
+                - generic [ref=e503]: nvidia/nemotron-nano-12b-v2-vl
+              - generic [ref=e504] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-nano-3-30b-a3b" [ref=e505]
+                - generic [ref=e506]: nvidia/nemotron-nano-3-30b-a3b
+              - generic [ref=e507] [cursor=pointer]:
+                - checkbox "nvidia/nemotron-parse" [ref=e508]
+                - generic [ref=e509]: nvidia/nemotron-parse
+              - generic [ref=e510] [cursor=pointer]:
+                - checkbox "nvidia/neva-22b" [ref=e511]
+                - generic [ref=e512]: nvidia/neva-22b
+              - generic [ref=e513] [cursor=pointer]:
+                - checkbox "nvidia/nv-embed-v1" [ref=e514]
+                - generic [ref=e515]: nvidia/nv-embed-v1
+              - generic [ref=e516] [cursor=pointer]:
+                - checkbox "nvidia/nv-embedcode-7b-v1" [ref=e517]
+                - generic [ref=e518]: nvidia/nv-embedcode-7b-v1
+              - generic [ref=e519] [cursor=pointer]:
+                - checkbox "nvidia/nv-embedqa-e5-v5" [ref=e520]
+                - generic [ref=e521]: nvidia/nv-embedqa-e5-v5
+              - generic [ref=e522] [cursor=pointer]:
+                - checkbox "nvidia/nv-embedqa-mistral-7b-v2" [ref=e523]
+                - generic [ref=e524]: nvidia/nv-embedqa-mistral-7b-v2
+              - generic [ref=e525] [cursor=pointer]:
+                - checkbox "nvidia/nvclip" [ref=e526]
+                - generic [ref=e527]: nvidia/nvclip
+              - generic [ref=e528] [cursor=pointer]:
+                - checkbox "nvidia/nvidia-nemotron-nano-9b-v2" [ref=e529]
+                - generic [ref=e530]: nvidia/nvidia-nemotron-nano-9b-v2
+              - generic [ref=e531] [cursor=pointer]:
+                - checkbox "nvidia/riva-translate-4b-instruct" [ref=e532]
+                - generic [ref=e533]: nvidia/riva-translate-4b-instruct
+              - generic [ref=e534] [cursor=pointer]:
+                - checkbox "nvidia/riva-translate-4b-instruct-v1.1" [ref=e535]
+                - generic [ref=e536]: nvidia/riva-translate-4b-instruct-v1.1
+              - generic [ref=e537] [cursor=pointer]:
+                - checkbox "nvidia/vila" [ref=e538]
+                - generic [ref=e539]: nvidia/vila
+              - generic [ref=e540] [cursor=pointer]:
+                - checkbox "openai/gpt-oss-120b" [ref=e541]
+                - generic [ref=e542]: openai/gpt-oss-120b
+              - generic [ref=e543] [cursor=pointer]:
+                - checkbox "openai/gpt-oss-20b" [ref=e544]
+                - generic [ref=e545]: openai/gpt-oss-20b
+              - generic [ref=e546] [cursor=pointer]:
+                - checkbox "qwen/qwen3-next-80b-a3b-instruct" [ref=e547]
+                - generic [ref=e548]: qwen/qwen3-next-80b-a3b-instruct
+              - generic [ref=e549] [cursor=pointer]:
+                - checkbox "qwen/qwen3.5-122b-a10b" [ref=e550]
+                - generic [ref=e551]: qwen/qwen3.5-122b-a10b
+              - generic [ref=e552] [cursor=pointer]:
+                - checkbox "qwen/qwen3.5-397b-a17b" [ref=e553]
+                - generic [ref=e554]: qwen/qwen3.5-397b-a17b
+              - generic [ref=e555] [cursor=pointer]:
+                - checkbox "sarvamai/sarvam-m" [ref=e556]
+                - generic [ref=e557]: sarvamai/sarvam-m
+              - generic [ref=e558] [cursor=pointer]:
+                - checkbox "snowflake/arctic-embed-l" [ref=e559]
+                - generic [ref=e560]: snowflake/arctic-embed-l
+              - generic [ref=e561] [cursor=pointer]:
+                - checkbox "stepfun-ai/step-3.5-flash" [ref=e562]
+                - generic [ref=e563]: stepfun-ai/step-3.5-flash
+              - generic [ref=e564] [cursor=pointer]:
+                - checkbox "stepfun-ai/step-3.7-flash" [ref=e565]
+                - generic [ref=e566]: stepfun-ai/step-3.7-flash
+              - generic [ref=e567] [cursor=pointer]:
+                - checkbox "stockmark/stockmark-2-100b-instruct" [ref=e568]
+                - generic [ref=e569]: stockmark/stockmark-2-100b-instruct
+              - generic [ref=e570] [cursor=pointer]:
+                - checkbox "upstage/solar-10.7b-instruct" [ref=e571]
+                - generic [ref=e572]: upstage/solar-10.7b-instruct
+              - generic [ref=e573] [cursor=pointer]:
+                - checkbox "writer/palmyra-creative-122b" [ref=e574]
+                - generic [ref=e575]: writer/palmyra-creative-122b
+              - generic [ref=e576] [cursor=pointer]:
+                - checkbox "writer/palmyra-fin-70b-32k" [ref=e577]
+                - generic [ref=e578]: writer/palmyra-fin-70b-32k
+              - generic [ref=e579] [cursor=pointer]:
+                - checkbox "writer/palmyra-med-70b" [ref=e580]
+                - generic [ref=e581]: writer/palmyra-med-70b
+              - generic [ref=e582] [cursor=pointer]:
+                - checkbox "writer/palmyra-med-70b-32k" [ref=e583]
+                - generic [ref=e584]: writer/palmyra-med-70b-32k
+              - generic [ref=e585] [cursor=pointer]:
+                - checkbox "z-ai/glm-5.1" [ref=e586]
+                - generic [ref=e587]: z-ai/glm-5.1
+              - generic [ref=e588] [cursor=pointer]:
+                - checkbox "zyphra/zamba2-7b-instruct" [ref=e589]
+                - generic [ref=e590]: zyphra/zamba2-7b-instruct
+          - generic [ref=e220]:
+            - button "取消" [ref=e221] [cursor=pointer]
+            - button "保存选中模型 (0)" [disabled]:
+              - img
+              - text: 保存选中模型 (0)

@@ -52,6 +52,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3005,
+        CLOUD_SERVICE_URL: process.env.CLOUD_SERVICE_URL || 'http://localhost:3001',
+        MONITOR_SERVICE_URL: process.env.MONITOR_SERVICE_URL || 'http://localhost:3002',
       },
     },
   ],

@@ -60,6 +60,8 @@ interface ChatState {
   reasoningEffort: 'low' | 'medium' | 'high';
   // 模式状态：plan / action / confirm
   mode: Mode;
+  // 已查看的会话（用于清除"已完成"状态指示）
+  seenSessions: Set<string>;
 
   // Actions
   connect: () => void;
@@ -70,6 +72,7 @@ interface ChatState {
 
   createSession: () => string;
   selectSession: (sessionKey: string) => void;
+  markSessionSeen: (sessionKey: string) => void;
   deleteSession: (sessionKey: string) => Promise<void>;
   loadSessionHistory: (sessionKey: string) => Promise<void>;
 
@@ -136,6 +139,7 @@ const LS_KEY_SESSIONS = 'cloudops:chat:sessions';
 const LS_KEY_CURRENT = 'cloudops:chat:currentSessionKey';
 const LS_KEY_RUN_MAP = 'cloudops:chat:runIdToSession';
 const LS_KEY_MODE = 'chat-mode';
+const LS_KEY_MODEL = 'chat-selected-model';
 
 /** 安全读取 localStorage 中的 JSON 值 */
 function readLocalStorage<T>(key: string, fallback: T): T {
@@ -173,6 +177,7 @@ const initialSessions = readLocalStorage<ChatSession[]>(LS_KEY_SESSIONS, []);
 const initialCurrentSessionKey = readLocalStorage<string | null>(LS_KEY_CURRENT, null);
 const initialRunIdToSession = readLocalStorage<Record<string, string>>(LS_KEY_RUN_MAP, {});
 const initialMode = (localStorage.getItem(LS_KEY_MODE) as Mode) || 'plan';
+const initialSelectedModel = localStorage.getItem(LS_KEY_MODEL) || null;
 
 // 正在加载历史的 session 集合（防止并发调用 loadSessionHistory 导致竞态）
 const loadingSessions = new Set<string>();
@@ -290,10 +295,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingBuffers: {},
   inputText: '',
   isSending: false,
-  selectedModel: null,
+  selectedModel: initialSelectedModel,
   enableThinking: true,
   reasoningEffort: 'high',
   mode: initialMode,
+  seenSessions: new Set<string>(),
 
   connect: () => {
     const { wsClient } = get();
@@ -563,6 +569,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     persistChatState(get());
     // 加载历史
     get().loadSessionHistory(sessionKey);
+    // 标记会话已查看，清除"已完成"状态指示
+    get().markSessionSeen(sessionKey);
+  },
+
+  markSessionSeen: (sessionKey) => {
+    set((state) => {
+      const newSeenSessions = new Set(state.seenSessions);
+      newSeenSessions.add(sessionKey);
+      return { seenSessions: newSeenSessions };
+    });
   },
 
   deleteSession: async (sessionKey) => {
@@ -863,7 +879,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setInputText: (text) => set({ inputText: text }),
 
-  setModel: (model) => set({ selectedModel: model }),
+  setModel: (model) => {
+    set({ selectedModel: model });
+    if (model) {
+      localStorage.setItem(LS_KEY_MODEL, model);
+    } else {
+      localStorage.removeItem(LS_KEY_MODEL);
+    }
+  },
 
   setEnableThinking: (enabled) => set({ enableThinking: enabled }),
 

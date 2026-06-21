@@ -1,0 +1,780 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云资源" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云资源
+      - link "资源管理" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源管理
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - generic [ref=e44]:
+        - link "AI 对话" [ref=e45] [cursor=pointer]:
+          - /url: /chat/react
+          - img [ref=e46]
+          - text: AI 对话
+        - generic [ref=e48]:
+          - link "React 版" [ref=e49] [cursor=pointer]:
+            - /url: /chat/react
+          - link "Lit 版" [ref=e50] [cursor=pointer]:
+            - /url: /chat/lit
+      - link "AI 设置" [ref=e52] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e53]
+        - text: AI 设置
+      - link "工具目录" [ref=e57] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e58]
+        - text: 工具目录
+      - link "MCP 配置" [ref=e61] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e62]
+        - text: MCP 配置
+      - link "用户管理" [ref=e65] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e66]
+        - text: 用户管理
+      - link "审计日志" [ref=e72] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e73]
+        - text: 审计日志
+  - generic [ref=e76]:
+    - banner [ref=e77]:
+      - generic [ref=e79]: 多云管理控制台
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - img [ref=e82]
+          - generic [ref=e85]: admin
+          - generic [ref=e86]: 管理员
+        - button "退出登录" [ref=e87] [cursor=pointer]:
+          - img [ref=e88]
+    - main [ref=e91]:
+      - generic [ref=e92]:
+        - generic [ref=e93]:
+          - img [ref=e94]
+          - heading "AI 模型设置" [level=1] [ref=e97]
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - img [ref=e101]
+              - text: LLM Provider 管理
+            - button "添加 Provider" [ref=e104] [cursor=pointer]:
+              - img [ref=e105]
+              - text: 添加 Provider
+          - generic [ref=e153]:
+            - generic [ref=e155]:
+              - generic [ref=e156]: D
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - generic [ref=e159]: DeepSeek
+                  - generic [ref=e160]: (deepseek)
+                - generic [ref=e161]: https://api.deepseek.com/v1
+              - generic [ref=e162]: 0 模型
+              - generic [ref=e163]:
+                - button "测试连通性" [ref=e164] [cursor=pointer]:
+                  - img [ref=e165]
+                - button "从 API 发现模型" [ref=e167] [cursor=pointer]:
+                  - img [ref=e168]
+                - button [ref=e171] [cursor=pointer]:
+                  - img [ref=e172]
+                - button [ref=e174] [cursor=pointer]:
+                  - img [ref=e175]
+                - button [ref=e178] [cursor=pointer]:
+                  - img [ref=e179]
+            - generic [ref=e183]:
+              - generic [ref=e184]: "N"
+              - generic [ref=e185]:
+                - generic [ref=e186]:
+                  - generic [ref=e187]: Nvidia
+                  - generic [ref=e188]: (nvidia)
+                - generic [ref=e189]: https://integrate.api.nvidia.com/v1
+              - generic [ref=e190]: 121 模型
+              - generic [ref=e191]:
+                - button "测试连通性" [ref=e192] [cursor=pointer]:
+                  - img [ref=e193]
+                - button "从 API 发现模型" [ref=e195] [cursor=pointer]:
+                  - img [ref=e196]
+                - button [ref=e199] [cursor=pointer]:
+                  - img [ref=e200]
+                - button [ref=e202] [cursor=pointer]:
+                  - img [ref=e203]
+                - button [ref=e206] [cursor=pointer]:
+                  - img [ref=e207]
+        - generic [ref=e108]:
+          - generic [ref=e110]: 模型选择
+          - generic [ref=e597]:
+            - generic [ref=e598] [cursor=pointer]:
+              - generic [ref=e601]:
+                - generic [ref=e602]: 01-ai/yi-large
+                - generic [ref=e603]: nvidia
+              - generic "Thinking 方言" [ref=e605]: OpenAI
+            - generic [ref=e606] [cursor=pointer]:
+              - generic [ref=e609]:
+                - generic [ref=e610]: abacusai/dracarys-llama-3.1-70b-instruct
+                - generic [ref=e611]: nvidia
+              - generic "Thinking 方言" [ref=e613]: OpenAI
+            - generic [ref=e614] [cursor=pointer]:
+              - generic [ref=e617]:
+                - generic [ref=e618]: adept/fuyu-8b
+                - generic [ref=e619]: nvidia
+              - generic "Thinking 方言" [ref=e621]: OpenAI
+            - generic [ref=e622] [cursor=pointer]:
+              - generic [ref=e625]:
+                - generic [ref=e626]: ai21labs/jamba-1.5-large-instruct
+                - generic [ref=e627]: nvidia
+              - generic "Thinking 方言" [ref=e629]: OpenAI
+            - generic [ref=e630] [cursor=pointer]:
+              - generic [ref=e633]:
+                - generic [ref=e634]: aisingapore/sea-lion-7b-instruct
+                - generic [ref=e635]: nvidia
+              - generic "Thinking 方言" [ref=e637]: OpenAI
+            - generic [ref=e638] [cursor=pointer]:
+              - generic [ref=e641]:
+                - generic [ref=e642]: baai/bge-m3
+                - generic [ref=e643]: nvidia
+              - generic "Thinking 方言" [ref=e645]: OpenAI
+            - generic [ref=e646] [cursor=pointer]:
+              - generic [ref=e649]:
+                - generic [ref=e650]: bigcode/starcoder2-15b
+                - generic [ref=e651]: nvidia
+              - generic "Thinking 方言" [ref=e653]: OpenAI
+            - generic [ref=e654] [cursor=pointer]:
+              - generic [ref=e657]:
+                - generic [ref=e658]: bytedance/seed-oss-36b-instruct
+                - generic [ref=e659]: nvidia
+              - generic "Thinking 方言" [ref=e661]: OpenAI
+            - generic [ref=e662] [cursor=pointer]:
+              - generic [ref=e665]:
+                - generic [ref=e666]: databricks/dbrx-instruct
+                - generic [ref=e667]: nvidia
+              - generic "Thinking 方言" [ref=e669]: OpenAI
+            - generic [ref=e670] [cursor=pointer]:
+              - generic [ref=e673]:
+                - generic [ref=e674]: deepseek-ai/deepseek-coder-6.7b-instruct
+                - generic [ref=e675]: nvidia
+              - generic "Thinking 方言" [ref=e677]: OpenAI
+            - generic [ref=e678] [cursor=pointer]:
+              - generic [ref=e681]:
+                - generic [ref=e682]: deepseek-ai/deepseek-v4-flash
+                - generic [ref=e683]: nvidia
+              - generic "Thinking 方言" [ref=e685]: OpenAI
+            - generic [ref=e686] [cursor=pointer]:
+              - generic [ref=e689]:
+                - generic [ref=e690]: deepseek-ai/deepseek-v4-pro
+                - generic [ref=e691]: nvidia
+              - generic "Thinking 方言" [ref=e693]: OpenAI
+            - generic [ref=e694] [cursor=pointer]:
+              - generic [ref=e697]:
+                - generic [ref=e698]: google/codegemma-1.1-7b
+                - generic [ref=e699]: nvidia
+              - generic "Thinking 方言" [ref=e701]: OpenAI
+            - generic [ref=e702] [cursor=pointer]:
+              - generic [ref=e705]:
+                - generic [ref=e706]: google/codegemma-7b
+                - generic [ref=e707]: nvidia
+              - generic "Thinking 方言" [ref=e709]: OpenAI
+            - generic [ref=e710] [cursor=pointer]:
+              - generic [ref=e713]:
+                - generic [ref=e714]: google/deplot
+                - generic [ref=e715]: nvidia
+              - generic "Thinking 方言" [ref=e717]: OpenAI
+            - generic [ref=e718] [cursor=pointer]:
+              - generic [ref=e721]:
+                - generic [ref=e722]: google/diffusiongemma-26b-a4b-it
+                - generic [ref=e723]: nvidia
+              - generic "Thinking 方言" [ref=e725]: OpenAI
+            - generic [ref=e726] [cursor=pointer]:
+              - generic [ref=e729]:
+                - generic [ref=e730]: google/gemma-2-2b-it
+                - generic [ref=e731]: nvidia
+              - generic "Thinking 方言" [ref=e733]: OpenAI
+            - generic [ref=e734] [cursor=pointer]:
+              - generic [ref=e737]:
+                - generic [ref=e738]: google/gemma-2b
+                - generic [ref=e739]: nvidia
+              - generic "Thinking 方言" [ref=e741]: OpenAI
+            - generic [ref=e742] [cursor=pointer]:
+              - generic [ref=e745]:
+                - generic [ref=e746]: google/gemma-3-12b-it
+                - generic [ref=e747]: nvidia
+              - generic "Thinking 方言" [ref=e749]: OpenAI
+            - generic [ref=e750] [cursor=pointer]:
+              - generic [ref=e753]:
+                - generic [ref=e754]: google/gemma-3-4b-it
+                - generic [ref=e755]: nvidia
+              - generic "Thinking 方言" [ref=e757]: OpenAI
+            - generic [ref=e758] [cursor=pointer]:
+              - generic [ref=e761]:
+                - generic [ref=e762]: google/gemma-3n-e2b-it
+                - generic [ref=e763]: nvidia
+              - generic "Thinking 方言" [ref=e765]: OpenAI
+            - generic [ref=e766] [cursor=pointer]:
+              - generic [ref=e769]:
+                - generic [ref=e770]: google/gemma-3n-e4b-it
+                - generic [ref=e771]: nvidia
+              - generic "Thinking 方言" [ref=e773]: OpenAI
+            - generic [ref=e774] [cursor=pointer]:
+              - generic [ref=e777]:
+                - generic [ref=e778]: google/gemma-4-31b-it
+                - generic [ref=e779]: nvidia
+              - generic "Thinking 方言" [ref=e781]: OpenAI
+            - generic [ref=e782] [cursor=pointer]:
+              - generic [ref=e785]:
+                - generic [ref=e786]: google/recurrentgemma-2b
+                - generic [ref=e787]: nvidia
+              - generic "Thinking 方言" [ref=e789]: OpenAI
+            - generic [ref=e790] [cursor=pointer]:
+              - generic [ref=e793]:
+                - generic [ref=e794]: ibm/granite-3.0-3b-a800m-instruct
+                - generic [ref=e795]: nvidia
+              - generic "Thinking 方言" [ref=e797]: OpenAI
+            - generic [ref=e798] [cursor=pointer]:
+              - generic [ref=e801]:
+                - generic [ref=e802]: ibm/granite-3.0-8b-instruct
+                - generic [ref=e803]: nvidia
+              - generic "Thinking 方言" [ref=e805]: OpenAI
+            - generic [ref=e806] [cursor=pointer]:
+              - generic [ref=e809]:
+                - generic [ref=e810]: ibm/granite-34b-code-instruct
+                - generic [ref=e811]: nvidia
+              - generic "Thinking 方言" [ref=e813]: OpenAI
+            - generic [ref=e814] [cursor=pointer]:
+              - generic [ref=e817]:
+                - generic [ref=e818]: ibm/granite-8b-code-instruct
+                - generic [ref=e819]: nvidia
+              - generic "Thinking 方言" [ref=e821]: OpenAI
+            - generic [ref=e822] [cursor=pointer]:
+              - generic [ref=e825]:
+                - generic [ref=e826]: meta/codellama-70b
+                - generic [ref=e827]: nvidia
+              - generic "Thinking 方言" [ref=e829]: OpenAI
+            - generic [ref=e830] [cursor=pointer]:
+              - generic [ref=e833]:
+                - generic [ref=e834]: meta/llama-3.1-70b-instruct
+                - generic [ref=e835]: nvidia
+              - generic "Thinking 方言" [ref=e837]: OpenAI
+            - generic [ref=e838] [cursor=pointer]:
+              - generic [ref=e841]:
+                - generic [ref=e842]: meta/llama-3.1-8b-instruct
+                - generic [ref=e843]: nvidia
+              - generic "Thinking 方言" [ref=e845]: OpenAI
+            - generic [ref=e846] [cursor=pointer]:
+              - generic [ref=e849]:
+                - generic [ref=e850]: meta/llama-3.2-11b-vision-instruct
+                - generic [ref=e851]: nvidia
+              - generic [ref=e852]:
+                - generic "Thinking 方言" [ref=e853]: OpenAI
+                - generic [ref=e854]: 视觉
+            - generic [ref=e855] [cursor=pointer]:
+              - generic [ref=e858]:
+                - generic [ref=e859]: meta/llama-3.2-1b-instruct
+                - generic [ref=e860]: nvidia
+              - generic "Thinking 方言" [ref=e862]: OpenAI
+            - generic [ref=e863] [cursor=pointer]:
+              - generic [ref=e866]:
+                - generic [ref=e867]: meta/llama-3.2-3b-instruct
+                - generic [ref=e868]: nvidia
+              - generic "Thinking 方言" [ref=e870]: OpenAI
+            - generic [ref=e871] [cursor=pointer]:
+              - generic [ref=e874]:
+                - generic [ref=e875]: meta/llama-3.2-90b-vision-instruct
+                - generic [ref=e876]: nvidia
+              - generic [ref=e877]:
+                - generic "Thinking 方言" [ref=e878]: OpenAI
+                - generic [ref=e879]: 视觉
+            - generic [ref=e880] [cursor=pointer]:
+              - generic [ref=e883]:
+                - generic [ref=e884]: meta/llama-3.3-70b-instruct
+                - generic [ref=e885]: nvidia
+              - generic "Thinking 方言" [ref=e887]: OpenAI
+            - generic [ref=e888] [cursor=pointer]:
+              - generic [ref=e891]:
+                - generic [ref=e892]: meta/llama-4-maverick-17b-128e-instruct
+                - generic [ref=e893]: nvidia
+              - generic "Thinking 方言" [ref=e895]: OpenAI
+            - generic [ref=e896] [cursor=pointer]:
+              - generic [ref=e899]:
+                - generic [ref=e900]: meta/llama-guard-4-12b
+                - generic [ref=e901]: nvidia
+              - generic "Thinking 方言" [ref=e903]: OpenAI
+            - generic [ref=e904] [cursor=pointer]:
+              - generic [ref=e907]:
+                - generic [ref=e908]: meta/llama2-70b
+                - generic [ref=e909]: nvidia
+              - generic "Thinking 方言" [ref=e911]: OpenAI
+            - generic [ref=e912] [cursor=pointer]:
+              - generic [ref=e915]:
+                - generic [ref=e916]: microsoft/kosmos-2
+                - generic [ref=e917]: nvidia
+              - generic "Thinking 方言" [ref=e919]: OpenAI
+            - generic [ref=e920] [cursor=pointer]:
+              - generic [ref=e923]:
+                - generic [ref=e924]: microsoft/phi-3-vision-128k-instruct
+                - generic [ref=e925]: nvidia
+              - generic [ref=e926]:
+                - generic "Thinking 方言" [ref=e927]: OpenAI
+                - generic [ref=e928]: 视觉
+            - generic [ref=e929] [cursor=pointer]:
+              - generic [ref=e932]:
+                - generic [ref=e933]: microsoft/phi-3.5-moe-instruct
+                - generic [ref=e934]: nvidia
+              - generic "Thinking 方言" [ref=e936]: OpenAI
+            - generic [ref=e937] [cursor=pointer]:
+              - generic [ref=e940]:
+                - generic [ref=e941]: microsoft/phi-4-mini-instruct
+                - generic [ref=e942]: nvidia
+              - generic "Thinking 方言" [ref=e944]: OpenAI
+            - generic [ref=e945] [cursor=pointer]:
+              - generic [ref=e948]:
+                - generic [ref=e949]: microsoft/phi-4-multimodal-instruct
+                - generic [ref=e950]: nvidia
+              - generic "Thinking 方言" [ref=e952]: OpenAI
+            - generic [ref=e953] [cursor=pointer]:
+              - generic [ref=e956]:
+                - generic [ref=e957]: minimaxai/minimax-m2.7
+                - generic [ref=e958]: nvidia
+              - generic "Thinking 方言" [ref=e960]: OpenAI
+            - generic [ref=e961] [cursor=pointer]:
+              - generic [ref=e964]:
+                - generic [ref=e965]: minimaxai/minimax-m3
+                - generic [ref=e966]: nvidia
+              - generic "Thinking 方言" [ref=e968]: OpenAI
+            - generic [ref=e969] [cursor=pointer]:
+              - generic [ref=e972]:
+                - generic [ref=e973]: mistralai/codestral-22b-instruct-v0.1
+                - generic [ref=e974]: nvidia
+              - generic "Thinking 方言" [ref=e976]: OpenAI
+            - generic [ref=e977] [cursor=pointer]:
+              - generic [ref=e980]:
+                - generic [ref=e981]: mistralai/ministral-14b-instruct-2512
+                - generic [ref=e982]: nvidia
+              - generic "Thinking 方言" [ref=e984]: OpenAI
+            - generic [ref=e985] [cursor=pointer]:
+              - generic [ref=e988]:
+                - generic [ref=e989]: mistralai/mistral-7b-instruct-v0.3
+                - generic [ref=e990]: nvidia
+              - generic "Thinking 方言" [ref=e992]: OpenAI
+            - generic [ref=e993] [cursor=pointer]:
+              - generic [ref=e996]:
+                - generic [ref=e997]: mistralai/mistral-large
+                - generic [ref=e998]: nvidia
+              - generic "Thinking 方言" [ref=e1000]: OpenAI
+            - generic [ref=e1001] [cursor=pointer]:
+              - generic [ref=e1004]:
+                - generic [ref=e1005]: mistralai/mistral-large-2-instruct
+                - generic [ref=e1006]: nvidia
+              - generic "Thinking 方言" [ref=e1008]: OpenAI
+            - generic [ref=e1009] [cursor=pointer]:
+              - generic [ref=e1012]:
+                - generic [ref=e1013]: mistralai/mistral-large-3-675b-instruct-2512
+                - generic [ref=e1014]: nvidia
+              - generic "Thinking 方言" [ref=e1016]: OpenAI
+            - generic [ref=e1017] [cursor=pointer]:
+              - generic [ref=e1020]:
+                - generic [ref=e1021]: mistralai/mistral-medium-3.5-128b
+                - generic [ref=e1022]: nvidia
+              - generic "Thinking 方言" [ref=e1024]: OpenAI
+            - generic [ref=e1025] [cursor=pointer]:
+              - generic [ref=e1028]:
+                - generic [ref=e1029]: mistralai/mistral-nemotron
+                - generic [ref=e1030]: nvidia
+              - generic "Thinking 方言" [ref=e1032]: OpenAI
+            - generic [ref=e1033] [cursor=pointer]:
+              - generic [ref=e1036]:
+                - generic [ref=e1037]: mistralai/mistral-small-4-119b-2603
+                - generic [ref=e1038]: nvidia
+              - generic "Thinking 方言" [ref=e1040]: OpenAI
+            - generic [ref=e1041] [cursor=pointer]:
+              - generic [ref=e1044]:
+                - generic [ref=e1045]: mistralai/mixtral-8x22b-v0.1
+                - generic [ref=e1046]: nvidia
+              - generic "Thinking 方言" [ref=e1048]: OpenAI
+            - generic [ref=e1049] [cursor=pointer]:
+              - generic [ref=e1052]:
+                - generic [ref=e1053]: mistralai/mixtral-8x7b-instruct-v0.1
+                - generic [ref=e1054]: nvidia
+              - generic "Thinking 方言" [ref=e1056]: OpenAI
+            - generic [ref=e1057] [cursor=pointer]:
+              - generic [ref=e1060]:
+                - generic [ref=e1061]: moonshotai/kimi-k2.6
+                - generic [ref=e1062]: nvidia
+              - generic "Thinking 方言" [ref=e1064]: OpenAI
+            - generic [ref=e1065] [cursor=pointer]:
+              - generic [ref=e1068]:
+                - generic [ref=e1069]: nv-mistralai/mistral-nemo-12b-instruct
+                - generic [ref=e1070]: nvidia
+              - generic "Thinking 方言" [ref=e1072]: OpenAI
+            - generic [ref=e1073] [cursor=pointer]:
+              - generic [ref=e1076]:
+                - generic [ref=e1077]: nvidia/ai-synthetic-video-detector
+                - generic [ref=e1078]: nvidia
+              - generic "Thinking 方言" [ref=e1080]: OpenAI
+            - generic [ref=e1081] [cursor=pointer]:
+              - generic [ref=e1084]:
+                - generic [ref=e1085]: nvidia/cosmos-reason2-8b
+                - generic [ref=e1086]: nvidia
+              - generic "Thinking 方言" [ref=e1088]: OpenAI
+            - generic [ref=e1089] [cursor=pointer]:
+              - generic [ref=e1092]:
+                - generic [ref=e1093]: nvidia/embed-qa-4
+                - generic [ref=e1094]: nvidia
+              - generic "Thinking 方言" [ref=e1096]: OpenAI
+            - generic [ref=e1097] [cursor=pointer]:
+              - generic [ref=e1100]:
+                - generic [ref=e1101]: nvidia/gliner-pii
+                - generic [ref=e1102]: nvidia
+              - generic "Thinking 方言" [ref=e1104]: OpenAI
+            - generic [ref=e1105] [cursor=pointer]:
+              - generic [ref=e1108]:
+                - generic [ref=e1109]: nvidia/ising-calibration-1-35b-a3b
+                - generic [ref=e1110]: nvidia
+              - generic "Thinking 方言" [ref=e1112]: OpenAI
+            - generic [ref=e1113] [cursor=pointer]:
+              - generic [ref=e1116]:
+                - generic [ref=e1117]: nvidia/llama-3.1-nemoguard-8b-content-safety
+                - generic [ref=e1118]: nvidia
+              - generic "Thinking 方言" [ref=e1120]: OpenAI
+            - generic [ref=e1121] [cursor=pointer]:
+              - generic [ref=e1124]:
+                - generic [ref=e1125]: nvidia/llama-3.1-nemoguard-8b-topic-control
+                - generic [ref=e1126]: nvidia
+              - generic "Thinking 方言" [ref=e1128]: OpenAI
+            - generic [ref=e1129] [cursor=pointer]:
+              - generic [ref=e1132]:
+                - generic [ref=e1133]: nvidia/llama-3.1-nemotron-51b-instruct
+                - generic [ref=e1134]: nvidia
+              - generic "Thinking 方言" [ref=e1136]: OpenAI
+            - generic [ref=e1137] [cursor=pointer]:
+              - generic [ref=e1140]:
+                - generic [ref=e1141]: nvidia/llama-3.1-nemotron-70b-instruct
+                - generic [ref=e1142]: nvidia
+              - generic "Thinking 方言" [ref=e1144]: OpenAI
+            - generic [ref=e1145] [cursor=pointer]:
+              - generic [ref=e1148]:
+                - generic [ref=e1149]: nvidia/llama-3.1-nemotron-nano-8b-v1
+                - generic [ref=e1150]: nvidia
+              - generic "Thinking 方言" [ref=e1152]: OpenAI
+            - generic [ref=e1153] [cursor=pointer]:
+              - generic [ref=e1156]:
+                - generic [ref=e1157]: nvidia/llama-3.1-nemotron-nano-vl-8b-v1
+                - generic [ref=e1158]: nvidia
+              - generic [ref=e1159]:
+                - generic "Thinking 方言" [ref=e1160]: OpenAI
+                - generic [ref=e1161]: 视觉
+            - generic [ref=e1162] [cursor=pointer]:
+              - generic [ref=e1165]:
+                - generic [ref=e1166]: nvidia/llama-3.1-nemotron-safety-guard-8b-v3
+                - generic [ref=e1167]: nvidia
+              - generic "Thinking 方言" [ref=e1169]: OpenAI
+            - generic [ref=e1170] [cursor=pointer]:
+              - generic [ref=e1173]:
+                - generic [ref=e1174]: nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1
+                - generic [ref=e1175]: nvidia
+              - generic [ref=e1176]:
+                - generic "Thinking 方言" [ref=e1177]: OpenAI
+                - generic [ref=e1178]: 视觉
+            - generic [ref=e1179] [cursor=pointer]:
+              - generic [ref=e1182]:
+                - generic [ref=e1183]: nvidia/llama-3.3-nemotron-super-49b-v1
+                - generic [ref=e1184]: nvidia
+              - generic "Thinking 方言" [ref=e1186]: OpenAI
+            - generic [ref=e1187] [cursor=pointer]:
+              - generic [ref=e1190]:
+                - generic [ref=e1191]: nvidia/llama-nemotron-embed-1b-v2
+                - generic [ref=e1192]: nvidia
+              - generic "Thinking 方言" [ref=e1194]: OpenAI
+            - generic [ref=e1195] [cursor=pointer]:
+              - generic [ref=e1198]:
+                - generic [ref=e1199]: nvidia/llama3-chatqa-1.5-70b
+                - generic [ref=e1200]: nvidia
+              - generic "Thinking 方言" [ref=e1202]: OpenAI
+            - generic [ref=e1203] [cursor=pointer]:
+              - generic [ref=e1206]:
+                - generic [ref=e1207]: nvidia/nemoretriever-parse
+                - generic [ref=e1208]: nvidia
+              - generic "Thinking 方言" [ref=e1210]: OpenAI
+            - generic [ref=e1211] [cursor=pointer]:
+              - generic [ref=e1214]:
+                - generic [ref=e1215]: nvidia/nemotron-3-nano-30b-a3b
+                - generic [ref=e1216]: nvidia
+              - generic "Thinking 方言" [ref=e1218]: OpenAI
+            - generic [ref=e1219] [cursor=pointer]:
+              - generic [ref=e1222]:
+                - generic [ref=e1223]: nvidia/nemotron-3-super-120b-a12b
+                - generic [ref=e1224]: nvidia
+              - generic "Thinking 方言" [ref=e1226]: OpenAI
+            - generic [ref=e1227] [cursor=pointer]:
+              - generic [ref=e1230]:
+                - generic [ref=e1231]: nvidia/nemotron-3.5-content-safety
+                - generic [ref=e1232]: nvidia
+              - generic "Thinking 方言" [ref=e1234]: OpenAI
+            - generic [ref=e1235] [cursor=pointer]:
+              - generic [ref=e1238]:
+                - generic [ref=e1239]: nvidia/nemotron-4-340b-reward
+                - generic [ref=e1240]: nvidia
+              - generic "Thinking 方言" [ref=e1242]: OpenAI
+            - generic [ref=e1243] [cursor=pointer]:
+              - generic [ref=e1246]:
+                - generic [ref=e1247]: nvidia/nemotron-mini-4b-instruct
+                - generic [ref=e1248]: nvidia
+              - generic "Thinking 方言" [ref=e1250]: OpenAI
+            - generic [ref=e1251] [cursor=pointer]:
+              - generic [ref=e1254]:
+                - generic [ref=e1255]: nvidia/nemotron-nano-3-30b-a3b
+                - generic [ref=e1256]: nvidia
+              - generic "Thinking 方言" [ref=e1258]: OpenAI
+            - generic [ref=e1259] [cursor=pointer]:
+              - generic [ref=e1262]:
+                - generic [ref=e1263]: nvidia/neva-22b
+                - generic [ref=e1264]: nvidia
+              - generic "Thinking 方言" [ref=e1266]: OpenAI
+            - generic [ref=e1267] [cursor=pointer]:
+              - generic [ref=e1270]:
+                - generic [ref=e1271]: nvidia/nv-embedcode-7b-v1
+                - generic [ref=e1272]: nvidia
+              - generic "Thinking 方言" [ref=e1274]: OpenAI
+            - generic [ref=e1275] [cursor=pointer]:
+              - generic [ref=e1278]:
+                - generic [ref=e1279]: nvidia/nv-embedqa-mistral-7b-v2
+                - generic [ref=e1280]: nvidia
+              - generic "Thinking 方言" [ref=e1282]: OpenAI
+            - generic [ref=e1283] [cursor=pointer]:
+              - generic [ref=e1286]:
+                - generic [ref=e1287]: nvidia/nvidia-nemotron-nano-9b-v2
+                - generic [ref=e1288]: nvidia
+              - generic "Thinking 方言" [ref=e1290]: OpenAI
+            - generic [ref=e1291] [cursor=pointer]:
+              - generic [ref=e1294]:
+                - generic [ref=e1295]: nvidia/riva-translate-4b-instruct-v1.1
+                - generic [ref=e1296]: nvidia
+              - generic "Thinking 方言" [ref=e1298]: OpenAI
+            - generic [ref=e1299] [cursor=pointer]:
+              - generic [ref=e1302]:
+                - generic [ref=e1303]: openai/gpt-oss-120b
+                - generic [ref=e1304]: nvidia
+              - generic "Thinking 方言" [ref=e1306]: OpenAI
+            - generic [ref=e1307] [cursor=pointer]:
+              - generic [ref=e1310]:
+                - generic [ref=e1311]: qwen/qwen3-next-80b-a3b-instruct
+                - generic [ref=e1312]: nvidia
+              - generic "Thinking 方言" [ref=e1314]: OpenAI
+            - generic [ref=e1315] [cursor=pointer]:
+              - generic [ref=e1318]:
+                - generic [ref=e1319]: qwen/qwen3.5-397b-a17b
+                - generic [ref=e1320]: nvidia
+              - generic "Thinking 方言" [ref=e1322]: OpenAI
+            - generic [ref=e1323] [cursor=pointer]:
+              - generic [ref=e1326]:
+                - generic [ref=e1327]: snowflake/arctic-embed-l
+                - generic [ref=e1328]: nvidia
+              - generic "Thinking 方言" [ref=e1330]: OpenAI
+            - generic [ref=e1331] [cursor=pointer]:
+              - generic [ref=e1334]:
+                - generic [ref=e1335]: stepfun-ai/step-3.7-flash
+                - generic [ref=e1336]: nvidia
+              - generic "Thinking 方言" [ref=e1338]: OpenAI
+            - generic [ref=e1339] [cursor=pointer]:
+              - generic [ref=e1342]:
+                - generic [ref=e1343]: upstage/solar-10.7b-instruct
+                - generic [ref=e1344]: nvidia
+              - generic "Thinking 方言" [ref=e1346]: OpenAI
+            - generic [ref=e1347] [cursor=pointer]:
+              - generic [ref=e1350]:
+                - generic [ref=e1351]: writer/palmyra-fin-70b-32k
+                - generic [ref=e1352]: nvidia
+              - generic "Thinking 方言" [ref=e1354]: OpenAI
+            - generic [ref=e1355] [cursor=pointer]:
+              - generic [ref=e1358]:
+                - generic [ref=e1359]: writer/palmyra-med-70b-32k
+                - generic [ref=e1360]: nvidia
+              - generic "Thinking 方言" [ref=e1362]: OpenAI
+            - generic [ref=e1363] [cursor=pointer]:
+              - generic [ref=e1366]:
+                - generic [ref=e1367]: zyphra/zamba2-7b-instruct
+                - generic [ref=e1368]: nvidia
+              - generic "Thinking 方言" [ref=e1370]: OpenAI
+            - generic [ref=e1371] [cursor=pointer]:
+              - generic [ref=e1374]:
+                - generic [ref=e1375]: nvidia/llama-3.1-nemotron-ultra-253b-v1
+                - generic [ref=e1376]: nvidia
+              - generic "Thinking 方言" [ref=e1378]: OpenAI
+            - generic [ref=e1379] [cursor=pointer]:
+              - generic [ref=e1382]:
+                - generic [ref=e1383]: nvidia/llama-3.2-nv-embedqa-1b-v1
+                - generic [ref=e1384]: nvidia
+              - generic "Thinking 方言" [ref=e1386]: OpenAI
+            - generic [ref=e1387] [cursor=pointer]:
+              - generic [ref=e1390]:
+                - generic [ref=e1391]: nvidia/llama-3.3-nemotron-super-49b-v1.5
+                - generic [ref=e1392]: nvidia
+              - generic "Thinking 方言" [ref=e1394]: OpenAI
+            - generic [ref=e1395] [cursor=pointer]:
+              - generic [ref=e1398]:
+                - generic [ref=e1399]: nvidia/llama-nemotron-embed-vl-1b-v2
+                - generic [ref=e1400]: nvidia
+              - generic [ref=e1401]:
+                - generic "Thinking 方言" [ref=e1402]: OpenAI
+                - generic [ref=e1403]: 视觉
+            - generic [ref=e1404] [cursor=pointer]:
+              - generic [ref=e1407]:
+                - generic [ref=e1408]: nvidia/mistral-nemo-minitron-8b-8k-instruct
+                - generic [ref=e1409]: nvidia
+              - generic "Thinking 方言" [ref=e1411]: OpenAI
+            - generic [ref=e1412] [cursor=pointer]:
+              - generic [ref=e1415]:
+                - generic [ref=e1416]: nvidia/nemotron-3-content-safety
+                - generic [ref=e1417]: nvidia
+              - generic "Thinking 方言" [ref=e1419]: OpenAI
+            - generic [ref=e1420] [cursor=pointer]:
+              - generic [ref=e1423]:
+                - generic [ref=e1424]: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+                - generic [ref=e1425]: nvidia
+              - generic [ref=e1426]:
+                - generic [ref=e1427]:
+                  - img [ref=e1428]
+                  - text: 推理
+                - generic "Thinking 方言" [ref=e1438]: OpenAI
+                - generic [ref=e1439]: 视觉
+            - generic [ref=e1440] [cursor=pointer]:
+              - generic [ref=e1443]:
+                - generic [ref=e1444]: nvidia/nemotron-3-ultra-550b-a55b
+                - generic [ref=e1445]: nvidia
+              - generic "Thinking 方言" [ref=e1447]: OpenAI
+            - generic [ref=e1448] [cursor=pointer]:
+              - generic [ref=e1451]:
+                - generic [ref=e1452]: nvidia/nemotron-4-340b-instruct
+                - generic [ref=e1453]: nvidia
+              - generic "Thinking 方言" [ref=e1455]: OpenAI
+            - generic [ref=e1456] [cursor=pointer]:
+              - generic [ref=e1459]:
+                - generic [ref=e1460]: nvidia/nemotron-content-safety-reasoning-4b
+                - generic [ref=e1461]: nvidia
+              - generic [ref=e1462]:
+                - generic [ref=e1463]:
+                  - img [ref=e1464]
+                  - text: 推理
+                - generic "Thinking 方言" [ref=e1474]: OpenAI
+            - generic [ref=e1475] [cursor=pointer]:
+              - generic [ref=e1478]:
+                - generic [ref=e1479]: nvidia/nemotron-nano-12b-v2-vl
+                - generic [ref=e1480]: nvidia
+              - generic [ref=e1481]:
+                - generic "Thinking 方言" [ref=e1482]: OpenAI
+                - generic [ref=e1483]: 视觉
+            - generic [ref=e1484] [cursor=pointer]:
+              - generic [ref=e1487]:
+                - generic [ref=e1488]: nvidia/nemotron-parse
+                - generic [ref=e1489]: nvidia
+              - generic "Thinking 方言" [ref=e1491]: OpenAI
+            - generic [ref=e1492] [cursor=pointer]:
+              - generic [ref=e1495]:
+                - generic [ref=e1496]: nvidia/nv-embed-v1
+                - generic [ref=e1497]: nvidia
+              - generic "Thinking 方言" [ref=e1499]: OpenAI
+            - generic [ref=e1500] [cursor=pointer]:
+              - generic [ref=e1503]:
+                - generic [ref=e1504]: nvidia/nv-embedqa-e5-v5
+                - generic [ref=e1505]: nvidia
+              - generic "Thinking 方言" [ref=e1507]: OpenAI
+            - generic [ref=e1508] [cursor=pointer]:
+              - generic [ref=e1511]:
+                - generic [ref=e1512]: nvidia/nvclip
+                - generic [ref=e1513]: nvidia
+              - generic "Thinking 方言" [ref=e1515]: OpenAI
+            - generic [ref=e1516] [cursor=pointer]:
+              - generic [ref=e1519]:
+                - generic [ref=e1520]: nvidia/riva-translate-4b-instruct
+                - generic [ref=e1521]: nvidia
+              - generic "Thinking 方言" [ref=e1523]: OpenAI
+            - generic [ref=e1524] [cursor=pointer]:
+              - generic [ref=e1527]:
+                - generic [ref=e1528]: nvidia/vila
+                - generic [ref=e1529]: nvidia
+              - generic "Thinking 方言" [ref=e1531]: OpenAI
+            - generic [ref=e1532] [cursor=pointer]:
+              - generic [ref=e1535]:
+                - generic [ref=e1536]: openai/gpt-oss-20b
+                - generic [ref=e1537]: nvidia
+              - generic "Thinking 方言" [ref=e1539]: OpenAI
+            - generic [ref=e1540] [cursor=pointer]:
+              - generic [ref=e1543]:
+                - generic [ref=e1544]: qwen/qwen3.5-122b-a10b
+                - generic [ref=e1545]: nvidia
+              - generic "Thinking 方言" [ref=e1547]: OpenAI
+            - generic [ref=e1548] [cursor=pointer]:
+              - generic [ref=e1551]:
+                - generic [ref=e1552]: sarvamai/sarvam-m
+                - generic [ref=e1553]: nvidia
+              - generic "Thinking 方言" [ref=e1555]: OpenAI
+            - generic [ref=e1556] [cursor=pointer]:
+              - generic [ref=e1559]:
+                - generic [ref=e1560]: stepfun-ai/step-3.5-flash
+                - generic [ref=e1561]: nvidia
+              - generic "Thinking 方言" [ref=e1563]: OpenAI
+            - generic [ref=e1564] [cursor=pointer]:
+              - generic [ref=e1567]:
+                - generic [ref=e1568]: stockmark/stockmark-2-100b-instruct
+                - generic [ref=e1569]: nvidia
+              - generic "Thinking 方言" [ref=e1571]: OpenAI
+            - generic [ref=e1572] [cursor=pointer]:
+              - generic [ref=e1575]:
+                - generic [ref=e1576]: writer/palmyra-creative-122b
+                - generic [ref=e1577]: nvidia
+              - generic "Thinking 方言" [ref=e1579]: OpenAI
+            - generic [ref=e1580] [cursor=pointer]:
+              - generic [ref=e1583]:
+                - generic [ref=e1584]: writer/palmyra-med-70b
+                - generic [ref=e1585]: nvidia
+              - generic "Thinking 方言" [ref=e1587]: OpenAI
+            - generic [ref=e1588] [cursor=pointer]:
+              - generic [ref=e1591]:
+                - generic [ref=e1592]: z-ai/glm-5.1
+                - generic [ref=e1593]: nvidia
+              - generic "Thinking 方言" [ref=e1595]: OpenAI
+        - generic [ref=e113]:
+          - generic [ref=e115]:
+            - img [ref=e116]
+            - text: 深度思考（Reasoning）
+          - generic [ref=e126]:
+            - generic [ref=e127] [cursor=pointer]:
+              - img [ref=e129]
+              - generic [ref=e131]:
+                - generic [ref=e132]: 启用深度思考模式
+                - paragraph [ref=e133]: 开启后，AI 会在回答前进行内部推理（思维链），适合复杂问题求解、代码生成和多步骤任务。
+            - generic [ref=e134]:
+              - text: 推理努力程度（Reasoning Effort）
+              - generic [ref=e135]:
+                - button "低" [ref=e136] [cursor=pointer]
+                - button "中" [ref=e137] [cursor=pointer]
+                - button "高" [ref=e138] [cursor=pointer]
+              - paragraph [ref=e139]: 高：完整推理链，适合复杂问题求解和代码生成
+        - generic [ref=e140]:
+          - generic [ref=e142]: 生成参数
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]: "温度（Temperature）: 0.30"
+              - 'slider "温度（Temperature）: 0.30" [ref=e146]': "0.3"
+              - paragraph [ref=e147]: 控制随机性。0 = 确定性输出，2 = 高度随机。推荐 0.3 用于运维场景。
+            - generic [ref=e148]:
+              - text: 最大 Token 数
+              - spinbutton "最大 Token 数" [ref=e149]: "4096"
+              - paragraph [ref=e150]: 单次回复的最大 token 数。增大可获得更长回复，但会增加延迟和成本。
+            - button "保存配置" [ref=e152] [cursor=pointer]

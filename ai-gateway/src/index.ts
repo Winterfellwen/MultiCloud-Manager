@@ -24,7 +24,7 @@ import {
   handleSessionsDelete,
   type SessionsMethodContext,
 } from './methods/sessions.js';
-import { handleModelsList } from './methods/models.js';
+import { handleModelsList, handleModelsDelete, handleModelsTest } from './methods/models.js';
 import { handleToolsCatalog } from './methods/tools-catalog.js';
 import { handleCommandsList } from './methods/commands.js';
 import {
@@ -114,6 +114,12 @@ app.get('/ws', { websocket: true }, (socket, request) => {
           break;
         case 'models.list':
           await handleModelsList(respond);
+          break;
+        case 'models.delete':
+          await handleModelsDelete(params, respond);
+          break;
+        case 'models.test':
+          await handleModelsTest(params, respond);
           break;
         case 'providers.list':
           await handleProvidersList(respond);

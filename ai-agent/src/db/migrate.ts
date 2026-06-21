@@ -3,9 +3,22 @@ import { join } from 'node:path';
 import postgres from 'postgres';
 import { config } from '../config.js';
 
-async function migrate() {
+async function runFile(sql: ReturnType<typeof postgres>, sqlText: string): Promise<void> {
+  try {
+    await sql.unsafe(sqlText);
+  } catch (err: any) {
+    if (err?.code === '23505') {
+      await new Promise(r => setTimeout(r, 200));
+      await sql.unsafe(sqlText);
+    } else {
+      throw err;
+    }
+  }
+}
+
+export async function runMigrations(): Promise<void> {
   const sql = postgres(config.databaseUrl, { max: 1 });
-  const migrationsDir = join(process.cwd(), 'migrations');
+  const migrationsDir = join(process.cwd(), 'ai-agent', 'migrations');
 
   const files = readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
@@ -14,14 +27,16 @@ async function migrate() {
   for (const file of files) {
     const content = readFileSync(join(migrationsDir, file), 'utf-8');
     console.log(`Running migration: ${file}`);
-    await sql.unsafe(content);
+    await runFile(sql, content);
   }
 
   console.log('Migrations complete.');
   await sql.end();
 }
 
-migrate().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runMigrations().catch((err) => {
+    console.error('Migration failed:', err);
+    process.exit(1);
+  });
+}

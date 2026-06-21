@@ -1,0 +1,82 @@
+<h2>Mode Selector UI Patterns</h2>
+<p class="subtitle">How should users switch between Plan/Action/Confirm modes?</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Option A: Toggle Button</div>
+    <div class="mockup-body">
+      <p>Single button that cycles through modes on click:</p>
+      
+      <div style="margin: 20px 0;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 1px solid #ccc; border-radius: 6px; background: #f8f9fa;">
+          <span style="font-size: 14px;">📋</span>
+          <span style="font-weight: 500;">Plan</span>
+          <span style="color: #666; font-size: 12px;">(click to cycle)</span>
+        </div>
+      </div>
+      
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Minimal UI footprint</li>
+            <li>Quick to click</li>
+            <li>Works well in tight spaces</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Hard to see all options at once</li>
+            <li>Need to remember cycle order</li>
+            <li>Accidental clicks possible</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mockup">
+    <div class="mockup-header">Option B: Segmented Control</div>
+    <div class="mockup-body">
+      <p>All modes visible, one selected:</p>
+      
+      <div style="margin: 20px 0;">
+        <div style="display: inline-flex; border: 1px solid #ccc; border-radius: 6px; overflow: hidden;">
+          <div style="padding: 8px 16px; background: #3b82f6; color: white; font-weight: 500;">Plan</div>
+          <div style="padding: 8px 16px; background: white; border-left: 1px solid #ccc;">Action</div>
+          <div style="padding: 8px 16px; background: white; border-left: 1px solid #ccc;">Confirm</div>
+        </div>
+      </div>
+      
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>All options visible at once</li>
+            <li>Clear current selection</li>
+            <li>No memory needed</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Takes more space</li>
+            <li>More clicks to reach distant option</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Recommendation</h3>
+  <p><strong>Segmented Control (Option B)</strong> is better because:</p>
+  <ul>
+    <li>Users can see all available modes instantly</li>
+    <li>No cognitive load to remember what comes next</li>
+    <li>Current mode is always clear</li>
+    <li>Matches modern UI patterns (iOS segmented controls, Material chips)</li>
+  </ul>
+</div>

@@ -46,6 +46,6 @@ export const resourceApi = {
     if (params?.provider) query.set('provider', params.provider);
     if (params?.resourceType) query.set('resourceType', params.resourceType);
     const qs = query.toString();
-    return api.post(`/cloud/resources/sync${qs ? '?' + qs : ''}`);
+    return api.post(`/cloud/resources/sync${qs ? '?' + qs : ''}`, {});
   },
 };

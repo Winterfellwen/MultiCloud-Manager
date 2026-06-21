@@ -97,7 +97,7 @@ export default function ChatReact() {
         {/* 消息列表 */}
         <div className="min-h-0 flex-1 overflow-hidden">
           {currentSessionKey ? (
-            <MessageList messages={messages} sessionKey={currentSessionKey} />
+            <MessageList messages={messages} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               选择或新建对话

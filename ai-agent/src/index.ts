@@ -10,6 +10,7 @@ import { wsRoutes } from './routes/ws.js';
 import { eventSubscriber } from './events/subscriber.js';
 import { AppError } from '@cloudops/shared';
 import { authMiddleware } from './middleware/auth.js';
+import { runMigrations } from './db/migrate.js';
 
 // 导入 hooks handlers（副作用注册）
 import './hooks/handlers/approval-handler.js';
@@ -51,6 +52,9 @@ app.addHook('preHandler', authMiddleware);
 await app.register(sessionRoutes, { prefix: '/agent/sessions' });
 await app.register(chatRoutes, { prefix: '/agent/chat' });
 await app.register(wsRoutes, { prefix: '/agent/ws' });
+
+// 运行数据库迁移
+await runMigrations();
 
 // 启动事件订阅
 eventSubscriber.start();

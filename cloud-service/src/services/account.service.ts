@@ -92,7 +92,7 @@ export class AccountService {
       .returning();
 
     // 动态注册 Provider（运行时新增账号）
-    this.registerFromAccount(input.provider, input.config);
+    await this.registerFromAccount(input.provider, input.config);
 
     const r = result[0];
     const cfg = r.config as Record<string, unknown>;
@@ -146,7 +146,7 @@ export class AccountService {
 
     // 如果 config 变了，重新注册 Provider
     if (mergedConfig !== undefined) {
-      this.registerFromAccount(existing.provider, mergedConfig);
+      await this.registerFromAccount(existing.provider, mergedConfig);
     }
 
     const r = result[0];
@@ -167,7 +167,7 @@ export class AccountService {
     try {
       // 确保 provider 已注册
       if (!hasProvider(account.provider)) {
-        this.registerFromAccount(account.provider, account.config);
+        await this.registerFromAccount(account.provider, account.config);
       }
       // 动态 import 避免循环依赖
       const { getProvider } = await import("../providers/registry.js");
@@ -190,7 +190,7 @@ export class AccountService {
   /**
    * 启动时根据环境变量注册已配置的 Provider
    */
-  registerFromEnv(): void {
+  async registerFromEnv(): Promise<void> {
     const providerConfig: Record<string, unknown> = {};
 
     if (config.aws?.accessKeyId && config.aws?.secretAccessKey) {
@@ -208,7 +208,7 @@ export class AccountService {
       providerConfig.azure = config.azure;
     }
 
-    registerProviders(providerConfig as any);
+    await registerProviders(providerConfig as any);
   }
 
   /**
@@ -220,7 +220,7 @@ export class AccountService {
       const rows = await db.select().from(cloudAccounts);
       for (const row of rows) {
         const cfg = row.config as Record<string, unknown>;
-        this.registerFromAccount(row.provider, cfg);
+        await this.registerFromAccount(row.provider, cfg);
       }
     } catch (err) {
       // 数据库查询失败不阻塞启动（可能表还未创建）
@@ -231,8 +231,8 @@ export class AccountService {
   /**
    * 根据账号配置注册单个 Provider
    */
-  private registerFromAccount(provider: string, cfg: Record<string, unknown>): void {
-    registerProviders({ [provider]: cfg } as any);
+  private async registerFromAccount(provider: string, cfg: Record<string, unknown>): Promise<void> {
+    await registerProviders({ [provider]: cfg } as any);
   }
 
   getRegisteredProviders(): string[] {

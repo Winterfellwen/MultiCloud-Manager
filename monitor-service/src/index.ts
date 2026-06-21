@@ -25,8 +25,19 @@ app.setErrorHandler((error, _request, reply) => {
   if (error.validation) {
     return reply.status(400).send({ error: 'VALIDATION_ERROR', message: error.message });
   }
+  // PostgreSQL 错误（如 UUID 格式错误）
+  const err = error as any;
+  if (err.code && err.severity) {
+    return reply.status(400).send({
+      error: 'DATABASE_ERROR',
+      message: `数据库查询失败: ${err.message}`,
+    });
+  }
   app.log.error(error);
-  return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Internal server error' });
+  return reply.status(500).send({
+    error: 'INTERNAL_ERROR',
+    message: `服务内部错误: ${error.message || '未知错误'}`,
+  });
 });
 
 // 健康检查

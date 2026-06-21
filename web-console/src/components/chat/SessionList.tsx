@@ -16,6 +16,8 @@ type SessionStatus = 'running' | 'completed' | 'error' | 'approval' | 'idle';
 function deriveSessionStatus(
   messages: ChatMessage[] | undefined,
   pendingApprovalSessionKeys: Set<string>,
+  seenSessions: Set<string>,
+  sessionKey: string,
 ): SessionStatus {
   // 优先检查是否有待审批
   if (pendingApprovalSessionKeys.size > 0) return 'approval';
@@ -27,6 +29,10 @@ function deriveSessionStatus(
 
   if (lastAssistant.status === 'streaming') return 'running';
   if (lastAssistant.status === 'error') return 'error';
+  
+  // 如果会话已查看，不再显示"已完成"状态
+  if (seenSessions.has(sessionKey)) return 'idle';
+  
   return 'completed';
 }
 
@@ -45,6 +51,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
   const createSession = useChatStore((s) => s.createSession);
   const selectSession = useChatStore((s) => s.selectSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
+  const seenSessions = useChatStore((s) => s.seenSessions);
 
   // 获取待审批列表，按 sessionKey 分组
   const { data: approvals } = usePendingApprovals();
@@ -96,6 +103,8 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
             const status = deriveSessionStatus(
               messagesBySession[session.sessionKey],
               sessionApprovalKeys,
+              seenSessions,
+              session.sessionKey,
             );
             const statusConfig = STATUS_CONFIG[status];
             const StatusIcon = statusConfig.icon;

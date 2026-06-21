@@ -57,6 +57,8 @@ export interface ChatSendParams {
   enableThinking?: boolean;
   /** 推理努力程度：low / medium / high */
   reasoningEffort?: 'low' | 'medium' | 'high';
+  /** 当前模式：plan/action/confirm */
+  mode?: 'plan' | 'action' | 'confirm';
 }
 
 export interface ChatHistoryParams {
@@ -126,6 +128,7 @@ export async function handleChatSend(
             maxTokens: params.maxTokens,
             enableThinking: params.enableThinking,
             reasoningEffort: params.reasoningEffort,
+            mode: params.mode,
             // 审批上下文：用于 dangerous 工具调用前的审批流程
             approvalContext: { clients: context.clients },
           },

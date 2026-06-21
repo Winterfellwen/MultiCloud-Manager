@@ -1,12 +1,18 @@
 // 输入框 + 发送 + 中止按钮 + 模型选择 + 斜杠命令 + 深度思考开关
 import { useState, useEffect, type KeyboardEvent } from 'react';
 import { Send, Square, Brain } from 'lucide-react';
-import { useChatStore } from '../../stores/chat';
+import { useChatStore, type Mode } from '../../stores/chat';
 import { useSlashCommands, type SlashCommand } from '../../hooks/useSlashCommands';
 import { Button } from '../ui/button';
 import { ModelSelect } from './ModelSelect';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { cn } from '../../lib/utils';
+
+const modes: { value: Mode; label: string; color: string }[] = [
+  { value: 'plan', label: 'Plan', color: 'blue' },
+  { value: 'action', label: 'Action', color: 'green' },
+  { value: 'confirm', label: 'Confirm', color: 'orange' },
+];
 
 export function ChatInput() {
   const inputText = useChatStore((s) => s.inputText);
@@ -21,6 +27,7 @@ export function ChatInput() {
   const enableThinking = useChatStore((s) => s.enableThinking);
   const streamingBuffers = useChatStore((s) => s.streamingBuffers);
   const mode = useChatStore((s) => s.mode);
+  const setMode = useChatStore((s) => s.setMode);
 
   const { matchCommands } = useSlashCommands();
 
@@ -154,9 +161,35 @@ export function ChatInput() {
           />
         )}
 
-        {/* 工具栏：模型选择 + 深度思考开关 */}
+        {/* 工具栏：模式选择 + 模型选择 + 深度思考开关 */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* 模式选择器 */}
+          <div className="inline-flex border border-border rounded-md overflow-hidden">
+            {modes.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMode(m.value)}
+                className={cn(
+                  'px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  mode === m.value
+                    ? m.color === 'blue'
+                      ? 'bg-blue-500 text-white'
+                      : m.color === 'green'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-orange-500 text-white'
+                    : 'bg-background text-muted-foreground hover:bg-accent'
+                )}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 模型选择器 */}
           <ModelSelect />
+
+          {/* 深度思考开关 */}
           <button
             type="button"
             onClick={() => setEnableThinking(!enableThinking)}

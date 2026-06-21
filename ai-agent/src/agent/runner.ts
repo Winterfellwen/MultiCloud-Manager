@@ -109,7 +109,14 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       try {
         result = await toolRegistry.execute(tc.name, tc.arguments, toolCtx);
       } catch (err) {
-        result = `工具执行失败：${(err as Error).message}`;
+        const errorMsg = (err as Error).message || '未知错误';
+        result = JSON.stringify({
+          success: false,
+          error: true,
+          message: `工具执行失败: ${errorMsg}`,
+          tool: tc.name,
+          arguments: tc.arguments,
+        });
         isError = true;
       }
       const durationMs = Date.now() - startTime;

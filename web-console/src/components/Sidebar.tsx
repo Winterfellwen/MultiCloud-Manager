@@ -62,10 +62,6 @@ const NAV_ITEMS: NavItem[] = [
     label: 'AI 对话',
     to: '/chat/react',
     icon: MessageSquare,
-    children: [
-      { label: 'React 版', to: '/chat/react' },
-      { label: 'Lit 版', to: '/chat/lit' },
-    ],
   },
   {
     label: 'AI 设置',

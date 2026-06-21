@@ -96,6 +96,13 @@ export function isToolErrorOutput(outputText: string | undefined): boolean {
   if (TOOL_NOT_FOUND_PATTERN.test(trimmed)) {
     return true;
   }
+  // 检查常见错误关键词（纯文本错误消息）
+  const errorKeywords = ['失败', '错误', 'failed', 'error', 'fetch failed', '网络连接失败', '请求失败'];
+  for (const keyword of errorKeywords) {
+    if (trimmed.toLowerCase().includes(keyword.toLowerCase())) {
+      return true;
+    }
+  }
   if (trimmed.length > MAX_ERROR_DETECT_CHARS) {
     return false;
   }
@@ -115,6 +122,10 @@ export function isToolErrorOutput(outputText: string | undefined): boolean {
   const explicitErrorFlag = readToolErrorFlag(obj);
   if (explicitErrorFlag !== undefined) {
     return explicitErrorFlag;
+  }
+  // 检查 success: false
+  if (obj.success === false) {
+    return true;
   }
   if ("error" in obj) {
     const value = obj.error;

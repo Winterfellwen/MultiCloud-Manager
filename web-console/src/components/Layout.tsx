@@ -3,15 +3,19 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { useChatStore } from '@/stores/chat';
+import { useAuthStore } from '@/stores/auth';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 export function Layout() {
   // 全局初始化 WebSocket 连接（所有页面共享，如 AiSettings 的 provider 管理、Chat 的对话）
   const connect = useChatStore((s) => s.connect);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   useEffect(() => {
-    connect();
-  }, [connect]);
+    if (isAuthenticated) {
+      connect();
+    }
+  }, [connect, isAuthenticated]);
 
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);

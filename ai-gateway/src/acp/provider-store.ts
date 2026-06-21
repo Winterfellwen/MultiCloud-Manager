@@ -212,6 +212,12 @@ export async function deleteProviderFromStore(id: string): Promise<boolean> {
   return Number((result as unknown as { count?: number }).count ?? 0) > 0;
 }
 
+/** 删除单个模型 */
+export async function deleteModelFromStore(providerId: string, modelId: string): Promise<boolean> {
+  const result = await db.execute(sql`DELETE FROM llm_models WHERE provider_id = ${providerId} AND id = ${modelId}`);
+  return Number((result as unknown as { count?: number }).count ?? 0) > 0;
+}
+
 /** 从环境变量导入初始 provider（首次启动时） */
 export async function seedFromEnv(): Promise<void> {
   const countRows = await db.execute(sql`SELECT COUNT(*)::int AS c FROM llm_providers`) as unknown as Array<{ c: number }>;

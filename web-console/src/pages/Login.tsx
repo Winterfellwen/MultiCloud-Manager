@@ -79,9 +79,6 @@ export default function Login() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '登录中...' : '登录'}
             </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              默认账号：admin / admin12345
-            </p>
           </form>
         </CardContent>
       </Card>

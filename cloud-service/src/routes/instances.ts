@@ -36,37 +36,118 @@ export async function instanceRoutes(app: FastifyInstance) {
 
   // 创建实例
   app.post("/", async (request, reply) => {
-    const input = createInstanceSchema.parse(request.body);
-    const instance = await instanceService.create(input);
-    return reply.status(201).send(instance);
+    try {
+      const input = createInstanceSchema.parse(request.body);
+      const instance = await instanceService.create(input);
+      return reply.status(201).send(instance);
+    } catch (err: any) {
+      // 处理 ZodError（参数验证错误）
+      if (err.name === 'ZodError' && err.issues) {
+        const issues = err.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join('; ');
+        return reply.status(400).send({
+          error: "VALIDATION_ERROR",
+          message: `参数验证失败: ${issues}`,
+          details: err.issues,
+        });
+      }
+      // 处理云厂商 SDK 错误
+      if (err.statusCode && err.message) {
+        return reply.status(err.statusCode).send({
+          error: err.code || "PROVIDER_ERROR",
+          message: err.message,
+          details: err.details,
+        });
+      }
+      // 其他错误
+      return reply.status(500).send({
+        error: "INTERNAL_ERROR",
+        message: err.message || "创建实例失败",
+      });
+    }
   });
 
   // 启动实例
-  app.post("/:id/start", async (request) => {
-    const { id } = request.params as { id: string };
-    await instanceService.start(id);
-    return { ok: true, id, status: "running" };
+  app.post("/:id/start", async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      await instanceService.start(id);
+      return { ok: true, id, status: "running" };
+    } catch (err: any) {
+      if (err.statusCode && err.message) {
+        return reply.status(err.statusCode).send({
+          error: err.code || "PROVIDER_ERROR",
+          message: err.message,
+          details: err.details,
+        });
+      }
+      return reply.status(500).send({
+        error: "INTERNAL_ERROR",
+        message: err.message || "启动实例失败",
+      });
+    }
   });
 
   // 停止实例
-  app.post("/:id/stop", async (request) => {
-    const { id } = request.params as { id: string };
-    await instanceService.stop(id);
-    return { ok: true, id, status: "stopped" };
+  app.post("/:id/stop", async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      await instanceService.stop(id);
+      return { ok: true, id, status: "stopped" };
+    } catch (err: any) {
+      if (err.statusCode && err.message) {
+        return reply.status(err.statusCode).send({
+          error: err.code || "PROVIDER_ERROR",
+          message: err.message,
+          details: err.details,
+        });
+      }
+      return reply.status(500).send({
+        error: "INTERNAL_ERROR",
+        message: err.message || "停止实例失败",
+      });
+    }
   });
 
   // 重启实例
-  app.post("/:id/reboot", async (request) => {
-    const { id } = request.params as { id: string };
-    await instanceService.reboot(id);
-    return { ok: true, id, status: "running" };
+  app.post("/:id/reboot", async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      await instanceService.reboot(id);
+      return { ok: true, id, status: "running" };
+    } catch (err: any) {
+      if (err.statusCode && err.message) {
+        return reply.status(err.statusCode).send({
+          error: err.code || "PROVIDER_ERROR",
+          message: err.message,
+          details: err.details,
+        });
+      }
+      return reply.status(500).send({
+        error: "INTERNAL_ERROR",
+        message: err.message || "重启实例失败",
+      });
+    }
   });
 
   // 删除实例
-  app.delete("/:id", async (request) => {
-    const { id } = request.params as { id: string };
-    await instanceService.delete(id);
-    return { ok: true, id };
+  app.delete("/:id", async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      await instanceService.delete(id);
+      return { ok: true, id };
+    } catch (err: any) {
+      if (err.statusCode && err.message) {
+        return reply.status(err.statusCode).send({
+          error: err.code || "PROVIDER_ERROR",
+          message: err.message,
+          details: err.details,
+        });
+      }
+      return reply.status(500).send({
+        error: "INTERNAL_ERROR",
+        message: err.message || "删除实例失败",
+      });
+    }
   });
 
   // 查询实例指标（供 monitor-service 调用）

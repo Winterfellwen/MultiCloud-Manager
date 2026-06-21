@@ -1,17 +1,15 @@
 // 消息气泡：区分 user/assistant，assistant 消息渲染文本 + 工具卡片
-// 支持置顶：置顶消息左侧黄色边框，hover 显示置顶/取消置顶按钮
+// 支持复制：hover 显示复制按钮，点击复制消息内容
 // 支持深度思考（reasoning）独立折叠展示
 // 支持按时间顺序渲染 blocks（reasoning / text / tool_call 按实际输出顺序）
 import { useState } from 'react';
-import { User, Bot, AlertCircle, Pin, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import type { ChatMessage, ContentBlock } from '../../types/chat';
 import { ToolCallCard } from './ToolCallCard';
 import { cn } from '../../lib/utils';
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  isPinned?: boolean;
-  onTogglePin?: () => void;
 }
 
 /** 深度思考区块：折叠态显示标题 + 预览；展开态显示完整推理过程 */
@@ -129,12 +127,14 @@ function BlocksRenderer({
   );
 }
 
-export function MessageBubble({ message, isPinned = false, onTogglePin }: MessageBubbleProps) {
+export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isError = message.status === 'error';
   const isStreaming = message.status === 'streaming';
   // 工具卡片展开状态（按 toolCall id 跟踪）
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  // 复制状态
+  const [copied, setCopied] = useState(false);
 
   const toggleTool = (id: string) => {
     setExpandedTools((prev) => {
@@ -146,6 +146,18 @@ export function MessageBubble({ message, isPinned = false, onTogglePin }: Messag
       }
       return next;
     });
+  };
+
+  const handleCopy = async () => {
+    const text = message.content || '';
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback
+    }
   };
 
   return (
@@ -164,8 +176,7 @@ export function MessageBubble({ message, isPinned = false, onTogglePin }: Messag
           <div
             className={cn(
               'whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm',
-              'bg-primary text-primary-foreground',
-              isPinned && 'border-l-2 border-yellow-500'
+              'bg-primary text-primary-foreground'
             )}
           >
             {message.content}
@@ -213,8 +224,7 @@ export function MessageBubble({ message, isPinned = false, onTogglePin }: Messag
               <div
                 className={cn(
                   'whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm',
-                  'bg-muted text-foreground',
-                  isPinned && 'border-l-2 border-yellow-500'
+                  'bg-muted text-foreground'
                 )}
               >
                 {message.content}
@@ -234,21 +244,30 @@ export function MessageBubble({ message, isPinned = false, onTogglePin }: Messag
           </div>
         )}
 
-        {/* 置顶/取消置顶按钮（hover 显示） */}
-        {onTogglePin && (
+        {/* 复制按钮（hover 显示） */}
+        {message.content && (
           <button
             type="button"
-            onClick={onTogglePin}
+            onClick={handleCopy}
             className={cn(
               'flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground',
               'opacity-0 transition-opacity hover:bg-accent hover:text-foreground',
               'group-hover:opacity-100',
-              isPinned && 'text-yellow-600 opacity-100'
+              copied && 'text-green-600 opacity-100'
             )}
-            title={isPinned ? '取消置顶' : '置顶'}
+            title={copied ? '已复制' : '复制'}
           >
-            <Pin className="h-3 w-3" />
-            <span>{isPinned ? '取消置顶' : '置顶'}</span>
+            {copied ? (
+              <>
+                <Check className="h-3 w-3" />
+                <span>已复制</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                <span>复制</span>
+              </>
+            )}
           </button>
         )}
       </div>

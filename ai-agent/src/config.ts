@@ -1,12 +1,20 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+function requireEnv(name: string, fallback?: string): string {
+  const value = process.env[name] || fallback;
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3003', 10),
-  databaseUrl: process.env.DATABASE_URL!,
-  redisUrl: process.env.REDIS_URL!,
-  corsOrigin: process.env.CORS_ORIGIN || '*',
-  jwtSecret: process.env.JWT_SECRET || 'cloudops-dev-secret',
+  databaseUrl: requireEnv('DATABASE_URL'),
+  redisUrl: requireEnv('REDIS_URL'),
+  corsOrigin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*'),
+  jwtSecret: requireEnv('JWT_SECRET'),
 
   // 内部服务地址（docker 网络内）
   cloudServiceUrl: process.env.CLOUD_SERVICE_URL || 'http://cloud-service:3001',

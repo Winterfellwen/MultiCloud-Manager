@@ -1,0 +1,142 @@
+<h2>AI Assistant Mode System Design</h2>
+<p class="subtitle">Replacing auto-approve toggle with Plan/Action/Confirm mode selector</p>
+
+<div class="section">
+  <h3>1. Mode Definitions</h3>
+  <div class="options">
+    <div class="option" data-choice="plan" onclick="toggleSelect(this)">
+      <div class="letter">P</div>
+      <div class="content">
+        <h3>Plan Mode (规划)</h3>
+        <p><strong>Behavior:</strong> Read-only analysis. Allows list, search, and other non-mutating tools.</p>
+        <p><strong>Example tools:</strong> list_files, search_code, read_file, analyze_data</p>
+        <p><strong>Safety:</strong> No writes, no executions, no modifications</p>
+      </div>
+    </div>
+    
+    <div class="option" data-choice="action" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Action Mode (行动)</h3>
+        <p><strong>Behavior:</strong> Automatic execution. AI executes tools without confirmation.</p>
+        <p><strong>Example tools:</strong> All tools including write, execute, modify</p>
+        <p><strong>Safety:</strong> User trusts AI to make changes (like current auto-approve)</p>
+      </div>
+    </div>
+    
+    <div class="option" data-choice="confirm" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Confirm Mode (确认)</h3>
+        <p><strong>Behavior:</strong> Manual approval required for all tool executions.</p>
+        <p><strong>Example tools:</strong> All tools require user confirmation</p>
+        <p><strong>Safety:</strong> Maximum control, user approves every action</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. UI Implementation</h3>
+  <div class="mockup">
+    <div class="mockup-header">Mode Selector in Chat Interface</div>
+    <div class="mockup-body">
+      <div style="display: flex; align-items: center; gap: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+        <div style="display: inline-flex; border: 1px solid #ccc; border-radius: 6px; overflow: hidden;">
+          <div style="padding: 6px 12px; background: #3b82f6; color: white; font-weight: 500; font-size: 13px;">Plan</div>
+          <div style="padding: 6px 12px; background: white; border-left: 1px solid #ccc; font-size: 13px;">Action</div>
+          <div style="padding: 6px 12px; background: white; border-left: 1px solid #ccc; font-size: 13px;">Confirm</div>
+        </div>
+        <div style="font-size: 12px; color: #666;">
+          Current: <strong>Plan</strong> mode - read-only operations
+        </div>
+      </div>
+      
+      <div style="margin-top: 16px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Chat Input</div>
+        <div style="padding: 8px; background: white; border: 1px solid #d1d5db; border-radius: 4px; color: #999;">
+          Type your message here...
+        </div>
+        <div style="margin-top: 8px; font-size: 11px; color: #888;">
+          🔒 Plan mode: Only read-only tools will be executed
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>3. State Management</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Implementation Approach</h4>
+      <ul>
+        <li>Add <code>mode: 'plan' | 'action' | 'confirm'</code> to chat store</li>
+        <li>Replace <code>autoApproveMode</code> boolean with mode state</li>
+        <li>Mode selector component reads/writes to store</li>
+        <li>Backend approval logic checks mode before requiring approval</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Key Changes</h4>
+      <ul>
+        <li>Remove <code>autoApproveMode</code> toggle button</li>
+        <li>Add mode selector segmented control</li>
+        <li>Update approval logic to respect mode</li>
+        <li>Add mode indicator in chat input area</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>4. User Experience Flow</h3>
+  <div class="mockup">
+    <div class="mockup-header">Mode Switching Behavior</div>
+    <div class="mockup-body">
+      <div style="display: flex; gap: 20px;">
+        <div style="flex: 1; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px;">Plan → Action</h4>
+          <p style="margin: 0; font-size: 12px; color: #666;">AI can now execute tools. User should be warned if in middle of conversation.</p>
+        </div>
+        <div style="flex: 1; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px;">Action → Confirm</h4>
+          <p style="margin: 0; font-size: 12px; color: #666;">All future tools require approval. Already-executed tools are not affected.</p>
+        </div>
+        <div style="flex: 1; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px;">Confirm → Plan</h4>
+          <p style="margin: 0; font-size: 12px; color: #666;">Return to read-only. Pending approvals remain pending.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>5. Design Questions</h3>
+  <div class="options" data-multiselect>
+    <div class="option" data-choice="persist" onclick="toggleSelect(this)">
+      <div class="letter">1</div>
+      <div class="content">
+        <h3>Persistence</h3>
+        <p>Should the selected mode persist across sessions?</p>
+      </div>
+    </div>
+    
+    <div class="option" data-choice="default" onclick="toggleSelect(this)">
+      <div class="letter">2</div>
+      <div class="content">
+        <h3>Default Mode</h3>
+        <p>What should be the default mode when starting a new chat?</p>
+      </div>
+    </div>
+    
+    <div class="option" data-choice="warning" onclick="toggleSelect(this)">
+      <div class="letter">3</div>
+      <div class="content">
+        <h3>Mode Switch Warning</h3>
+        <p>Should we show a warning when switching from Action to Confirm mid-conversation?</p>
+      </div>
+    </div>
+  </div>
+</div>

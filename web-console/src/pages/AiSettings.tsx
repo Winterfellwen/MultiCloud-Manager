@@ -2,7 +2,7 @@
 // 支持 compat 配置和 thinkingFormat 方言（参考 openclaw）
 import { useState, useEffect } from 'react';
 import { useChatStore } from '@/stores/chat';
-import { useModels } from '@/hooks/useModels';
+import { useModels, useDeleteModel, useTestModel } from '@/hooks/useModels';
 import {
   useProviders, useCreateProvider, useUpdateProvider, useDeleteProvider, useTestProvider,
   useDiscoverModels, useThinkingFormats,
@@ -54,6 +54,9 @@ export default function AiSettings() {
   const deleteProvider = useDeleteProvider();
   const testProvider = useTestProvider();
   const discoverModels = useDiscoverModels();
+  const deleteModel = useDeleteModel();
+  const testModel = useTestModel();
+  const [modelTestResult, setModelTestResult] = useState<Record<string, { ok: boolean; msg: string }>>({});
 
   const selectedModel = useChatStore((s) => s.selectedModel);
   const setModel = useChatStore((s) => s.setModel);
@@ -210,17 +213,28 @@ export default function AiSettings() {
   const handleSaveDiscoveredModels = () => {
     const provider = providers.find(p => p.id === discoverProviderId);
     if (!provider) return;
-    const models = discoveredModels
-      .filter(m => selectedModelIds.has(m.id))
+    // 合并：保留已有模型 + 新选中的模型（不去掉未勾选的已有模型）
+    const existingModels = (provider.models || []).map(m => ({
+      id: m.id,
+      name: m.name,
+      reasoning: m.reasoning,
+      input: m.input,
+      thinkingFormat: m.thinkingFormat,
+      thinkingLevelMap: m.thinkingLevelMap,
+      supportedReasoningEfforts: m.supportedReasoningEfforts,
+    }));
+    const newModels = discoveredModels
+      .filter(m => selectedModelIds.has(m.id) && !provider.models?.some(pm => pm.id === m.id))
       .map(m => ({
         id: m.id,
         name: m.name,
         reasoning: /reasoning|think|o1|o3|o4/i.test(m.id),
         input: /vision|omni|vl|image/i.test(m.id) ? ['text', 'image'] : ['text'],
       }));
+    const merged = [...existingModels, ...newModels];
     updateProvider.mutate({
       id: discoverProviderId,
-      models,
+      models: merged,
     }, {
       onError: (e: Error) => setDiscoverError(e.message),
       onSuccess: () => setDiscoverDialogOpen(false),
@@ -332,7 +346,7 @@ export default function AiSettings() {
                       <div className="mb-1 text-xs font-medium text-muted-foreground">模型列表</div>
                       <div className="space-y-1">
                         {provider.models.map((m) => (
-                          <div key={m.id} className="flex items-center gap-2 text-xs">
+                          <div key={m.id} className="flex items-center gap-2 text-xs group">
                             <span className="font-mono">{m.id}</span>
                             <span className="text-muted-foreground">{m.name}</span>
                             {m.reasoning && (
@@ -351,6 +365,17 @@ export default function AiSettings() {
                             {m.contextWindow && (
                               <span className="text-muted-foreground">{(m.contextWindow / 1000).toFixed(0)}K</span>
                             )}
+                            <button
+                              className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity"
+                              title="删除模型"
+                              onClick={() => {
+                                if (confirm(`确定删除模型 ${m.id}？`)) {
+                                  deleteModel.mutate({ providerId: provider.id, modelId: m.id });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -381,7 +406,7 @@ export default function AiSettings() {
                   <div
                     key={model.id}
                     className={cn(
-                      'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors',
+                      'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors group',
                       isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent',
                       !model.available && 'cursor-not-allowed opacity-50'
                     )}
@@ -418,6 +443,53 @@ export default function AiSettings() {
                       {model.input?.includes('image') && (
                         <span className="rounded bg-secondary px-1.5 py-0.5 text-xs">视觉</span>
                       )}
+                      {modelTestResult[model.id] && (
+                        <span className={cn(
+                          'text-xs',
+                          modelTestResult[model.id].ok ? 'text-green-600' : 'text-red-600'
+                        )}>
+                          {modelTestResult[model.id].ok ? '✓' : '✗'} {modelTestResult[model.id].msg}
+                        </span>
+                      )}
+                      <button
+                        className="text-muted-foreground hover:text-green-600 transition-colors ml-1"
+                        title="测试模型"
+                        disabled={testModel.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          testModel.mutate(
+                            { providerId: model.provider, modelId: model.id },
+                            {
+                              onSuccess: (res) => {
+                                setModelTestResult(prev => ({
+                                  ...prev,
+                                  [model.id]: { ok: res.ok, msg: res.message || (res.ok ? '成功' : '失败') },
+                                }));
+                              },
+                              onError: (err) => {
+                                setModelTestResult(prev => ({
+                                  ...prev,
+                                  [model.id]: { ok: false, msg: err.message },
+                                }));
+                              },
+                            }
+                          );
+                        }}
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                        title="删除模型"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`确定删除模型 ${model.id}？`)) {
+                            deleteModel.mutate({ providerId: model.provider, modelId: model.id });
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 );

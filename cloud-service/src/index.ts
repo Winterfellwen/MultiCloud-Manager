@@ -23,6 +23,17 @@ app.setErrorHandler((error, _request, reply) => {
     });
   }
 
+  // 处理 ZodError（参数验证错误）
+  const err = error as any;
+  if (err.name === 'ZodError' && err.issues) {
+    const issues = err.issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    return reply.status(400).send({
+      error: "VALIDATION_ERROR",
+      message: `参数验证失败: ${issues}`,
+      details: err.issues,
+    });
+  }
+
   if (error.validation) {
     return reply.status(400).send({
       error: "VALIDATION_ERROR",
@@ -30,10 +41,19 @@ app.setErrorHandler((error, _request, reply) => {
     });
   }
 
+  // 处理 Azure SDK RestError
+  if (err.statusCode && err.message) {
+    return reply.status(err.statusCode).send({
+      error: err.code || "PROVIDER_ERROR",
+      message: err.message,
+      details: err.details,
+    });
+  }
+
   app.log.error(error);
   return reply.status(500).send({
     error: "INTERNAL_ERROR",
-    message: "Internal server error",
+    message: `服务内部错误: ${error.message || '未知错误'}`,
   });
 });
 
@@ -55,7 +75,7 @@ await app.register(accountRoutes, { prefix: "/cloud/accounts" });
 await runMigrations();
 
 // 启动时注册环境变量配置的 Provider
-accountService.registerFromEnv();
+await accountService.registerFromEnv();
 // 启动时从数据库加载已保存的云账户并注册 Provider（服务重启后恢复内存 registry）
 await accountService.registerFromDb();
 
@@ -74,7 +94,7 @@ syncService
   });
 
 // 定时增量同步（每 5 分钟）
-setInterval(
+const syncInterval = setInterval(
   () => {
     syncService
       .syncAll()
@@ -97,3 +117,13 @@ try {
   app.log.error(err);
   process.exit(1);
 }
+
+// 优雅关闭
+async function shutdown(signal: string) {
+  app.log.info(`Received ${signal}, shutting down...`);
+  clearInterval(syncInterval);
+  await app.close();
+  process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

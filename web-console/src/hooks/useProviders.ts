@@ -52,6 +52,7 @@ export interface LlmProviderConfig {
 
 export function useProviders() {
   const wsClient = useChatStore((s) => s.wsClient);
+  const connected = useChatStore((s) => s.connectionStatus === 'connected');
   return useQuery({
     queryKey: ['llm-providers'],
     queryFn: async () => {
@@ -59,7 +60,7 @@ export function useProviders() {
       const res = await wsClient.request<{ providers: LlmProviderConfig[] }>('providers.list', {});
       return res.providers;
     },
-    enabled: !!wsClient,
+    enabled: connected,
     staleTime: 30_000,
   });
 }
@@ -67,6 +68,7 @@ export function useProviders() {
 /** 获取支持的 thinkingFormat 列表（供表单渲染选项） */
 export function useThinkingFormats() {
   const wsClient = useChatStore((s) => s.wsClient);
+  const connected = useChatStore((s) => s.connectionStatus === 'connected');
   return useQuery({
     queryKey: ['thinking-formats'],
     queryFn: async () => {
@@ -74,7 +76,7 @@ export function useThinkingFormats() {
       const res = await wsClient.request<{ formats: ThinkingFormat[] }>('providers.thinkingFormats', {});
       return res.formats;
     },
-    enabled: !!wsClient,
+    enabled: connected,
     staleTime: Infinity,
   });
 }

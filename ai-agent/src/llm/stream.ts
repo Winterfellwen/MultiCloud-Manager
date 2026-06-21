@@ -65,114 +65,166 @@ async function doStreamChat(
   signal?: AbortSignal
 ) {
   const body = buildRequestBody(context);
-  const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.llm.apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal,
-  });
+  
+  // 重试机制：最多重试3次，指数退避
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.llm.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${errText}`);
-  }
+      // 处理可重试的 HTTP 错误
+      if (res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+        const retryAfter = res.headers.get('Retry-After');
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+        const errText = await res.text().catch(() => '');
+        console.log(`LLM API error ${res.status}, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries}): ${errText.slice(0, 200)}`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
 
-  if (!res.body) throw new Error('No response body');
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`LLM API error ${res.status}: ${errText}`);
+      }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+      if (!res.body) throw new Error('No response body');
 
-  const toolCalls: Map<number, { id: string; name: string; args: string }> = new Map();
-  let textContent = '';
-  let usage: Usage = makeZeroUsage();
-  let stopReason: StopReason = 'stop';
-  let model = config.llm.model;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+      const toolCalls: Map<number, { id: string; name: string; args: string }> = new Map();
+      let textContent = '';
+      let usage: Usage = makeZeroUsage();
+      let stopReason: StopReason = 'stop';
+      let model = config.llm.model;
 
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data: ')) continue;
-      const data = trimmed.slice(6);
-      if (data === '[DONE]') continue;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-      try {
-        const chunk = JSON.parse(data);
-        if (chunk.model) model = chunk.model;
-        if (chunk.usage) usage = { ...makeZeroUsage(), ...normalizeUsage(chunk.usage) };
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') continue;
 
-        const choice = chunk.choices?.[0];
-        if (!choice) continue;
+          try {
+            const chunk = JSON.parse(data);
+            if (chunk.model) model = chunk.model;
+            if (chunk.usage) usage = { ...makeZeroUsage(), ...normalizeUsage(chunk.usage) };
 
-        const delta = choice.delta;
-        if (delta?.content) {
-          textContent += delta.content;
-          stream.push({ type: 'text_delta', delta: delta.content });
-        }
+            const choice = chunk.choices?.[0];
+            if (!choice) continue;
 
-        if (delta?.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const idx = tc.index ?? 0;
-            if (!toolCalls.has(idx)) {
-              toolCalls.set(idx, { id: tc.id || '', name: tc.function?.name || '', args: '' });
-              stream.push({ type: 'toolcall_start', id: tc.id || '', name: tc.function?.name || '' });
+            const delta = choice.delta;
+            if (delta?.content) {
+              textContent += delta.content;
+              stream.push({ type: 'text_delta', delta: delta.content });
             }
-            const entry = toolCalls.get(idx)!;
-            if (tc.function?.arguments) {
-              entry.args += tc.function.arguments;
-              stream.push({ type: 'toolcall_arguments', id: entry.id, delta: tc.function.arguments });
+
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!toolCalls.has(idx)) {
+                  toolCalls.set(idx, { id: tc.id || '', name: tc.function?.name || '', args: '' });
+                  stream.push({ type: 'toolcall_start', id: tc.id || '', name: tc.function?.name || '' });
+                }
+                const entry = toolCalls.get(idx)!;
+                if (tc.function?.arguments) {
+                  entry.args += tc.function.arguments;
+                  stream.push({ type: 'toolcall_arguments', id: entry.id, delta: tc.function.arguments });
+                }
+                if (tc.id) entry.id = tc.id;
+                if (tc.function?.name) entry.name = tc.function.name;
+              }
             }
-            if (tc.id) entry.id = tc.id;
-            if (tc.function?.name) entry.name = tc.function.name;
+
+            if (choice.finish_reason) {
+              stopReason = mapStopReason(choice.finish_reason);
+            }
+          } catch {
+            // 忽略解析错误的行
           }
         }
-
-        if (choice.finish_reason) {
-          stopReason = mapStopReason(choice.finish_reason);
-        }
-      } catch {
-        // 忽略解析错误的行
       }
+
+      const content: AssistantMessage['content'] = [];
+      if (textContent) {
+        content.push({ type: 'text', text: textContent });
+      }
+      for (const [, tc] of toolCalls) {
+        let args: Record<string, unknown> = {};
+        try {
+          args = tc.args ? JSON.parse(tc.args) : {};
+        } catch {
+          args = { _raw: tc.args };
+        }
+        const toolCall: ToolCall = { type: 'toolCall', id: tc.id, name: tc.name, arguments: args };
+        content.push(toolCall);
+        stream.push({ type: 'toolcall_end', id: tc.id, name: tc.name, arguments: args });
+      }
+
+      const message: AssistantMessage = {
+        role: 'assistant',
+        content,
+        model,
+        usage,
+        stopReason,
+        timestamp: Date.now(),
+      };
+
+      stream.push({ type: 'done', message });
+      stream.end(message);
+      return; // 成功，退出重试循环
+    } catch (err) {
+      lastError = err as Error;
+      const errorMsg = (err as Error).message || '';
+      
+      // 如果是可重试的错误且还有重试次数，继续重试
+      const isRetryable = (
+        errorMsg.includes('429') ||
+        errorMsg.includes('500') ||
+        errorMsg.includes('502') ||
+        errorMsg.includes('503') ||
+        errorMsg.includes('504') ||
+        errorMsg.includes('fetch failed') ||
+        errorMsg.includes('ECONNREFUSED') ||
+        errorMsg.includes('ETIMEDOUT') ||
+        errorMsg.includes('ECONNRESET') ||
+        errorMsg.includes('socket hang up') ||
+        errorMsg.includes('network') ||
+        errorMsg.includes('timeout')
+      );
+      
+      if (isRetryable && attempt < maxRetries - 1) {
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`LLM API retryable error, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries}): ${errorMsg.slice(0, 200)}`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
+      
+      // 其他错误或重试次数用尽
+      throw err;
     }
   }
-
-  const content: AssistantMessage['content'] = [];
-  if (textContent) {
-    content.push({ type: 'text', text: textContent });
-  }
-  for (const [, tc] of toolCalls) {
-    let args: Record<string, unknown> = {};
-    try {
-      args = tc.args ? JSON.parse(tc.args) : {};
-    } catch {
-      args = { _raw: tc.args };
-    }
-    const toolCall: ToolCall = { type: 'toolCall', id: tc.id, name: tc.name, arguments: args };
-    content.push(toolCall);
-    stream.push({ type: 'toolcall_end', id: tc.id, name: tc.name, arguments: args });
-  }
-
-  const message: AssistantMessage = {
-    role: 'assistant',
-    content,
-    model,
-    usage,
-    stopReason,
-    timestamp: Date.now(),
-  };
-
-  stream.push({ type: 'done', message });
-  stream.end(message);
+  
+  // 所有重试都失败
+  throw lastError || new Error('LLM API request failed after all retries');
 }
 
 function buildRequestBody(context: Context) {

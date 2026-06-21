@@ -1635,7 +1635,7 @@ Expected: `[{"id":"...","username":"admin","role":"admin",...}]`
 
 - [ ] **Step 6: 停止服务并清理**
 
-Run: `docker compose down -v`
+Run: `docker compose down`
 
 - [ ] **Step 7: Final commit**
 

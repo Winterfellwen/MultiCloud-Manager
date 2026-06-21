@@ -19,7 +19,7 @@ export const monitorApi = {
     const qs = query.toString();
     return api.get<AlertEvent[]>(`/monitor/alerts/events${qs ? '?' + qs : ''}`);
   },
-  resolveEvent: (id: string) => api.post<{ ok: true; id: string; status: 'resolved' }>(`/monitor/alerts/events/${id}/resolve`),
+  resolveEvent: (id: string) => api.post<{ ok: true; id: string; status: 'resolved' }>(`/monitor/alerts/events/${id}/resolve`, {}),
   listChannels: () => api.get<NotificationChannel[]>('/monitor/alerts/channels'),
   createChannel: (params: CreateChannelParams) => api.post<NotificationChannel>('/monitor/alerts/channels', params),
   deleteChannel: (id: string) => api.delete<{ ok: true; id: string }>(`/monitor/alerts/channels/${id}`),

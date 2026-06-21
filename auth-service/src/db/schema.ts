@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, jsonb, inet, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, jsonb, inet, boolean, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -25,7 +25,7 @@ export const auditLogs = pgTable('audit_logs', {
   ip: inet('ip'),
   traceId: varchar('trace_id', { length: 64 }),
 }, (table) => ({
-  timestampIdx: uniqueIndex('idx_audit_timestamp').on(table.timestamp),
-  userIdx: uniqueIndex('idx_audit_user').on(table.userId),
-  actionIdx: uniqueIndex('idx_audit_action').on(table.action),
+  timestampIdx: index('idx_audit_timestamp').on(table.timestamp),
+  userIdx: index('idx_audit_user').on(table.userId),
+  actionIdx: index('idx_audit_action').on(table.action),
 }));

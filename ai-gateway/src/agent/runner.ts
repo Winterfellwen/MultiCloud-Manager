@@ -8,7 +8,7 @@
 // - dangerous 级别工具调用前请求审批
 
 import { config, type ThinkingLevel } from '../config.js';
-import { executeTool, getLLMTools, findTool, type ToolCall } from './tools.js';
+import { executeTool, getLLMToolsForMode, findTool, type ToolCall, type ModeType } from './tools.js';
 import {
   requestApproval,
   type ExecApprovalContext,
@@ -64,26 +64,38 @@ export interface AgentTurnParams {
   enableThinking?: boolean;
   /** 推理努力程度：off / low / medium / high（仅 enableThinking=true 时生效） */
   reasoningEffort?: ThinkingLevel;
+  /** 当前模式：plan/action/confirm */
+  mode?: ModeType;
 }
 
 const SYSTEM_PROMPT = `你是 CloudOps AI 运维助手，帮助用户通过自然语言管理多云资源。
 
 你可以：
 - 查询、创建、启停、重启、删除云服务器实例
+- 查询、删除各类云资源（磁盘、数据库、缓存、VPC、安全组、CDN、集群等）
+- 触发云资源同步
 - 查询监控指标和告警事件
 - 查询多云成本分析
+- 执行Shell命令（仅Action/Confirm模式，Plan模式不可用）
+
+支持的云厂商：aws | aliyun | azure | tencent | huawei
 
 可用工具：
-- cloud_list_instances: 列出云实例
+- cloud_list_instances: 列出云实例（可按厂商、区域、状态筛选）
 - cloud_get_instance: 查看实例详情
 - cloud_start_instance: 启动实例
 - cloud_stop_instance: 停止实例
 - cloud_reboot_instance: 重启实例
-- cloud_create_instance: 创建实例
+- cloud_create_instance: 创建实例（需指定厂商、区域、规格、镜像）
 - cloud_delete_instance: 删除实例
+- cloud_list_resources: 列出云资源（支持 disk/bucket/database/cache/loadbalancer/vpc/securitygroup/cdn/cluster/aiservice）
+- cloud_get_resource: 查看资源详情
+- cloud_delete_resource: 删除资源
+- cloud_sync_resources: 触发资源同步
 - monitor_get_metrics: 查询监控指标
 - monitor_list_alerts: 列出告警事件
 - monitor_get_cost: 查询成本
+- shell_execute: 执行Shell命令（Plan模式不可用）
 
 请用中文回复，简洁专业。`;
 
@@ -119,8 +131,8 @@ export async function runAgentTurn(
   let finalText = '';
   let iterations = 0;
 
-  // 动态获取 LLM 工具列表
-  const tools = getLLMTools();
+  // 动态获取 LLM 工具列表（根据模式过滤）
+  const tools = getLLMToolsForMode(params.mode);
 
   while (iterations < config.agent.maxIterations) {
     iterations++;
@@ -194,7 +206,7 @@ export async function runAgentTurn(
         }
       }
 
-      const result = await executeTool(toolCall, params.authToken || '');
+      const result = await executeTool(toolCall, params.authToken || '', params.mode);
       callbacks.onToolResult({ ...result, toolCallId: toolCall.id });
 
       messages.push({
@@ -619,33 +631,83 @@ async function callLLM(
     }
   }
 
-  const res = await fetch(`${llmConfig.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${llmConfig.apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-    signal,
-  });
+  // 重试机制：最多重试3次，指数退避
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(`${llmConfig.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${llmConfig.apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal,
+      });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${errText}`);
+      // 处理可重试的 HTTP 错误
+      if (res.status === 429 || res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+        const retryAfter = res.headers.get('Retry-After');
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+        const errText = await res.text().catch(() => '');
+        console.log(`LLM API error ${res.status}, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries}): ${errText.slice(0, 200)}`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`LLM API error ${res.status}: ${errText}`);
+      }
+
+      const data: any = await res.json();
+      const choice = data.choices?.[0];
+      const message = choice?.message || {};
+
+      // 提取推理内容（统一处理 reasoning_content 字段和 <think> 标签）
+      const { reasoning, text } = extractReasoning(message);
+
+      const toolCalls: Array<ToolCall & { id: string }> = (message.tool_calls || []).map((tc: any) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: JSON.parse(tc.function.arguments || '{}'),
+      }));
+
+      return { text, toolCalls, reasoning };
+    } catch (err) {
+      lastError = err as Error;
+      const errorMsg = (err as Error).message || '';
+      
+      // 如果是可重试的错误且还有重试次数，继续重试
+      const isRetryable = (
+        errorMsg.includes('429') ||
+        errorMsg.includes('500') ||
+        errorMsg.includes('502') ||
+        errorMsg.includes('503') ||
+        errorMsg.includes('504') ||
+        errorMsg.includes('fetch failed') ||
+        errorMsg.includes('ECONNREFUSED') ||
+        errorMsg.includes('ETIMEDOUT') ||
+        errorMsg.includes('ECONNRESET') ||
+        errorMsg.includes('socket hang up') ||
+        errorMsg.includes('network') ||
+        errorMsg.includes('timeout')
+      );
+      
+      if (isRetryable && attempt < maxRetries - 1) {
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`LLM API retryable error, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries}): ${errorMsg.slice(0, 200)}`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
+      
+      // 其他错误或重试次数用尽
+      throw err;
+    }
   }
-
-  const data: any = await res.json();
-  const choice = data.choices?.[0];
-  const message = choice?.message || {};
-
-  // 提取推理内容（统一处理 reasoning_content 字段和 <think> 标签）
-  const { reasoning, text } = extractReasoning(message);
-
-  const toolCalls: Array<ToolCall & { id: string }> = (message.tool_calls || []).map((tc: any) => ({
-    id: tc.id,
-    name: tc.function.name,
-    arguments: JSON.parse(tc.function.arguments || '{}'),
-  }));
-
-  return { text, toolCalls, reasoning };
+  
+  // 所有重试都失败
+  throw lastError || new Error('LLM API request failed after all retries');
 }

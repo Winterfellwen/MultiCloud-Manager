@@ -140,21 +140,29 @@ function parseMcpServers(): McpServerConfig[] {
 
 // ============ 配置对象 ============
 
+function requireEnv(name: string, fallback?: string): string {
+  const value = process.env[name] || fallback;
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 const llmProviders = parseLlmProviders();
 const mcpServers = parseMcpServers();
 
 export const config = {
   port: parseInt(process.env.AI_GATEWAY_PORT || '3005', 10),
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  corsOrigin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*'),
 
   // JWT（与 auth-service 共享密钥）
-  jwtSecret: process.env.JWT_SECRET || 'cloudops-dev-secret',
+  jwtSecret: requireEnv('JWT_SECRET'),
 
   // PostgreSQL（复用 ai-agent 的数据库）
-  databaseUrl: process.env.DATABASE_URL || 'postgres://cloudops:changeme@postgres:5432/cloudops',
+  databaseUrl: requireEnv('DATABASE_URL', 'postgres://cloudops:changeme@postgres:5432/cloudops'),
 
   // Redis
-  redisUrl: process.env.REDIS_URL || 'redis://redis:6379',
+  redisUrl: requireEnv('REDIS_URL', 'redis://redis:6379'),
 
   // LLM 配置（与 ai-agent 共享）—— 作为默认 provider，向后兼容
   llm: {

@@ -18,12 +18,12 @@ export const cloudApi = {
   },
   getInstance: (id: string) => api.get<InstanceRow>(`/cloud/instances/${id}`),
   createInstance: (params: CreateInstanceParams) => api.post<Instance>('/cloud/instances/', params),
-  startInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/start`),
-  stopInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/stop`),
-  rebootInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/reboot`),
+  startInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/start`, {}),
+  stopInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/stop`, {}),
+  rebootInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/reboot`, {}),
   deleteInstance: (id: string) => api.delete<{ ok: true; id: string }>(`/cloud/instances/${id}`),
   syncInstances: (provider?: string) =>
-    api.post<SyncResult[]>(`/cloud/instances/sync${provider ? '?provider=' + provider : ''}`),
+    api.post<SyncResult[]>(`/cloud/instances/sync${provider ? '?provider=' + provider : ''}`, {}),
   getProviders: () => api.get<{ providers: string[] }>('/cloud/providers/'),
   /** 获取支持的云厂商元数据（用于前端动态渲染表单） */
   getProvidersMeta: () => api.get<{ providers: ProviderMeta[] }>('/cloud/providers/meta'),
@@ -39,5 +39,5 @@ export const cloudApi = {
     api.put<CloudAccount>(`/cloud/accounts/${id}`, params),
   deleteAccount: (id: string) => api.delete<{ ok: true; id: string }>(`/cloud/accounts/${id}`),
   /** 测试云账号连通性 */
-  testAccount: (id: string) => api.post<TestConnectionResult>(`/cloud/accounts/${id}/test`),
+  testAccount: (id: string) => api.post<TestConnectionResult>(`/cloud/accounts/${id}/test`, {}),
 };

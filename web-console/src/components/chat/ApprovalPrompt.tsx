@@ -9,7 +9,6 @@ import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { ModeSelector } from './ModeSelector';
 import { useChatStore } from '@/stores/chat';
 
 const READ_ONLY_PATTERNS = ['list', 'get', 'search', 'find', 'query', 'read', 'analyze'];
@@ -102,11 +101,7 @@ export function ApprovalPrompt() {
   );
 
   if (!currentApproval) {
-    return (
-      <div className="fixed bottom-4 right-4 z-40">
-        <ModeSelector />
-      </div>
-    );
+    return null;
   }
 
   const dangerConfig = DANGER_CONFIG[currentApproval.dangerLevel] || DANGER_CONFIG.moderate;
@@ -125,10 +120,6 @@ export function ApprovalPrompt() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-40">
-        <ModeSelector />
-      </div>
-
       <Dialog
         open={!!currentApproval}
         onClose={() => handleResolve('reject')}

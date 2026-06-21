@@ -1,25 +1,35 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { sql } from 'drizzle-orm';
-import { db } from './index.js';
+import postgres from 'postgres';
+import { config } from '../config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, '..');
-const migrationsDir = join(__dirname, '..', 'migrations');
+async function runFile(sql: ReturnType<typeof postgres>, sqlText: string): Promise<void> {
+  try {
+    await sql.unsafe(sqlText);
+  } catch (err: any) {
+    if (err?.code === '23505') {
+      await new Promise(r => setTimeout(r, 200));
+      await sql.unsafe(sqlText);
+    } else {
+      throw err;
+    }
+  }
+}
 
 export async function runMigrations(): Promise<void> {
-  console.log('Running migrations...');
-  
+  const sql = postgres(config.databaseUrl, { max: 1 });
+  const migrationsDir = join(process.cwd(), 'cloud-service', 'migrations');
+
   const files = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
-  
+
   for (const file of files) {
     console.log(`Applying migration: ${file}`);
     const sqlText = readFileSync(join(migrationsDir, file), 'utf-8');
-    await db.execute(sql.raw(sqlText));
+    await runFile(sql, sqlText);
   }
-  
+
   console.log('Migrations complete.');
+  await sql.end();
 }
 
 async function main() {

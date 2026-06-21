@@ -15,12 +15,16 @@ export class AuthService {
       throw new ConflictError(`Username "${input.username}" already exists`);
     }
 
+    // First user auto-promoted to admin
+    const userCount = await db.select({ count: users.id }).from(users);
+    const isFirstUser = userCount.length === 0;
+
     const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
     const result = await db.insert(users).values({
       username: input.username,
       email: input.email,
       passwordHash,
-      role: input.role || 'viewer',
+      role: input.role || (isFirstUser ? 'admin' : 'viewer'),
     }).returning({ id: users.id, username: users.username, role: users.role });
 
     return result[0] as { id: string; username: string; role: UserRole };

@@ -1,0 +1,82 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云资源" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云资源
+      - link "资源管理" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源管理
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [active] [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - generic [ref=e44]:
+        - link "AI 对话" [ref=e45] [cursor=pointer]:
+          - /url: /chat/react
+          - img [ref=e46]
+          - text: AI 对话
+        - generic [ref=e48]:
+          - link "React 版" [ref=e49] [cursor=pointer]:
+            - /url: /chat/react
+          - link "Lit 版" [ref=e50] [cursor=pointer]:
+            - /url: /chat/lit
+      - link "AI 设置" [ref=e52] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e53]
+        - text: AI 设置
+      - link "工具目录" [ref=e57] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e58]
+        - text: 工具目录
+      - link "MCP 配置" [ref=e61] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e62]
+        - text: MCP 配置
+      - link "用户管理" [ref=e65] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e66]
+        - text: 用户管理
+      - link "审计日志" [ref=e72] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e73]
+        - text: 审计日志
+  - generic [ref=e76]:
+    - banner [ref=e77]:
+      - generic [ref=e79]: 多云管理控制台
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - img [ref=e82]
+          - generic [ref=e85]: admin
+          - generic [ref=e86]: 管理员
+        - button "退出登录" [ref=e87] [cursor=pointer]:
+          - img [ref=e88]
+    - main [ref=e91]:
+      - generic [ref=e416]:
+        - heading "监控告警" [level=1] [ref=e417]
+        - generic [ref=e419]:
+          - button "告警规则" [ref=e420] [cursor=pointer]
+          - button "告警事件" [ref=e421] [cursor=pointer]
+          - button "通知渠道" [ref=e422] [cursor=pointer]
+        - generic [ref=e424]:
+          - generic [ref=e425]:
+            - heading "告警规则" [level=2] [ref=e426]
+            - button "新建规则" [ref=e427] [cursor=pointer]:
+              - img [ref=e428]
+              - text: 新建规则
+          - generic [ref=e429]: 暂无规则

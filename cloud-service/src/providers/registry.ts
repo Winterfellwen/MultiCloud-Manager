@@ -1,9 +1,4 @@
 import { ICloudProvider } from './types.js';
-import { AWSProvider } from './aws/index.js';
-import { AliyunProvider } from './aliyun/index.js';
-import { AzureProvider } from './azure/index.js';
-import { TencentProvider } from './tencent/index.js';
-import { HuaweiProvider } from './huawei/index.js';
 
 const providers = new Map<string, ICloudProvider>();
 
@@ -38,22 +33,37 @@ export interface ProviderConfig {
   };
 }
 
-export function registerProviders(config: ProviderConfig): void {
-  if (config.aws) {
-    providers.set('aws', new AWSProvider(config.aws));
-  }
-  if (config.aliyun) {
-    providers.set('aliyun', new AliyunProvider(config.aliyun));
-  }
-  if (config.azure) {
-    providers.set('azure', new AzureProvider(config.azure));
-  }
-  if (config.tencent) {
-    providers.set('tencent', new TencentProvider(config.tencent));
-  }
-  if (config.huawei) {
-    providers.set('huawei', new HuaweiProvider(config.huawei));
-  }
+const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>> = {
+  aws: async (cfg) => {
+    const { AWSProvider } = await import('./aws/index.js');
+    return new AWSProvider(cfg);
+  },
+  aliyun: async (cfg) => {
+    const { AliyunProvider } = await import('./aliyun/index.js');
+    return new AliyunProvider(cfg);
+  },
+  azure: async (cfg) => {
+    const { AzureProvider } = await import('./azure/index.js');
+    return new AzureProvider(cfg);
+  },
+  tencent: async (cfg) => {
+    const { TencentProvider } = await import('./tencent/index.js');
+    return new TencentProvider(cfg);
+  },
+  huawei: async (cfg) => {
+    const { HuaweiProvider } = await import('./huawei/index.js');
+    return new HuaweiProvider(cfg);
+  },
+};
+
+export async function registerProviders(config: ProviderConfig): Promise<void> {
+  const entries = Object.entries(config).filter(([key, val]) => val && providerFactories[key]);
+  await Promise.all(
+    entries.map(async ([key, cfg]) => {
+      const provider = await providerFactories[key](cfg);
+      providers.set(key, provider);
+    })
+  );
 }
 
 export function getProvider(name: string): ICloudProvider {
