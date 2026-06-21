@@ -29,26 +29,6 @@ COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
 # 安装所有依赖
 RUN pnpm install --config.minimumReleaseAge=0
 
-# 手动创建 workspace symlinks（pnpm install 可能未自动创建）
-RUN rm -rf auth-service/node_modules/@cloudops/shared && \
-    mkdir -p auth-service/node_modules/@cloudops && \
-    cp -r shared auth-service/node_modules/@cloudops/shared && \
-    rm -rf api-gateway/node_modules/@cloudops/shared && \
-    mkdir -p api-gateway/node_modules/@cloudops && \
-    cp -r shared api-gateway/node_modules/@cloudops/shared && \
-    rm -rf cloud-service/node_modules/@cloudops/shared && \
-    mkdir -p cloud-service/node_modules/@cloudops && \
-    cp -r shared cloud-service/node_modules/@cloudops/shared && \
-    rm -rf monitor-service/node_modules/@cloudops/shared && \
-    mkdir -p monitor-service/node_modules/@cloudops && \
-    cp -r shared monitor-service/node_modules/@cloudops/shared && \
-    rm -rf ai-agent/node_modules/@cloudops/shared && \
-    mkdir -p ai-agent/node_modules/@cloudops && \
-    cp -r shared ai-agent/node_modules/@cloudops/shared && \
-    rm -rf ai-gateway/node_modules/@cloudops/shared && \
-    mkdir -p ai-gateway/node_modules/@cloudops && \
-    cp -r shared ai-gateway/node_modules/@cloudops/shared
-
 # 复制所有源代码
 COPY shared/ ./shared/
 COPY auth-service/ ./auth-service/
@@ -58,8 +38,24 @@ COPY monitor-service/ ./monitor-service/
 COPY ai-agent/ ./ai-agent/
 COPY ai-gateway/ ./ai-gateway/
 
-# 构建所有服务
+# 构建 shared 模块
 RUN cd shared && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
+
+# 构建 shared 后，将完整模块（含 dist）复制到各服务的 node_modules
+RUN mkdir -p auth-service/node_modules/@cloudops && \
+    cp -r shared auth-service/node_modules/@cloudops/shared && \
+    mkdir -p api-gateway/node_modules/@cloudops && \
+    cp -r shared api-gateway/node_modules/@cloudops/shared && \
+    mkdir -p cloud-service/node_modules/@cloudops && \
+    cp -r shared cloud-service/node_modules/@cloudops/shared && \
+    mkdir -p monitor-service/node_modules/@cloudops && \
+    cp -r shared monitor-service/node_modules/@cloudops/shared && \
+    mkdir -p ai-agent/node_modules/@cloudops && \
+    cp -r shared ai-agent/node_modules/@cloudops/shared && \
+    mkdir -p ai-gateway/node_modules/@cloudops && \
+    cp -r shared ai-gateway/node_modules/@cloudops/shared
+
+# 构建所有服务
 RUN cd auth-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 RUN cd api-gateway && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 RUN cd cloud-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
