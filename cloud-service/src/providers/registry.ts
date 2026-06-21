@@ -1,4 +1,5 @@
 import { ICloudProvider } from './types.js';
+import type { RenderConfig } from './render/types.js';
 
 const providers = new Map<string, ICloudProvider>();
 
@@ -31,6 +32,7 @@ export interface ProviderConfig {
     region: string;
     projectId?: string;
   };
+  render?: RenderConfig;
 }
 
 const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>> = {
@@ -53,6 +55,10 @@ const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>
   huawei: async (cfg) => {
     const { HuaweiProvider } = await import('./huawei/index.js');
     return new HuaweiProvider(cfg);
+  },
+  render: async (cfg) => {
+    const { RenderProvider } = await import('./render/index.js');
+    return new RenderProvider(cfg);
   },
 };
 

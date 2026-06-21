@@ -1,0 +1,230 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云资源" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云资源
+      - link "资源管理" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源管理
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - link "AI 对话" [ref=e45] [cursor=pointer]:
+        - /url: /chat/react
+        - img [ref=e46]
+        - text: AI 对话
+      - link "AI 设置" [ref=e49] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e50]
+        - text: AI 设置
+      - link "工具目录" [ref=e54] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e55]
+        - text: 工具目录
+      - link "MCP 配置" [ref=e58] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e59]
+        - text: MCP 配置
+      - link "用户管理" [ref=e62] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e63]
+        - text: 用户管理
+      - link "审计日志" [ref=e69] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e70]
+        - text: 审计日志
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e76]: 多云管理控制台
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - img [ref=e79]
+          - generic [ref=e82]: admin
+          - generic [ref=e83]: 管理员
+        - button "退出登录" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+    - main [ref=e88]:
+      - generic [ref=e89]:
+        - generic [ref=e91]:
+          - button "新建对话" [ref=e93] [cursor=pointer]:
+            - img [ref=e94]
+            - text: 新建对话
+          - generic [ref=e96]:
+            - generic [ref=e220] [cursor=pointer]:
+              - img [ref=e400]
+              - generic [ref=e223]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e241]: 错误
+              - generic [ref=e224]: "2"
+              - button "删除对话" [ref=e225]:
+                - img [ref=e226]
+            - generic [ref=e97] [cursor=pointer]:
+              - img [ref=e229]
+              - generic [ref=e100]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e232]: 已完成
+              - generic [ref=e101]: "3"
+              - button "删除对话" [ref=e102]:
+                - img [ref=e103]
+            - generic [ref=e106] [cursor=pointer]:
+              - img [ref=e107]
+              - generic [ref=e109]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e110]: "3"
+              - button "删除对话" [ref=e111]:
+                - img [ref=e112]
+            - generic [ref=e115] [cursor=pointer]:
+              - img [ref=e116]
+              - generic [ref=e118]: 帮我把所有 Azure 资源都删除
+              - generic [ref=e119]: "2"
+              - button "删除对话" [ref=e120]:
+                - img [ref=e121]
+            - generic [ref=e124] [cursor=pointer]:
+              - img [ref=e125]
+              - generic [ref=e127]: 列出所有Azure云服务器实例
+              - generic [ref=e128]: "3"
+              - button "删除对话" [ref=e129]:
+                - img [ref=e130]
+            - generic [ref=e133] [cursor=pointer]:
+              - img [ref=e134]
+              - generic [ref=e136]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e137]: "1"
+              - button "删除对话" [ref=e138]:
+                - img [ref=e139]
+            - generic [ref=e142] [cursor=pointer]:
+              - img [ref=e143]
+              - generic [ref=e145]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e146]: "2"
+              - button "删除对话" [ref=e147]:
+                - img [ref=e148]
+            - generic [ref=e151] [cursor=pointer]:
+              - img [ref=e152]
+              - generic [ref=e154]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e155]: "2"
+              - button "删除对话" [ref=e156]:
+                - img [ref=e157]
+            - generic [ref=e160] [cursor=pointer]:
+              - img [ref=e161]
+              - generic [ref=e163]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e164]: "2"
+              - button "删除对话" [ref=e165]:
+                - img [ref=e166]
+            - generic [ref=e169] [cursor=pointer]:
+              - img [ref=e170]
+              - generic [ref=e172]: Test message in new session
+              - generic [ref=e173]: "2"
+              - button "删除对话" [ref=e174]:
+                - img [ref=e175]
+            - generic [ref=e178] [cursor=pointer]:
+              - img [ref=e179]
+              - generic [ref=e181]: Hello, this is a test message
+              - generic [ref=e182]: "2"
+              - button "删除对话" [ref=e183]:
+                - img [ref=e184]
+        - generic [ref=e187]:
+          - generic [ref=e190]: 已连接
+          - generic [ref=e243]:
+            - generic [ref=e244]:
+              - img [ref=e246]
+              - generic [ref=e249]:
+                - generic [ref=e250]: 我的 Azure 账户里有哪些资源？
+                - button "复制" [ref=e251] [cursor=pointer]:
+                  - img [ref=e252]
+                  - generic [ref=e255]: 复制
+            - generic [ref=e256]:
+              - img [ref=e258]
+              - generic [ref=e261]:
+                - generic [ref=e262]:
+                  - button "列出资源" [ref=e273] [cursor=pointer]:
+                    - img [ref=e274]
+                    - img [ref=e276]
+                    - generic [ref=e277]: 列出资源
+                    - img [ref=e279]
+                  - button "列出资源" [ref=e283] [cursor=pointer]:
+                    - img [ref=e284]
+                    - img [ref=e286]
+                    - generic [ref=e287]: 列出资源
+                    - img [ref=e289]
+                  - button "列出资源" [ref=e293] [cursor=pointer]:
+                    - img [ref=e294]
+                    - img [ref=e296]
+                    - generic [ref=e297]: 列出资源
+                    - img [ref=e299]
+                  - button "列出资源" [ref=e303] [cursor=pointer]:
+                    - img [ref=e304]
+                    - img [ref=e306]
+                    - generic [ref=e307]: 列出资源
+                    - img [ref=e309]
+                  - button "列出资源" [ref=e313] [cursor=pointer]:
+                    - img [ref=e314]
+                    - img [ref=e316]
+                    - generic [ref=e317]: 列出资源
+                    - img [ref=e319]
+                  - button "列出资源" [ref=e323] [cursor=pointer]:
+                    - img [ref=e324]
+                    - img [ref=e326]
+                    - generic [ref=e327]: 列出资源
+                    - img [ref=e329]
+                  - button "列出资源" [ref=e333] [cursor=pointer]:
+                    - img [ref=e334]
+                    - img [ref=e336]
+                    - generic [ref=e337]: 列出资源
+                    - img [ref=e339]
+                  - button "列出资源" [ref=e343] [cursor=pointer]:
+                    - img [ref=e344]
+                    - img [ref=e346]
+                    - generic [ref=e347]: 列出资源
+                    - img [ref=e349]
+                  - button "列出资源" [ref=e353] [cursor=pointer]:
+                    - img [ref=e354]
+                    - img [ref=e356]
+                    - generic [ref=e357]: 列出资源
+                    - img [ref=e359]
+                  - generic [ref=e363]: "您的 **Azure 账户** 中目前未查询到以下类型的资源： - 云服务器实例（Instance） - 磁盘（Disk） - 数据库（Database） - 缓存（Cache） - 负载均衡器（LoadBalancer） - VPC（虚拟网络） - 安全组（Security Group） - CDN - 集群（Cluster） ### 建议： 1. **检查区域**：确认是否在其他区域（如 `eastus`、`westeurope` 等）创建了资源。 2. **同步资源**：如果刚创建或删除过资源，可以尝试 **同步资源** 以获取最新状态。 3. **其他资源类型**：如需检查对象存储（Bucket）或 AI 服务等，请告知。 需要我为您 **同步 Azure 资源** 或检查特定区域吗？"
+                - button "复制" [ref=e364] [cursor=pointer]:
+                  - img [ref=e365]
+                  - generic [ref=e368]: 复制
+            - generic [ref=e375]:
+              - img [ref=e377]
+              - generic [ref=e380]:
+                - generic [ref=e381]: 那 AI 服务呢？之前好像有3个
+                - button "复制" [ref=e382] [cursor=pointer]:
+                  - img [ref=e383]
+                  - generic [ref=e386]: 复制
+            - generic [ref=e387]:
+              - img [ref=e389]
+              - generic [ref=e402]:
+                - img [ref=e403]
+                - generic [ref=e405]: "LLM API error 400: {\"error\":{\"message\":\"Expected last role User or Tool (or Assistant with prefix or continue_final_message set to True) for serving but got assistant\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}"
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - button "Plan" [ref=e197] [cursor=pointer]
+                - button "Action" [ref=e198] [cursor=pointer]
+                - button "Confirm" [ref=e199] [cursor=pointer]
+              - button "mistralai/mistral-large-3-675b-instruct-2512" [ref=e234] [cursor=pointer]:
+                - generic [ref=e202]: mistralai/mistral-large-3-675b-instruct-2512
+                - img [ref=e203]
+              - button "深度思考" [ref=e205] [cursor=pointer]:
+                - img [ref=e206]
+                - generic [ref=e216]: 深度思考
+            - generic [ref=e217]:
+              - textbox "输入消息，/ 查看命令，Enter 发送，Shift+Enter 换行" [ref=e218]
+              - button "发送" [disabled]:
+                - img
+                - text: 发送
+            - generic [ref=e219]: "✋ Confirm mode: All tools require manual approval"

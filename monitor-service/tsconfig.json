@@ -11,8 +11,12 @@
     "declaration": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@cloudops/shared": ["../shared"],
+      "@cloudops/shared/*": ["../shared/*"]
+    }
   },
-  "include": ["src"],
-  "references": [{ "path": "../shared" }]
+  "include": ["src"]
 }

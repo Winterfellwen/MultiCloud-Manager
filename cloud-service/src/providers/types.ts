@@ -290,11 +290,11 @@ export interface ResourceTypeMeta {
 }
 
 export const RESOURCE_TYPE_META: ResourceTypeMeta[] = [
-  { type: 'instance', displayName: '云服务器', iconName: 'server', category: 'compute', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
-  { type: 'disk', displayName: '云磁盘', iconName: 'hard-drive', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
+  { type: 'instance', displayName: '云服务器', iconName: 'server', category: 'compute', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
+  { type: 'disk', displayName: '云磁盘', iconName: 'hard-drive', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
   { type: 'bucket', displayName: '对象存储', iconName: 'database', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
-  { type: 'database', displayName: '数据库', iconName: 'database', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
-  { type: 'cache', displayName: '缓存', iconName: 'zap', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
+  { type: 'database', displayName: '数据库', iconName: 'database', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
+  { type: 'cache', displayName: '缓存', iconName: 'zap', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
   { type: 'loadbalancer', displayName: '负载均衡', iconName: 'share-2', category: 'network', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
   { type: 'vpc', displayName: '虚拟网络', iconName: 'git-branch', category: 'network', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
   { type: 'securitygroup', displayName: '安全组', iconName: 'shield', category: 'security', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
