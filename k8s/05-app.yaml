@@ -1,0 +1,94 @@
+# CloudOps AI Platform 主应用（所有后端服务 + 前端都在这个容器里
+# 使用我们的 Dockerfile 构建的镜像，内部通过 pm2 管理多个 Node 进程 + nginx 提供前端
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudops-app
+  namespace: cloudops
+  labels:
+    app: cloudops-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudops-app
+  template:
+    metadata:
+      labels:
+        app: cloudops-app
+    spec:
+      containers:
+        - name: cloudops-app
+          # 镜像请先构建并推送到镜像仓库：docker build -t your-registry/cloudops-app:latest .
+          image: your-registry/cloudops-app:latest
+          ports:
+            - name: http
+              containerPort: 80
+            - name: api-gateway
+              containerPort: 3000
+            - name: cloud-svc
+              containerPort: 3001
+            - name: monitor-svc
+              containerPort: 3002
+            - name: ai-agent
+              containerPort: 3003
+            - name: auth-svc
+              containerPort: 3004
+            - name: ai-gateway
+              containerPort: 3005
+          envFrom:
+            - configMapRef:
+                name: cloudops-config
+            - secretRef:
+                name: cloudops-secrets
+          env:
+            # 数据库连接（基于 K8s 内部服务名
+            - name: DATABASE_URL
+              value: "postgresql://cloudops:cloudops123@postgres:5432/cloudops"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            # 内部服务地址（同一容器内，走 localhost
+            - name: CLOUD_SERVICE_URL
+              value: "http://localhost:3001"
+            - name: MONITOR_SERVICE_URL
+              value: "http://localhost:3002"
+            - name: AUTH_SERVICE_URL
+              value: "http://localhost:3004"
+          # 健康检查：根路径转发到 api-gateway /health
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+---
+# 对外服务：ClusterIP（通过 Ingress 暴露
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudops-app
+  namespace: cloudops
+spec:
+  type: ClusterIP
+  selector:
+    app: cloudops-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP

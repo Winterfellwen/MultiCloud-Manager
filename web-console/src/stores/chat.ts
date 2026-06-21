@@ -6,6 +6,7 @@ import { create } from 'zustand';
 
 export type Mode = 'plan' | 'action' | 'confirm';
 import { WsClient } from '../lib/ws-client';
+import { getWsBaseUrl } from '../lib/config';
 import { useAuthStore } from './auth';
 import type {
   ChatMessage,
@@ -88,19 +89,7 @@ interface ChatState {
 }
 
 function buildWsBaseUrl(): string {
-  // 优先使用环境变量（便于开发/测试时指定）
-  if (import.meta.env.VITE_WS_BASE_URL) {
-    return import.meta.env.VITE_WS_BASE_URL;
-  }
-  if (import.meta.env.DEV) {
-    return 'ws://localhost:3005/ws';
-  }
-  // 生产环境：基于当前页面 URL 动态生成
-  // HTTPS 页面必须用 wss://（WebSocket Secure）
-  // HTTP 页面用 ws://
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host;
-  return `${protocol}//${host}/ws`;
+  return getWsBaseUrl();
 }
 
 const WS_BASE_URL = buildWsBaseUrl();

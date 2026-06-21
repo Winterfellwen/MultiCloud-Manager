@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudops-config
+  namespace: cloudops
+data:
+  # JWT 配置（密钥通过 Secret 管理，这里仅保留默认值
+  JWT_EXPIRES_IN: "24h"
+  # 管理员用户名
+  ADMIN_USERNAME: "admin"
+  # LLM 配置
+  LLM_BASE_URL: "https://api.openai.com/v1"
+  LLM_MODEL: "gpt-4o"
+  # Agent 配置
+  AGENT_MAX_ITERATIONS: "10"
+  AGENT_TIMEOUT_MS: "120000"
+  # 端口
+  AUTH_SERVICE_PORT: "3004"
+  AI_GATEWAY_PORT: "3005"

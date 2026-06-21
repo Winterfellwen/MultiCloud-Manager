@@ -1,0 +1,101 @@
+services:
+  - type: web
+    name: cloudops-ai
+    runtime: docker
+    repo: https://github.com/cloudops-ai/cloudops-ai
+    plan: pro
+    dockerfilePath: ./Dockerfile
+    # Render 自动注入 PORT（nginx 监听 PORT 端口
+    healthCheckPath: /health
+    healthCheckTimeout: 30
+    numInstances: 1
+    envVars:
+      # ============ 必选（由 Render 生成，在首次部署时自动生成 ============
+      - key: POSTGRES_DATABASE
+        fromService:
+          type: postgres
+          name: cloudops-db
+          property: database
+      - key: POSTGRES_HOST
+        fromService:
+          type: postgres
+          name: cloudops-db
+          property: host
+      - key: POSTGRES_USER
+        fromService:
+          type: postgres
+          name: cloudops-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromService:
+          type: postgres
+          name: cloudops-db
+          property: password
+      - key: POSTGRES_PORT
+        fromService:
+          type: postgres
+          name: cloudops-db
+          property: port
+      # ============ 必选（生成 DATABASE_URL ============
+      - key: DATABASE_URL
+        fromService:
+          type: postgres
+          name: cloudops-db
+          property: connectionString
+      # ============ Redis ============
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cloudops-redis
+          property: connectionString
+
+      # ============ JWT（首次部署后请在 Render 面板随机生成 ============
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: "24h"
+
+      # ============ 管理员（首次部署随机生成密码 ============
+      - key: ADMIN_USERNAME
+        value: "admin"
+      # 设置 ADMIN_PASSWORD 为空时，首次启动会在容器日志中打印随机生成的密码
+      # 建议在部署完成后，在 Render 控制面板中设置此值以固定密码
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      # ============ 云服务商（可选，在 Render 控制面板中单独设置 ============
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: ALIYUN_ACCESS_KEY_ID
+        sync: false
+      - key: AZURE_TENANT_ID
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
+
+      # ============ LLM（可选 ============
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: "https://api.openai.com/v1"
+      - key: LLM_MODEL
+        value: "gpt-4o"
+
+      # ============ Agent 配置（可选） ============
+      - key: AGENT_MAX_ITERATIONS
+        value: "10"
+      - key: AGENT_TIMEOUT_MS
+        value: "120000"
+
+databases:
+  - name: cloudops-db
+    plan: standard
+    postgresMajorVersion: "16"
+    databaseName: cloudops
+    user: cloudops
+
+  - name: cloudops-redis
+    plan: standard
+    ipAllowList: []

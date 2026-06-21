@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/stores/auth';
+import { getApiBaseUrl } from '@/lib/config';
 
-const API_BASE = '';
+const API_BASE = getApiBaseUrl();
 
 export class ApiError extends Error {
   constructor(
