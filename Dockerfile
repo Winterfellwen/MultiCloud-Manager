@@ -26,8 +26,28 @@ COPY monitor-service/package.json monitor-service/tsconfig.json ./monitor-servic
 COPY ai-agent/package.json ai-agent/tsconfig.json ./ai-agent/
 COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
 
-# 安装所有依赖（不做 filter，确保 workspace symlinks 正确创建）
+# 安装所有依赖
 RUN pnpm install --config.minimumReleaseAge=0
+
+# 手动创建 workspace symlinks（pnpm install 可能未自动创建）
+RUN rm -rf auth-service/node_modules/@cloudops/shared && \
+    mkdir -p auth-service/node_modules/@cloudops && \
+    cp -r shared auth-service/node_modules/@cloudops/shared && \
+    rm -rf api-gateway/node_modules/@cloudops/shared && \
+    mkdir -p api-gateway/node_modules/@cloudops && \
+    cp -r shared api-gateway/node_modules/@cloudops/shared && \
+    rm -rf cloud-service/node_modules/@cloudops/shared && \
+    mkdir -p cloud-service/node_modules/@cloudops && \
+    cp -r shared cloud-service/node_modules/@cloudops/shared && \
+    rm -rf monitor-service/node_modules/@cloudops/shared && \
+    mkdir -p monitor-service/node_modules/@cloudops && \
+    cp -r shared monitor-service/node_modules/@cloudops/shared && \
+    rm -rf ai-agent/node_modules/@cloudops/shared && \
+    mkdir -p ai-agent/node_modules/@cloudops && \
+    cp -r shared ai-agent/node_modules/@cloudops/shared && \
+    rm -rf ai-gateway/node_modules/@cloudops/shared && \
+    mkdir -p ai-gateway/node_modules/@cloudops && \
+    cp -r shared ai-gateway/node_modules/@cloudops/shared
 
 # 复制所有源代码
 COPY shared/ ./shared/
