@@ -27,7 +27,7 @@ COPY ai-agent/package.json ai-agent/tsconfig.json ./ai-agent/
 COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
 
 # 安装所有依赖（不做 filter，确保 workspace symlinks 正确创建）
-RUN pnpm install --dangerously-allow-all-builds --config.minimumReleaseAge=0
+RUN pnpm install --config.minimumReleaseAge=0
 
 # 复制所有源代码
 COPY shared/ ./shared/
@@ -76,7 +76,7 @@ COPY web-console/package.json web-console/tsconfig.json web-console/vite.config.
 COPY web-console/openclaw-ui/package.json web-console/openclaw-ui/tsconfig.json web-console/openclaw-ui/vite.config.ts ./web-console/openclaw-ui/
 
 # 安装前端依赖（不做 filter，确保 workspace symlinks 正确创建）
-RUN pnpm install --dangerously-allow-all-builds --config.minimumReleaseAge=0
+RUN pnpm install --config.minimumReleaseAge=0
 
 # 复制前端源代码
 COPY shared/ ./shared/
@@ -140,7 +140,7 @@ COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml ./
 
 # 安装运行时依赖（使用 workspace install 确保 workspace 协议正确解析）
-RUN pnpm install --prod --dangerously-allow-all-builds --config.minimumReleaseAge=0
+RUN pnpm install --prod --config.minimumReleaseAge=0
 
 # 复制启动脚本
 COPY start.sh ./
