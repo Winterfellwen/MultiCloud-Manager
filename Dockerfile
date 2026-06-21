@@ -5,14 +5,7 @@ WORKDIR /app
 
 # 安装依赖
 RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
-    apk add --no-cache python3 make g++ && \
-    npm install -g pnpm@9 --registry=https://registry.npmmirror.com
-
-# 配置 pnpm 镜像源
-RUN pnpm config set registry https://registry.npmmirror.com
-ENV NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
-ENV NVM_NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
-ENV PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false
+    apk add --no-cache python3 make g++
 
 # 复制所有源代码（一次性复制，避免分层问题）
 COPY shared/ ./shared/
@@ -23,25 +16,18 @@ COPY monitor-service/ ./monitor-service/
 COPY ai-agent/ ./ai-agent/
 COPY ai-gateway/ ./ai-gateway/
 
-# 构建 shared 模块（优先于其他服务）
-RUN cd shared && pnpm run build
+# 构建 shared 模块（使用 npm 安装 + 编译）
+RUN cd shared && npm install --registry=https://registry.npmmirror.com && npx tsc && echo "Built shared"
 
-# 为每个服务创建独立的 node_modules（使用 npm 解决 @cloudops/shared）
+# 为每个服务安装依赖并构建（用 file:../shared 替代 workspace:*）
 RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
       cd /app/$svc && \
       sed 's|"workspace:\*"|"file:../shared"|g' package.json > package.json.tmp && \
       mv package.json.tmp package.json && \
-      npm install --omit=dev 2>&1 | tail -3 && \
-      echo "Installed deps for $svc"; \
+      npm install --registry=https://registry.npmmirror.com 2>&1 | tail -3 && \
+      npx tsc 2>&1 | tail -3 && \
+      echo "Built $svc"; \
     done
-
-# 构建所有服务（使用 tsc 直接编译，跳过 pnpm scripts）
-RUN cd auth-service && npx tsc && echo "Built auth-service"
-RUN cd api-gateway && npx tsc && echo "Built api-gateway"
-RUN cd cloud-service && npx tsc && echo "Built cloud-service"
-RUN cd monitor-service && npx tsc && echo "Built monitor-service"
-RUN cd ai-agent && npx tsc && echo "Built ai-agent"
-RUN cd ai-gateway && npx tsc && echo "Built ai-gateway"
 
 # 复制数据库迁移文件
 RUN cp -r auth-service/migrations auth-service/dist/migrations && \
