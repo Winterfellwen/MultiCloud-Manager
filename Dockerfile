@@ -41,47 +41,24 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
-# 安装 pnpm
-RUN apk add --no-cache python3 make g++ && \
-    npm install -g pnpm@9
+RUN apk add --no-cache python3 make g++
 
-# 先复制所有 package.json 文件（确保 workspace 结构正确）
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+# 复制整个前端目录（包含所有配置文件和源代码）
+COPY shared/ ./shared/
+COPY web-console/ ./web-console/
 
-# 创建所有需要的目录结构
-RUN mkdir -p shared web-console web-console/openclaw-ui
-
-# 复制各子项目的 package.json 和 tsconfig.json
-COPY shared/package.json shared/tsconfig.json ./shared/
-COPY web-console/package.json ./web-console/package.json
-COPY web-console/tsconfig.json ./web-console/tsconfig.json
-COPY web-console/vite.config.ts ./web-console/vite.config.ts
-COPY web-console/tsconfig.node.json ./web-console/tsconfig.node.json
-COPY web-console/postcss.config.js ./web-console/postcss.config.js
-COPY web-console/index.html ./web-console/index.html
-COPY web-console/openclaw-ui/package.json ./web-console/openclaw-ui/package.json
-COPY web-console/openclaw-ui/tsconfig.json ./web-console/openclaw-ui/tsconfig.json
-COPY web-console/openclaw-ui/vite.config.ts ./web-console/openclaw-ui/vite.config.ts
-
-# 安装依赖（使用正确的 workspace 配置）
-RUN pnpm install --config.minimumReleaseAge=0 --ignore-scripts
-
-# 复制前端源代码
-COPY shared/src ./shared/src
-COPY web-console/src ./web-console/src
-COPY web-console/openclaw-ui/src ./web-console/openclaw-ui/src
-
-# public 目录可选（如果不存在则跳过）
-RUN if [ -d "/app/web-console/public" ]; then echo "public exists"; else mkdir -p /app/web-console/public; fi
+# 修复 workspace 依赖，用本地路径代替
+RUN sed -i 's|"workspace:\*"|"file:../shared"|g' /app/web-console/package.json && \
+    sed -i 's|"workspace:\*"|"file:../shared"|g' /app/web-console/openclaw-ui/package.json
 
 # 构建 shared
-RUN cd /app/shared && npm run build
+RUN cd /app/shared && npm install && npm run build
 
 # 构建 openclaw-ui
-RUN cd /app/web-console/openclaw-ui && npm run build
+RUN cd /app/web-console/openclaw-ui && npm install && npm run build
 
-# 构建 web-console
-RUN cd /app/web-console && npm run build
+# 构建 web-console（包含 tailwind.config.js 等所有配置文件）
+RUN cd /app/web-console && npm install && npm run build
 
 # 最终镜像
 FROM node:22-alpine
