@@ -42,16 +42,22 @@ COPY ai-gateway/ ./ai-gateway/
 RUN cd shared && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 
 # 构建 shared 后，将完整模块（含 dist）复制到各服务的 node_modules
-RUN mkdir -p auth-service/node_modules/@cloudops && \
+RUN rm -rf auth-service/node_modules/@cloudops/shared && \
+    mkdir -p auth-service/node_modules/@cloudops && \
     cp -r shared auth-service/node_modules/@cloudops/shared && \
+    rm -rf api-gateway/node_modules/@cloudops/shared && \
     mkdir -p api-gateway/node_modules/@cloudops && \
     cp -r shared api-gateway/node_modules/@cloudops/shared && \
+    rm -rf cloud-service/node_modules/@cloudops/shared && \
     mkdir -p cloud-service/node_modules/@cloudops && \
     cp -r shared cloud-service/node_modules/@cloudops/shared && \
+    rm -rf monitor-service/node_modules/@cloudops/shared && \
     mkdir -p monitor-service/node_modules/@cloudops && \
     cp -r shared monitor-service/node_modules/@cloudops/shared && \
+    rm -rf ai-agent/node_modules/@cloudops/shared && \
     mkdir -p ai-agent/node_modules/@cloudops && \
     cp -r shared ai-agent/node_modules/@cloudops/shared && \
+    rm -rf ai-gateway/node_modules/@cloudops/shared && \
     mkdir -p ai-gateway/node_modules/@cloudops && \
     cp -r shared ai-gateway/node_modules/@cloudops/shared
 
