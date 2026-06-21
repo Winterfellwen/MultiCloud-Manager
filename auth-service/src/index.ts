@@ -9,6 +9,7 @@ import { userRoutes } from './routes/users.js';
 import { auditRoutes } from './routes/audit.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
+import { eq } from 'drizzle-orm';
 import { AppError } from '@cloudops/shared';
 
 const SALT_ROUNDS = 10;
@@ -26,21 +27,49 @@ function generateRandomPassword(length = 20): string {
 
 async function seedAdminIfNeeded(): Promise<void> {
   try {
-    const existing = await db.select().from(users).limit(1);
-    if (existing.length > 0) {
-      // 已有用户，不做任何事 —— 避免在重启/升级时覆盖管理员
+    const username = config.admin.username || 'admin';
+    const envPassword = config.admin.password;
+
+    // 查 admin 用户是否已存在
+    const existing = await db.select().from(users).where(eq(users.username, username)).limit(1);
+
+    // 场景 1: 已设置 ADMIN_PASSWORD —— 每次启动都更新密码（确保环境变量生效）
+    if (envPassword) {
+      const passwordHash = await bcrypt.hash(envPassword, SALT_ROUNDS);
+
+      if (existing.length > 0) {
+        await db.update(users).set({ passwordHash }).where(eq(users.username, username));
+        console.log('');
+        console.log('========================================');
+        console.log('  🔑  已同步管理员密码（来自 ADMIN_PASSWORD）');
+        console.log('     用户名: ' + username);
+        console.log('========================================');
+        console.log('');
+      } else {
+        await db.insert(users).values({
+          username,
+          email: `${username}@localhost.invalid`,
+          passwordHash,
+          role: 'admin',
+        });
+        console.log('');
+        console.log('========================================');
+        console.log('  🔑  已创建管理员账号（来自 ADMIN_PASSWORD）');
+        console.log('     用户名: ' + username);
+        console.log('========================================');
+        console.log('');
+      }
       return;
     }
 
-    const username = config.admin.username || 'admin';
-    let password = config.admin.password;
-    let isGenerated = false;
-
-    if (!password) {
-      password = generateRandomPassword(20);
-      isGenerated = true;
+    // 场景 2: 未设置 ADMIN_PASSWORD —— 仅在表为空时随机生成（一次性）
+    const allUsers = await db.select().from(users).limit(1);
+    if (allUsers.length > 0) {
+      // 已有用户且未设置 ADMIN_PASSWORD —— 什么也不做
+      return;
     }
 
+    const password = generateRandomPassword(20);
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     await db.insert(users).values({
       username,
@@ -53,21 +82,16 @@ async function seedAdminIfNeeded(): Promise<void> {
     console.log('========================================');
     console.log('  🔑  首次部署 —— 已创建管理员账号');
     console.log('     用户名: ' + username);
-    if (isGenerated) {
-      console.log('     密码:   ' + password);
-      console.log('     (本次启动时随机生成，仅显示一次)');
-    } else {
-      console.log('     密码:   (来自 ADMIN_PASSWORD 环境变量)');
-    }
+    console.log('     密码:   ' + password);
+    console.log('     (本次启动时随机生成，仅显示一次)');
     console.log('');
-    console.log('  提示: 登录后请立即修改密码。');
-    console.log('  如已丢失密码，请设置 ADMIN_PASSWORD 环境变量');
-    console.log('  并清空 users 表后重启服务以重新初始化。');
+    console.log('  提示: 如需固定密码，请设置 ADMIN_PASSWORD 环境变量');
+    console.log('  并重新部署服务，系统会自动同步新密码。');
     console.log('========================================');
     console.log('');
   } catch (err) {
     // 表不存在等情况在此静默跳过，不阻断服务启动
-    console.log('ℹ️  跳过 admin 种子账号（数据库未就绪或已有用户）:', (err as Error).message);
+    console.log('ℹ️  跳过 admin 种子账号（数据库未就绪）:', (err as Error).message);
   }
 }
 
