@@ -14,22 +14,7 @@ ENV NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
 ENV NVM_NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
 ENV PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false
 
-# 复制工作区配置
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-
-# 复制所有服务的 package.json
-COPY shared/package.json shared/tsconfig.json ./shared/
-COPY auth-service/package.json auth-service/tsconfig.json ./auth-service/
-COPY api-gateway/package.json api-gateway/tsconfig.json ./api-gateway/
-COPY cloud-service/package.json cloud-service/tsconfig.json ./cloud-service/
-COPY monitor-service/package.json monitor-service/tsconfig.json ./monitor-service/
-COPY ai-agent/package.json ai-agent/tsconfig.json ./ai-agent/
-COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
-
-# 安装所有依赖（shamefully-hoist 让 pnpm 像 npm 一样扁平化 node_modules）
-RUN echo "shamefully-hoist=true" > .npmrc && pnpm install --config.minimumReleaseAge=0
-
-# 复制所有源代码
+# 复制所有源代码（一次性复制，避免分层问题）
 COPY shared/ ./shared/
 COPY auth-service/ ./auth-service/
 COPY api-gateway/ ./api-gateway/
@@ -38,23 +23,25 @@ COPY monitor-service/ ./monitor-service/
 COPY ai-agent/ ./ai-agent/
 COPY ai-gateway/ ./ai-gateway/
 
-# 构建所有服务
-RUN cd shared && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
+# 构建 shared 模块（优先于其他服务）
+RUN cd shared && pnpm run build
 
-# 手动为每个服务创建 @cloudops/shared 链接（确保编译后 dist/ 存在）
+# 为每个服务创建独立的 node_modules（使用 npm 解决 @cloudops/shared）
 RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
-      mkdir -p "$svc/node_modules/@cloudops" && \
-      rm -rf "$svc/node_modules/@cloudops/shared" && \
-      ln -sf ../../../shared "$svc/node_modules/@cloudops/shared" && \
-      echo "Linked @cloudops/shared for $svc -> $(readlink "$svc/node_modules/@cloudops/shared")"; \
+      cd /app/$svc && \
+      sed 's|"workspace:\*"|"file:../shared"|g' package.json > package.json.tmp && \
+      mv package.json.tmp package.json && \
+      npm install --omit=dev 2>&1 | tail -3 && \
+      echo "Installed deps for $svc"; \
     done
 
-RUN cd auth-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
-RUN cd api-gateway && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
-RUN cd cloud-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
-RUN cd monitor-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
-RUN cd ai-agent && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
-RUN cd ai-gateway && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
+# 构建所有服务（使用 tsc 直接编译，跳过 pnpm scripts）
+RUN cd auth-service && npx tsc && echo "Built auth-service"
+RUN cd api-gateway && npx tsc && echo "Built api-gateway"
+RUN cd cloud-service && npx tsc && echo "Built cloud-service"
+RUN cd monitor-service && npx tsc && echo "Built monitor-service"
+RUN cd ai-agent && npx tsc && echo "Built ai-agent"
+RUN cd ai-gateway && npx tsc && echo "Built ai-gateway"
 
 # 复制数据库迁移文件
 RUN cp -r auth-service/migrations auth-service/dist/migrations && \
@@ -104,13 +91,7 @@ WORKDIR /app
 # 安装运行时依赖
 RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
     apk add --no-cache nginx supervisor && \
-    npm install -g pm2 pnpm@9 --registry=https://registry.npmmirror.com
-
-# 配置 pnpm
-RUN pnpm config set registry https://registry.npmmirror.com
-ENV NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
-ENV NVM_NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
-ENV PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false
+    npm install -g pm2 --registry=https://registry.npmmirror.com
 
 # 复制构建产物
 COPY --from=builder /app/shared/dist ./shared/dist
@@ -134,8 +115,10 @@ RUN mkdir -p /usr/share/nginx/html && cp -r ./web-console/dist/* /usr/share/ngin
 COPY ecosystem.config.js ./
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# 复制 package.json 文件（用于运行时依赖）
+# 复制 shared 包
 COPY shared/package.json ./shared/
+
+# 复制各服务 package.json
 COPY auth-service/package.json ./auth-service/
 COPY api-gateway/package.json ./api-gateway/
 COPY cloud-service/package.json ./cloud-service/
@@ -144,19 +127,11 @@ COPY ai-agent/package.json ./ai-agent/
 COPY ai-gateway/package.json ./ai-gateway/
 COPY web-console/package.json ./web-console/
 
-# 复制工作区配置
-COPY pnpm-workspace.yaml ./
-COPY pnpm-lock.yaml ./
-
-# 安装运行时依赖（shamefully-hoist + workspace install 确保 @cloudops/shared 可解析）
-RUN echo "shamefully-hoist=true" > .npmrc && pnpm install --prod --config.minimumReleaseAge=0
-
-# 手动为每个服务创建 @cloudops/shared 运行时链接
+# 将 workspace:* 替换为 file:../shared 并用 npm 安装运行时依赖
 RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
-      mkdir -p "$svc/node_modules/@cloudops" && \
-      rm -rf "$svc/node_modules/@cloudops/shared" && \
-      ln -sf ../../../shared "$svc/node_modules/@cloudops/shared" && \
-      echo "Runtime linked @cloudops/shared for $svc"; \
+      sed -i 's|"workspace:\*"|"file:../shared"|g' "$svc/package.json" && \
+      cd "$svc" && npm install --omit=dev --ignore-scripts 2>&1 | tail -2 && \
+      cd /app && echo "Installed runtime deps for $svc"; \
     done
 
 # 复制启动脚本
