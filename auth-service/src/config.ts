@@ -16,4 +16,9 @@ export const config = {
   jwtSecret: requireEnv('JWT_SECRET', 'render-development-jwt-secret-change-me'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
   corsOrigin: process.env.CORS_ORIGIN || '*',
+  admin: {
+    username: process.env.ADMIN_USERNAME || 'admin',
+    // 空字符串与未设置都视为“未指定”，启动时将随机生成一次
+    password: process.env.ADMIN_PASSWORD || '',
+  },
 };

@@ -1,0 +1,47 @@
+# 忽略 node_modules（应该由 pnpm install 在容器内重新安装）
+**/node_modules
+**/.pnpm-store
+**/.npm
+
+# 忽略构建产物（应该由 Docker 重新构建）
+**/dist
+**/build
+**/.next
+
+# 忽略开发文件
+**/*.log
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# 忽略 IDE 和编辑器文件
+**/.idea
+**/.vscode
+**/.DS_Store
+
+# 忽略测试文件（加快构建）
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__
+**/coverage
+
+# 忽略文档和脚本
+**/*.md
+docs/
+scripts/
+
+# 忽略 Playwright 和其他测试工具
+.playwright-mcp/
+test-screenshots/
+.test-screenshots/
+
+# 忽略 .superpowers 等开发工具目录
+.superpowers/
+
+# 但保留配置文件
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml

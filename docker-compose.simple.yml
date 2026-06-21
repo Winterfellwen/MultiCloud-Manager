@@ -30,7 +30,7 @@ services:
   server:
     build:
       context: .
-      dockerfile: Dockerfile.unified
+      dockerfile: Dockerfile
     ports:
       - "80:80"
       - "3000:3000"
@@ -58,6 +58,10 @@ services:
       CLOUD_SERVICE_URL: http://localhost:3001
       MONITOR_SERVICE_URL: http://localhost:3002
       AUTH_SERVICE_URL: http://localhost:3004
+      # Initial admin —— 推荐保持空，让系统在首次部署时随机生成并打印在启动日志中
+      # 若需固定管理员账号，可在外部传入：ADMIN_USERNAME=admin ADMIN_PASSWORD=your-long-secret
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # Cloud provider credentials
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
