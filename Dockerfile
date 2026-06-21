@@ -91,7 +91,8 @@ RUN mkdir -p /usr/share/nginx/html && cp -r ./web-console/dist/* /usr/share/ngin
 
 # 复制配置文件
 COPY ecosystem.config.js ./
-COPY nginx.conf /etc/nginx/http.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
+RUN rm -f /etc/nginx/http.d/default.conf /etc/nginx/conf.d/default.conf 2>/dev/null; mkdir -p /etc/nginx/http.d /etc/nginx/conf.d
 
 # 复制 shared 包和各服务 package.json
 COPY shared/package.json ./shared/
