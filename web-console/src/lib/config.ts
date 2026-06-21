@@ -12,7 +12,7 @@
 /**
  * 检测部署平台（仅用于调试展示，不影响逻辑）
  */
-export type DeployPlatform = 'local-dev | 'docker-compose' | 'render' | 'kubernetes' | 'unknown';
+export type DeployPlatform = 'local-dev' | 'docker-compose' | 'render' | 'kubernetes' | 'unknown';
 
 export function detectPlatform(): DeployPlatform {
   if (typeof window === 'undefined') return 'unknown';
