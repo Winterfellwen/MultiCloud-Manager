@@ -6,7 +6,7 @@ WORKDIR /app
 # 安装依赖
 RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
     apk add --no-cache python3 make g++ && \
-    npm install -g pnpm --registry=https://registry.npmmirror.com
+    npm install -g pnpm@9 --registry=https://registry.npmmirror.com
 
 # 配置 pnpm 镜像源
 RUN pnpm config set registry https://registry.npmmirror.com
@@ -28,20 +28,6 @@ COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
 
 # 安装所有依赖（不做 filter，确保 workspace symlinks 正确创建）
 RUN pnpm install --dangerously-allow-all-builds --config.minimumReleaseAge=0
-
-# 确保 workspace symlinks 正确创建
-RUN mkdir -p auth-service/node_modules/@cloudops && \
-    ln -sf ../../shared auth-service/node_modules/@cloudops/shared && \
-    mkdir -p api-gateway/node_modules/@cloudops && \
-    ln -sf ../../shared api-gateway/node_modules/@cloudops/shared && \
-    mkdir -p cloud-service/node_modules/@cloudops && \
-    ln -sf ../../shared cloud-service/node_modules/@cloudops/shared && \
-    mkdir -p monitor-service/node_modules/@cloudops && \
-    ln -sf ../../shared monitor-service/node_modules/@cloudops/shared && \
-    mkdir -p ai-agent/node_modules/@cloudops && \
-    ln -sf ../../shared ai-agent/node_modules/@cloudops/shared && \
-    mkdir -p ai-gateway/node_modules/@cloudops && \
-    ln -sf ../../shared ai-gateway/node_modules/@cloudops/shared
 
 # 复制所有源代码
 COPY shared/ ./shared/
@@ -76,7 +62,7 @@ WORKDIR /app
 # 安装前端依赖
 RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
     apk add --no-cache python3 make g++ && \
-    npm install -g pnpm --registry=https://registry.npmmirror.com
+    npm install -g pnpm@9 --registry=https://registry.npmmirror.com
 
 RUN pnpm config set registry https://registry.npmmirror.com
 ENV NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node/
@@ -109,7 +95,7 @@ WORKDIR /app
 # 安装运行时依赖
 RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
     apk add --no-cache nginx supervisor && \
-    npm install -g pm2 pnpm --registry=https://registry.npmmirror.com
+    npm install -g pm2 pnpm@9 --registry=https://registry.npmmirror.com
 
 # 配置 pnpm
 RUN pnpm config set registry https://registry.npmmirror.com
