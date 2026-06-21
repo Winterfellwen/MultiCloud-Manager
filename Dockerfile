@@ -29,6 +29,20 @@ COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
 # 安装所有依赖（不做 filter，确保 workspace symlinks 正确创建）
 RUN pnpm install --dangerously-allow-all-builds --config.minimumReleaseAge=0
 
+# 确保 workspace symlinks 正确创建
+RUN mkdir -p auth-service/node_modules/@cloudops && \
+    ln -sf ../../shared auth-service/node_modules/@cloudops/shared && \
+    mkdir -p api-gateway/node_modules/@cloudops && \
+    ln -sf ../../shared api-gateway/node_modules/@cloudops/shared && \
+    mkdir -p cloud-service/node_modules/@cloudops && \
+    ln -sf ../../shared cloud-service/node_modules/@cloudops/shared && \
+    mkdir -p monitor-service/node_modules/@cloudops && \
+    ln -sf ../../shared monitor-service/node_modules/@cloudops/shared && \
+    mkdir -p ai-agent/node_modules/@cloudops && \
+    ln -sf ../../shared ai-agent/node_modules/@cloudops/shared && \
+    mkdir -p ai-gateway/node_modules/@cloudops && \
+    ln -sf ../../shared ai-gateway/node_modules/@cloudops/shared
+
 # 复制所有源代码
 COPY shared/ ./shared/
 COPY auth-service/ ./auth-service/
