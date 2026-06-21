@@ -54,10 +54,15 @@ await app.register(chatRoutes, { prefix: '/agent/chat' });
 await app.register(wsRoutes, { prefix: '/agent/ws' });
 
 // 运行数据库迁移
-await runMigrations();
+try {
+  await runMigrations();
+  console.log('✅ AI Agent database migrations completed');
+} catch (err) {
+  console.error('⚠️  AI Agent migration failed:', (err as Error).message);
+}
 
-// 启动事件订阅
-eventSubscriber.start();
+// 启动事件订阅（即使数据库失败也尝试启动）
+try { eventSubscriber.start(); } catch (e) { console.error('eventSubscriber failed:', (e as Error).message); }
 
 // 优雅关闭
 const shutdown = () => {

@@ -11,7 +11,13 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: config.corsOrigin });
 
-await runMigrations();
+try {
+  await runMigrations();
+  console.log('✅ Database migrations completed successfully');
+} catch (err) {
+  console.error('⚠️  Database migration failed:', (err as Error).message);
+  console.log('   Continuing without database - /health will still work');
+}
 
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof AppError) {

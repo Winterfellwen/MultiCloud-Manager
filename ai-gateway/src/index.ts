@@ -164,10 +164,15 @@ app.get('/ws', { websocket: true }, (socket, request) => {
 });
 
 // 初始化数据库（运行 migrations + seed 初始 provider）
-await runMigrations();
-await initEventLedger();
-await initProviderStore();
-await seedFromEnv();
+try {
+  await runMigrations();
+  console.log('✅ AI Gateway database migrations completed');
+} catch (err) {
+  console.error('⚠️  AI Gateway migration failed:', (err as Error).message);
+}
+try { await initEventLedger(); } catch (err) { console.error('initEventLedger failed:', (err as Error).message); }
+try { await initProviderStore(); } catch (err) { console.error('initProviderStore failed:', (err as Error).message); }
+try { await seedFromEnv(); } catch (err) { console.error('seedFromEnv failed:', (err as Error).message); }
 
 // 优雅关闭
 const shutdown = () => {

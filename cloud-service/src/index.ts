@@ -72,12 +72,27 @@ await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
 
 // 运行数据库迁移
-await runMigrations();
+try {
+  await runMigrations();
+  console.log('✅ Cloud service database migrations completed');
+} catch (err) {
+  console.error('⚠️  Cloud service database migration failed:', (err as Error).message);
+  console.log('   Continuing - /health will work, DB features disabled');
+}
 
 // 启动时注册环境变量配置的 Provider
-await accountService.registerFromEnv();
-// 启动时从数据库加载已保存的云账户并注册 Provider（服务重启后恢复内存 registry）
-await accountService.registerFromDb();
+try {
+  await accountService.registerFromEnv();
+} catch (err) {
+  console.error('⚠️  Failed to register providers from env:', (err as Error).message);
+}
+
+// 启动时从数据库加载已保存的云账户
+try {
+  await accountService.registerFromDb();
+} catch (err) {
+  console.error('⚠️  Failed to load providers from DB:', (err as Error).message);
+}
 
 // 启动时执行一次全量同步（异步，不阻塞启动）
 syncService

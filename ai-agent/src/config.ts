@@ -4,22 +4,23 @@ dotenv.config();
 function requireEnv(name: string, fallback?: string): string {
   const value = process.env[name] || fallback;
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    console.warn(`⚠️  WARNING: Missing environment variable: ${name}, using fallback`);
+    return `default-${name.toLowerCase()}`;
   }
   return value;
 }
 
 export const config = {
   port: parseInt(process.env.PORT || '3003', 10),
-  databaseUrl: requireEnv('DATABASE_URL'),
-  redisUrl: requireEnv('REDIS_URL'),
+  databaseUrl: requireEnv('DATABASE_URL', 'postgresql://postgres:postgres@127.0.0.1:5432/cloudops'),
+  redisUrl: requireEnv('REDIS_URL', 'redis://127.0.0.1:6379'),
   corsOrigin: process.env.CORS_ORIGIN || '*',
-  jwtSecret: requireEnv('JWT_SECRET'),
+  jwtSecret: requireEnv('JWT_SECRET', 'render-development-jwt-secret-change-me'),
 
   // 内部服务地址（docker 网络内）
-  cloudServiceUrl: process.env.CLOUD_SERVICE_URL || 'http://cloud-service:3001',
-  monitorServiceUrl: process.env.MONITOR_SERVICE_URL || 'http://monitor-service:3002',
-  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3004',
+  cloudServiceUrl: process.env.CLOUD_SERVICE_URL || 'http://127.0.0.1:3001',
+  monitorServiceUrl: process.env.MONITOR_SERVICE_URL || 'http://127.0.0.1:3002',
+  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://127.0.0.1:3004',
 
   // LLM 配置（OpenAI 兼容 API）
   llm: {

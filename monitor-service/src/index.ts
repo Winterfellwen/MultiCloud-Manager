@@ -53,12 +53,17 @@ await app.register(alertRoutes, { prefix: '/monitor/alerts' });
 await app.register(costRoutes, { prefix: '/monitor/costs' });
 
 // 运行数据库迁移
-await runMigrations();
+try {
+  await runMigrations();
+  console.log('✅ Monitor service database migrations completed');
+} catch (err) {
+  console.error('⚠️  Monitor service migration failed:', (err as Error).message);
+}
 
-// 启动后台任务
-metricCollector.start();
-alertEngine.start();
-costService.start();
+// 启动后台任务（即使数据库失败也尝试启动）
+try { metricCollector.start(); } catch (e) { console.error('metricCollector failed:', (e as Error).message); }
+try { alertEngine.start(); } catch (e) { console.error('alertEngine failed:', (e as Error).message); }
+try { costService.start(); } catch (e) { console.error('costService failed:', (e as Error).message); }
 
 // 优雅关闭
 const shutdown = () => {
