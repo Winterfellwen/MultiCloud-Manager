@@ -8,6 +8,13 @@ export async function healthRoutes(app: FastifyInstance) {
     timestamp: new Date().toISOString(),
   }));
 
+  // 兼容 Render 健康检查路径 /api/health（nginx 代理到 /health）
+  app.get('/api/health', async () => ({
+    status: 'ok',
+    service: 'api-gateway',
+    timestamp: new Date().toISOString(),
+  }));
+
   app.get('/health/all', async (request, reply) => {
     const services = [
       { name: 'auth-service', url: config.authServiceUrl },

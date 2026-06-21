@@ -757,7 +757,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (text, attachments) => {
-    const { wsClient, currentSessionKey, selectedModel, enableThinking, reasoningEffort } = get();
+    const { wsClient, currentSessionKey, selectedModel, enableThinking, reasoningEffort, mode } = get();
     const hasAttachments = attachments && attachments.length > 0;
     if (!wsClient || !currentSessionKey || (!text.trim() && !hasAttachments)) return;
 
@@ -825,6 +825,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...(selectedModel ? { model: selectedModel } : {}),
         enableThinking,
         reasoningEffort,
+        mode,
       });
       // 发送成功后清理 base64 数据（保留 previewUrl 供 UI 使用）
       if (hasAttachments) {
