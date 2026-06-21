@@ -659,6 +659,7 @@ async function callLLM(
 
       if (!res.ok) {
         const errText = await res.text();
+        console.error(`[callLLM] API error ${res.status}: ${errText.slice(0, 500)}`);
         throw new Error(`LLM API error ${res.status}: ${errText}`);
       }
 

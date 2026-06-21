@@ -136,7 +136,7 @@ export default function Resources() {
 
       <div className="flex-1 space-y-6 overflow-auto p-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">资源管理</h1>
+          <h1 className="text-2xl font-bold">资源总览</h1>
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />
             同步

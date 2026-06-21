@@ -29,13 +29,13 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: '总览', to: '/dashboard', icon: LayoutDashboard },
   {
-    label: '云资源',
+    label: '云服务器管理',
     to: '/instances',
     icon: Server,
     permission: { resource: 'instance', action: 'list' },
   },
   {
-    label: '资源管理',
+    label: '资源总览',
     to: '/resources',
     icon: Boxes,
     permission: { resource: 'instance', action: 'list' },

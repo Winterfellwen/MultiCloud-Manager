@@ -77,7 +77,7 @@ export function ModelSelect() {
       </button>
 
       {open && options.length > 0 && (
-        <div className="absolute bottom-full left-0 z-50 mb-1 max-h-64 w-64 overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
+        <div className="absolute bottom-full left-0 z-50 mb-1 max-h-64 w-64 overflow-auto rounded-md border border-border bg-white p-1 shadow-lg dark:bg-slate-800">
           {options.map((opt, idx) => {
             const supportsImage = opt.input?.includes('image');
             const supportsDocument = opt.input?.includes('document');

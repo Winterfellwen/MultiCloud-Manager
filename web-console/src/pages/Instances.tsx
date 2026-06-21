@@ -54,7 +54,7 @@ export default function Instances() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">云资源管理</h1>
+        <h1 className="text-2xl font-bold">云服务器管理</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />
