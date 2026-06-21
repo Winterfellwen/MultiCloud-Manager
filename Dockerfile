@@ -26,8 +26,8 @@ COPY monitor-service/package.json monitor-service/tsconfig.json ./monitor-servic
 COPY ai-agent/package.json ai-agent/tsconfig.json ./ai-agent/
 COPY ai-gateway/package.json ai-gateway/tsconfig.json ./ai-gateway/
 
-# 安装所有依赖
-RUN pnpm install --config.minimumReleaseAge=0
+# 安装所有依赖（shamefully-hoist 让 pnpm 像 npm 一样扁平化 node_modules）
+RUN echo "shamefully-hoist=true" > .npmrc && pnpm install --config.minimumReleaseAge=0
 
 # 复制所有源代码
 COPY shared/ ./shared/
@@ -40,6 +40,15 @@ COPY ai-gateway/ ./ai-gateway/
 
 # 构建所有服务
 RUN cd shared && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
+
+# 手动为每个服务创建 @cloudops/shared 链接（确保编译后 dist/ 存在）
+RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
+      mkdir -p "$svc/node_modules/@cloudops" && \
+      rm -rf "$svc/node_modules/@cloudops/shared" && \
+      ln -sf ../../../shared "$svc/node_modules/@cloudops/shared" && \
+      echo "Linked @cloudops/shared for $svc -> $(readlink "$svc/node_modules/@cloudops/shared")"; \
+    done
+
 RUN cd auth-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 RUN cd api-gateway && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
 RUN cd cloud-service && PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm run build
@@ -139,8 +148,16 @@ COPY web-console/package.json ./web-console/
 COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml ./
 
-# 安装运行时依赖（使用 workspace install 确保 workspace 协议正确解析）
-RUN pnpm install --prod --config.minimumReleaseAge=0
+# 安装运行时依赖（shamefully-hoist + workspace install 确保 @cloudops/shared 可解析）
+RUN echo "shamefully-hoist=true" > .npmrc && pnpm install --prod --config.minimumReleaseAge=0
+
+# 手动为每个服务创建 @cloudops/shared 运行时链接
+RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
+      mkdir -p "$svc/node_modules/@cloudops" && \
+      rm -rf "$svc/node_modules/@cloudops/shared" && \
+      ln -sf ../../../shared "$svc/node_modules/@cloudops/shared" && \
+      echo "Runtime linked @cloudops/shared for $svc"; \
+    done
 
 # 复制启动脚本
 COPY start.sh ./
