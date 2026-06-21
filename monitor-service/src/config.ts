@@ -13,7 +13,7 @@ export const config = {
   port: parseInt(process.env.PORT || '3002', 10),
   databaseUrl: requireEnv('DATABASE_URL'),
   redisUrl: requireEnv('REDIS_URL'),
-  corsOrigin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*'),
+  corsOrigin: process.env.CORS_ORIGIN || '*',
 
   // cloud-service 内部地址（docker 网络内服务间调用，不走 gateway）
   cloudServiceUrl: process.env.CLOUD_SERVICE_URL || 'http://cloud-service:3001',

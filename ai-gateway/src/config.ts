@@ -153,7 +153,7 @@ const mcpServers = parseMcpServers();
 
 export const config = {
   port: parseInt(process.env.AI_GATEWAY_PORT || '3005', 10),
-  corsOrigin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*'),
+  corsOrigin: process.env.CORS_ORIGIN || '*',
 
   // JWT（与 auth-service 共享密钥）
   jwtSecret: requireEnv('JWT_SECRET'),

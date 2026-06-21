@@ -13,7 +13,7 @@ export const config = {
   port: parseInt(process.env.PORT || '3003', 10),
   databaseUrl: requireEnv('DATABASE_URL'),
   redisUrl: requireEnv('REDIS_URL'),
-  corsOrigin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*'),
+  corsOrigin: process.env.CORS_ORIGIN || '*',
   jwtSecret: requireEnv('JWT_SECRET'),
 
   // 内部服务地址（docker 网络内）
