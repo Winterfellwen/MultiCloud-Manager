@@ -98,6 +98,44 @@ export interface SessionsSubscribeResponse {
   subscribed: boolean;
 }
 
+// sessions.list
+export interface SessionsListParams {
+  filter?: 'mine' | 'team' | 'all';
+}
+
+export interface SessionsListResponse {
+  sessions: Array<{
+    sessionKey: string;
+    title: string;
+    username: string;
+    userId: string;
+    messageCount: number;
+    lastMessageAt: number;
+    createdAt: number;
+  }>;
+}
+
+// sessions.deleteBatch
+export interface SessionsDeleteBatchParams {
+  sessionKeys: string[];
+}
+
+export interface SessionsDeleteBatchResponse {
+  deleted: number;
+  errors?: Array<{ key: string; error: string }>;
+}
+
+// sessions.updateTitle
+export interface SessionsUpdateTitleParams {
+  sessionKey: string;
+  title: string;
+}
+
+export interface SessionsUpdateTitleResponse {
+  sessionKey: string;
+  title: string;
+}
+
 // ===== chat 事件 payload（payload.type 区分子类型） =====
 
 export interface ChatTextDeltaPayload {
@@ -247,6 +285,9 @@ export interface ChatSession {
   title: string;
   lastMessageAt: number;
   messageCount: number;
+  userId?: string;
+  username?: string;
+  createdAt?: number;
 }
 
 // ===== 连接状态 =====
