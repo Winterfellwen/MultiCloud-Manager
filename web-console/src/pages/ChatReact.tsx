@@ -3,6 +3,7 @@
 // 集成 ApprovalPrompt 审批弹窗（监听 exec.approval.requested 事件，轮询获取待审批列表）
 import { useEffect, useState } from 'react';
 import { useChatStore } from '../stores/chat';
+import { useAuthStore } from '../stores/auth';
 import { SessionList } from '../components/chat/SessionList';
 import { MessageList } from '../components/chat/MessageList';
 import { ChatInput } from '../components/chat/ChatInput';
@@ -33,8 +34,10 @@ export default function ChatReact() {
   const connect = useChatStore((s) => s.connect);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const currentSessionKey = useChatStore((s) => s.currentSessionKey);
+  const sessions = useChatStore((s) => s.sessions);
   const messagesBySession = useChatStore((s) => s.messagesBySession);
   const createSession = useChatStore((s) => s.createSession);
+  const currentUser = useAuthStore((s) => s.user);
 
   const isMobile = useIsMobile();
   const [sessionListOpen, setSessionListOpen] = useState(false);
@@ -52,6 +55,11 @@ export default function ChatReact() {
   }, [connectionStatus, currentSessionKey, createSession]);
 
   const messages = currentSessionKey ? messagesBySession[currentSessionKey] || [] : [];
+
+  // 判断当前会话是否是自己的
+  const currentSession = sessions.find(s => s.sessionKey === currentSessionKey);
+  const isOwnSession = !currentSession || !currentSession.userId || currentSession.userId === currentUser?.id;
+  const canChat = isOwnSession;
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -92,6 +100,9 @@ export default function ChatReact() {
           )}
           <span className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_COLOR[connectionStatus])} />
           <span className="text-xs text-muted-foreground truncate">{STATUS_TEXT[connectionStatus]}</span>
+          {!canChat && currentSessionKey && (
+            <span className="text-xs text-muted-foreground ml-auto">只读</span>
+          )}
         </div>
 
         {/* 消息列表 */}
@@ -105,8 +116,8 @@ export default function ChatReact() {
           )}
         </div>
 
-        {/* 输入区 */}
-        {currentSessionKey && <ChatInput />}
+        {/* 输入区：只有自己的对话才显示 */}
+        {currentSessionKey && canChat && <ChatInput />}
       </div>
 
       {/* 审批弹窗：有待审批请求时显示 */}
