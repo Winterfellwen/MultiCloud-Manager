@@ -6,6 +6,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 256 }),
   passwordHash: text('password_hash').notNull(),
   role: varchar('role', { length: 32 }).notNull().default('viewer'),
+  team: varchar('team', { length: 64 }).notNull().default(''),
   apiKey: varchar('api_key', { length: 128 }).unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastLoginAt: timestamp('last_login_at'),
