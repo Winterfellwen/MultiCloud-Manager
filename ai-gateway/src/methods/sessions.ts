@@ -7,7 +7,7 @@
 import type { ClientConnection } from '../gateway/server-broadcast.js';
 import type { ChatAbortControllerEntry } from '../gateway/chat-abort.js';
 import { abortChatRun } from '../gateway/chat-abort.js';
-import { clearSessionEvents } from '../acp/event-ledger.js';
+import { clearSessionEvents, listSessions, deleteBatchSessions, updateSessionTitle, type SessionListItem } from '../acp/event-ledger.js';
 
 export interface SessionsMethodContext {
   clients: Map<string, ClientConnection>;
@@ -40,6 +40,87 @@ export function handleSessionsMessagesSubscribe(
   // messages.subscribe 等价于 sessions.subscribe（简化实现）
   client.subscribedSessions.add(params.sessionKey);
   respond(true, { sessionKey: params.sessionKey, subscribed: true });
+}
+
+/**
+ * sessions.list - 列出当前用户可见的会话
+ */
+export async function handleSessionsList(
+  client: ClientConnection,
+  params: { filter?: 'mine' | 'team' | 'all' },
+  context: SessionsMethodContext,
+  respond: (ok: boolean, payload: unknown) => void
+): Promise<void> {
+  try {
+    const userId = (client as any).userId || '';
+    const role = (client as any).role || 'viewer';
+    const team = (client as any).team || '';
+
+    const filter = params.filter || 'mine';
+    const sessions = await listSessions(userId, role, team, filter);
+
+    respond(true, { sessions });
+  } catch (err) {
+    respond(false, { error: 'FAILED_TO_LIST_SESSIONS', detail: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+/**
+ * sessions.deleteBatch - 批量删除会话
+ */
+export async function handleSessionsDeleteBatch(
+  client: ClientConnection,
+  params: { sessionKeys: string[] },
+  context: SessionsMethodContext,
+  respond: (ok: boolean, payload: unknown) => void
+): Promise<void> {
+  try {
+    const userId = (client as any).userId || '';
+    const role = (client as any).role || 'viewer';
+    const team = (client as any).team || '';
+
+    const { sessionKeys } = params;
+    if (!Array.isArray(sessionKeys) || sessionKeys.length === 0) {
+      respond(false, { error: 'INVALID_PARAMS', detail: 'sessionKeys must be a non-empty array' });
+      return;
+    }
+
+    for (const sessionKey of sessionKeys) {
+      for (const [runId, entry] of context.chatAbortControllers) {
+        if (entry.sessionKey === sessionKey) {
+          abortChatRun(context.chatAbortControllers, runId);
+        }
+      }
+    }
+
+    const result = await deleteBatchSessions(sessionKeys, userId, role, team);
+
+    for (const sessionKey of sessionKeys) {
+      for (const client of context.clients.values()) {
+        client.subscribedSessions.delete(sessionKey);
+      }
+    }
+
+    respond(true, result);
+  } catch (err) {
+    respond(false, { error: 'FAILED_TO_DELETE_BATCH', detail: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+/**
+ * sessions.updateTitle - 更新会话标题
+ */
+export async function handleSessionsUpdateTitle(
+  client: ClientConnection,
+  params: { sessionKey: string; title: string },
+  respond: (ok: boolean, payload: unknown) => void
+): Promise<void> {
+  try {
+    await updateSessionTitle(params.sessionKey, params.title);
+    respond(true, { sessionKey: params.sessionKey, title: params.title });
+  } catch (err) {
+    respond(false, { error: 'FAILED_TO_UPDATE_TITLE', detail: err instanceof Error ? err.message : String(err) });
+  }
 }
 
 /**
