@@ -20,6 +20,8 @@ import type {
   WsConnectionStatus,
   AcpEvent,
   ChatSendAttachment,
+  SessionsListResponse,
+  SessionsDeleteBatchResponse,
 } from '../types/chat';
 import {
   getChatAttachmentDataUrl,
@@ -63,6 +65,8 @@ interface ChatState {
   mode: Mode;
   // 已查看的会话（用于清除"已完成"状态指示）
   seenSessions: Set<string>;
+  // 会话列表过滤器
+  sessionsFilter: 'mine' | 'team' | 'all';
 
   // Actions
   connect: () => void;
@@ -75,7 +79,10 @@ interface ChatState {
   selectSession: (sessionKey: string) => void;
   markSessionSeen: (sessionKey: string) => void;
   deleteSession: (sessionKey: string) => Promise<void>;
+  deleteSessions: (sessionKeys: string[]) => Promise<void>;
   loadSessionHistory: (sessionKey: string) => Promise<void>;
+  fetchSessions: (filter?: 'mine' | 'team' | 'all') => Promise<void>;
+  updateSessionTitle: (sessionKey: string, title: string) => Promise<void>;
 
   sendMessage: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   abortRun: (runId: string) => Promise<void>;
@@ -138,49 +145,11 @@ function buildAttachmentPayload(attachments: ChatAttachment[]): ChatSendAttachme
   return payload;
 }
 
-// ===== localStorage 持久化（刷新页面后恢复会话） =====
+// ===== localStorage 持久化（仅用于用户偏好设置） =====
 
-const LS_KEY_SESSIONS = 'cloudops:chat:sessions';
-const LS_KEY_CURRENT = 'cloudops:chat:currentSessionKey';
-const LS_KEY_RUN_MAP = 'cloudops:chat:runIdToSession';
 const LS_KEY_MODE = 'chat-mode';
 const LS_KEY_MODEL = 'chat-selected-model';
 
-/** 安全读取 localStorage 中的 JSON 值 */
-function readLocalStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-/** 安全写入 localStorage */
-function writeLocalStorage(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // 忽略写入失败（如配额超限或隐私模式）
-  }
-}
-
-/** 持久化会话相关状态到 localStorage */
-function persistChatState(state: {
-  sessions: ChatSession[];
-  currentSessionKey: string | null;
-  runIdToSession: Record<string, string>;
-}): void {
-  writeLocalStorage(LS_KEY_SESSIONS, state.sessions);
-  writeLocalStorage(LS_KEY_CURRENT, state.currentSessionKey);
-  writeLocalStorage(LS_KEY_RUN_MAP, state.runIdToSession);
-}
-
-// 初始化时从 localStorage 恢复（模块加载时执行一次）
-const initialSessions = readLocalStorage<ChatSession[]>(LS_KEY_SESSIONS, []);
-const initialCurrentSessionKey = readLocalStorage<string | null>(LS_KEY_CURRENT, null);
-const initialRunIdToSession = readLocalStorage<Record<string, string>>(LS_KEY_RUN_MAP, {});
 const initialMode = (localStorage.getItem(LS_KEY_MODE) as Mode) || 'plan';
 const initialSelectedModel = localStorage.getItem(LS_KEY_MODEL) || null;
 
@@ -292,11 +261,10 @@ function acpEventsToMessages(sessionKey: string, events: AcpEvent[]): ChatMessag
 export const useChatStore = create<ChatState>((set, get) => ({
   wsClient: null,
   connectionStatus: 'disconnected',
-  // 从 localStorage 恢复（刷新页面后保留会话列表和当前会话）
-  sessions: initialSessions,
-  currentSessionKey: initialCurrentSessionKey,
+  sessions: [],
+  currentSessionKey: null,
   messagesBySession: {},
-  runIdToSession: initialRunIdToSession,
+  runIdToSession: {},
   streamingBuffers: {},
   inputText: '',
   isSending: false,
@@ -305,6 +273,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   reasoningEffort: 'high',
   mode: initialMode,
   seenSessions: new Set<string>(),
+  sessionsFilter: 'mine',
 
   connect: () => {
     const { wsClient } = get();
@@ -321,6 +290,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // 连接成功（收到 hello-ok）后自动恢复当前会话历史
         // 覆盖首次连接和断线重连两种场景
         if (status === 'connected') {
+          get().fetchSessions();
           const { currentSessionKey } = get();
           if (currentSessionKey) {
             get().loadSessionHistory(currentSessionKey);
@@ -494,7 +464,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               : sess
           ),
         }));
-        persistChatState(get());
         break;
       }
 
@@ -538,7 +507,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               : sess
           ),
         }));
-        persistChatState(get());
         break;
       }
     }
@@ -565,13 +533,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentSessionKey: sessionKey,
       messagesBySession: { ...state.messagesBySession, [sessionKey]: [] },
     }));
-    persistChatState(get());
     return sessionKey;
   },
 
   selectSession: (sessionKey) => {
     set({ currentSessionKey: sessionKey });
-    persistChatState(get());
     // 加载历史
     get().loadSessionHistory(sessionKey);
     // 标记会话已查看，清除"已完成"状态指示
@@ -587,42 +553,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   deleteSession: async (sessionKey) => {
-    const { wsClient, currentSessionKey } = get();
+    await get().deleteSessions([sessionKey]);
+  },
 
-    // 1. 调用后端删除会话（中止 run + 清理数据库事件）
-    if (wsClient) {
-      try {
-        await wsClient.request('sessions.delete', { sessionKey });
-      } catch (err) {
-        console.error('Failed to delete session on server:', err);
-        // 即使后端删除失败，也继续清理本地状态
-      }
+  deleteSessions: async (sessionKeys) => {
+    const { wsClient, currentSessionKey } = get();
+    if (!wsClient || sessionKeys.length === 0) return;
+
+    try {
+      await wsClient.request<SessionsDeleteBatchResponse>('sessions.deleteBatch', { sessionKeys });
+    } catch (err) {
+      console.error('Failed to delete sessions on server:', err);
     }
 
-    // 2. 清理本地状态
+    // 清理本地状态
     set((state) => {
-      const newSessions = state.sessions.filter((s) => s.sessionKey !== sessionKey);
+      const newSessions = state.sessions.filter(s => !sessionKeys.includes(s.sessionKey));
       const newMessagesBySession = { ...state.messagesBySession };
-      delete newMessagesBySession[sessionKey];
-
-      // 清理 runIdToSession 中属于该 session 的映射
       const newRunIdToSession: Record<string, string> = {};
-      for (const [rid, sk] of Object.entries(state.runIdToSession)) {
-        if (sk !== sessionKey) {
-          newRunIdToSession[rid] = sk;
-        }
-      }
-
-      // 清理 streamingBuffers 中属于该 session 的 run
       const newBuffers: Record<string, string> = {};
+
+      for (const key of sessionKeys) {
+        delete newMessagesBySession[key];
+      }
+      for (const [rid, sk] of Object.entries(state.runIdToSession)) {
+        if (!sessionKeys.includes(sk)) newRunIdToSession[rid] = sk;
+      }
       for (const [rid, buf] of Object.entries(state.streamingBuffers)) {
-        if (state.runIdToSession[rid] !== sessionKey) {
-          newBuffers[rid] = buf;
-        }
+        if (!sessionKeys.includes(state.runIdToSession[rid] || '')) newBuffers[rid] = buf;
       }
 
-      // 如果删除的是当前会话，切换到第一个可用会话（或 null）
-      const newCurrent = currentSessionKey === sessionKey
+      const newCurrent = sessionKeys.includes(currentSessionKey || '')
         ? (newSessions.length > 0 ? newSessions[0].sessionKey : null)
         : currentSessionKey;
 
@@ -632,16 +593,49 @@ export const useChatStore = create<ChatState>((set, get) => ({
         runIdToSession: newRunIdToSession,
         streamingBuffers: newBuffers,
         currentSessionKey: newCurrent,
-        isSending: currentSessionKey === sessionKey ? false : state.isSending,
+        isSending: sessionKeys.includes(currentSessionKey || '') ? false : state.isSending,
       };
     });
 
-    persistChatState(get());
+    // 刷新列表
+    get().fetchSessions();
+  },
 
-    // 3. 如果切换了会话，加载新会话历史
-    const newCurrent = get().currentSessionKey;
-    if (newCurrent && newCurrent !== currentSessionKey) {
-      get().loadSessionHistory(newCurrent);
+  fetchSessions: async (filter) => {
+    const { wsClient } = get();
+    if (!wsClient) return;
+
+    const f = filter || get().sessionsFilter;
+    try {
+      const res = await wsClient.request<SessionsListResponse>('sessions.list', { filter: f });
+      const sessions: ChatSession[] = res.sessions.map(s => ({
+        sessionKey: s.sessionKey,
+        title: s.title,
+        lastMessageAt: s.lastMessageAt,
+        messageCount: s.messageCount,
+        userId: s.userId,
+        username: s.username,
+        createdAt: s.createdAt,
+      }));
+      set({ sessions, sessionsFilter: f });
+    } catch (err) {
+      console.error('Failed to fetch sessions:', err);
+    }
+  },
+
+  updateSessionTitle: async (sessionKey, title) => {
+    const { wsClient } = get();
+    if (!wsClient) return;
+
+    try {
+      await wsClient.request('sessions.updateTitle', { sessionKey, title });
+      set((state) => ({
+        sessions: state.sessions.map(s =>
+          s.sessionKey === sessionKey ? { ...s, title } : s
+        ),
+      }));
+    } catch (err) {
+      console.error('Failed to update session title:', err);
     }
   },
 
@@ -706,7 +700,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set((state) => ({
           runIdToSession: { ...state.runIdToSession, [runId]: sessionKey },
         }));
-        persistChatState(get());
 
         // 如果有缓冲文本或推理过程，创建 assistant 消息（runId 不存在于 serverMessages）
         if (bufferedText || bufferedReasoning) {
@@ -753,7 +746,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
             : s
         ),
       }));
-      persistChatState(get());
     } catch (err) {
       console.error('Failed to load session history:', err);
     } finally {
@@ -813,8 +805,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           : s
       ),
     }));
-    // 持久化 runIdToSession 和 sessions（刷新后恢复运行中的任务路由）
-    persistChatState(get());
 
     // 构建附件 wire 载荷
     const attachmentPayload = hasAttachments ? buildAttachmentPayload(attachments!) : undefined;
