@@ -7,7 +7,7 @@ services:
     dockerfilePath: ./Dockerfile
     # Render 自动注入 PORT（nginx 监听 PORT 端口）
     healthCheckPath: /health
-    healthCheckTimeout: 30
+    healthCheckTimeout: 120
     numInstances: 1
     # 优化：启用并行构建加速多阶段构建
     parallelBuilds: 3

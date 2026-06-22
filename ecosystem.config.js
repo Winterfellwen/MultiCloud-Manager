@@ -4,6 +4,8 @@ module.exports = {
       name: 'auth-service',
       script: './auth-service/dist/index.js',
       cwd: '/app',
+      instances: 1,
+      max_memory_restart: '300M',
       env: {
         NODE_ENV: 'production',
         PORT: 3004,
@@ -13,6 +15,8 @@ module.exports = {
       name: 'api-gateway',
       script: './api-gateway/dist/index.js',
       cwd: '/app',
+      instances: 1,
+      max_memory_restart: '300M',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
@@ -22,6 +26,8 @@ module.exports = {
       name: 'cloud-service',
       script: './cloud-service/dist/index.js',
       cwd: '/app',
+      instances: 1,
+      max_memory_restart: '300M',
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
@@ -31,6 +37,8 @@ module.exports = {
       name: 'monitor-service',
       script: './monitor-service/dist/index.js',
       cwd: '/app',
+      instances: 1,
+      max_memory_restart: '300M',
       env: {
         NODE_ENV: 'production',
         PORT: 3002,
@@ -40,6 +48,8 @@ module.exports = {
       name: 'ai-agent',
       script: './ai-agent/dist/index.js',
       cwd: '/app',
+      instances: 1,
+      max_memory_restart: '500M',
       env: {
         NODE_ENV: 'production',
         PORT: 3003,
@@ -49,6 +59,8 @@ module.exports = {
       name: 'ai-gateway',
       script: './ai-gateway/dist/index.js',
       cwd: '/app',
+      instances: 1,
+      max_memory_restart: '400M',
       env: {
         NODE_ENV: 'production',
         PORT: 3005,
