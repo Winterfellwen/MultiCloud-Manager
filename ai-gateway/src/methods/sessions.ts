@@ -7,7 +7,7 @@
 import type { ClientConnection } from '../gateway/server-broadcast.js';
 import type { ChatAbortControllerEntry } from '../gateway/chat-abort.js';
 import { abortChatRun } from '../gateway/chat-abort.js';
-import { clearSessionEvents, listSessions, deleteBatchSessions, updateSessionTitle, type SessionListItem } from '../acp/event-ledger.js';
+import { clearSessionEvents, listSessions, deleteBatchSessions, updateSessionTitle } from '../acp/event-ledger.js';
 
 export interface SessionsMethodContext {
   clients: Map<string, ClientConnection>;
@@ -52,10 +52,7 @@ export async function handleSessionsList(
   respond: (ok: boolean, payload: unknown) => void
 ): Promise<void> {
   try {
-    const userId = (client as any).userId || '';
-    const role = (client as any).role || 'viewer';
-    const team = (client as any).team || '';
-
+    const { userId, role, team } = client;
     const filter = params.filter || 'mine';
     const sessions = await listSessions(userId, role, team, filter);
 
@@ -75,10 +72,7 @@ export async function handleSessionsDeleteBatch(
   respond: (ok: boolean, payload: unknown) => void
 ): Promise<void> {
   try {
-    const userId = (client as any).userId || '';
-    const role = (client as any).role || 'viewer';
-    const team = (client as any).team || '';
-
+    const { userId, role, team } = client;
     const { sessionKeys } = params;
     if (!Array.isArray(sessionKeys) || sessionKeys.length === 0) {
       respond(false, { error: 'INVALID_PARAMS', detail: 'sessionKeys must be a non-empty array' });
