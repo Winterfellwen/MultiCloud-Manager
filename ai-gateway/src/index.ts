@@ -22,6 +22,9 @@ import {
   handleSessionsUnsubscribe,
   handleSessionsMessagesSubscribe,
   handleSessionsDelete,
+  handleSessionsList,
+  handleSessionsDeleteBatch,
+  handleSessionsUpdateTitle,
   type SessionsMethodContext,
 } from './methods/sessions.js';
 import { handleModelsList, handleModelsDelete, handleModelsTest } from './methods/models.js';
@@ -111,6 +114,15 @@ app.get('/ws', { websocket: true }, (socket, request) => {
           break;
         case 'sessions.delete':
           await handleSessionsDelete(client, params, sessionsContext, respond);
+          break;
+        case 'sessions.list':
+          await handleSessionsList(client, params, sessionsContext, respond);
+          break;
+        case 'sessions.deleteBatch':
+          await handleSessionsDeleteBatch(client, params, sessionsContext, respond);
+          break;
+        case 'sessions.updateTitle':
+          await handleSessionsUpdateTitle(client, params, respond);
           break;
         case 'models.list':
           await handleModelsList(respond);

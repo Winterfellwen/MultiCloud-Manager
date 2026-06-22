@@ -7,6 +7,9 @@ export interface ClientConnection {
   connId: string;
   socket: WebSocket;
   userId: string;
+  username: string;
+  role: string;
+  team: string;
   /** 该客户端的 seq 计数器 */
   seq: number;
   /** 订阅的 sessionKey 集合 */

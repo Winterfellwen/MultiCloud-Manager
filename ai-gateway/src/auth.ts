@@ -8,6 +8,7 @@ export interface AuthUser {
   userId: string;
   username: string;
   role: string;
+  team: string;
 }
 
 /**
@@ -40,11 +41,13 @@ export function verifyToken(token: string): AuthUser | null {
       sub: string;
       username: string;
       role: string;
+      team: string;
     };
     return {
       userId: payload.sub,
       username: payload.username,
       role: payload.role,
+      team: payload.team || '',
     };
   } catch {
     return null;

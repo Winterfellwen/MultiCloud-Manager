@@ -44,7 +44,7 @@ export class AuthService {
 
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
-    const tokenPayload = { sub: user.id, username: user.username, role: user.role as UserRole };
+    const tokenPayload = { sub: user.id, username: user.username, role: user.role as UserRole, team: (user as any).team || '' };
     const accessToken = signAccessToken(tokenPayload);
     const refreshToken = signRefreshToken(tokenPayload);
 
@@ -63,7 +63,7 @@ export class AuthService {
     }
 
     const user = result[0];
-    const tokenPayload = { sub: user.id, username: user.username, role: user.role as UserRole };
+    const tokenPayload = { sub: user.id, username: user.username, role: user.role as UserRole, team: (user as any).team || '' };
     const newAccessToken = signAccessToken(tokenPayload);
     const newRefreshToken = signRefreshToken(tokenPayload);
 

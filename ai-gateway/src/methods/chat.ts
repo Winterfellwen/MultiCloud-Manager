@@ -108,7 +108,10 @@ export async function handleChatSend(
   client.subscribedSessions.add(sessionKey);
 
   // 记录用户消息到 ACP ledger
-  await recordEvent(sessionKey, 'user_message', { runId, message: params.message });
+  await recordEvent(sessionKey, 'user_message', { runId, message: params.message }, {
+    userId: client.userId,
+    username: client.username,
+  });
 
   // fire-and-forget 启动 AI 生成（与连接解耦）
   sessionManager.runSessionTurn({
