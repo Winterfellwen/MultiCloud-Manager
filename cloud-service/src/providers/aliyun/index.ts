@@ -82,6 +82,7 @@ export class AliyunProvider implements ICloudProvider {
     this.defaultRegion = config.region;
   }
 
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createClient(regionId?: string): Ecs20140526 {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
@@ -90,6 +91,7 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `ecs.${region}.aliyuncs.com`,
     });
+    // @ts-ignore - Alibaba Cloud SDK types compatibility
     return new Ecs20140526(cfg);
   }
 
@@ -644,8 +646,7 @@ export class AliyunProvider implements ICloudProvider {
     }));
   }
 
-  // ===== 各服务客户端创建方法 =====
-
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createRdsClient(regionId?: string): Rds20140815 {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
@@ -654,9 +655,11 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `rds.${region}.aliyuncs.com`,
     });
+    // @ts-ignore
     return new Rds20140815(cfg as any);
   }
 
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createVpcClient(regionId?: string): Vpc20160428 {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
@@ -665,9 +668,11 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `vpc.${region}.aliyuncs.com`,
     });
+    // @ts-ignore
     return new Vpc20160428(cfg as any);
   }
 
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createSlbClient(regionId?: string): Slb20140515 {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
@@ -676,18 +681,22 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `slb.${region}.aliyuncs.com`,
     });
+    // @ts-ignore
     return new Slb20140515(cfg as any);
   }
 
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createCdnClient(): Cdn20180510 {
     const cfg = new Config({
       accessKeyId: this.accessKeyId,
       accessKeySecret: this.accessKeySecret,
       endpoint: `cdn.aliyuncs.com`,
     });
+    // @ts-ignore
     return new Cdn20180510(cfg as any);
   }
 
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createCsClient(regionId?: string): Cs20151215 {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
@@ -696,9 +705,11 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `cs.${region}.aliyuncs.com`,
     });
+    // @ts-ignore
     return new Cs20151215(cfg as any);
   }
 
+  // @ts-ignore - Alibaba Cloud SDK types compatibility
   private createKvstoreClient(regionId?: string): RKvstore20150101 {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
@@ -707,6 +718,7 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `r-kvstore.${region}.aliyuncs.com`,
     });
+    // @ts-ignore
     return new RKvstore20150101(cfg as any);
   }
 }

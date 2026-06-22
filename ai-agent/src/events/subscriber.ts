@@ -1,6 +1,6 @@
 // Redis 订阅器：监听 monitor-service 的告警事件
 
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { config } from '../config.js';
 
 class EventSubscriber {
@@ -10,7 +10,7 @@ class EventSubscriber {
   start() {
     this.redis = new Redis(config.redisUrl);
     this.redis.subscribe('cloudops:alert.fired');
-    this.redis.on('message', (channel, message) => {
+    this.redis.on('message', (channel: string, message: string) => {
       if (channel === 'cloudops:alert.fired') {
         try {
           const alert = JSON.parse(message);

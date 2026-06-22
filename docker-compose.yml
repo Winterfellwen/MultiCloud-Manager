@@ -6,26 +6,26 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-cloudops}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cloudops123}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloudops}"]
-      interval: 5s
-      timeout: 5s
+      interval: 2s
+      timeout: 3s
       retries: 5
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
+      interval: 2s
+      timeout: 3s
       retries: 5
     restart: unless-stopped
 
@@ -35,12 +35,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${APP_PORT:-80}:80"
-      - "3000:3000"
-      - "3001:3001"
-      - "3002:3002"
-      - "3003:3003"
-      - "3004:3004"
-      - "3005:3005"
     environment:
       # ============ 数据库与缓存 ============
       DATABASE_URL: postgresql://${POSTGRES_USER:-cloudops}:${POSTGRES_PASSWORD:-cloudops123}@postgres:5432/${POSTGRES_DB:-cloudops}
@@ -51,7 +45,6 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
 
       # ============ 初始管理员 ============
-      # 留空时，首次启动会随机生成密码并打印在容器日志中
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
 
@@ -72,9 +65,9 @@ services:
       LLM_MODEL: ${LLM_MODEL:-gpt-4o}
 
       # ============ 内部服务地址 ============
-      CLOUD_SERVICE_URL: ${CLOUD_SERVICE_URL:-http://localhost:3001}
-      MONITOR_SERVICE_URL: ${MONITOR_SERVICE_URL:-http://localhost:3002}
-      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://localhost:3004}
+      CLOUD_SERVICE_URL: http://localhost:3001
+      MONITOR_SERVICE_URL: http://localhost:3002
+      AUTH_SERVICE_URL: http://localhost:3004
 
       # ============ Agent 配置（可选） ============
       AGENT_MAX_ITERATIONS: ${AGENT_MAX_ITERATIONS:-10}

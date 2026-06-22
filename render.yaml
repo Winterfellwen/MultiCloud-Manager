@@ -5,10 +5,14 @@ services:
     repo: https://github.com/cloudops-ai/cloudops-ai
     plan: pro
     dockerfilePath: ./Dockerfile
-    # Render 自动注入 PORT（nginx 监听 PORT 端口
+    # Render 自动注入 PORT（nginx 监听 PORT 端口）
     healthCheckPath: /health
     healthCheckTimeout: 30
     numInstances: 1
+    # 优化：启用并行构建加速多阶段构建
+    parallelBuilds: 3
+    # 优化：构建超时设置
+    buildCommandTimeout: 600
     envVars:
       # ============ 必选（由 Render 生成，在首次部署时自动生成 ============
       - key: POSTGRES_DATABASE

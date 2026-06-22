@@ -1,4 +1,5 @@
 # 多阶段构建：构建所有后端服务
+# 优化：分层缓存 - package.json 优先复制便于缓存 npm install 层
 FROM node:22-alpine AS builder
 
 # 配置 Alpine 镜像源
@@ -12,20 +13,46 @@ RUN apk add --no-cache python3 make g++
 # 配置 npm 镜像源
 RUN npm config set registry https://registry.npmmirror.com
 
-# 复制所有源代码
-COPY shared/ ./shared/
-COPY auth-service/ ./auth-service/
-COPY api-gateway/ ./api-gateway/
-COPY cloud-service/ ./cloud-service/
-COPY monitor-service/ ./monitor-service/
-COPY ai-agent/ ./ai-agent/
-COPY ai-gateway/ ./ai-gateway/
+# ========== 优化：分层复制以利用 Docker 缓存 ==========
+# 先复制 package.json，利用 Docker 层缓存避免重复 npm install
 
-# 构建 shared 模块
-RUN cd shared && npm install && npm run build && echo "Built shared"
+# shared 包
+COPY shared/package.json ./shared/
+COPY shared/tsconfig.json ./shared/
+
+# 后端服务 - 先复制 package.json 和 tsconfig.json
+COPY auth-service/package.json ./auth-service/
+COPY auth-service/tsconfig.json ./auth-service/
+COPY api-gateway/package.json ./api-gateway/
+COPY api-gateway/tsconfig.json ./api-gateway/
+COPY cloud-service/package.json ./cloud-service/
+COPY cloud-service/tsconfig.json ./cloud-service/
+COPY monitor-service/package.json ./monitor-service/
+COPY monitor-service/tsconfig.json ./monitor-service/
+COPY ai-agent/package.json ./ai-agent/
+COPY ai-agent/tsconfig.json ./ai-agent/
+COPY ai-gateway/package.json ./ai-gateway/
+COPY ai-gateway/tsconfig.json ./ai-gateway/
+
+# 构建 shared 模块（放在前面因为其他服务依赖它）
+COPY shared/src ./shared/src
+RUN cd shared && npm install && npm run build
 
 # 为每个服务安装依赖并构建
-# 注意：先安装 shared，再安装其他依赖，确保类型定义可用
+# 复制各服务源码并构建
+COPY auth-service/src ./auth-service/src
+COPY auth-service/migrations ./auth-service/migrations
+COPY api-gateway/src ./api-gateway/src
+# api-gateway 无 migrations
+COPY cloud-service/src ./cloud-service/src
+COPY cloud-service/migrations ./cloud-service/migrations
+COPY monitor-service/src ./monitor-service/src
+COPY monitor-service/migrations ./monitor-service/migrations
+COPY ai-agent/src ./ai-agent/src
+COPY ai-agent/migrations ./ai-agent/migrations
+COPY ai-gateway/src ./ai-gateway/src
+COPY ai-gateway/migrations ./ai-gateway/migrations
+
 RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
       cd /app/$svc && \
       sed 's|"workspace:\*"|"file:../shared"|g' package.json > package.json.tmp && \
@@ -55,21 +82,38 @@ RUN apk add --no-cache python3 make g++
 # 配置 npm 镜像源
 RUN npm config set registry https://registry.npmmirror.com
 
-# 复制整个前端目录（包含所有配置文件和源代码）
-COPY shared/ ./shared/
-COPY web-console/ ./web-console/
+# 优化：先复制 package.json 以利用缓存
+COPY shared/package.json ./shared/
+COPY shared/tsconfig.json ./shared/
+COPY web-console/package.json ./web-console/
+COPY web-console/tsconfig.json ./web-console/
+COPY web-console/openclaw-ui/package.json ./web-console/openclaw-ui/
 
 # 修复 workspace 依赖，用本地路径代替
 RUN sed -i 's|"workspace:\*"|"file:../shared"|g' /app/web-console/package.json && \
     sed -i 's|"workspace:\*"|"file:../shared"|g' /app/web-console/openclaw-ui/package.json
 
 # 构建 shared
+COPY shared/src ./shared/src
 RUN cd /app/shared && npm install && npm run build
 
 # 构建 openclaw-ui
+COPY web-console/openclaw-ui/src ./web-console/openclaw-ui/src
+COPY web-console/openclaw-ui/vite.config.ts ./web-console/openclaw-ui/
+COPY web-console/openclaw-ui/tsconfig.json ./web-console/openclaw-ui/
 RUN cd /app/web-console/openclaw-ui && npm install && npm run build
 
 # 构建 web-console（包含 tailwind.config.js 等所有配置文件）
+COPY web-console/src ./web-console/src
+COPY web-console/vite.config.ts ./web-console/
+COPY web-console/*.config.js ./web-console/
+COPY web-console/*.json ./web-console/
+COPY web-console/index.html ./web-console/
+COPY web-console/tsconfig.json ./web-console/
+COPY web-console/tsconfig.node.json ./web-console/
+COPY web-console/tailwind.config.js ./web-console/
+COPY web-console/postcss.config.js ./web-console/
+
 RUN cd /app/web-console && npm install && npm run build
 
 # 最终镜像
@@ -107,12 +151,9 @@ RUN mkdir -p /usr/share/nginx/html && cp -r ./web-console/dist/* /usr/share/ngin
 
 # 复制配置文件
 COPY ecosystem.config.js ./
-# 复制自定义nginx配置（完全替换默认配置，包含http块和server块）
 COPY nginx.conf /etc/nginx/nginx.conf
-# 清理所有可能包含默认server块的配置文件
 RUN rm -f /etc/nginx/http.d/default.conf /etc/nginx/conf.d/default.conf 2>/dev/null; \
     mkdir -p /etc/nginx/http.d /etc/nginx/conf.d; \
-    # 清空http.d和conf.d目录下所有.conf文件，避免默认配置与我们的配置冲突
     find /etc/nginx/http.d /etc/nginx/conf.d -name "*.conf" -delete 2>/dev/null; \
     echo "nginx config prepared"
 
@@ -159,9 +200,6 @@ RUN addgroup -S sandbox && adduser -S sandbox -G sandbox && \
 # 复制启动脚本
 COPY start.sh ./
 RUN chmod +x start.sh
-
-# 暴露端口
-EXPOSE 80 3000 3001 3002 3003 3004 3005
 
 # 启动脚本
 CMD ["./start.sh"]

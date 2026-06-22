@@ -4,6 +4,10 @@
 # 支持三种部署方式：Docker Compose / Render / Kubernetes
 # ============================================================
 
+# 启用 Docker BuildKit
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
 .PHONY: help compose-up compose-down compose-logs compose-restart compose-admin \
         render-deploy render-clean \
         k8s-apply k8s-delete k8s-logs k8s-admin k8s-port-forward \
@@ -45,10 +49,10 @@ help:
 # Docker Compose
 # ============================================================
 compose-up:
-	@echo "→ 启动 Docker Compose..."
+	@echo "→ 启动 Docker Compose (BuildKit enabled)..."
 	docker compose up -d --build
-	@echo "✅ 部署完成！等待服务启动..."
-	@sleep 10
+	@echo "✅ 部署完成！"
+	@sleep 3
 	@echo ""
 	@echo "访问地址：http://localhost:$(APP_PORT)"
 	@echo "登录凭据："
