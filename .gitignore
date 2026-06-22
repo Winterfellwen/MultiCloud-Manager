@@ -6,3 +6,5 @@ dist
 coverage
 
 .playwright-mcp/
+.agent-browser*
+playwright-mcp/
