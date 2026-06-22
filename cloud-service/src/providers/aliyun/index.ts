@@ -1,4 +1,4 @@
-import Client, {
+import EcsModule, {
   DescribeInstancesRequest,
   DescribeInstancesResponse,
   DescribeRegionsRequest,
@@ -47,6 +47,9 @@ import type {
   Cluster,
 } from "../types.js";
 
+// ESM 兼容：SDK 的默认导出需要通过 .default 访问
+const Client = (EcsModule as any).default;
+
 export interface AliyunConfig {
   accessKeyId: string;
   accessKeySecret: string;
@@ -83,7 +86,7 @@ export class AliyunProvider implements ICloudProvider {
   }
 
   // @ts-ignore - Alibaba Cloud SDK types compatibility
-  private createClient(regionId?: string): Client {
+  private createClient(regionId?: string) {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
       accessKeyId: this.accessKeyId,
@@ -91,7 +94,6 @@ export class AliyunProvider implements ICloudProvider {
       regionId: region,
       endpoint: `ecs.${region}.aliyuncs.com`,
     });
-    // @ts-ignore - Alibaba Cloud SDK types compatibility
     return new Client(cfg);
   }
 
