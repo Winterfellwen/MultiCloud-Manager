@@ -1,4 +1,4 @@
-import Ecs20140526, {
+import Client, {
   DescribeInstancesRequest,
   DescribeInstancesResponse,
   DescribeRegionsRequest,
@@ -83,7 +83,7 @@ export class AliyunProvider implements ICloudProvider {
   }
 
   // @ts-ignore - Alibaba Cloud SDK types compatibility
-  private createClient(regionId?: string): Ecs20140526 {
+  private createClient(regionId?: string): Client {
     const region = regionId || this.defaultRegion;
     const cfg = new Config({
       accessKeyId: this.accessKeyId,
@@ -92,7 +92,7 @@ export class AliyunProvider implements ICloudProvider {
       endpoint: `ecs.${region}.aliyuncs.com`,
     });
     // @ts-ignore - Alibaba Cloud SDK types compatibility
-    return new Ecs20140526(cfg);
+    return new Client(cfg);
   }
 
   async listInstances(region?: string, _options?: ListOptions): Promise<Instance[]> {
