@@ -115,6 +115,29 @@ RUN apk add --no-cache python3 make g++ curl && \
       cd /app && echo "Installed runtime deps for $svc"; \
     done
 
+# 创建沙箱用户和沙箱脚本（用于 shell_execute 安全隔离）
+RUN addgroup -S sandbox && adduser -S sandbox -G sandbox && \
+    echo '#!/bin/sh' > /usr/local/bin/sandbox-shell.sh && \
+    echo '# 剥离所有敏感环境变量' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_SUBSCRIPTION_ID' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset ALIYUN_ACCESS_KEY_ID ALIYUN_ACCESS_KEY_SECRET' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset TENCENT_SECRET_ID TENCENT_SECRET_KEY' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset HUAWEI_ACCESS_KEY HUAWEI_SECRET_KEY' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset DATABASE_URL REDIS_URL JWT_SECRET JWT_EXPIRES_IN' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset LLM_API_KEY LLM_BASE_URL LLM_MODEL' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'unset ADMIN_USERNAME ADMIN_PASSWORD' >> /usr/local/bin/sandbox-shell.sh && \
+    echo '' >> /usr/local/bin/sandbox-shell.sh && \
+    echo '# 拦截凭证提取命令' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'BLOCKED="env|printenv|^set$|^export |cat.*/proc/.*/environ|cat.*/etc/shadow|curl.*169.254.169.254|wget.*169.254.169.254"' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'if echo "$*" | grep -qE "$BLOCKED"; then' >> /usr/local/bin/sandbox-shell.sh && \
+    echo '  echo "Error: 此命令被安全策略禁止（禁止读取环境变量或凭证）" >&2' >> /usr/local/bin/sandbox-shell.sh && \
+    echo '  exit 1' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'fi' >> /usr/local/bin/sandbox-shell.sh && \
+    echo '' >> /usr/local/bin/sandbox-shell.sh && \
+    echo 'exec /bin/sh -c "$*"' >> /usr/local/bin/sandbox-shell.sh && \
+    chmod +x /usr/local/bin/sandbox-shell.sh
+
 # 复制启动脚本
 COPY start.sh ./
 RUN chmod +x start.sh

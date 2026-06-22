@@ -53,9 +53,13 @@ export function ApprovalPrompt() {
         if (isReadOnlyTool(approval.toolName)) {
           resolvedRef.current.add(approval.approvalId);
           resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'approve' });
+        } else {
+          // Plan 模式下非只读工具直接拒绝
+          resolvedRef.current.add(approval.approvalId);
+          resolveApproval.mutate({ approvalId: approval.approvalId, decision: 'reject' });
         }
-        // Non-read-only tools remain pending for manual approval
       }
+      // Confirm 模式：不自动处理，等待手动审批
     }
   }, [approvals, mode, resolveApproval]);
 

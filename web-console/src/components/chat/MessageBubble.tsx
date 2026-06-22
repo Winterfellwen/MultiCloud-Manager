@@ -70,7 +70,7 @@ function TextBlock({ content, isStreaming }: { content: string; isStreaming: boo
       {isStreaming && !content && (
         <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>正在生成回复...</span>
+          <span>AI 运作中...</span>
         </div>
       )}
     </div>
@@ -123,6 +123,13 @@ function BlocksRenderer({
           />
         );
       })}
+      {/* 流式输出中但尚无内容时的提示 */}
+      {isStreaming && blocks.length === 0 && (
+        <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <span>思考中...</span>
+        </div>
+      )}
     </>
   );
 }
@@ -194,10 +201,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             />
           </div>
         ) : !isUser && isStreaming && !message.content && message.toolCalls.length === 0 ? (
-          // assistant 消息刚创建（blocks 为空、无内容），显示"正在生成"提示
+          // assistant 消息刚创建（blocks 为空、无内容），显示"思考中"提示
           <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>正在生成回复...</span>
+            <span>思考中...</span>
           </div>
         ) : (
           <>

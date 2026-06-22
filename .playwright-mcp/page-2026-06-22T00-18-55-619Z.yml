@@ -1,0 +1,185 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云服务器管理" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云服务器管理
+      - link "资源总览" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源总览
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - link "AI 对话" [ref=e45] [cursor=pointer]:
+        - /url: /chat/react
+        - img [ref=e46]
+        - text: AI 对话
+      - link "AI 设置" [active] [ref=e49] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e50]
+        - text: AI 设置
+      - link "工具目录" [ref=e54] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e55]
+        - text: 工具目录
+      - link "MCP 配置" [ref=e58] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e59]
+        - text: MCP 配置
+      - link "用户管理" [ref=e62] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e63]
+        - text: 用户管理
+      - link "审计日志" [ref=e69] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e70]
+        - text: 审计日志
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e76]: 多云管理控制台
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - img [ref=e79]
+          - generic [ref=e82]: admin
+          - generic [ref=e83]: 管理员
+        - button "退出登录" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+    - main [ref=e88]:
+      - generic [ref=e499]:
+        - generic [ref=e500]:
+          - img [ref=e501]
+          - heading "AI 模型设置" [level=1] [ref=e504]
+        - generic [ref=e505]:
+          - generic [ref=e506]:
+            - generic [ref=e507]:
+              - img [ref=e508]
+              - text: LLM Provider 管理
+            - button "添加 Provider" [ref=e511] [cursor=pointer]:
+              - img [ref=e512]
+              - text: 添加 Provider
+          - generic [ref=e516]:
+            - generic [ref=e517]: "N"
+            - generic [ref=e518]:
+              - generic [ref=e519]:
+                - generic [ref=e520]: Nvidia
+                - generic [ref=e521]: (nvidia)
+              - generic [ref=e522]: https://integrate.api.nvidia.com/v1
+            - generic [ref=e523]: 5 模型
+            - generic [ref=e524]:
+              - button "测试连通性" [ref=e525] [cursor=pointer]:
+                - img [ref=e526]
+              - button "从 API 发现模型" [ref=e528] [cursor=pointer]:
+                - img [ref=e529]
+              - button [ref=e532] [cursor=pointer]:
+                - img [ref=e533]
+              - button [ref=e535] [cursor=pointer]:
+                - img [ref=e536]
+              - button [ref=e539] [cursor=pointer]:
+                - img [ref=e540]
+        - generic [ref=e543]:
+          - generic [ref=e545]: 模型选择
+          - generic [ref=e546]:
+            - generic [ref=e547]:
+              - generic [ref=e548] [cursor=pointer]:
+                - generic [ref=e551]:
+                  - generic [ref=e552]: mistralai/mistral-large-3-675b-instruct-2512
+                  - generic [ref=e553]: nvidia
+                - generic [ref=e554]:
+                  - generic "Thinking 方言" [ref=e555]: OpenAI
+                  - button "测试模型" [ref=e556]:
+                    - img [ref=e557]
+                  - button "删除模型" [ref=e559]:
+                    - img [ref=e560]
+              - generic [ref=e563] [cursor=pointer]:
+                - img [ref=e565]
+                - generic [ref=e568]:
+                  - generic [ref=e569]: mistralai/mistral-medium-3.5-128b
+                  - generic [ref=e570]: nvidia
+                - generic [ref=e571]:
+                  - generic "Thinking 方言" [ref=e572]: OpenAI
+                  - button "测试模型" [ref=e573]:
+                    - img [ref=e574]
+                  - button "删除模型" [ref=e576]:
+                    - img [ref=e577]
+              - generic [ref=e580] [cursor=pointer]:
+                - generic [ref=e583]:
+                  - generic [ref=e584]: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+                  - generic [ref=e585]: nvidia
+                - generic [ref=e586]:
+                  - generic [ref=e587]:
+                    - img [ref=e588]
+                    - text: 推理
+                  - generic "Thinking 方言" [ref=e598]: OpenAI
+                  - generic [ref=e599]: 视觉
+                  - button "测试模型" [ref=e600]:
+                    - img [ref=e601]
+                  - button "删除模型" [ref=e603]:
+                    - img [ref=e604]
+              - generic [ref=e607] [cursor=pointer]:
+                - generic [ref=e610]:
+                  - generic [ref=e611]: nvidia/nemotron-3-ultra-550b-a55b
+                  - generic [ref=e612]: nvidia
+                - generic [ref=e613]:
+                  - generic "Thinking 方言" [ref=e614]: OpenAI
+                  - button "测试模型" [ref=e615]:
+                    - img [ref=e616]
+                  - button "删除模型" [ref=e618]:
+                    - img [ref=e619]
+              - generic [ref=e622] [cursor=pointer]:
+                - generic [ref=e625]:
+                  - generic [ref=e626]: stepfun-ai/step-3.7-flash
+                  - generic [ref=e627]: nvidia
+                - generic [ref=e628]:
+                  - generic "Thinking 方言" [ref=e629]: OpenAI
+                  - button "测试模型" [ref=e630]:
+                    - img [ref=e631]
+                  - button "删除模型" [ref=e633]:
+                    - img [ref=e634]
+            - generic [ref=e637]:
+              - generic [ref=e638]: "当前选择: nvidia/mistralai/mistral-medium-3.5-128b"
+              - button "使用默认" [ref=e639] [cursor=pointer]
+        - generic [ref=e640]:
+          - generic [ref=e642]:
+            - img [ref=e643]
+            - text: 深度思考（Reasoning）
+          - generic [ref=e653]:
+            - generic [ref=e654] [cursor=pointer]:
+              - img [ref=e656]
+              - generic [ref=e658]:
+                - generic [ref=e659]: 启用深度思考模式
+                - paragraph [ref=e660]: 开启后，AI 会在回答前进行内部推理（思维链），适合复杂问题求解、代码生成和多步骤任务。
+            - generic [ref=e661]:
+              - text: 推理努力程度（Reasoning Effort）
+              - generic [ref=e662]:
+                - button "低" [ref=e663] [cursor=pointer]
+                - button "中" [ref=e664] [cursor=pointer]
+                - button "高" [ref=e665] [cursor=pointer]
+              - paragraph [ref=e666]: 高：完整推理链，适合复杂问题求解和代码生成
+        - generic [ref=e667]:
+          - generic [ref=e669]: 生成参数
+          - generic [ref=e670]:
+            - generic [ref=e671]:
+              - generic [ref=e672]: "温度（Temperature）: 0.30"
+              - 'slider "温度（Temperature）: 0.30" [ref=e673]': "0.3"
+              - paragraph [ref=e674]: 控制随机性。0 = 确定性输出，2 = 高度随机。推荐 0.3 用于运维场景。
+            - generic [ref=e675]:
+              - text: 最大 Token 数
+              - spinbutton "最大 Token 数" [ref=e676]: "4096"
+              - paragraph [ref=e677]: 单次回复的最大 token 数。增大可获得更长回复，但会增加延迟和成本。
+            - button "保存配置" [ref=e679] [cursor=pointer]

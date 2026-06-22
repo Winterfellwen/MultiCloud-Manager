@@ -314,8 +314,135 @@ export class AzureProvider implements ICloudProvider {
   async deleteResource(resourceType: ResourceType, id: string): Promise<void> {
     switch (resourceType) {
       case 'instance': return this.deleteInstance(id);
+      case 'disk': return this.deleteDisk(id);
+      case 'database': return this.deleteDatabase(id);
+      case 'cache': return this.deleteCache(id);
+      case 'loadbalancer': return this.deleteLoadBalancer(id);
+      case 'aiservice': return this.deleteCognitiveService(id);
       default: throw new Error(`Delete ${resourceType} not implemented for Azure`);
     }
+  }
+
+  private parseArmId(armId: string): { resourceGroup: string; name: string } | null {
+    const rgMatch = armId.match(/resourceGroups\/([^/]+)/i);
+    const nameMatch = armId.match(/\/([^/]+)$/);
+    if (rgMatch && nameMatch) {
+      return { resourceGroup: rgMatch[1], name: nameMatch[1] };
+    }
+    return null;
+  }
+
+  private async deleteDisk(id: string): Promise<void> {
+    const parsed = this.parseArmId(id);
+    if (parsed) {
+      await this.client.disks.beginDeleteAndWait(parsed.resourceGroup, parsed.name);
+    } else {
+      for await (const disk of this.client.disks.list()) {
+        if (disk.name === id && disk.id) {
+          const rg = disk.id.match(/resourceGroups\/([^/]+)/i)?.[1];
+          if (rg) { await this.client.disks.beginDeleteAndWait(rg, id); return; }
+        }
+      }
+      throw new Error(`Disk ${id} not found`);
+    }
+  }
+
+  private async deleteDatabase(id: string): Promise<void> {
+    const client = new PostgreSQLManagementFlexibleServerClient(this.credential, this.subscriptionId);
+    const parsed = this.parseArmId(id);
+    if (parsed) {
+      await client.servers.beginDeleteAndWait(parsed.resourceGroup, parsed.name);
+    } else {
+      for await (const server of client.servers.listBySubscription()) {
+        if (server.name === id && server.id) {
+          const rg = server.id.match(/resourceGroups\/([^/]+)/i)?.[1];
+          if (rg) { await client.servers.beginDeleteAndWait(rg, id); return; }
+        }
+      }
+      throw new Error(`Database ${id} not found`);
+    }
+  }
+
+  private async deleteCache(id: string): Promise<void> {
+    const client = new RedisManagementClient(this.credential, this.subscriptionId);
+    const parsed = this.parseArmId(id);
+    if (parsed) {
+      await client.redis.beginDeleteAndWait(parsed.resourceGroup, parsed.name);
+    } else {
+      for await (const redis of client.redis.listBySubscription()) {
+        if (redis.name === id && redis.id) {
+          const rg = redis.id.match(/resourceGroups\/([^/]+)/i)?.[1];
+          if (rg) { await client.redis.beginDeleteAndWait(rg, id); return; }
+        }
+      }
+      throw new Error(`Cache ${id} not found`);
+    }
+  }
+
+  private async deleteLoadBalancer(id: string): Promise<void> {
+    const client = new NetworkManagementClient(this.credential, this.subscriptionId);
+    const parsed = this.parseArmId(id);
+    if (parsed) {
+      await client.loadBalancers.beginDeleteAndWait(parsed.resourceGroup, parsed.name);
+    } else {
+      for await (const lb of client.loadBalancers.listAll()) {
+        if (lb.name === id && lb.id) {
+          const rg = lb.id.match(/resourceGroups\/([^/]+)/i)?.[1];
+          if (rg) { await client.loadBalancers.beginDeleteAndWait(rg, id); return; }
+        }
+      }
+      throw new Error(`Load balancer ${id} not found`);
+    }
+  }
+
+  private async deleteCognitiveService(name: string): Promise<void> {
+    const client = new CognitiveServicesManagementClient(this.credential, this.subscriptionId);
+    // Find the account and extract resource group
+    const accounts = client.accounts.list();
+    for await (const account of accounts) {
+      if (account.name === name && account.id) {
+        const parts = account.id.split('/');
+        const rgIndex = parts.indexOf('resourceGroups');
+        if (rgIndex !== -1 && rgIndex + 1 < parts.length) {
+          const resourceGroup = parts[rgIndex + 1];
+
+          // Phase 1: Delete all deployments
+          try {
+            for await (const deployment of client.deployments.list(resourceGroup, name)) {
+              if (deployment.name) {
+                try {
+                  await client.deployments.beginDeleteAndWait(resourceGroup, name, deployment.name);
+                } catch {
+                  // Ignore individual deployment deletion errors
+                }
+              }
+            }
+          } catch {
+            // deployments API may not be available
+          }
+
+          // Phase 2: Delete all projects
+          try {
+            for await (const project of client.projects.list(resourceGroup, name)) {
+              if (project.name) {
+                try {
+                  await client.projects.beginDeleteAndWait(resourceGroup, name, project.name);
+                } catch {
+                  // Ignore individual project deletion errors
+                }
+              }
+            }
+          } catch {
+            // projects API may not be available
+          }
+
+          // Phase 3: Delete the account
+          await client.accounts.beginDeleteAndWait(resourceGroup, name);
+          return;
+        }
+      }
+    }
+    throw new Error(`Cognitive service ${name} not found or could not determine resource group`);
   }
 
   private async listInstancesAsResources(region?: string): Promise<CloudResource[]> {

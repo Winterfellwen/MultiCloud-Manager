@@ -1,0 +1,72 @@
+<h2>批量删除交互方式</h2>
+<p class="subtitle">对话列表中如何选择要删除的对话？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>复选框模式</h3>
+      <p>每个对话左侧显示复选框，顶部有"全选"按钮和"删除选中"按钮。点击进入多选模式。</p>
+      <div class="mockup" style="margin-top:12px">
+        <div style="display:flex;align-items:center;padding:8px 12px;background:#1a1a2e;border-bottom:1px solid #333">
+          <input type="checkbox" style="margin-right:8px"> <span style="font-size:13px;color:#aaa">全选 (3/10)</span>
+          <span style="margin-left:auto;color:#ef4444;font-size:13px;cursor:pointer">🗑 删除选中</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #222">
+          <input type="checkbox" checked style="margin-right:8px">
+          <div style="flex:1"><div style="font-size:13px">如何扩容 ECS 实例</div><div style="font-size:11px;color:#888">admin · 2条消息</div></div>
+        </div>
+        <div style="display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #222">
+          <input type="checkbox" checked style="margin-right:8px">
+          <div style="flex:1"><div style="font-size:13px">查看 AWS 费用</div><div style="font-size:11px;color:#888">zhangsan · 5条消息</div></div>
+        </div>
+        <div style="display:flex;align-items:center;padding:8px 12px">
+          <input type="checkbox" style="margin-right:8px">
+          <div style="flex:1"><div style="font-size:13px">Azure 部署问题</div><div style="font-size:11px;color:#888">admin · 1条消息</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>右键/长按菜单</h3>
+      <p>右键点击对话弹出菜单，包含"删除"、"删除多个"等选项。选择"删除多个"后进入多选模式。</p>
+      <div class="mockup" style="margin-top:12px">
+        <div style="display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #222;position:relative">
+          <div style="flex:1"><div style="font-size:13px">如何扩容 ECS 实例</div><div style="font-size:11px;color:#888">admin · 2条消息</div></div>
+          <div style="position:absolute;right:20px;top:8px;background:#2a2a3e;border:1px solid #444;border-radius:6px;padding:4px 0;min-width:120px;box-shadow:0 4px 12px rgba(0,0,0,0.3)">
+            <div style="padding:6px 12px;font-size:12px;color:#ccc;cursor:pointer">📝 重命名</div>
+            <div style="padding:6px 12px;font-size:12px;color:#ccc;cursor:pointer">📋 复制链接</div>
+            <div style="padding:6px 12px;font-size:12px;color:#ef4444;cursor:pointer">🗑 删除</div>
+            <div style="padding:6px 12px;font-size:12px;color:#ef4444;cursor:pointer;border-top:1px solid #444;margin-top:2px">☑️ 删除多个...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>编辑模式切换</h3>
+      <p>顶部添加"编辑"按钮，点击后列表进入编辑模式，每行出现复选框。类似 iOS 编辑模式。</p>
+      <div class="mockup" style="margin-top:12px">
+        <div style="display:flex;align-items:center;padding:8px 12px;background:#1a1a2e;border-bottom:1px solid #333">
+          <span style="font-size:13px;color:#60a5fa;cursor:pointer">✓ 完成</span>
+          <span style="margin-left:auto;font-size:13px;color:#aaa">已选 2 项</span>
+          <span style="margin-left:12px;color:#ef4444;font-size:13px;cursor:pointer">🗑 删除</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #222">
+          <input type="checkbox" checked style="margin-right:8px">
+          <div style="flex:1"><div style="font-size:13px">如何扩容 ECS 实例</div><div style="font-size:11px;color:#888">admin · 2条消息</div></div>
+        </div>
+        <div style="display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #222">
+          <input type="checkbox" checked style="margin-right:8px">
+          <div style="flex:1"><div style="font-size:13px">查看 AWS 费用</div><div style="font-size:11px;color:#888">zhangsan · 5条消息</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

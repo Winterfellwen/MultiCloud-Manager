@@ -23,8 +23,8 @@ import {
   GetCostAndUsageCommand,
 } from "@aws-sdk/client-cost-explorer";
 import { S3Client, ListBucketsCommand, DeleteBucketCommand } from "@aws-sdk/client-s3";
-import { RDSClient, DescribeDBInstancesCommand } from "@aws-sdk/client-rds";
-import { ElastiCacheClient, DescribeCacheClustersCommand } from "@aws-sdk/client-elasticache";
+import { RDSClient, DescribeDBInstancesCommand, DeleteDBInstanceCommand } from "@aws-sdk/client-rds";
+import { ElastiCacheClient, DescribeCacheClustersCommand, DeleteCacheClusterCommand } from "@aws-sdk/client-elasticache";
 import {
   ElasticLoadBalancingV2Client,
   DescribeLoadBalancersCommand,
@@ -410,10 +410,27 @@ export class AWSProvider implements ICloudProvider {
       case 'bucket': {
         const s3 = new S3Client({ region: this.defaultRegion, credentials: this.credentials });
         await s3.send(new DeleteBucketCommand({ Bucket: id }));
-      return;
+        return;
+      }
+      case 'database': return this.deleteDatabase(id);
+      case 'cache': return this.deleteCache(id);
+      default: throw new Error(`Delete ${resourceType} not implemented for AWS`);
     }
-    default: throw new Error(`Delete ${resourceType} not implemented for AWS`);
-    }
+  }
+
+  private async deleteDatabase(id: string): Promise<void> {
+    const rds = new RDSClient({ region: this.defaultRegion, credentials: this.credentials });
+    await rds.send(new DeleteDBInstanceCommand({
+      DBInstanceIdentifier: id,
+      SkipFinalSnapshot: true,
+    }));
+  }
+
+  private async deleteCache(id: string): Promise<void> {
+    const client = new ElastiCacheClient({ region: this.defaultRegion, credentials: this.credentials });
+    await client.send(new DeleteCacheClusterCommand({
+      CacheClusterId: id,
+    }));
   }
 
   private async listInstancesAsResources(region?: string): Promise<CloudResource[]> {

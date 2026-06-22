@@ -12,6 +12,7 @@ import Ecs20140526, {
   DescribeDisksResponse,
   DescribeSecurityGroupsRequest,
   DescribeSecurityGroupsResponse,
+  DeleteDiskRequest,
 } from "@alicloud/ecs20140526";
 import Rds20140815 from "@alicloud/rds20140815";
 import Vpc20160428 from "@alicloud/vpc20160428";
@@ -350,9 +351,17 @@ export class AliyunProvider implements ICloudProvider {
     switch (resourceType) {
       case "instance":
         return this.deleteInstance(id);
+      case "disk":
+        return this.deleteDisk(id);
       default:
         throw new Error(`Delete ${resourceType} not implemented for aliyun`);
     }
+  }
+
+  private async deleteDisk(diskId: string): Promise<void> {
+    const client = this.createClient(this.defaultRegion);
+    const request = new DeleteDiskRequest({ diskId });
+    await client.deleteDiskWithOptions(request, new RuntimeOptions({}));
   }
 
   private async listInstancesAsResources(

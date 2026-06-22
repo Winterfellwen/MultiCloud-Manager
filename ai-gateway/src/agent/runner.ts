@@ -68,36 +68,94 @@ export interface AgentTurnParams {
   mode?: ModeType;
 }
 
-const SYSTEM_PROMPT = `你是 CloudOps AI 运维助手，帮助用户通过自然语言管理多云资源。
-
-你可以：
-- 查询、创建、启停、重启、删除云服务器实例
-- 查询、删除各类云资源（磁盘、数据库、缓存、VPC、安全组、CDN、集群等）
-- 触发云资源同步
-- 查询监控指标和告警事件
-- 查询多云成本分析
-- 执行Shell命令（仅Action/Confirm模式，Plan模式不可用）
+const SYSTEM_PROMPT_BASE = `你是 CloudOps AI 运维助手，帮助用户通过自然语言管理多云资源。
 
 支持的云厂商：aws | aliyun | azure | tencent | huawei
 
-可用工具：
+请用中文回复，简洁专业。`;
+
+function getSystemPrompt(mode?: ModeType): string {
+  const modeInstructions: Record<ModeType, string> = {
+    plan: `当前模式：Plan（只读模式）
+
+可用工具（仅查询类）：
 - cloud_list_instances: 列出云实例（可按厂商、区域、状态筛选）
 - cloud_get_instance: 查看实例详情
-- cloud_start_instance: 启动实例
-- cloud_stop_instance: 停止实例
-- cloud_reboot_instance: 重启实例
-- cloud_create_instance: 创建实例（需指定厂商、区域、规格、镜像）
-- cloud_delete_instance: 删除实例
 - cloud_list_resources: 列出云资源（支持 disk/bucket/database/cache/loadbalancer/vpc/securitygroup/cdn/cluster/aiservice）
 - cloud_get_resource: 查看资源详情
-- cloud_delete_resource: 删除资源
-- cloud_sync_resources: 触发资源同步
+- cloud_service_call: 调用 cloud-service API（路径以 /cloud/ 或 /monitor/ 开头）
 - monitor_get_metrics: 查询监控指标
 - monitor_list_alerts: 列出告警事件
 - monitor_get_cost: 查询成本
-- shell_execute: 执行Shell命令（Plan模式不可用）
 
-请用中文回复，简洁专业。`;
+不可用工具（Plan模式下禁止调用）：
+- cloud_start_instance / cloud_stop_instance / cloud_reboot_instance（启停操作）
+- cloud_create_instance / cloud_delete_instance（创建删除实例）
+- cloud_delete_resource（删除资源）
+- cloud_sync_resources（触发同步）
+- shell_execute（执行Shell命令）
+
+当用户要求执行修改性操作时，请告知用户当前处于Plan只读模式，建议切换到Action或Confirm模式后再执行，并给出操作计划建议。`,
+    action: `当前模式：Action（自动执行模式）
+
+所有工具可用，修改性操作将自动执行（无需审批）：
+- cloud_list_instances / cloud_get_instance: 查询实例
+- cloud_start_instance / cloud_stop_instance / cloud_reboot_instance: 启停操作
+- cloud_create_instance / cloud_delete_instance: 创建删除实例
+- cloud_list_resources / cloud_get_resource: 查询资源
+- cloud_delete_resource: 删除资源
+- cloud_sync_resources: 触发同步
+- cloud_service_call: 调用 cloud-service API（通用接口）
+- monitor_get_metrics / monitor_list_alerts / monitor_get_cost: 监控
+- shell_execute: 执行Shell命令（仅限非云操作）
+
+工具使用优先级（必须遵守）：
+1. 优先使用 cloud_xxx_* 专用工具（如 cloud_delete_resource）。
+2. 如果专用工具不支持某操作，使用 cloud_service_call 调用 cloud-service API。
+3. 只有在所有 API 方案都失败后，才考虑使用 shell_execute。
+4. shell_execute 仅用于执行非云相关的系统命令（如 ls, cat, grep, find 等）。
+5. 禁止在 shell 中执行任何云 CLI 命令（az, aws, aliyun, kubectl, docker 等）。
+6. 禁止在 shell 中读取任何环境变量（env, printenv, echo $XXX）。
+
+重要规则：
+1. Action模式下所有操作自动执行，请确认用户意图后再调用危险工具。
+2. 工具调用失败时的处理策略：
+   - 分析错误消息，理解失败原因。
+   - 如果是资源嵌套、权限、API限制等服务端错误，直接重试相同工具调用即可——后端会自动处理嵌套资源清理。
+   - 如果重试仍然失败，尝试使用 cloud_service_call 调用其他 API 路径。
+   - 只有在所有 API 方案都失败后，才向用户报告。
+3. 每次工具调用后，如果返回错误，必须主动分析并尝试替代方案，不要直接放弃。`,
+    confirm: `当前模式：Confirm（确认模式）
+
+所有工具可用，修改性操作需要用户逐次审批确认后才会执行：
+- cloud_list_instances / cloud_get_instance: 查询实例
+- cloud_start_instance / cloud_stop_instance / cloud_reboot_instance: 启停操作
+- cloud_create_instance / cloud_delete_instance: 创建删除实例
+- cloud_list_resources / cloud_get_resource: 查询资源
+- cloud_delete_resource: 删除资源
+- cloud_sync_resources: 触发同步
+- cloud_service_call: 调用 cloud-service API（通用接口）
+- monitor_get_metrics / monitor_list_alerts / monitor_get_cost: 监控
+- shell_execute: 执行Shell命令（仅限非云操作）
+
+工具使用优先级（必须遵守）：
+1. 优先使用 cloud_xxx_* 专用工具。
+2. 如果专用工具不支持某操作，使用 cloud_service_call 调用 cloud-service API。
+3. shell_execute 仅用于非云相关的系统命令。
+4. 禁止在 shell 中执行云 CLI 命令或读取环境变量。
+
+重要规则：
+1. 用户确认后工具才会执行，可以正常调用所有工具。
+2. 工具调用失败时的处理策略：
+   - 分析错误消息，理解失败原因。
+   - 如果是资源嵌套、权限、API限制等服务端错误，直接重试相同工具调用即可——后端会自动处理嵌套资源清理。
+   - 如果重试仍然失败，尝试使用 cloud_service_call 调用其他 API 路径。
+   - 只有在所有 API 方案都失败后，才向用户报告。
+3. 每次工具调用后，如果返回错误，必须主动分析并尝试替代方案，不要直接放弃。`,
+  };
+
+  return `${SYSTEM_PROMPT_BASE}\n\n${modeInstructions[mode || 'plan']}`;
+}
 
 /**
  * 执行 Agent turn（调用 LLM + 工具循环）
@@ -108,13 +166,46 @@ export async function runAgentTurn(
 ): Promise<void> {
   // 构造初始 messages（支持多模态附件）
   const messages: Array<Record<string, unknown>> = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: getSystemPrompt(params.mode) },
   ];
 
   // 加载历史对话上下文（从 ACP 事件账本重建）
   // 注意：chat.ts 在调用 runAgentTurn 之前已 await recordEvent 记录了当前用户消息，
   // 所以 rebuildMessagesFromHistory 返回的历史已包含当前用户消息，无需再手动添加。
   const historyMessages = await rebuildMessagesFromHistory(params.sessionKey);
+
+  // 模式切换提醒：在当前用户消息之前注入模式提示，避免 LLM 被旧历史中的模式信息误导
+  const modeLabels: Record<ModeType, string> = {
+    plan: 'Plan（只读模式）',
+    action: 'Action（自动执行模式）',
+    confirm: 'Confirm（确认模式）',
+  };
+  const currentModeLabel = modeLabels[params.mode || 'plan'];
+  const modeReminder = {
+    role: 'system',
+    content: `[系统提醒] 当前对话模式为 ${currentModeLabel}。请严格按照当前模式的规则行事，忽略历史中可能存在的旧模式信息。`,
+  };
+
+  // 在最后一条 user 消息之前插入模式提醒
+  if (historyMessages.length > 0) {
+    // 找到最后一条 user 消息的位置，在其之前插入
+    let lastUserIdx = -1;
+    for (let i = historyMessages.length - 1; i >= 0; i--) {
+      if (historyMessages[i].role === 'user') {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx >= 0) {
+      historyMessages.splice(lastUserIdx, 0, modeReminder);
+    } else {
+      // 没有 user 消息，直接追加
+      historyMessages.push(modeReminder);
+    }
+  } else {
+    historyMessages.push(modeReminder);
+  }
+
   messages.push(...historyMessages);
 
   // 如果有附件，将最后一条 user 消息替换为多模态格式（历史中只存了纯文本）
@@ -141,15 +232,15 @@ export async function runAgentTurn(
       throw new Error('Run aborted');
     }
 
-    // 调用 LLM
-    const response = await callLLM(messages, params.signal, {
-      llmConfig,
-      temperature: params.temperature,
-      maxTokens: params.maxTokens,
-      tools,
-      enableThinking: params.enableThinking ?? true, // 默认启用深度思考
-      reasoningEffort: params.reasoningEffort,
-    });
+  // 调用 LLM
+  const response = await callLLM(messages, params.signal, {
+    llmConfig,
+    temperature: params.temperature,
+    maxTokens: params.maxTokens,
+    tools,
+    enableThinking: params.enableThinking ?? true, // 默认启用深度思考
+    reasoningEffort: params.reasoningEffort,
+  });
 
     if (response.reasoning) {
       // 推理过程通过独立通道推送（前端可折叠显示）
@@ -180,9 +271,23 @@ export async function runAgentTurn(
     for (const toolCall of response.toolCalls) {
       callbacks.onToolCall(toolCall);
 
-      // dangerous 级别工具需要审批
       const toolDef = findTool(toolCall.name);
-      if (toolDef && toolDef.dangerLevel === 'dangerous' && params.approvalContext) {
+
+      // Plan 模式下立即拒绝非只读工具（不触发审批弹窗）
+      if (params.mode === 'plan' && toolDef && toolDef.dangerLevel !== 'safe') {
+        const rejectMsg = `${toolDef.label || toolCall.name} 在 Plan 模式下不可用，请切换到 Action 或 Confirm 模式`;
+        const result = { name: toolCall.name, success: false, data: null, error: rejectMsg, toolCallId: toolCall.id };
+        callbacks.onToolResult(result);
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+        continue;
+      }
+
+      // dangerous 级别工具需要审批（仅 Confirm 模式）
+      if (toolDef && toolDef.dangerLevel === 'dangerous' && params.mode === 'confirm' && params.approvalContext) {
         const approved = await requestApproval({
           runId: params.runId,
           sessionKey: params.sessionKey,
@@ -215,6 +320,12 @@ export async function runAgentTurn(
         content: JSON.stringify(result.data),
       });
     }
+  }
+
+  // 如果 LLM 只返回了 reasoning 但没有 text，且没有 tool calls，补充一条提示
+  if (!finalText) {
+    callbacks.onComplete('（AI 完成了思考，但未生成文字回复。请根据上方的思考内容查看分析结果，或尝试重新提问。）');
+    return;
   }
 
   callbacks.onComplete(finalText);
@@ -282,6 +393,22 @@ async function rebuildMessagesFromHistory(sessionKey: string): Promise<Array<Rec
         if (!entry.flushed) {
           const finalText = payload.finalText as string | undefined;
           if (finalText) entry.text = finalText;
+          // 立即 flush assistant 消息到 messages 数组（确保 assistant 消息在下一个 user 消息之前）
+          const hasToolCalls = entry.toolCalls.length > 0;
+          const hasText = entry.text && entry.text.trim().length > 0;
+          if (hasToolCalls || hasText) {
+            messages.push({
+              role: 'assistant',
+              content: entry.text || null,
+              tool_calls: hasToolCalls
+                ? entry.toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }))
+                : undefined,
+            });
+            // 清空已 push 的内容，避免重复
+            entry.text = '';
+            entry.toolCalls = [];
+            entry.flushed = true;
+          }
         }
         break;
       }
@@ -307,14 +434,19 @@ async function rebuildMessagesFromHistory(sessionKey: string): Promise<Array<Rec
         if (!runId) break;
         const entry = runIdToAssistant.get(runId);
         // 只有当 entry 有内容时才 push assistant 消息（避免多余的空消息）
-        if (entry && (entry.text || entry.toolCalls.length > 0)) {
-          messages.push({
-            role: 'assistant',
-            content: entry.text || null,
-            tool_calls: entry.toolCalls.length > 0
-              ? entry.toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }))
-              : undefined,
-          });
+        // 跳过空文本且无 tool_calls 的 assistant 消息
+        if (entry) {
+          const hasToolCalls = entry.toolCalls.length > 0;
+          const hasText = entry.text && entry.text.trim().length > 0;
+          if (hasToolCalls || hasText) {
+            messages.push({
+              role: 'assistant',
+              content: entry.text || null,
+              tool_calls: hasToolCalls
+                ? entry.toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }))
+                : undefined,
+            });
+          }
           // 清空已 push 的内容，避免重复
           entry.text = '';
           entry.toolCalls = [];
@@ -346,12 +478,15 @@ async function rebuildMessagesFromHistory(sessionKey: string): Promise<Array<Rec
   }
 
   // 处理最后一个未 flush 的 assistant 消息（没有 tool_result 的情况）
+  // 跳过空文本且无 tool_calls 的 assistant 消息（避免发送到 API 时触发 add_generation_prompt 错误）
   for (const [, entry] of runIdToAssistant) {
-    if (entry.text || entry.toolCalls.length > 0) {
+    const hasToolCalls = entry.toolCalls.length > 0;
+    const hasText = entry.text && entry.text.trim().length > 0;
+    if (hasToolCalls || hasText) {
       messages.push({
         role: 'assistant',
         content: entry.text || null,
-        tool_calls: entry.toolCalls.length > 0
+        tool_calls: hasToolCalls
           ? entry.toolCalls.map(tc => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }))
           : undefined,
       });

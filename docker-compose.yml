@@ -71,6 +71,11 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o}
 
+      # ============ 内部服务地址 ============
+      CLOUD_SERVICE_URL: ${CLOUD_SERVICE_URL:-http://localhost:3001}
+      MONITOR_SERVICE_URL: ${MONITOR_SERVICE_URL:-http://localhost:3002}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://localhost:3004}
+
       # ============ Agent 配置（可选） ============
       AGENT_MAX_ITERATIONS: ${AGENT_MAX_ITERATIONS:-10}
       AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-120000}

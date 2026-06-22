@@ -1,0 +1,111 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云服务器管理" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云服务器管理
+      - link "资源总览" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源总览
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - link "AI 对话" [ref=e45] [cursor=pointer]:
+        - /url: /chat/react
+        - img [ref=e46]
+        - text: AI 对话
+      - link "AI 设置" [ref=e49] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e50]
+        - text: AI 设置
+      - link "工具目录" [ref=e54] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e55]
+        - text: 工具目录
+      - link "MCP 配置" [active] [ref=e58] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e59]
+        - text: MCP 配置
+      - link "用户管理" [ref=e62] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e63]
+        - text: 用户管理
+      - link "审计日志" [ref=e69] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e70]
+        - text: 审计日志
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e76]: 多云管理控制台
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - img [ref=e79]
+          - generic [ref=e82]: admin
+          - generic [ref=e83]: 管理员
+        - button "退出登录" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+    - main [ref=e88]:
+      - generic [ref=e1343]:
+        - generic [ref=e1344]:
+          - generic [ref=e1345]:
+            - heading "MCP 配置" [level=1] [ref=e1346]
+            - paragraph [ref=e1347]: 管理 Model Context Protocol 服务器配置
+          - button "添加服务器" [ref=e1348] [cursor=pointer]:
+            - img [ref=e1349]
+            - text: 添加服务器
+        - generic [ref=e1350]:
+          - img [ref=e1351]
+          - generic [ref=e1353]: MCP 配置目前通过环境变量读取，此处展示为主。添加/删除功能为前端 UI 操作，后端持久化接口后续补充。
+        - table [ref=e1357]:
+          - rowgroup [ref=e1358]:
+            - row "名称 传输方式 命令 / 地址 状态 操作" [ref=e1359]:
+              - columnheader "名称" [ref=e1360]
+              - columnheader "传输方式" [ref=e1361]
+              - columnheader "命令 / 地址" [ref=e1362]
+              - columnheader "状态" [ref=e1363]
+              - columnheader "操作" [ref=e1364]
+          - rowgroup [ref=e1365]:
+            - row "filesystem stdio npx @modelcontextprotocol/server-filesystem /tmp 已启用 禁用" [ref=e1366]:
+              - cell "filesystem" [ref=e1367]
+              - cell "stdio" [ref=e1368]:
+                - generic [ref=e1369]:
+                  - img [ref=e1370]
+                  - text: stdio
+              - cell "npx @modelcontextprotocol/server-filesystem /tmp" [ref=e1372]
+              - cell "已启用" [ref=e1373]:
+                - generic [ref=e1374]: 已启用
+              - cell "禁用" [ref=e1375]:
+                - generic [ref=e1376]:
+                  - button "禁用" [ref=e1377] [cursor=pointer]
+                  - button [ref=e1378] [cursor=pointer]:
+                    - img [ref=e1379]
+            - row "fetch http http://localhost:3100/mcp 已禁用 启用" [ref=e1382]:
+              - cell "fetch" [ref=e1383]
+              - cell "http" [ref=e1384]:
+                - generic [ref=e1385]:
+                  - img [ref=e1386]
+                  - text: http
+              - cell "http://localhost:3100/mcp" [ref=e1389]
+              - cell "已禁用" [ref=e1390]:
+                - generic [ref=e1391]: 已禁用
+              - cell "启用" [ref=e1392]:
+                - generic [ref=e1393]:
+                  - button "启用" [ref=e1394] [cursor=pointer]
+                  - button [ref=e1395] [cursor=pointer]:
+                    - img [ref=e1396]

@@ -23,8 +23,8 @@ export class ResourceService {
     const conditions = [];
     if (filters.provider) conditions.push(eq(cloudResources.provider, filters.provider));
     if (filters.resourceType) conditions.push(eq(cloudResources.resourceType, filters.resourceType));
-    if (filters.region) conditions.push(eq(cloudResources.region, filters.region));
-    if (filters.status) conditions.push(eq(cloudResources.status, filters.status));
+    if (filters.region && filters.region !== 'all') conditions.push(eq(cloudResources.region, filters.region));
+    if (filters.status && filters.status !== 'all') conditions.push(eq(cloudResources.status, filters.status));
     if (filters.search) {
       conditions.push(like(cloudResources.name, `%${filters.search}%`));
     }

@@ -1,0 +1,274 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: CloudOps AI
+    - navigation [ref=e7]:
+      - link "总览" [ref=e9] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e10]
+        - text: 总览
+      - link "云服务器管理" [ref=e16] [cursor=pointer]:
+        - /url: /instances
+        - img [ref=e17]
+        - text: 云服务器管理
+      - link "资源总览" [ref=e21] [cursor=pointer]:
+        - /url: /resources
+        - img [ref=e22]
+        - text: 资源总览
+      - link "云厂商管理" [ref=e33] [cursor=pointer]:
+        - /url: /cloud-accounts
+        - img [ref=e34]
+        - text: 云厂商管理
+      - link "监控告警" [ref=e37] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e38]
+        - text: 监控告警
+      - link "成本分析" [ref=e41] [cursor=pointer]:
+        - /url: /costs
+        - img [ref=e42]
+        - text: 成本分析
+      - link "AI 对话" [active] [ref=e45] [cursor=pointer]:
+        - /url: /chat/react
+        - img [ref=e46]
+        - text: AI 对话
+      - link "AI 设置" [ref=e49] [cursor=pointer]:
+        - /url: /ai-settings
+        - img [ref=e50]
+        - text: AI 设置
+      - link "工具目录" [ref=e54] [cursor=pointer]:
+        - /url: /tools
+        - img [ref=e55]
+        - text: 工具目录
+      - link "MCP 配置" [ref=e58] [cursor=pointer]:
+        - /url: /mcp
+        - img [ref=e59]
+        - text: MCP 配置
+      - link "用户管理" [ref=e62] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e63]
+        - text: 用户管理
+      - link "审计日志" [ref=e69] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e70]
+        - text: 审计日志
+  - generic [ref=e73]:
+    - banner [ref=e74]:
+      - generic [ref=e76]: 多云管理控制台
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - img [ref=e79]
+          - generic [ref=e82]: admin
+          - generic [ref=e83]: 管理员
+        - button "退出登录" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+    - main [ref=e88]:
+      - generic [ref=e858]:
+        - generic [ref=e860]:
+          - button "新建对话" [ref=e862] [cursor=pointer]:
+            - img [ref=e863]
+            - text: 新建对话
+          - generic [ref=e865]:
+            - generic [ref=e866] [cursor=pointer]:
+              - img [ref=e867]
+              - generic [ref=e870]: 我的云账户里有哪些资源？
+              - generic [ref=e871]: 已完成
+              - generic [ref=e872]: "2"
+              - button "删除对话" [ref=e873]:
+                - img [ref=e874]
+            - generic [ref=e877] [cursor=pointer]:
+              - img [ref=e878]
+              - generic [ref=e880]: 列出所有云资源
+              - generic [ref=e881]: "2"
+              - button "删除对话" [ref=e882]:
+                - img [ref=e883]
+            - generic [ref=e886] [cursor=pointer]:
+              - img [ref=e887]
+              - generic [ref=e889]: 你好
+              - generic [ref=e890]: "4"
+              - button "删除对话" [ref=e891]:
+                - img [ref=e892]
+            - generic [ref=e895] [cursor=pointer]:
+              - img [ref=e896]
+              - generic [ref=e898]: 你好
+              - generic [ref=e899]: "1"
+              - button "删除对话" [ref=e900]:
+                - img [ref=e901]
+            - generic [ref=e904] [cursor=pointer]:
+              - img [ref=e905]
+              - generic [ref=e907]: 你好
+              - generic [ref=e908]: "1"
+              - button "删除对话" [ref=e909]:
+                - img [ref=e910]
+            - generic [ref=e913] [cursor=pointer]:
+              - img [ref=e914]
+              - generic [ref=e916]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e917]: "4"
+              - button "删除对话" [ref=e918]:
+                - img [ref=e919]
+            - generic [ref=e922] [cursor=pointer]:
+              - img [ref=e923]
+              - generic [ref=e925]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e926]: "3"
+              - button "删除对话" [ref=e927]:
+                - img [ref=e928]
+            - generic [ref=e931] [cursor=pointer]:
+              - img [ref=e932]
+              - generic [ref=e934]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e935]: "3"
+              - button "删除对话" [ref=e936]:
+                - img [ref=e937]
+            - generic [ref=e940] [cursor=pointer]:
+              - img [ref=e941]
+              - generic [ref=e943]: 我的 Azure 账户里有哪些资源？
+              - generic [ref=e944]: "3"
+              - button "删除对话" [ref=e945]:
+                - img [ref=e946]
+            - generic [ref=e949] [cursor=pointer]:
+              - img [ref=e950]
+              - generic [ref=e952]: 帮我把所有 Azure 资源都删除
+              - generic [ref=e953]: "2"
+              - button "删除对话" [ref=e954]:
+                - img [ref=e955]
+            - generic [ref=e958] [cursor=pointer]:
+              - img [ref=e959]
+              - generic [ref=e961]: 列出所有Azure云服务器实例
+              - generic [ref=e962]: "3"
+              - button "删除对话" [ref=e963]:
+                - img [ref=e964]
+            - generic [ref=e967] [cursor=pointer]:
+              - img [ref=e968]
+              - generic [ref=e970]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e971]: "1"
+              - button "删除对话" [ref=e972]:
+                - img [ref=e973]
+            - generic [ref=e976] [cursor=pointer]:
+              - img [ref=e977]
+              - generic [ref=e979]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e980]: "2"
+              - button "删除对话" [ref=e981]:
+                - img [ref=e982]
+            - generic [ref=e985] [cursor=pointer]:
+              - img [ref=e986]
+              - generic [ref=e988]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e989]: "2"
+              - button "删除对话" [ref=e990]:
+                - img [ref=e991]
+            - generic [ref=e994] [cursor=pointer]:
+              - img [ref=e995]
+              - generic [ref=e997]: 创建一台Azure云服务器，名称为myvm，规格为Stand
+              - generic [ref=e998]: "2"
+              - button "删除对话" [ref=e999]:
+                - img [ref=e1000]
+            - generic [ref=e1003] [cursor=pointer]:
+              - img [ref=e1004]
+              - generic [ref=e1006]: Test message in new session
+              - generic [ref=e1007]: "2"
+              - button "删除对话" [ref=e1008]:
+                - img [ref=e1009]
+            - generic [ref=e1012] [cursor=pointer]:
+              - img [ref=e1013]
+              - generic [ref=e1015]: Hello, this is a test message
+              - generic [ref=e1016]: "2"
+              - button "删除对话" [ref=e1017]:
+                - img [ref=e1018]
+        - generic [ref=e1021]:
+          - generic [ref=e1024]: 已连接
+          - generic [ref=e1027]:
+            - generic [ref=e1028]:
+              - img [ref=e1030]
+              - generic [ref=e1033]:
+                - generic [ref=e1034]: 我的云账户里有哪些资源？
+                - button "复制" [ref=e1035] [cursor=pointer]:
+                  - img [ref=e1036]
+                  - generic [ref=e1039]: 复制
+            - generic [ref=e1040]:
+              - img [ref=e1042]
+              - generic [ref=e1045]:
+                - generic [ref=e1046]:
+                  - generic [ref=e1048]: 我来帮您查询云账户中的资源。让我先同步最新的资源数据，然后列出所有资源。
+                  - button "同步资源" [ref=e1050] [cursor=pointer]:
+                    - img [ref=e1051]
+                    - img [ref=e1053]
+                    - generic [ref=e1056]: 同步资源
+                    - img [ref=e1058]
+                  - button "列出资源" [ref=e1062] [cursor=pointer]:
+                    - img [ref=e1063]
+                    - img [ref=e1065]
+                    - generic [ref=e1066]: 列出资源
+                    - img [ref=e1068]
+                  - button "列出资源" [ref=e1072] [cursor=pointer]:
+                    - img [ref=e1073]
+                    - img [ref=e1075]
+                    - generic [ref=e1076]: 列出资源
+                    - img [ref=e1078]
+                  - button "列出资源" [ref=e1082] [cursor=pointer]:
+                    - img [ref=e1083]
+                    - img [ref=e1085]
+                    - generic [ref=e1086]: 列出资源
+                    - img [ref=e1088]
+                  - button "列出资源" [ref=e1092] [cursor=pointer]:
+                    - img [ref=e1093]
+                    - img [ref=e1095]
+                    - generic [ref=e1096]: 列出资源
+                    - img [ref=e1098]
+                  - button "列出资源" [ref=e1102] [cursor=pointer]:
+                    - img [ref=e1103]
+                    - img [ref=e1105]
+                    - generic [ref=e1106]: 列出资源
+                    - img [ref=e1108]
+                  - button "列出资源" [ref=e1112] [cursor=pointer]:
+                    - img [ref=e1113]
+                    - img [ref=e1115]
+                    - generic [ref=e1116]: 列出资源
+                    - img [ref=e1118]
+                  - button "列出资源" [ref=e1122] [cursor=pointer]:
+                    - img [ref=e1123]
+                    - img [ref=e1125]
+                    - generic [ref=e1126]: 列出资源
+                    - img [ref=e1128]
+                  - button "列出资源" [ref=e1132] [cursor=pointer]:
+                    - img [ref=e1133]
+                    - img [ref=e1135]
+                    - generic [ref=e1136]: 列出资源
+                    - img [ref=e1138]
+                  - button "列出资源" [ref=e1142] [cursor=pointer]:
+                    - img [ref=e1143]
+                    - img [ref=e1145]
+                    - generic [ref=e1146]: 列出资源
+                    - img [ref=e1148]
+                  - button "列出资源" [ref=e1152] [cursor=pointer]:
+                    - img [ref=e1153]
+                    - img [ref=e1155]
+                    - generic [ref=e1156]: 列出资源
+                    - img [ref=e1158]
+                  - button "列出资源" [ref=e1162] [cursor=pointer]:
+                    - img [ref=e1163]
+                    - img [ref=e1165]
+                    - generic [ref=e1166]: 列出资源
+                    - img [ref=e1168]
+                  - button "列出实例" [ref=e1172] [cursor=pointer]:
+                    - img [ref=e1173]
+                    - img [ref=e1175]
+                    - generic [ref=e1176]: 列出实例
+                    - img [ref=e1178]
+                  - generic [ref=e1182]: "根据同步结果，您的云账户中目前有以下资源： ## 📊 资源概览 ### AI服务 (Azure) - **winterfellwen-ai-eu2-resource** (东欧区域 - eastus2) - 类型：Cognitive Services (S0规格) - 状态：✅ 已就绪 - 端点：`https://winterfellwen-ai-eu2-resource.cognitiveservices.azure.com/` - **winterfellwen-ai-ea-resource** (东亚区域 - eastasia) - 类型：Cognitive Services (S0规格) - 状态：✅ 已就绪 - 端点：`https://winterfellwen-ai-ea-resource.cognitiveservices.azure.com/` - **winterfellwen-ai-sea-resource** (东南亚区域 - southeastasia) - 类型：Cognitive Services (S0规格) - 状态：✅ 已就绪 - 端点：`https://winterfellwen-ai-sea-resource.cognitiveservices.azure.com/` ### 其他资源类型 - **云服务器实例**：0台 - **磁盘存储**：0个 - **对象存储桶**：0个 - **数据库**：0个 - **缓存**：0个 - **负载均衡器**：0个 - **VPC网络**：0个 - **安全组**：0个 - **CDN**：0个 - **集群**：0个 ## 💡 总结 您的账户中目前只有3个Azure AI服务资源，分布在三个不同的区域，其他类型的云资源暂时没有检测到。如果您需要查看特定云厂商的资源，可以告诉我具体的厂商名称（如aws、aliyun、tencent等），我可以为您进一步查询。"
+                - button "复制" [ref=e1183] [cursor=pointer]:
+                  - img [ref=e1184]
+                  - generic [ref=e1187]: 复制
+          - generic [ref=e1189]:
+            - generic [ref=e1190]:
+              - generic [ref=e1191]:
+                - button "Plan" [ref=e1192] [cursor=pointer]
+                - button "Action" [ref=e1193] [cursor=pointer]
+                - button "Confirm" [ref=e1194] [cursor=pointer]
+              - button "mistralai/mistral-medium-3.5-128b" [ref=e1196] [cursor=pointer]:
+                - generic [ref=e1197]: mistralai/mistral-medium-3.5-128b
+                - img [ref=e1198]
+              - button "深度思考" [ref=e1200] [cursor=pointer]:
+                - img [ref=e1201]
+                - generic [ref=e1211]: 深度思考
+            - generic [ref=e1212]:
+              - textbox "输入消息，/ 查看命令，Enter 发送，Shift+Enter 换行" [ref=e1213]
+              - button "发送" [disabled]:
+                - img
+                - text: 发送
+            - generic [ref=e1214]: "⚡ Action mode: All tools will be executed automatically"

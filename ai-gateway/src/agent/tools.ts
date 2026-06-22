@@ -223,6 +223,22 @@ const TOOL_GROUPS: ToolGroup[] = [
           },
         },
       },
+      {
+        name: 'cloud_service_call',
+        label: '调用云服务API',
+        description: '直接调用 cloud-service HTTP API。支持 GET/POST/PUT/DELETE 方法。路径必须以 /cloud/ 或 /monitor/ 开头。用于执行 cloud_xxx_* 工具未覆盖的高级操作。',
+        dangerLevel: 'safe',
+        group: 'cloud',
+        parameters: {
+          type: 'object',
+          properties: {
+            method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP 方法' },
+            path: { type: 'string', description: 'API 路径，如 /cloud/resources?resourceType=disk' },
+            body: { type: 'object', description: '请求体（仅 POST/PUT 时需要）' },
+          },
+          required: ['method', 'path'],
+        },
+      },
     ],
   },
   {
@@ -338,8 +354,10 @@ export function getLLMToolsForMode(mode?: ModeType): Array<{
 }> {
   return getAllTools()
     .filter(t => {
-      // Plan 模式下排除 shell_execute
-      if (mode === 'plan' && t.name === 'shell_execute') return false;
+      // Plan 模式下仅提供只读（safe）工具
+      if (mode === 'plan') {
+        return t.dangerLevel === 'safe';
+      }
       return true;
     })
     .map(t => ({
@@ -369,7 +387,7 @@ export function getLLMTools(): Array<{
 // ============ Shell 执行 ============
 
 /**
- * 执行 Shell 命令
+ * 执行 Shell 命令（沙箱化：剥离敏感环境变量，拦截凭证提取命令）
  */
 async function executeShell(
   command: string,
@@ -377,11 +395,48 @@ async function executeShell(
 ): Promise<ToolResult> {
   const timeout = Math.min(Math.max(timeoutSeconds, 1), 60) * 1000;
 
+  // 安全校验：拦截高危命令
+  const blockedPatterns = [
+    /\benv\b/,
+    /\bprintenv\b/,
+    /^\s*set\s*$/,
+    /\bexport\s+\w*(KEY|SECRET|TOKEN|PASSWORD)/i,
+    /cat\s+\/proc\/.*\/environ/,
+    /cat\s+\/etc\/(shadow|passwd)/,
+    /curl.*169\.254\.169\.254/,  // AWS metadata
+    /wget.*169\.254\.169\.254/,
+    /\baz\s+(login|account|keyvault|ad)\b/,
+    /\baws\s+(configure|sts|iam)\b/,
+    /\baliyun\s+(configure|sts)\b/,
+  ];
+
+  for (const pattern of blockedPatterns) {
+    if (pattern.test(command)) {
+      return {
+        name: 'shell_execute',
+        success: false,
+        data: null,
+        error: `命令被安全策略禁止: 匹配规则 ${pattern}。如需执行云操作，请使用 cloud_xxx_* 工具。`,
+      };
+    }
+  }
+
   try {
+    // 沙箱环境：只传递非敏感变量
+    const safeEnv: Record<string, string> = {
+      LANG: 'en_US.UTF-8',
+      PATH: process.env.PATH || '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+      HOME: '/tmp',
+    };
+    // 只传递服务间通信 URL（非敏感）
+    if (process.env.CLOUD_SERVICE_URL) safeEnv.CLOUD_SERVICE_URL = process.env.CLOUD_SERVICE_URL;
+    if (process.env.MONITOR_SERVICE_URL) safeEnv.MONITOR_SERVICE_URL = process.env.MONITOR_SERVICE_URL;
+    if (process.env.AUTH_SERVICE_URL) safeEnv.AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL;
+
     const { stdout, stderr } = await execAsync(command, {
       timeout,
       maxBuffer: 1024 * 1024, // 1MB
-      env: { ...process.env, LANG: 'en_US.UTF-8' },
+      env: safeEnv,
     });
 
     return {
@@ -421,6 +476,19 @@ export async function executeTool(
   mode?: ModeType
 ): Promise<ToolResult> {
   const { name, arguments: args } = toolCall;
+
+  // Plan 模式下阻止所有非只读工具执行（防御性检查，正常情况下 LLM 不会调用）
+  if (mode === 'plan') {
+    const toolDef = findTool(name);
+    if (toolDef && toolDef.dangerLevel !== 'safe') {
+      return {
+        name,
+        success: false,
+        data: null,
+        error: `${toolDef.label || name} 在 Plan 模式下不可用，请切换到 Action 或 Confirm 模式`,
+      };
+    }
+  }
 
   // Shell 执行工具需要模式检查
   if (name === 'shell_execute') {
@@ -474,6 +542,15 @@ export async function executeTool(
       case 'monitor_get_cost':
         return await callMonitorService('/monitor/costs/summary', 'GET', args, authToken);
 
+      // 通用 API 调用
+      case 'cloud_service_call':
+        return await executeCloudServiceCall(
+          args.method as string,
+          args.path as string,
+          args.body as Record<string, unknown> | undefined,
+          authToken
+        );
+
       default:
         return { name, success: false, data: null, error: `Unknown tool: ${name}` };
     }
@@ -515,9 +592,10 @@ async function callCloudService(
         body: method !== 'GET' ? JSON.stringify(args) : undefined,
       });
 
-      if (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+      // 502/503/504 为瞬时错误，重试；500 为应用错误，直接返回
+      if (res.status === 502 || res.status === 503 || res.status === 504) {
         const waitTime = Math.pow(2, attempt) * 500;
-        console.log(`Cloud service error ${res.status}, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})`);
+        console.log(`Cloud service transient error ${res.status}, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})`);
         await new Promise(r => setTimeout(r, waitTime));
         continue;
       }
@@ -612,4 +690,48 @@ async function callMonitorService(
 
   const errorMsg = lastError?.message || '网络连接失败';
   return { name: path, success: false, data: null, error: `监控服务请求失败: ${errorMsg}` };
+}
+
+async function executeCloudServiceCall(
+  method: string,
+  path: string,
+  body: Record<string, unknown> | undefined,
+  authToken: string
+): Promise<ToolResult> {
+  // 安全校验：只允许 /cloud/ 和 /monitor/ 路径
+  if (!path.startsWith('/cloud/') && !path.startsWith('/monitor/')) {
+    return { name: 'cloud_service_call', success: false, data: null, error: '安全限制：只允许 /cloud/ 和 /monitor/ 路径' };
+  }
+
+  const url = new URL(`${config.cloudServiceUrl}${path}`);
+
+  try {
+    const res = await fetch(url.toString(), {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = await res.json() as Record<string, unknown>;
+
+    if (!res.ok) {
+      return {
+        name: 'cloud_service_call',
+        success: false,
+        data: null,
+        error: `HTTP ${res.status}: ${(data.error as string) || (data.message as string) || 'Unknown error'}`,
+      };
+    }
+
+    return {
+      name: 'cloud_service_call',
+      success: true,
+      data,
+    };
+  } catch (error: any) {
+    return { name: 'cloud_service_call', success: false, data: null, error: error.message || '网络连接失败' };
+  }
 }

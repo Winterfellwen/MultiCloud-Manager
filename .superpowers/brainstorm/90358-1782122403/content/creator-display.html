@@ -1,0 +1,82 @@
+<h2>创建者信息显示方式</h2>
+<p class="subtitle">对话列表中如何展示是谁创建的对话？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>标题下方小字</h3>
+      <p>创建者用户名显示在对话标题下方，与消息数量同行</p>
+      <div class="mockup" style="margin-top:12px">
+        <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222">
+          <div style="flex:1">
+            <div style="font-size:13px;color:#e0e0e0">如何扩容 ECS 实例</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">
+              <span style="color:#60a5fa">admin</span> · 2条消息 · 3分钟前
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222">
+          <div style="flex:1">
+            <div style="font-size:13px;color:#e0e0e0">查看 AWS 费用</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">
+              <span style="color:#f59e0b">zhangsan</span> · 5条消息 · 1小时前
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>头像 + 用户名</h3>
+      <p>左侧显示用户头像首字母圆圈，右侧显示标题和用户名</p>
+      <div class="mockup" style="margin-top:12px">
+        <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222">
+          <div style="width:32px;height:32px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:13px;color:white;margin-right:10px;flex-shrink:0">A</div>
+          <div style="flex:1">
+            <div style="font-size:13px;color:#e0e0e0">如何扩容 ECS 实例</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">admin · 2条消息</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222">
+          <div style="width:32px;height:32px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:13px;color:white;margin-right:10px;flex-shrink:0">Z</div>
+          <div style="flex:1">
+            <div style="font-size:13px;color:#e0e0e0">查看 AWS 费用</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">zhangsan · 5条消息</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>彩色标签</h3>
+      <p>用户名以彩色标签（tag/badge）形式显示，每个用户固定颜色</p>
+      <div class="mockup" style="margin-top:12px">
+        <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222">
+          <div style="flex:1">
+            <div style="font-size:13px;color:#e0e0e0">如何扩容 ECS 实例</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px">
+              <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640">admin</span>
+              <span style="font-size:11px;color:#666">2条消息</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #222">
+          <div style="flex:1">
+            <div style="font-size:13px;color:#e0e0e0">查看 AWS 费用</div>
+            <div style="margin-top:4px;display:flex;align-items:center;gap:6px">
+              <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">zhangsan</span>
+              <span style="font-size:11px;color:#666">5条消息</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
