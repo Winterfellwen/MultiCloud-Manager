@@ -46,6 +46,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // 清除会话持久化
+        localStorage.removeItem('chat-current-session');
         set({
           accessToken: null,
           refreshToken: null,

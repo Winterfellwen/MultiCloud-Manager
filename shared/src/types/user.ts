@@ -5,6 +5,7 @@ export interface User {
   username: string;
   email: string | null;
   role: UserRole;
+  team: string;
   apiKey: string | null;
   createdAt: Date;
   lastLoginAt: Date | null;
@@ -15,6 +16,7 @@ export interface CreateUserInput {
   email?: string;
   password: string;
   role?: UserRole;
+  team?: string;
 }
 
 export interface LoginInput {

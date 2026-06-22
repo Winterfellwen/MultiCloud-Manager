@@ -1,7 +1,7 @@
 // 用户管理 React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../api/users';
-import type { CreateUserParams, UpdateRoleParams } from '../types/user';
+import type { CreateUserParams, UpdateRoleParams, UpdateTeamParams } from '../types/user';
 
 export function useUsers() {
   return useQuery({
@@ -23,6 +23,15 @@ export function useUpdateUserRole() {
   return useMutation({
     mutationFn: ({ id, params }: { id: string; params: UpdateRoleParams }) =>
       usersApi.updateRole(id, params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+}
+
+export function useUpdateUserTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, params }: { id: string; params: UpdateTeamParams }) =>
+      usersApi.updateTeam(id, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }

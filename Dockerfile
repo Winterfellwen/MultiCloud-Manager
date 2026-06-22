@@ -1,10 +1,16 @@
 # 多阶段构建：构建所有后端服务
 FROM node:22-alpine AS builder
 
+# 配置 Alpine 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 
 # 安装构建依赖
 RUN apk add --no-cache python3 make g++
+
+# 配置 npm 镜像源
+RUN npm config set registry https://registry.npmmirror.com
 
 # 复制所有源代码
 COPY shared/ ./shared/
@@ -39,9 +45,15 @@ RUN cp -r auth-service/migrations auth-service/dist/migrations && \
 # 构建前端
 FROM node:22-alpine AS frontend-builder
 
+# 配置 Alpine 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 
 RUN apk add --no-cache python3 make g++
+
+# 配置 npm 镜像源
+RUN npm config set registry https://registry.npmmirror.com
 
 # 复制整个前端目录（包含所有配置文件和源代码）
 COPY shared/ ./shared/
@@ -63,11 +75,17 @@ RUN cd /app/web-console && npm install && npm run build
 # 最终镜像
 FROM node:22-alpine
 
+# 配置 Alpine 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 
 # 安装运行时依赖
 RUN apk add --no-cache nginx supervisor && \
     npm install -g pm2
+
+# 配置 npm 镜像源
+RUN npm config set registry https://registry.npmmirror.com
 
 # 复制构建产物
 COPY --from=builder /app/shared/dist ./shared/dist

@@ -149,9 +149,11 @@ function buildAttachmentPayload(attachments: ChatAttachment[]): ChatSendAttachme
 
 const LS_KEY_MODE = 'chat-mode';
 const LS_KEY_MODEL = 'chat-selected-model';
+const LS_KEY_SESSION = 'chat-current-session';
 
 const initialMode = (localStorage.getItem(LS_KEY_MODE) as Mode) || 'plan';
 const initialSelectedModel = localStorage.getItem(LS_KEY_MODEL) || null;
+const initialSessionKey = localStorage.getItem(LS_KEY_SESSION) || null;
 
 // 正在加载历史的 session 集合（防止并发调用 loadSessionHistory 导致竞态）
 const loadingSessions = new Set<string>();
@@ -262,7 +264,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   wsClient: null,
   connectionStatus: 'disconnected',
   sessions: [],
-  currentSessionKey: null,
+  currentSessionKey: initialSessionKey,
   messagesBySession: {},
   runIdToSession: {},
   streamingBuffers: {},
@@ -533,11 +535,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       currentSessionKey: sessionKey,
       messagesBySession: { ...state.messagesBySession, [sessionKey]: [] },
     }));
+    localStorage.setItem(LS_KEY_SESSION, sessionKey);
     return sessionKey;
   },
 
   selectSession: (sessionKey) => {
     set({ currentSessionKey: sessionKey });
+    localStorage.setItem(LS_KEY_SESSION, sessionKey);
     // 加载历史
     get().loadSessionHistory(sessionKey);
     // 标记会话已查看，清除"已完成"状态指示
@@ -587,6 +591,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ? (newSessions.length > 0 ? newSessions[0].sessionKey : null)
         : currentSessionKey;
 
+      // 持久化新的 currentSessionKey
+      if (newCurrent) {
+        localStorage.setItem(LS_KEY_SESSION, newCurrent);
+      } else {
+        localStorage.removeItem(LS_KEY_SESSION);
+      }
+
       return {
         sessions: newSessions,
         messagesBySession: newMessagesBySession,
@@ -617,7 +628,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
         username: s.username,
         createdAt: s.createdAt,
       }));
-      set({ sessions, sessionsFilter: f });
+      
+      // 验证 currentSessionKey 是否仍在列表中
+      const { currentSessionKey } = get();
+      let newCurrent = currentSessionKey;
+      if (currentSessionKey && !sessions.find(s => s.sessionKey === currentSessionKey)) {
+        // 当前会话不在列表中（可能已被删除），选择第一个
+        newCurrent = sessions.length > 0 ? sessions[0].sessionKey : null;
+        if (newCurrent) {
+          localStorage.setItem(LS_KEY_SESSION, newCurrent);
+        } else {
+          localStorage.removeItem(LS_KEY_SESSION);
+        }
+      }
+      
+      set({ sessions, sessionsFilter: f, currentSessionKey: newCurrent });
     } catch (err) {
       console.error('Failed to fetch sessions:', err);
     }

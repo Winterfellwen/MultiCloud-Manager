@@ -11,6 +11,7 @@ export class UserService {
       username: users.username,
       email: users.email,
       role: users.role,
+      team: users.team,
       createdAt: users.createdAt,
       lastLoginAt: users.lastLoginAt,
     }).from(users);
@@ -23,6 +24,7 @@ export class UserService {
       username: users.username,
       email: users.email,
       role: users.role,
+      team: users.team,
       createdAt: users.createdAt,
       lastLoginAt: users.lastLoginAt,
     }).from(users).where(eq(users.id, id)).limit(1);
@@ -36,6 +38,13 @@ export class UserService {
 
   async updateRole(id: string, role: UserRole): Promise<void> {
     const result = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
+    if (result.length === 0) {
+      throw new NotFoundError('User', id);
+    }
+  }
+
+  async updateTeam(id: string, team: string): Promise<void> {
+    const result = await db.update(users).set({ team }).where(eq(users.id, id)).returning();
     if (result.length === 0) {
       throw new NotFoundError('User', id);
     }

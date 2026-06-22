@@ -8,6 +8,7 @@ const registerSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(8),
   role: z.enum(['admin', 'ops_manager', 'ops_engineer', 'viewer']).optional(),
+  team: z.string().optional(),
 });
 
 const loginSchema = z.object({

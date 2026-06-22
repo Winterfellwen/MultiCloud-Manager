@@ -25,6 +25,7 @@ export class AuthService {
       email: input.email,
       passwordHash,
       role: input.role || (isFirstUser ? 'admin' : 'viewer'),
+      team: input.team || '',
     }).returning({ id: users.id, username: users.username, role: users.role });
 
     return result[0] as { id: string; username: string; role: UserRole };

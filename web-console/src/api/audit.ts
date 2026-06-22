@@ -13,6 +13,6 @@ export const auditApi = {
     if (query?.limit) params.set('limit', String(query.limit));
     if (query?.offset) params.set('offset', String(query.offset));
     const qs = params.toString();
-    return api.get<AuditLogRow[]>(`/audit/${qs ? `?${qs}` : ''}`);
+    return api.get<AuditLogRow[]>(`/api/audit/${qs ? `?${qs}` : ''}`);
   },
 };

@@ -7,6 +7,7 @@ export interface UserRow {
   username: string;
   email: string | null;
   role: UserRole;
+  team: string;
   createdAt: string;
   lastLoginAt: string | null;
 }
@@ -17,6 +18,7 @@ export interface CreateUserParams {
   email?: string;
   password: string;
   role?: UserRole;
+  team?: string;
 }
 
 /** 创建用户响应 */
@@ -29,6 +31,11 @@ export interface CreateUserResponse {
 /** 更新角色参数（PATCH /users/:id/role） */
 export interface UpdateRoleParams {
   role: UserRole;
+}
+
+/** 更新团队参数（PATCH /users/:id/team） */
+export interface UpdateTeamParams {
+  team: string;
 }
 
 /** 角色中文标签映射 */

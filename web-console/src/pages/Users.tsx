@@ -1,8 +1,8 @@
-// 用户管理页：列表 + 角色分配 + 删除 + 创建用户
+// 用户管理页：列表 + 角色分配 + 团队设置 + 删除 + 创建用户
 import { useState } from 'react';
 import { UserPlus, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
-import { useUsers, useCreateUser, useUpdateUserRole, useDeleteUser } from '@/hooks/useUsers';
+import { useUsers, useCreateUser, useUpdateUserRole, useUpdateUserTeam, useDeleteUser } from '@/hooks/useUsers';
 import { ROLE_OPTIONS, ROLE_LABELS } from '@/types/user';
 import type { UserRole } from '@/types/auth';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ export default function Users() {
   const { data: users, isLoading, error } = useUsers();
   const createUser = useCreateUser();
   const updateRole = useUpdateUserRole();
+  const updateTeam = useUpdateUserTeam();
   const deleteUser = useDeleteUser();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,6 +37,7 @@ export default function Users() {
     email: '',
     password: '',
     role: 'viewer' as UserRole,
+    team: '',
   });
 
   const handleCreate = async () => {
@@ -46,9 +48,10 @@ export default function Users() {
         email: form.email || undefined,
         password: form.password,
         role: form.role,
+        team: form.team || undefined,
       });
       setDialogOpen(false);
-      setForm({ username: '', email: '', password: '', role: 'viewer' });
+      setForm({ username: '', email: '', password: '', role: 'viewer', team: '' });
     } catch {
       // 错误由 mutation 状态展示
     }
@@ -57,6 +60,14 @@ export default function Users() {
   const handleRoleChange = async (id: string, role: UserRole) => {
     try {
       await updateRole.mutateAsync({ id, params: { role } });
+    } catch {
+      // 错误由 mutation 状态展示
+    }
+  };
+
+  const handleTeamChange = async (id: string, team: string) => {
+    try {
+      await updateTeam.mutateAsync({ id, params: { team } });
     } catch {
       // 错误由 mutation 状态展示
     }
@@ -101,6 +112,7 @@ export default function Users() {
               <TableHead className="w-[150px]">用户名</TableHead>
               <TableHead className="w-[200px]">邮箱</TableHead>
               <TableHead className="w-[150px]">角色</TableHead>
+              <TableHead className="w-[150px]">团队</TableHead>
               <TableHead className="w-[180px]">创建时间</TableHead>
               <TableHead className="w-[180px]">最后登录</TableHead>
               <TableHead className="w-[80px]">操作</TableHead>
@@ -109,13 +121,13 @@ export default function Users() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : users && users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   暂无用户
                 </TableCell>
               </TableRow>
@@ -142,6 +154,19 @@ export default function Users() {
                           </option>
                         ))}
                       </Select>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {currentUser?.id === user.id ? (
+                      <span className="text-xs text-muted-foreground">{user.team || '-'}</span>
+                    ) : (
+                      <Input
+                        value={user.team || ''}
+                        onChange={(e) => handleTeamChange(user.id, e.target.value)}
+                        placeholder="未分配"
+                        className="h-8 w-[120px] py-1 text-xs"
+                        disabled={updateTeam.isPending}
+                      />
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
@@ -222,6 +247,15 @@ export default function Users() {
                 </option>
               ))}
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="team">团队（可选）</Label>
+            <Input
+              id="team"
+              value={form.team}
+              onChange={(e) => setForm({ ...form, team: e.target.value })}
+              placeholder="如：SRE、DBA、开发组"
+            />
           </div>
           {createUser.isError && (
             <p className="text-sm text-destructive">

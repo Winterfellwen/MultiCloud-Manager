@@ -58,6 +58,8 @@ export async function handleSessionsList(
 
     respond(true, { sessions });
   } catch (err) {
+    console.error('[sessions.list] ERROR:', err instanceof Error ? err.message : String(err));
+    console.error('[sessions.list] STACK:', err instanceof Error ? err.stack : 'no stack');
     respond(false, { error: 'FAILED_TO_LIST_SESSIONS', detail: err instanceof Error ? err.message : String(err) });
   }
 }

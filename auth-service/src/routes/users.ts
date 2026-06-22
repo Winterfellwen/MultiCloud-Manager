@@ -21,6 +21,13 @@ export async function userRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  app.patch('/:id/team', { preHandler: requirePermission('user', 'manage') }, async (request) => {
+    const { id } = request.params as { id: string };
+    const { team } = request.body as { team: string };
+    await userService.updateTeam(id, team || '');
+    return { ok: true };
+  });
+
   app.delete('/:id', { preHandler: requirePermission('user', 'delete') }, async (request) => {
     const { id } = request.params as { id: string };
     await userService.delete(id);

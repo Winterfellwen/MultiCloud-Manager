@@ -63,7 +63,10 @@ export async function recordEvent(
         INSERT INTO acp_replay_sessions (session_key, created_at, last_seq, user_id, username)
         VALUES (${sessionKey}, ${now}, 1, ${userInfo?.userId || ''}, ${userInfo?.username || ''})
         ON CONFLICT (session_key)
-        DO UPDATE SET last_seq = acp_replay_sessions.last_seq + 1
+        DO UPDATE SET
+          last_seq = acp_replay_sessions.last_seq + 1,
+          user_id = CASE WHEN acp_replay_sessions.user_id = '' THEN ${userInfo?.userId || ''} ELSE acp_replay_sessions.user_id END,
+          username = CASE WHEN acp_replay_sessions.username = '' THEN ${userInfo?.username || ''} ELSE acp_replay_sessions.username END
         RETURNING last_seq
       `);
       return Number((upsertResult[0] as { last_seq: string | number }).last_seq);
@@ -76,7 +79,10 @@ export async function recordEvent(
     INSERT INTO acp_replay_sessions (session_key, created_at, last_seq, user_id, username)
     VALUES (${sessionKey}, ${now}, 1, ${userInfo?.userId || ''}, ${userInfo?.username || ''})
     ON CONFLICT (session_key)
-    DO UPDATE SET last_seq = acp_replay_sessions.last_seq + 1
+    DO UPDATE SET
+      last_seq = acp_replay_sessions.last_seq + 1,
+      user_id = CASE WHEN acp_replay_sessions.user_id = '' THEN ${userInfo?.userId || ''} ELSE acp_replay_sessions.user_id END,
+      username = CASE WHEN acp_replay_sessions.username = '' THEN ${userInfo?.username || ''} ELSE acp_replay_sessions.username END
     RETURNING last_seq
   `);
   const seq = Number((upsertResult[0] as { last_seq: string | number }).last_seq);
@@ -207,22 +213,26 @@ export async function listSessions(
 
   const sessionKeys = sessionRows.map(r => r.session_key);
 
-  const countRows = await db.execute(sql`
-    SELECT session_key, COUNT(*) as count
-    FROM acp_replay_events
-    WHERE session_key = ANY(${sessionKeys})
-      AND event_type = 'user_message'
-    GROUP BY session_key
-  `) as unknown as CountRow[];
+  const countRows = sessionKeys.length > 0
+    ? await db.execute(sql`
+      SELECT session_key, COUNT(*) as count
+      FROM acp_replay_events
+      WHERE session_key IN (${sql.join(sessionKeys.map(k => sql`${k}`), sql`, `)})
+        AND event_type = 'user_message'
+      GROUP BY session_key
+    `) as unknown as CountRow[]
+    : [] as CountRow[];
 
   const countMap = new Map(countRows.map(r => [r.session_key, Number(r.count)]));
 
-  const lastTsRows = await db.execute(sql`
-    SELECT session_key, MAX(timestamp) as max_ts
-    FROM acp_replay_events
-    WHERE session_key = ANY(${sessionKeys})
-    GROUP BY session_key
-  `) as unknown as LastTsRow[];
+  const lastTsRows = sessionKeys.length > 0
+    ? await db.execute(sql`
+      SELECT session_key, MAX(timestamp) as max_ts
+      FROM acp_replay_events
+      WHERE session_key IN (${sql.join(sessionKeys.map(k => sql`${k}`), sql`, `)})
+      GROUP BY session_key
+    `) as unknown as LastTsRow[]
+    : [] as LastTsRow[];
 
   const lastTsMap = new Map(lastTsRows.map(r => [r.session_key, Number(r.max_ts) || 0]));
 
@@ -255,7 +265,7 @@ export async function deleteBatchSessions(
 
   const ownerRows = await db.execute(sql`
     SELECT session_key, user_id FROM acp_replay_sessions
-    WHERE session_key = ANY(${sessionKeys})
+    WHERE session_key IN (${sql.join(sessionKeys.map(k => sql`${k}`), sql`, `)})
   `) as unknown as Array<{ session_key: string; user_id: string }>;
 
   const ownerMap = new Map(ownerRows.map(r => [r.session_key, r.user_id]));
