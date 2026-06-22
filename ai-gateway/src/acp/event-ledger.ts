@@ -45,7 +45,8 @@ export function markRunCompleted(runId: string): void {
 export async function recordEvent(
   sessionKey: string,
   eventType: string,
-  payload: unknown
+  payload: unknown,
+  userInfo?: { userId: string; username: string }
 ): Promise<number> {
   const now = Date.now();
 
@@ -59,8 +60,8 @@ export async function recordEvent(
     const lastDelta = lastDeltaTextByRunId.get(runId) || '';
     if (delta && delta === lastDelta) {
       const upsertResult = await db.execute(sql`
-        INSERT INTO acp_replay_sessions (session_key, created_at, last_seq)
-        VALUES (${sessionKey}, ${now}, 1)
+        INSERT INTO acp_replay_sessions (session_key, created_at, last_seq, user_id, username)
+        VALUES (${sessionKey}, ${now}, 1, ${userInfo?.userId || ''}, ${userInfo?.username || ''})
         ON CONFLICT (session_key)
         DO UPDATE SET last_seq = acp_replay_sessions.last_seq + 1
         RETURNING last_seq
@@ -72,8 +73,8 @@ export async function recordEvent(
 
   // 使用 UPSERT 原子递增 seq（queuedRecordEvent 已串行化同 sessionKey 的调用，确保顺序）
   const upsertResult = await db.execute(sql`
-    INSERT INTO acp_replay_sessions (session_key, created_at, last_seq)
-    VALUES (${sessionKey}, ${now}, 1)
+    INSERT INTO acp_replay_sessions (session_key, created_at, last_seq, user_id, username)
+    VALUES (${sessionKey}, ${now}, 1, ${userInfo?.userId || ''}, ${userInfo?.username || ''})
     ON CONFLICT (session_key)
     DO UPDATE SET last_seq = acp_replay_sessions.last_seq + 1
     RETURNING last_seq
@@ -144,4 +145,164 @@ export async function clearSessionEvents(sessionKey: string): Promise<void> {
     const toDelete = entries.slice(0, entries.length - 1000);
     for (const id of toDelete) lastDeltaTextByRunId.delete(id);
   }
+}
+
+export interface SessionListItem {
+  sessionKey: string;
+  title: string;
+  username: string;
+  userId: string;
+  messageCount: number;
+  lastMessageAt: number;
+  createdAt: number;
+}
+
+interface SessionRow {
+  session_key: string;
+  title: string | null;
+  username: string;
+  user_id: string;
+  created_at: string;
+}
+
+interface CountRow {
+  session_key: string;
+  count: string;
+}
+
+interface LastTsRow {
+  session_key: string;
+  max_ts: string | null;
+}
+
+/**
+ * 列出用户可见的会话
+ */
+export async function listSessions(
+  viewerId: string,
+  viewerRole: string,
+  viewerTeam: string,
+  filter: 'mine' | 'team' | 'all' = 'mine'
+): Promise<SessionListItem[]> {
+  let whereClause;
+
+  if (filter === 'all' && viewerRole === 'admin') {
+    whereClause = sql`WHERE 1=1`;
+  } else if (filter === 'team' && viewerTeam) {
+    whereClause = sql`WHERE s.user_id IN (
+      SELECT id::text FROM users WHERE team = ${viewerTeam} AND team != ''
+    )`;
+  } else {
+    whereClause = sql`WHERE s.user_id = ${viewerId}`;
+  }
+
+  const sessionRows = await db.execute(sql`
+    SELECT s.session_key, s.title, s.username, s.user_id, s.created_at
+    FROM acp_replay_sessions s
+    ${whereClause}
+    ORDER BY s.created_at DESC
+  `) as unknown as SessionRow[];
+
+  if (sessionRows.length === 0) return [];
+
+  const sessionKeys = sessionRows.map(r => r.session_key);
+
+  const countRows = await db.execute(sql`
+    SELECT session_key, COUNT(*) as count
+    FROM acp_replay_events
+    WHERE session_key = ANY(${sessionKeys})
+      AND event_type = 'user_message'
+    GROUP BY session_key
+  `) as unknown as CountRow[];
+
+  const countMap = new Map(countRows.map(r => [r.session_key, Number(r.count)]));
+
+  const lastTsRows = await db.execute(sql`
+    SELECT session_key, MAX(timestamp) as max_ts
+    FROM acp_replay_events
+    WHERE session_key = ANY(${sessionKeys})
+    GROUP BY session_key
+  `) as unknown as LastTsRow[];
+
+  const lastTsMap = new Map(lastTsRows.map(r => [r.session_key, Number(r.max_ts) || 0]));
+
+  return sessionRows.map(row => ({
+    sessionKey: row.session_key,
+    title: row.title || '新对话',
+    username: row.username || 'unknown',
+    userId: row.user_id,
+    messageCount: countMap.get(row.session_key) || 0,
+    lastMessageAt: lastTsMap.get(row.session_key) || Number(row.created_at),
+    createdAt: Number(row.created_at),
+  }));
+}
+
+export interface DeleteBatchResult {
+  deleted: number;
+  errors: Array<{ key: string; error: string }>;
+}
+
+/**
+ * 批量删除会话
+ */
+export async function deleteBatchSessions(
+  sessionKeys: string[],
+  viewerId: string,
+  viewerRole: string,
+  viewerTeam: string
+): Promise<DeleteBatchResult> {
+  const result: DeleteBatchResult = { deleted: 0, errors: [] };
+
+  const ownerRows = await db.execute(sql`
+    SELECT session_key, user_id FROM acp_replay_sessions
+    WHERE session_key = ANY(${sessionKeys})
+  `) as unknown as Array<{ session_key: string; user_id: string }>;
+
+  const ownerMap = new Map(ownerRows.map(r => [r.session_key, r.user_id]));
+
+  let teamUserIds: Set<string> = new Set();
+  if (viewerTeam) {
+    const teamRows = await db.execute(sql`
+      SELECT id::text as uid FROM users WHERE team = ${viewerTeam} AND team != ''
+    `) as unknown as Array<{ uid: string }>;
+    teamUserIds = new Set(teamRows.map(r => r.uid));
+  }
+
+  for (const key of sessionKeys) {
+    const ownerId = ownerMap.get(key);
+    if (!ownerId) {
+      result.errors.push({ key, error: 'SESSION_NOT_FOUND' });
+      continue;
+    }
+
+    const canDelete = viewerRole === 'admin'
+      || ownerId === viewerId
+      || teamUserIds.has(ownerId);
+
+    if (!canDelete) {
+      result.errors.push({ key, error: 'NOT_AUTHORIZED' });
+      continue;
+    }
+
+    try {
+      await clearSessionEvents(key);
+      result.deleted++;
+    } catch (err) {
+      result.errors.push({ key, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 更新会话标题
+ */
+export async function updateSessionTitle(
+  sessionKey: string,
+  title: string
+): Promise<void> {
+  await db.execute(sql`
+    UPDATE acp_replay_sessions SET title = ${title} WHERE session_key = ${sessionKey}
+  `);
 }
