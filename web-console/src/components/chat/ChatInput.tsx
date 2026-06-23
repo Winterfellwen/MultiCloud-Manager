@@ -1,12 +1,15 @@
 // 输入框 + 发送 + 中止按钮 + 模型选择 + 斜杠命令 + 深度思考开关
 import { useState, useEffect, type KeyboardEvent } from 'react';
 import { Send, Square, Brain } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useChatStore, type Mode } from '../../stores/chat';
 import { useSlashCommands, type SlashCommand } from '../../hooks/useSlashCommands';
 import { Button } from '../ui/button';
 import { ModelSelect } from './ModelSelect';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { cn } from '../../lib/utils';
+
+const MotionButton = motion.create(Button);
 
 const modes: { value: Mode; label: string; color: string }[] = [
   { value: 'plan', label: 'Plan', color: 'blue' },
@@ -222,15 +225,25 @@ export function ChatInput() {
             style={{ minHeight: '40px' }}
           />
           {isSending ? (
-            <Button onClick={handleAbort} variant="destructive" size="sm">
+            <MotionButton
+              onClick={handleAbort}
+              variant="destructive"
+              size="sm"
+              whileTap={{ scale: 0.95 }}
+            >
               <Square className="h-4 w-4" />
               中止
-            </Button>
+            </MotionButton>
           ) : (
-            <Button onClick={handleSend} disabled={!inputText.trim()} size="sm">
+            <MotionButton
+              onClick={handleSend}
+              disabled={!inputText.trim()}
+              size="sm"
+              whileTap={{ scale: 0.95 }}
+            >
               <Send className="h-4 w-4" />
               发送
-            </Button>
+            </MotionButton>
           )}
         </div>
 
