@@ -1,13 +1,15 @@
 // Demo API 替换函数 - 提供与真实 API 兼容的接口
 import {
   getAllDemoInstances,
-  getDemoResources,
   getDemoAlerts,
-  getDemoCostSummary,
-  getDemoUsers,
-  getDemoMetrics,
+  getDemoAuditLogs,
   getDemoCloudAccounts,
+  getDemoCostSummary,
+  getDemoMetrics,
+  getDemoResources,
+  getDemoUsers,
 } from './mock-data';
+import type { AuditLogQuery, AuditLogRow } from '@/types/audit';
 import type { ListInstancesParams, InstanceRow } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
 
@@ -53,6 +55,18 @@ export function demoGetCostSummary(start: string, end: string) {
 
 export function demoListUsers() {
   return Promise.resolve(getDemoUsers());
+}
+
+export function demoListAuditLogs(query?: AuditLogQuery): Promise<AuditLogRow[]> {
+  let list = getDemoAuditLogs();
+  if (query?.userId) list = list.filter((r) => r.userId === query.userId);
+  if (query?.action) list = list.filter((r) => r.action === query.action);
+  if (query?.provider) list = list.filter((r) => r.provider === query.provider);
+  if (query?.startDate) list = list.filter((r) => r.timestamp >= query.startDate!);
+  if (query?.endDate) list = list.filter((r) => r.timestamp <= query.endDate!);
+  const offset = query?.offset || 0;
+  const limit = query?.limit || list.length;
+  return Promise.resolve(list.slice(offset, offset + limit));
 }
 
 export function demoGetMetrics(instanceId: string) {

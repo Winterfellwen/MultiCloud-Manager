@@ -2,6 +2,7 @@
 // 为 7 家云厂商生成大量模拟资源数据
 import type { InstanceRow } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
+import type { AuditLogRow } from '@/types/audit';
 
 // ===== 工具函数 =====
 function seededRandom(seed: number): () => number {
@@ -252,6 +253,54 @@ export function getDemoUsers(): DemoUser[] {
     { id: 'demo-u-4', username: 'demo-engineer-2', email: 'eng2@demo.cloudops.io', role: 'ops_engineer', team: 'Backend', createdAt: '2024-04-05T08:00:00Z', lastLoginAt: '2026-06-22T16:20:00Z' },
     { id: 'demo-u-5', username: 'demo-viewer', email: 'viewer@demo.cloudops.io', role: 'viewer', team: 'Finance', createdAt: '2024-05-12T08:00:00Z', lastLoginAt: '2026-06-20T14:00:00Z' },
   ];
+}
+
+// ===== 审计日志 =====
+const DEMO_ACTIONS = [
+  { action: 'instance.create', resourceType: 'instance', result: 'success' as const },
+  { action: 'instance.start', resourceType: 'instance', result: 'success' as const },
+  { action: 'instance.stop', resourceType: 'instance', result: 'success' as const },
+  { action: 'instance.terminate', resourceType: 'instance', result: 'success' as const },
+  { action: 'resource.tag', resourceType: 'resource', result: 'success' as const },
+  { action: 'cost.export', resourceType: 'report', result: 'success' as const },
+  { action: 'alert.acknowledge', resourceType: 'alert', result: 'success' as const },
+  { action: 'login', resourceType: 'session', result: 'success' as const },
+  { action: 'login', resourceType: 'session', result: 'failure' as const },
+  { action: 'permission.deny', resourceType: 'policy', result: 'failure' as const },
+];
+
+export function getDemoAuditLogs(): AuditLogRow[] {
+  const rand = seededRandom(20260623);
+  const users = getDemoUsers();
+  const providers = ['aliyun', 'aws', 'azure', 'tencent', 'huawei'];
+  const regions: Record<string, string[]> = {
+    aliyun: ['cn-hangzhou', 'cn-shanghai', 'cn-beijing'],
+    aws: ['us-east-1', 'us-west-2', 'ap-northeast-1'],
+    azure: ['eastus', 'westus2', 'asiaeast'],
+    tencent: ['ap-guangzhou', 'ap-shanghai', 'ap-beijing'],
+    huawei: ['cn-north-4', 'cn-east-3', 'cn-south-1'],
+  };
+  const list: AuditLogRow[] = [];
+  for (let i = 0; i < 80; i++) {
+    const item = pick(DEMO_ACTIONS, rand);
+    const user = pick(users, rand);
+    const provider = pick(providers, rand);
+    list.push({
+      id: `demo-audit-${i + 1}`,
+      timestamp: randomDate(7, rand),
+      userId: user.id,
+      action: item.action,
+      resourceType: item.resourceType,
+      resourceId: `res-${1000 + i}`,
+      provider,
+      region: pick(regions[provider], rand),
+      params: { source: 'demo', seq: i },
+      result: item.result,
+      ip: generateIP(rand),
+      traceId: `trace-${(rand() * 1e9).toFixed(0)}`,
+    });
+  }
+  return list.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
 }
 
 // ===== 监控时间序列 =====

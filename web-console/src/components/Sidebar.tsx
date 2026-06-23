@@ -123,10 +123,10 @@ export function Sidebar() {
                 to={item.children ? item.children[0].to : item.to}
                 className={cn(
                   'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                  'transition-colors',
-                  'hover:bg-accent hover:text-accent-foreground',
+                  'transition-[background-color,color,box-shadow] duration-150',
+                  'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
                   isActive
-                    ? 'bg-foreground text-background shadow-sm'
+                    ? 'bg-foreground text-background shadow-sm hover:bg-foreground hover:text-background'
                     : 'text-muted-foreground'
                 )}
               >
@@ -146,10 +146,10 @@ export function Sidebar() {
                         to={child.to}
                         className={cn(
                           'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
-                          'transition-colors',
-                          'hover:bg-accent hover:text-accent-foreground',
+                          'transition-[background-color,color] duration-150',
+                          'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
                           childActive
-                            ? 'bg-foreground text-background font-semibold'
+                            ? 'bg-foreground text-background font-semibold hover:bg-foreground hover:text-background'
                             : 'text-muted-foreground'
                         )}
                       >
