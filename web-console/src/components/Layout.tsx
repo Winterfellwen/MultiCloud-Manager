@@ -74,7 +74,18 @@ export function Layout() {
           'flex-1 overflow-hidden',
           isChatPage ? 'p-0' : 'overflow-auto p-3 md:p-6'
         )}>
-          <Outlet />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: DURATION.page, ease: EASE.out }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
