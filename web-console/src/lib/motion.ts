@@ -1,5 +1,7 @@
 import type { Variants } from 'framer-motion';
 
+export type FadeUpVariants = Variants;
+
 /** 缓动曲线（cubic-bezier 数组） */
 export const EASE = {
   out: [0.16, 1, 0.3, 1] as [number, number, number, number],
