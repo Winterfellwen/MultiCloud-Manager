@@ -848,17 +848,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // 竞态修复：如果 inFlightRun 的 runId 已在 serverRunIds 中（DB 有 user_message 但无 assistant_complete），
       // acpEventsToMessages 已将 assistant 消息错误标记为 complete。需要恢复为 streaming 并设置 isSending。
       if (res.inFlightRun && serverRunIds.has(res.inFlightRun.runId) && res.inFlightRun.isRunning) {
-        const { runId } = res.inFlightRun;
+        const { runId, bufferedText, bufferedReasoning } = res.inFlightRun;
         // 记录 runId 映射
         set((state) => ({
           runIdToSession: { ...state.runIdToSession, [runId]: sessionKey },
         }));
-        // 将该 runId 的 assistant 消息恢复为 streaming 状态
-        const updatedMessages = finalMessages.map((m) =>
-          m.runId === runId && m.role === 'assistant' ? { ...m, status: 'streaming' as const } : m
-        );
-        finalMessages.length = 0;
-        finalMessages.push(...updatedMessages);
+
+        // 查找或创建 assistant 消息
+        const existingIdx = finalMessages.findIndex((m) => m.runId === runId && m.role === 'assistant');
+        if (existingIdx >= 0) {
+          // 已有 assistant 消息，恢复为 streaming 状态
+          finalMessages[existingIdx] = { ...finalMessages[existingIdx], status: 'streaming' };
+        } else {
+          // 没有 assistant 消息（DB 只有 user_message），创建占位消息
+          const snapshotBlocks: ContentBlock[] = [];
+          if (bufferedReasoning) {
+            snapshotBlocks.push({ type: 'reasoning', id: `blk-r-${Date.now()}`, content: bufferedReasoning });
+          }
+          if (bufferedText) {
+            snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: bufferedText });
+          }
+          finalMessages.push({
+            id: generateMessageId(),
+            sessionKey,
+            runId,
+            role: 'assistant',
+            content: bufferedText || '',
+            ...(bufferedReasoning ? { reasoning: bufferedReasoning } : {}),
+            toolCalls: [],
+            blocks: snapshotBlocks,
+            status: 'streaming',
+            createdAt: res.inFlightRun.startedAt,
+          });
+        }
+
         set({ isSending: true });
         // 同样启动安全超时
         if (isSendingSafetyTimer) clearTimeout(isSendingSafetyTimer);
