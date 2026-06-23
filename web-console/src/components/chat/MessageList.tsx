@@ -1,8 +1,10 @@
 // 消息列表：消息按顺序排列，自动滚动到底部
 import { useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import type { ChatMessage } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { ScrollArea } from '../ui/scroll-area';
+import { stagger } from '../../lib/motion';
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -25,12 +27,17 @@ export function MessageList({ messages }: MessageListProps) {
 
   return (
     <ScrollArea className="h-full overflow-y-auto">
-      <div className="py-4">
+      <motion.div
+        className="py-4"
+        initial="initial"
+        animate="animate"
+        variants={stagger}
+      >
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
         <div ref={bottomRef} />
-      </div>
+      </motion.div>
     </ScrollArea>
   );
 }
