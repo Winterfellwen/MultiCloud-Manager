@@ -1,14 +1,45 @@
 import * as React from 'react';
+import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** 启用交互式 hover/tap 动画（用于可点击卡片） */
+  interactive?: boolean;
+}
+
+const MotionCardWrapper = React.forwardRef<HTMLDivElement, HTMLMotionProps<'div'>>(
   ({ className, ...props }, ref) => (
-    <div
+    <motion.div
       ref={ref}
-      className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)}
+      whileHover={{ y: -2, boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+      className={cn('rounded-lg border bg-card text-card-foreground shadow-sm cursor-pointer', className)}
       {...props}
     />
   )
+);
+MotionCardWrapper.displayName = 'MotionCardWrapper';
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, interactive = false, ...props }, ref) => {
+    if (interactive) {
+      return (
+        <MotionCardWrapper
+          ref={ref as React.Ref<HTMLDivElement>}
+          className={className}
+          {...(props as HTMLMotionProps<'div'>)}
+        />
+      );
+    }
+    return (
+      <div
+        ref={ref}
+        className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)}
+        {...props}
+      />
+    );
+  }
 );
 Card.displayName = 'Card';
 
