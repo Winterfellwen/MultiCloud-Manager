@@ -794,14 +794,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           runIdToSession: { ...state.runIdToSession, [runId]: sessionKey },
         }));
 
-        // 如果有缓冲文本或推理过程，创建 assistant 消息（runId 不存在于 serverMessages）
-        if (bufferedText || bufferedReasoning) {
+        // 始终创建 assistant 占位符（包括 bufferedText 为空时），确保 done 事件有 msgIndex
+        if (isRunning || bufferedText || bufferedReasoning) {
           const snapshotBlocks: ContentBlock[] = [];
           if (bufferedReasoning) {
             snapshotBlocks.push({ type: 'reasoning', id: `blk-r-${Date.now()}`, content: bufferedReasoning });
           }
           if (bufferedText) {
             snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: bufferedText });
+          }
+          // 如果没有任何 block，创建空 text block 作为占位
+          if (snapshotBlocks.length === 0) {
+            snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: '' });
           }
           finalMessages.push({
             id: generateMessageId(),
@@ -867,6 +871,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
           if (bufferedText) {
             snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: bufferedText });
+          }
+          if (snapshotBlocks.length === 0) {
+            snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: '' });
           }
           finalMessages.push({
             id: generateMessageId(),
