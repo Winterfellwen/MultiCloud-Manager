@@ -79,42 +79,28 @@ WORKDIR /app
 
 RUN apk add --no-cache python3 make g++
 
-# 配置 npm 镜像源
-RUN npm config set registry https://registry.npmmirror.com
+# 配置 pnpm 镜像源
+RUN npm install -g pnpm --registry=https://registry.npmmirror.com && \
+    pnpm config set registry https://registry.npmmirror.com
 
-# 优化：先复制 package.json 以利用缓存
-COPY shared/package.json ./shared/
-COPY shared/tsconfig.json ./shared/
-COPY web-console/package.json ./web-console/
-COPY web-console/tsconfig.json ./web-console/
-COPY web-console/openclaw-ui/package.json ./web-console/openclaw-ui/
+# 复制 pnpm workspace 根配置
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 
-# 修复 workspace 依赖，用本地路径代替
-RUN sed -i 's|"workspace:\*"|"file:../shared"|g' /app/web-console/package.json && \
-    sed -i 's|"workspace:\*"|"file:../shared"|g' /app/web-console/openclaw-ui/package.json
+# 复制 shared + web-console（含 openclaw-ui workspace 成员）
+COPY shared ./shared
+COPY web-console ./web-console
 
-# 构建 shared
-COPY shared/src ./shared/src
-RUN cd /app/shared && npm install && npm run build
+# 安装整个 workspace 的依赖（包含 devDependencies）
+RUN pnpm config set dangerouslyAllowAllBuilds true && \
+    pnpm install --config.minimumReleaseAge=0
 
-# 构建 openclaw-ui
-COPY web-console/openclaw-ui/src ./web-console/openclaw-ui/src
-COPY web-console/openclaw-ui/vite.config.ts ./web-console/openclaw-ui/
-COPY web-console/openclaw-ui/tsconfig.json ./web-console/openclaw-ui/
-RUN cd /app/web-console/openclaw-ui && npm install && npm run build
+ENV PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false
 
-# 构建 web-console（包含 tailwind.config.js 等所有配置文件）
-COPY web-console/src ./web-console/src
-COPY web-console/vite.config.ts ./web-console/
-COPY web-console/*.config.js ./web-console/
-COPY web-console/*.json ./web-console/
-COPY web-console/index.html ./web-console/
-COPY web-console/tsconfig.json ./web-console/
-COPY web-console/tsconfig.node.json ./web-console/
-COPY web-console/tailwind.config.js ./web-console/
-COPY web-console/postcss.config.js ./web-console/
+# 先构建 openclaw-ui（Lit Web Component bundle）
+RUN pnpm --filter @cloudops/openclaw-ui build
 
-RUN cd /app/web-console && npm install && npm run build
+# 再构建 web-console（会复制 openclaw-ui/dist/cloudops-chat.js 到 dist/）
+RUN pnpm --filter @cloudops/web-console build
 
 # 最终镜像
 FROM node:22-alpine
