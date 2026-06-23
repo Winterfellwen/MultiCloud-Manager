@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User as UserIcon, Menu } from 'lucide-react';
+import { LogOut, User as UserIcon, Menu, Bell } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth';
 
@@ -35,6 +36,18 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
         <div className="text-sm text-muted-foreground hidden sm:block">多云管理控制台</div>
       </div>
       <div className="flex items-center gap-2 md:gap-4">
+        {/* 通知按钮（带脉冲指示） */}
+        <div className="relative">
+          <Button variant="ghost" size="icon" title="通知">
+            <Bell className="h-4 w-4" />
+          </Button>
+          <motion.span
+            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500"
+            animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+            aria-label="有未读通知"
+          />
+        </div>
         <div className="flex items-center gap-2 text-sm">
           <UserIcon className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{user?.username}</span>
