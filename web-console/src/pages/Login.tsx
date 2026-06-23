@@ -14,6 +14,7 @@ export default function Login() {
   const location = useLocation();
   const setTokens = useAuthStore((s) => s.setTokens);
   const enterDemo = useDemoStore((s) => s.enterDemo);
+  const exitDemo = useDemoStore((s) => s.exitDemo);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +30,7 @@ export default function Login() {
     try {
       const tokens = await authApi.login({ username, password });
       setTokens(tokens);
+      exitDemo();
       navigate(from, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
