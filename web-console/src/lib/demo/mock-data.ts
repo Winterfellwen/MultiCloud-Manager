@@ -47,13 +47,13 @@ const PROVIDER_REGIONS: Record<string, string[]> = {
 };
 
 const PROVIDER_INSTANCE_COUNTS: Record<string, number> = {
-  aws: 500,
-  aliyun: 300,
-  azure: 250,
-  tencent: 200,
-  huawei: 200,
-  render: 100,
-  oracle: 150,
+  aws: 80,
+  aliyun: 50,
+  azure: 40,
+  tencent: 30,
+  huawei: 30,
+  render: 20,
+  oracle: 50,
 };
 
 const INSTANCE_SPECS = [
@@ -120,6 +120,10 @@ export function getAllDemoInstances(): InstanceRow[] {
 }
 export function resetDemoInstances(): void {
   _instancesCache = generateAllInstances();
+  _resourcesCache = null;
+  _alertsCache = null;
+  _costsCache = null;
+  _metricsCache.clear();
 }
 export function updateDemoInstance(id: string, updates: Partial<InstanceRow>): InstanceRow | null {
   const list = getAllDemoInstances();
@@ -151,28 +155,33 @@ const RESOURCE_COUNTS: Record<string, { count: number; type: CloudResource['reso
   oracle: { count: 45, type: 'instance' },
 };
 
+let _resourcesCache: CloudResource[] | null = null;
+
 export function getDemoResources(): CloudResource[] {
-  const rand = seededRandom(42);
-  const resources: CloudResource[] = [];
-  let idx = 0;
-  for (const [provider, { count, type }] of Object.entries(RESOURCE_COUNTS)) {
-    const regions = PROVIDER_REGIONS[provider] || ['us-east-1'];
-    for (let i = 0; i < count; i++) {
-      resources.push({
-        id: `demo-res-${idx++}`,
-        provider,
-        resourceType: type,
-        name: `${provider}-${type}-${i.toString().padStart(3, '0')}`,
-        region: pick(regions, rand),
-        status: pick(['active', 'stopped', 'pending'], rand),
-        attributes: {},
-        tags: { env: pick(ENVS, rand), team: pick(TEAMS, rand) },
-        createdAt: randomDate(90, rand),
-        lastSyncedAt: new Date().toISOString(),
-      });
+  if (!_resourcesCache) {
+    const rand = seededRandom(42);
+    const resources: CloudResource[] = [];
+    let idx = 0;
+    for (const [provider, { count, type }] of Object.entries(RESOURCE_COUNTS)) {
+      const regions = PROVIDER_REGIONS[provider] || ['us-east-1'];
+      for (let i = 0; i < count; i++) {
+        resources.push({
+          id: `demo-res-${idx++}`,
+          provider,
+          resourceType: type,
+          name: `${provider}-${type}-${i.toString().padStart(3, '0')}`,
+          region: pick(regions, rand),
+          status: pick(['active', 'stopped', 'pending'], rand),
+          attributes: {},
+          tags: { env: pick(ENVS, rand), team: pick(TEAMS, rand) },
+          createdAt: randomDate(90, rand),
+          lastSyncedAt: new Date().toISOString(),
+        });
+      }
     }
+    _resourcesCache = resources;
   }
-  return resources;
+  return _resourcesCache;
 }
 
 // ===== 告警 =====
@@ -196,27 +205,32 @@ const ALERT_TEMPLATES = [
   { severity: 'critical' as const, message: '服务无响应', count: 1 },
 ];
 
+let _alertsCache: DemoAlert[] | null = null;
+
 export function getDemoAlerts(): DemoAlert[] {
-  const rand = seededRandom(123);
-  const alerts: DemoAlert[] = [];
-  let idx = 0;
-  for (const tmpl of ALERT_TEMPLATES) {
-    for (let i = 0; i < tmpl.count; i++) {
-      const instances = getAllDemoInstances();
-      const inst = pick(instances, rand);
-      alerts.push({
-        id: `demo-alert-${idx++}`,
-        ruleId: `demo-rule-${idx}`,
-        instanceId: inst.id,
-        severity: tmpl.severity,
-        message: `${inst.name}: ${tmpl.message}`,
-        status: 'firing',
-        firedAt: randomDate(7, rand),
-        resolvedAt: null,
-      });
+  if (!_alertsCache) {
+    const rand = seededRandom(123);
+    const alerts: DemoAlert[] = [];
+    let idx = 0;
+    for (const tmpl of ALERT_TEMPLATES) {
+      for (let i = 0; i < tmpl.count; i++) {
+        const instances = getAllDemoInstances();
+        const inst = pick(instances, rand);
+        alerts.push({
+          id: `demo-alert-${idx++}`,
+          ruleId: `demo-rule-${idx}`,
+          instanceId: inst.id,
+          severity: tmpl.severity,
+          message: `${inst.name}: ${tmpl.message}`,
+          status: 'firing',
+          firedAt: randomDate(7, rand),
+          resolvedAt: null,
+        });
+      }
     }
+    _alertsCache = alerts;
   }
-  return alerts;
+  return _alertsCache;
 }
 
 // ===== 成本 =====
@@ -239,22 +253,27 @@ const COST_DATA: Record<string, { amount: number; currency: string; services: st
   oracle: { amount: 8000, currency: 'USD', services: ['Compute', 'Autonomous DB', 'Object Storage', 'OKE'] },
 };
 
+let _costsCache: DemoCostSummary[] | null = null;
+
 export function getDemoCostSummary(start: string, end: string): DemoCostSummary[] {
-  const rand = seededRandom(456);
-  return Object.entries(COST_DATA).map(([provider, data]) => {
-    const total = data.amount * (0.9 + rand() * 0.2);
-    return {
-      provider,
-      totalAmount: Math.round(total * 100) / 100,
-      currency: data.currency,
-      periodStart: start,
-      periodEnd: end,
-      breakdown: data.services.map((service) => ({
-        service,
-        amount: Math.round(total * (0.1 + rand() * 0.3) * 100) / 100,
-      })),
-    };
-  });
+  if (!_costsCache) {
+    const rand = seededRandom(456);
+    _costsCache = Object.entries(COST_DATA).map(([provider, data]) => {
+      const total = data.amount * (0.9 + rand() * 0.2);
+      return {
+        provider,
+        totalAmount: Math.round(total * 100) / 100,
+        currency: data.currency,
+        periodStart: start,
+        periodEnd: end,
+        breakdown: data.services.map((service) => ({
+          service,
+          amount: Math.round(total * (0.1 + rand() * 0.3) * 100) / 100,
+        })),
+      };
+    });
+  }
+  return _costsCache;
 }
 
 // ===== 用户 =====
@@ -285,20 +304,26 @@ export interface DemoMetricPoint {
   unit: string;
 }
 
+const _metricsCache = new Map<string, DemoMetricPoint[]>();
+
 export function getDemoMetrics(instanceId: string, hours: number = 24): DemoMetricPoint[] {
-  const rand = seededRandom(instanceId.charCodeAt(instanceId.length - 1) * 7);
-  const points: DemoMetricPoint[] = [];
-  const now = Date.now();
-  for (let h = hours; h >= 0; h--) {
-    const base = 40 + Math.sin(h / 4) * 20;
-    const noise = (rand() - 0.5) * 15;
-    points.push({
-      timestamp: new Date(now - h * 3600000).toISOString(),
-      value: Math.max(0, Math.min(100, base + noise)),
-      unit: 'percent',
-    });
+  const key = `${instanceId}:${hours}`;
+  if (!_metricsCache.has(key)) {
+    const rand = seededRandom(instanceId.charCodeAt(instanceId.length - 1) * 7);
+    const points: DemoMetricPoint[] = [];
+    const now = Date.now();
+    for (let h = hours; h >= 0; h--) {
+      const base = 40 + Math.sin(h / 4) * 20;
+      const noise = (rand() - 0.5) * 15;
+      points.push({
+        timestamp: new Date(now - h * 3600000).toISOString(),
+        value: Math.max(0, Math.min(100, base + noise)),
+        unit: 'percent',
+      });
+    }
+    _metricsCache.set(key, points);
   }
-  return points;
+  return _metricsCache.get(key)!;
 }
 
 // ===== 云账号 =====

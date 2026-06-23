@@ -12,8 +12,10 @@ import {
   addDemoInstance,
   resetDemoInstances,
 } from './mock-data';
-import type { ListInstancesParams, InstanceRow, CreateInstanceParams } from '@/types/cloud';
+import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
+
+let _dashboardStatsCache: unknown = null;
 
 export function demoListInstances(params?: ListInstancesParams): Promise<InstanceRow[]> {
   let list = getAllDemoInstances();
@@ -68,25 +70,28 @@ export function demoListCloudAccounts(): Promise<unknown[]> {
 }
 
 export function demoDashboardStats() {
-  const instances = getAllDemoInstances();
-  const alerts = getDemoAlerts();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-  const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString();
-  const costs = getDemoCostSummary(monthStart, monthEnd);
+  if (!_dashboardStatsCache) {
+    const instances = getAllDemoInstances();
+    const alerts = getDemoAlerts();
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const costs = getDemoCostSummary(monthStart, monthEnd);
 
-  const byProvider: Record<string, number> = {};
-  for (const inst of instances) {
-    byProvider[inst.provider] = (byProvider[inst.provider] || 0) + 1;
+    const byProvider: Record<string, number> = {};
+    for (const inst of instances) {
+      byProvider[inst.provider] = (byProvider[inst.provider] || 0) + 1;
+    }
+
+    _dashboardStatsCache = {
+      totalInstances: instances.length,
+      runningInstances: instances.filter((i) => i.status === 'running').length,
+      alertCount: alerts.filter((a) => a.status === 'firing').length,
+      monthlyCost: costs.reduce((sum, c) => sum + (c.currency === 'USD' ? c.totalAmount : c.totalAmount * 0.14), 0),
+      byProvider,
+      errors: { instances: false, alerts: false, costs: false },
+    };
   }
-
-  return Promise.resolve({
-    totalInstances: instances.length,
-    runningInstances: instances.filter((i) => i.status === 'running').length,
-    alertCount: alerts.filter((a) => a.status === 'firing').length,
-    monthlyCost: costs.reduce((sum, c) => sum + (c.currency === 'USD' ? c.totalAmount : c.totalAmount * 0.14), 0),
-    byProvider,
-    errors: { instances: false, alerts: false, costs: false },
-  });
+  return Promise.resolve(_dashboardStatsCache);
 }
 
 // ===== Demo 写操作 =====
@@ -116,10 +121,10 @@ export function demoDeleteInstance(id: string): Promise<{ success: boolean }> {
   return Promise.resolve({ success: true });
 }
 
-export function demoCreateInstance(params: CreateInstanceParams): Promise<InstanceRow> {
-  const list = getAllDemoInstances();
+export function demoCreateInstance(params: CreateInstanceParams): Promise<Instance> {
+  const id = `demo-${params.provider}-${Date.now()}`;
   const newInst: InstanceRow = {
-    id: `demo-${params.provider}-${Date.now()}`,
+    id,
     provider: params.provider,
     providerInstanceId: `i-${params.provider}-${Date.now().toString(36)}`,
     name: params.name,
@@ -138,12 +143,28 @@ export function demoCreateInstance(params: CreateInstanceParams): Promise<Instan
   };
   addDemoInstance(newInst);
   // 模拟启动过程
-  setTimeout(() => updateDemoInstance(newInst.id, { status: 'running', publicIp: `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}` }), 3000);
-  return Promise.resolve(newInst);
+  setTimeout(() => updateDemoInstance(id, { status: 'running', publicIp: `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}` }), 3000);
+  // 返回 Instance 格式（spec 对象而非扁平字段）
+  return Promise.resolve({
+    id: newInst.id,
+    provider: newInst.provider,
+    providerInstanceId: newInst.providerInstanceId,
+    name: newInst.name || '',
+    region: newInst.region,
+    status: newInst.status,
+    spec: { cpu: newInst.cpu || 2, memoryMb: newInst.memoryMb || 4096, diskGb: newInst.diskGb || 40 },
+    publicIp: newInst.publicIp,
+    privateIp: newInst.privateIp,
+    monthlyCost: parseFloat(newInst.monthlyCost || '0'),
+    tags: newInst.tags || {},
+    lastSyncedAt: newInst.lastSyncedAt || '',
+    createdAt: newInst.createdAt || '',
+  });
 }
 
 export function demoResetAll(): Promise<{ success: boolean }> {
   resetDemoInstances();
+  _dashboardStatsCache = null;
   // 清除 localStorage 中的 demo 数据
   try {
     localStorage.removeItem('demo-chat-sessions');
