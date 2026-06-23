@@ -71,6 +71,13 @@ await app.register(resourceRoutes, { prefix: "/cloud/resources" });
 await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
 
+// 首次访问云资源时触发同步
+app.addHook('onRequest', async (request) => {
+  if (request.url.startsWith('/cloud/') && request.url !== '/cloud/accounts') {
+    ensureInitialSync().catch(() => {});
+  }
+});
+
 // 运行数据库迁移
 try {
   await runMigrations();
@@ -94,23 +101,27 @@ try {
   console.error('⚠️  Failed to load providers from DB:', (err as Error).message);
 }
 
-// 启动时执行一次全量同步（异步，不阻塞启动）
-syncService
-  .syncAll()
-  .then((results) => {
+// 首次请求时触发全量同步（延迟加载，避免启动时内存尖峰）
+let initialSyncDone = false;
+async function ensureInitialSync() {
+  if (initialSyncDone) return;
+  initialSyncDone = true;
+  try {
+    const results = await syncService.syncAll();
     for (const r of results) {
       app.log.info(
         `Sync ${r.provider}: ${r.synced} instances, ${r.errors.length} errors`
       );
     }
-  })
-  .catch((err) => {
+  } catch (err) {
     app.log.error({ err }, "Initial sync failed");
-  });
+  }
+}
 
-// 定时增量同步（每 5 分钟）
+// 定时增量同步（每 5 分钟，首次同步后才启动）
 const syncInterval = setInterval(
   () => {
+    if (!initialSyncDone) return;
     syncService
       .syncAll()
       .then((results) => {
