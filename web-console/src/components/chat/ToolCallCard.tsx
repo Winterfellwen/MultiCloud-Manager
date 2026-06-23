@@ -18,12 +18,14 @@ import {
   DollarSign,
   type LucideIcon,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { resolveToolDisplay } from '../../lib/openclaw/tool-display';
 import {
   formatCollapsedToolPreviewText,
   isToolErrorOutput,
 } from '../../lib/openclaw/tool-cards-logic';
 import { cn } from '../../lib/utils';
+import { EASE, DURATION } from '../../lib/motion';
 
 /** tool-display.ts 中 icon 字段 → lucide-react 图标组件映射 */
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
@@ -142,44 +144,55 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
           )}
         </span>
       </button>
-      {isExpanded && (
-        <div className="space-y-2 border-t border-border px-3 py-2">
-          {/* 参数 */}
-          <div>
-            <div className="mb-1 text-xs text-muted-foreground">参数</div>
-            {toolCall.args != null ? (
-              <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-xs">
-                {serializeValue(toolCall.args)}
-              </pre>
-            ) : (
-              <div className="rounded bg-background p-2 font-mono text-xs text-muted-foreground">
-                无参数
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: DURATION.base, ease: EASE.out }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-2 border-t border-border px-3 py-2">
+              {/* 参数 */}
+              <div>
+                <div className="mb-1 text-xs text-muted-foreground">参数</div>
+                {toolCall.args != null ? (
+                  <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-xs">
+                    {serializeValue(toolCall.args)}
+                  </pre>
+                ) : (
+                  <div className="rounded bg-background p-2 font-mono text-xs text-muted-foreground">
+                    无参数
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {/* 结果 */}
-          <div>
-            <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-              结果
-              {isError && (
-                <span className="text-destructive">
-                  <AlertCircle className="inline h-3 w-3" /> 错误
-                </span>
-              )}
+              {/* 结果 */}
+              <div>
+                <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  结果
+                  {isError && (
+                    <span className="text-destructive">
+                      <AlertCircle className="inline h-3 w-3" /> 错误
+                    </span>
+                  )}
+                </div>
+                {toolCall.result ? (
+                  <pre className="max-h-60 overflow-auto rounded bg-background p-2 font-mono text-xs">
+                    {serializeValue(toolCall.result.content)}
+                  </pre>
+                ) : (
+                  <div className="flex items-center gap-1.5 rounded bg-background p-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>等待执行结果...</span>
+                  </div>
+                )}
+              </div>
             </div>
-            {toolCall.result ? (
-              <pre className="max-h-60 overflow-auto rounded bg-background p-2 font-mono text-xs">
-                {serializeValue(toolCall.result.content)}
-              </pre>
-            ) : (
-              <div className="flex items-center gap-1.5 rounded bg-background p-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>等待执行结果...</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
