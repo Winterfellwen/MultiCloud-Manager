@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth';
+import { useDemoStore } from '@/stores/demo';
 
 const ROLE_LABELS: Record<string, string> = {
   admin: '管理员',
@@ -18,9 +19,11 @@ interface TopbarProps {
 export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const exitDemo = useDemoStore((s) => s.exitDemo);
 
   function handleLogout() {
     logout();
+    exitDemo();
     navigate('/login', { replace: true });
   }
 
