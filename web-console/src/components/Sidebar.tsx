@@ -14,11 +14,9 @@ import {
   Boxes,
   type LucideIcon,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { hasPermission } from '@/types/auth';
-import { EASE, DURATION } from '@/lib/motion';
 
 interface NavItem {
   label: string;
@@ -125,33 +123,18 @@ export function Sidebar() {
                 to={item.children ? item.children[0].to : item.to}
                 className={cn(
                   'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                  'transition-colors duration-200',
+                  'transition-colors',
                   'hover:bg-accent hover:text-accent-foreground',
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground'
                 )}
               >
-                <motion.div
-                  className="absolute inset-0 rounded-md"
-                  whileHover={{ x: 2 }}
-                  transition={{ duration: DURATION.fast, ease: EASE.out }}
-                />
                 {isActive && (
-                  <motion.span
-                    layoutId="sidebar-active-indicator"
-                    className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-primary-foreground/80"
-                    transition={{ duration: DURATION.base, ease: EASE.out }}
-                  />
+                  <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-primary-foreground/80" />
                 )}
-                <motion.span
-                  className="relative z-10 flex items-center gap-3"
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ duration: DURATION.fast, ease: EASE.out }}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </motion.span>
+                <item.icon className="h-4 w-4" />
+                {item.label}
               </NavLink>
               {item.children && (
                 <div className="ml-6 mt-1 space-y-1">
@@ -163,20 +146,14 @@ export function Sidebar() {
                         to={child.to}
                         className={cn(
                           'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
-                          'transition-colors duration-200',
+                          'transition-colors',
                           'hover:bg-accent hover:text-accent-foreground',
                           childActive
                             ? 'bg-secondary text-secondary-foreground font-medium'
                             : 'text-muted-foreground'
                         )}
                       >
-                        <motion.span
-                          className="flex items-center gap-2"
-                          whileHover={{ x: 2 }}
-                          transition={{ duration: DURATION.fast, ease: EASE.out }}
-                        >
-                          {child.label}
-                        </motion.span>
+                        {child.label}
                       </NavLink>
                     );
                   })}
