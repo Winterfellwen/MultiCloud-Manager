@@ -71,7 +71,8 @@ export async function recordEvent(
       `);
       return Number((upsertResult[0] as { last_seq: string | number }).last_seq);
     }
-    lastDeltaTextByRunId.set(runId, delta);
+    // store only last 100 chars to prevent memory bloat
+    lastDeltaTextByRunId.set(runId, delta.slice(-100));
   }
 
   // 使用 UPSERT 原子递增 seq（queuedRecordEvent 已串行化同 sessionKey 的调用，确保顺序）
@@ -140,15 +141,15 @@ export async function clearSessionEvents(sessionKey: string): Promise<void> {
   await db.execute(sql`DELETE FROM acp_replay_events WHERE session_key = ${sessionKey}`);
   await db.execute(sql`DELETE FROM acp_replay_sessions WHERE session_key = ${sessionKey}`);
 
-  // LRU 清理：限制内存跟踪最多 1000 个 runId，防止内存泄漏
-  if (completedRunIds.size > 1000) {
+  // LRU 清理：限制内存跟踪最多 200 个 runId，防止内存泄漏
+  if (completedRunIds.size > 200) {
     const entries = Array.from(completedRunIds);
-    const toDelete = entries.slice(0, entries.length - 1000);
+    const toDelete = entries.slice(0, entries.length - 200);
     for (const id of toDelete) completedRunIds.delete(id);
   }
-  if (lastDeltaTextByRunId.size > 1000) {
+  if (lastDeltaTextByRunId.size > 200) {
     const entries = Array.from(lastDeltaTextByRunId.keys());
-    const toDelete = entries.slice(0, entries.length - 1000);
+    const toDelete = entries.slice(0, entries.length - 200);
     for (const id of toDelete) lastDeltaTextByRunId.delete(id);
   }
 }
