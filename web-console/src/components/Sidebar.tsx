@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Server,
@@ -14,9 +14,11 @@ import {
   Boxes,
   type LucideIcon,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { hasPermission } from '@/types/auth';
+import { EASE, DURATION } from '@/lib/motion';
 
 interface NavItem {
   label: string;
@@ -96,6 +98,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const user = useAuthStore((s) => s.user);
+  const location = useLocation();
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (!item.permission) return true;
@@ -103,54 +106,85 @@ export function Sidebar() {
     return hasPermission(user.role, item.permission.resource, item.permission.action);
   });
 
+  const isItemActive = (item: NavItem): boolean => {
+    const target = item.children ? item.children[0].to : item.to;
+    return location.pathname === target || location.pathname.startsWith(target + '/');
+  };
+
   return (
     <aside className="w-60 border-r bg-card flex flex-col h-full shadow-lg">
       <div className="h-14 flex items-center px-6 border-b">
         <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
       </div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {visibleItems.map((item) => (
-          <div key={item.to}>
-            <NavLink
-              to={item.children ? item.children[0].to : item.to}
-              className={({ isActive }) =>
-                cn(
-                  'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                  'transition-all duration-200 ease-out',
-                  'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
+        {visibleItems.map((item) => {
+          const isActive = isItemActive(item);
+          return (
+            <div key={item.to}>
+              <NavLink
+                to={item.children ? item.children[0].to : item.to}
+                className={cn(
+                  'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
+                  'transition-colors duration-200',
+                  'hover:bg-accent hover:text-accent-foreground',
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground'
-                )
-              }
-            >
-              <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
-              {item.label}
-            </NavLink>
-            {item.children && (
-              <div className="ml-6 mt-1 space-y-1">
-                {item.children.map((child) => (
-                  <NavLink
-                    key={child.to}
-                    to={child.to}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
-                        'transition-all duration-200 ease-out',
-                        'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
-                        isActive
-                          ? 'bg-secondary text-secondary-foreground font-medium'
-                          : 'text-muted-foreground'
-                      )
-                    }
-                  >
-                    {child.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+                )}
+              >
+                <motion.div
+                  className="absolute inset-0 rounded-md"
+                  whileHover={{ x: 2 }}
+                  transition={{ duration: DURATION.fast, ease: EASE.out }}
+                />
+                {isActive && (
+                  <motion.span
+                    layoutId="sidebar-active-indicator"
+                    className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-primary-foreground/80"
+                    transition={{ duration: DURATION.base, ease: EASE.out }}
+                  />
+                )}
+                <motion.span
+                  className="relative z-10 flex items-center gap-3"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: DURATION.fast, ease: EASE.out }}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </motion.span>
+              </NavLink>
+              {item.children && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {item.children.map((child) => {
+                    const childActive = location.pathname === child.to;
+                    return (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className={cn(
+                          'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
+                          'transition-colors duration-200',
+                          'hover:bg-accent hover:text-accent-foreground',
+                          childActive
+                            ? 'bg-secondary text-secondary-foreground font-medium'
+                            : 'text-muted-foreground'
+                        )}
+                      >
+                        <motion.span
+                          className="flex items-center gap-2"
+                          whileHover={{ x: 2 }}
+                          transition={{ duration: DURATION.fast, ease: EASE.out }}
+                        >
+                          {child.label}
+                        </motion.span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
     </aside>
   );
