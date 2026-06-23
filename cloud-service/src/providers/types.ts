@@ -290,15 +290,15 @@ export interface ResourceTypeMeta {
 }
 
 export const RESOURCE_TYPE_META: ResourceTypeMeta[] = [
-  { type: 'instance', displayName: '云服务器', iconName: 'server', category: 'compute', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
-  { type: 'disk', displayName: '云磁盘', iconName: 'hard-drive', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
-  { type: 'bucket', displayName: '对象存储', iconName: 'database', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
-  { type: 'database', displayName: '数据库', iconName: 'database', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
+  { type: 'instance', displayName: '云服务器', iconName: 'server', category: 'compute', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render','oracle'] },
+  { type: 'disk', displayName: '云磁盘', iconName: 'hard-drive', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render','oracle'] },
+  { type: 'bucket', displayName: '对象存储', iconName: 'database', category: 'storage', supportedProviders: ['aws','aliyun','azure','tencent','huawei','oracle'] },
+  { type: 'database', displayName: '数据库', iconName: 'database', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render','oracle'] },
   { type: 'cache', displayName: '缓存', iconName: 'zap', category: 'database', supportedProviders: ['aws','aliyun','azure','tencent','huawei','render'] },
-  { type: 'loadbalancer', displayName: '负载均衡', iconName: 'share-2', category: 'network', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
-  { type: 'vpc', displayName: '虚拟网络', iconName: 'git-branch', category: 'network', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
+  { type: 'loadbalancer', displayName: '负载均衡', iconName: 'share-2', category: 'network', supportedProviders: ['aws','aliyun','azure','tencent','huawei','oracle'] },
+  { type: 'vpc', displayName: '虚拟网络', iconName: 'git-branch', category: 'network', supportedProviders: ['aws','aliyun','azure','tencent','huawei','oracle'] },
   { type: 'securitygroup', displayName: '安全组', iconName: 'shield', category: 'security', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
   { type: 'cdn', displayName: 'CDN', iconName: 'globe', category: 'cdn', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
-  { type: 'cluster', displayName: '容器集群', iconName: 'boxes', category: 'container', supportedProviders: ['aws','aliyun','azure','tencent','huawei'] },
+  { type: 'cluster', displayName: '容器集群', iconName: 'boxes', category: 'container', supportedProviders: ['aws','aliyun','azure','tencent','huawei','oracle'] },
   { type: 'aiservice', displayName: 'AI 服务', iconName: 'cpu', category: 'ai', supportedProviders: ['azure','aws'] },
 ];

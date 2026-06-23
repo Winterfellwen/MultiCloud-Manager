@@ -1,18 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cloudApi } from '@/api/cloud';
+import { useDemoStore } from '@/stores/demo';
+import { demoListInstances, demoGetInstance } from '@/lib/demo/demo-api';
 import type { ListInstancesParams, CreateInstanceParams } from '@/types/cloud';
 
 export function useInstances(params?: ListInstancesParams) {
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['instances', params],
-    queryFn: () => cloudApi.listInstances(params),
+    queryKey: ['instances', params, isDemoMode],
+    queryFn: () => isDemoMode ? demoListInstances(params) : cloudApi.listInstances(params),
   });
 }
 
 export function useInstance(id: string | undefined) {
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['instance', id],
-    queryFn: () => cloudApi.getInstance(id!),
+    queryKey: ['instance', id, isDemoMode],
+    queryFn: () => isDemoMode ? demoGetInstance(id!) : cloudApi.getInstance(id!),
     enabled: !!id,
   });
 }

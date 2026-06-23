@@ -50,6 +50,10 @@ export interface ChatSendParams {
   temperature?: number;
   /** 最大 token 覆盖 */
   maxTokens?: number;
+  /** 推理努力程度：low / medium / high */
+  reasoningEffort?: 'low' | 'medium' | 'high';
+  /** 对话模式：plan / action / confirm */
+  mode?: 'plan' | 'action' | 'confirm';
 }
 
 /** chat.send 附件载荷（wire 格式） */

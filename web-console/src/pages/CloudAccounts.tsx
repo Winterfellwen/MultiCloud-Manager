@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cloudApi } from '@/api/cloud';
+import { useDemoStore } from '@/stores/demo';
+import { demoListCloudAccounts } from '@/lib/demo/demo-api';
 import type { CloudAccount, ProviderMeta, TestConnectionResult } from '@/types/cloud';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,7 @@ import { cn } from '@/lib/utils';
 
 export default function CloudAccounts() {
   const queryClient = useQueryClient();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -45,8 +48,8 @@ export default function CloudAccounts() {
   }, [providersMeta]);
 
   const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['cloud-accounts'],
-    queryFn: () => cloudApi.listAccounts(),
+    queryKey: ['cloud-accounts', isDemoMode],
+    queryFn: () => isDemoMode ? demoListCloudAccounts() as unknown as Promise<CloudAccount[]> : cloudApi.listAccounts(),
   });
 
   const createMutation = useMutation({
@@ -350,10 +353,24 @@ export default function CloudAccounts() {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-primary hover:underline"
                     >
-                      获取凭证指引 <ExternalLink className="h-3 w-3" />
+                      查看文档 <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
+                {/* 步骤指引 */}
+                {currentMeta.guide && (
+                  <div className="rounded-md border border-dashed border-muted bg-muted/30 p-3">
+                    <div className="mb-2 text-xs font-medium">{currentMeta.guide.title}</div>
+                    <ol className="text-xs text-muted-foreground">
+                      {currentMeta.guide.steps.map((step, i) => (
+                        <li key={i} className="mb-1 flex gap-2">
+                          <span className="shrink-0 font-medium">{i + 1}.</span>
+                          <span dangerouslySetInnerHTML={{ __html: step }} />
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
                 {currentMeta.fields.map(field => (
                   <div key={field.key} className="space-y-1">
                     <Label htmlFor={`cfg-${field.key}`} className="text-xs text-muted-foreground">

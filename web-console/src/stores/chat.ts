@@ -6,8 +6,10 @@ import { create } from 'zustand';
 
 export type Mode = 'plan' | 'action' | 'confirm';
 import { WsClient } from '../lib/ws-client';
+import { MockWsClient } from '../lib/demo/mock-ws-client';
 import { getWsBaseUrl } from '../lib/config';
 import { useAuthStore } from './auth';
+import { useDemoStore } from './demo';
 import type {
   ChatMessage,
   ChatSession,
@@ -40,7 +42,7 @@ import type { ChatAttachment } from '../lib/openclaw/ui-types';
 
 interface ChatState {
   // 连接
-  wsClient: WsClient | null;
+  wsClient: WsClient | MockWsClient | null;
   connectionStatus: WsConnectionStatus;
   // 会话
   sessions: ChatSession[];
@@ -279,15 +281,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   connect: () => {
     const { wsClient } = get();
-    if (wsClient) return;
+    const isDemoMode = useDemoStore.getState().isDemoMode;
+
+    // 如果已存在客户端但模式不匹配，先断开旧的再创建新的
+    if (wsClient) {
+      const isMockClient = wsClient instanceof MockWsClient;
+      if (isMockClient === isDemoMode) {
+        return; // 类型匹配，跳过
+      }
+      wsClient.close();
+      set({ wsClient: null });
+    }
 
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
 
-    const client = new WsClient({
-      url: WS_BASE_URL,
-      token,
-      onStatusChange: (status) => {
+    // 共享的回调配置
+    const clientOptions = {
+      onStatusChange: (status: WsConnectionStatus) => {
         set({ connectionStatus: status });
         // 连接成功（收到 hello-ok）后自动恢复当前会话历史
         // 覆盖首次连接和断线重连两种场景
@@ -299,15 +310,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
         }
       },
-      onEvent: (event, payload) => {
+      onEvent: (event: string, payload: unknown) => {
         get().handleEvent(event, payload);
       },
-      onGap: (expected, received) => {
+      onGap: (expected: number, received: number) => {
         get().handleGap(expected, received);
       },
       reconnectMaxAttempts: 5,
       requestTimeoutMs: 15000,
-    });
+    };
+
+    let client: WsClient | MockWsClient;
+    if (isDemoMode) {
+      // Demo 模式：使用 MockWsClient，本地模拟 WebSocket 协议
+      client = new MockWsClient(clientOptions);
+    } else {
+      // 正常模式：连接真实 ai-gateway WebSocket 服务
+      client = new WsClient({
+        ...clientOptions,
+        url: WS_BASE_URL,
+        token,
+      });
+    }
 
     client.connect();
     set({ wsClient: client });
@@ -536,6 +560,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messagesBySession: { ...state.messagesBySession, [sessionKey]: [] },
     }));
     localStorage.setItem(LS_KEY_SESSION, sessionKey);
+
+    // Demo 模式：同步到 mock storage，确保后续 fetchSessions 能看到这个会话
+    if (useDemoStore.getState().isDemoMode) {
+      try {
+        const raw = localStorage.getItem('demo-chat-sessions');
+        const list = raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+        const userId = useAuthStore.getState().user?.id || 'demo-u-1';
+        const username = useAuthStore.getState().user?.username || 'demo-admin';
+        list.unshift({
+          sessionKey,
+          title: '新对话',
+          username,
+          userId,
+          messageCount: 0,
+          lastMessageAt: Date.now(),
+          createdAt: Date.now(),
+        });
+        localStorage.setItem('demo-chat-sessions', JSON.stringify(list));
+      } catch {
+        // ignore
+      }
+    }
+
     return sessionKey;
   },
 

@@ -1,20 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { resourceApi, type SyncParams } from '@/api/resource';
+import { useDemoStore } from '@/stores/demo';
+import { demoListResources } from '@/lib/demo/demo-api';
 import type { ResourceFilters } from '@/types/resource';
 
 /** 获取资源类型元数据 */
 export function useResourceTypes() {
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['resource-types'],
-    queryFn: () => resourceApi.listTypes(),
+    queryKey: ['resource-types', isDemoMode],
+    queryFn: () => isDemoMode ? Promise.resolve([]) : resourceApi.listTypes(),
   });
 }
 
 /** 获取资源列表 */
 export function useResources(filters: ResourceFilters) {
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['resources', filters],
-    queryFn: () => resourceApi.list(filters),
+    queryKey: ['resources', filters, isDemoMode],
+    queryFn: () => isDemoMode
+      ? demoListResources(filters as any).then(items => ({ items, total: items.length }))
+      : resourceApi.list(filters),
   });
 }
 
@@ -29,9 +35,12 @@ export function useResource(id: string | undefined) {
 
 /** 获取资源统计汇总 */
 export function useResourceStats() {
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['resource-stats'],
-    queryFn: () => resourceApi.getStats(),
+    queryKey: ['resource-stats', isDemoMode],
+    queryFn: () => isDemoMode
+      ? Promise.resolve({ byType: [], byStatus: [] })
+      : resourceApi.getStats(),
   });
 }
 

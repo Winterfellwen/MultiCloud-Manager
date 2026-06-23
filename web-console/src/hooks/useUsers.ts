@@ -1,12 +1,14 @@
-// 用户管理 React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../api/users';
+import { useDemoStore } from '../stores/demo';
+import { demoListUsers } from '../lib/demo/demo-api';
 import type { CreateUserParams, UpdateRoleParams, UpdateTeamParams } from '../types/user';
 
 export function useUsers() {
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.list(),
+    queryKey: ['users', isDemoMode],
+    queryFn: () => isDemoMode ? demoListUsers() : usersApi.list(),
   });
 }
 
@@ -21,8 +23,7 @@ export function useCreateUser() {
 export function useUpdateUserRole() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, params }: { id: string; params: UpdateRoleParams }) =>
-      usersApi.updateRole(id, params),
+    mutationFn: ({ id, params }: { id: string; params: UpdateRoleParams }) => usersApi.updateRole(id, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }
@@ -30,8 +31,7 @@ export function useUpdateUserRole() {
 export function useUpdateUserTeam() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, params }: { id: string; params: UpdateTeamParams }) =>
-      usersApi.updateTeam(id, params),
+    mutationFn: ({ id, params }: { id: string; params: UpdateTeamParams }) => usersApi.updateTeam(id, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }

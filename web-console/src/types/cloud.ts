@@ -1,5 +1,5 @@
 export type InstanceStatus = 'running' | 'stopped' | 'terminated' | 'pending' | 'error';
-export type CloudProvider = 'aws' | 'aliyun' | 'azure' | 'tencent' | 'huawei';
+export type CloudProvider = 'aws' | 'aliyun' | 'azure' | 'tencent' | 'huawei' | 'render' | 'oracle';
 
 export interface InstanceRow {
   id: string;
@@ -117,6 +117,12 @@ export interface CredentialField {
   help?: string;
 }
 
+/** 获取凭证的步骤指引 */
+export interface ProviderGuide {
+  title: string;
+  steps: string[];
+}
+
 /** 云厂商元数据 */
 export interface ProviderMeta {
   id: CloudProvider;
@@ -125,4 +131,5 @@ export interface ProviderMeta {
   color: string;
   fields: CredentialField[];
   docsUrl?: string;
+  guide?: ProviderGuide;
 }

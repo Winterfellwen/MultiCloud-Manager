@@ -1,5 +1,6 @@
 import { ICloudProvider } from './types.js';
 import type { RenderConfig } from './render/types.js';
+import type { OracleConfig } from './oracle/types.js';
 
 const providers = new Map<string, ICloudProvider>();
 
@@ -33,6 +34,7 @@ export interface ProviderConfig {
     projectId?: string;
   };
   render?: RenderConfig;
+  oracle?: OracleConfig;
 }
 
 const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>> = {
@@ -59,6 +61,10 @@ const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>
   render: async (cfg) => {
     const { RenderProvider } = await import('./render/index.js');
     return new RenderProvider(cfg);
+  },
+  oracle: async (cfg) => {
+    const { OracleProvider } = await import('./oracle/index.js');
+    return new OracleProvider(cfg);
   },
 };
 

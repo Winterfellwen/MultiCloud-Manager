@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
+import { useDemoStore } from '@/stores/demo';
 import { ApiError } from '@/api/client';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const setTokens = useAuthStore((s) => s.setTokens);
+  const enterDemo = useDemoStore((s) => s.enterDemo);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -37,6 +39,24 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleDemoLogin() {
+    // 解析 demo JWT：sub、username、role 直接以 base64 形式构造
+    const demoPayload = btoa(JSON.stringify({
+      sub: 'demo-u-1',
+      username: 'demo-admin',
+      role: 'admin',
+      exp: Math.floor(Date.now() / 1000) + 86400,
+    }));
+    const jwt = `demo-header.${demoPayload}.demo-signature`;
+    setTokens({
+      accessToken: jwt,
+      refreshToken: 'demo-refresh-token',
+      expiresIn: 86400,
+    });
+    enterDemo();
+    navigate(from, { replace: true });
   }
 
   return (
@@ -79,6 +99,25 @@ export default function Login() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '登录中...' : '登录'}
             </Button>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">或</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleDemoLogin}
+            >
+              🎭 Demo 演示（无需登录）
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              Demo 模式使用模拟数据体验所有功能
+            </p>
           </form>
         </CardContent>
       </Card>

@@ -3,11 +3,11 @@ import { z } from "zod";
 import { accountService } from "../services/account.service.js";
 import { getProvider, listProviders } from "../providers/registry.js";
 import { NotFoundError } from "@cloudops/shared";
-import { CLOUD_PROVIDERS } from "@cloudops/shared";
+import { CLOUD_PROVIDERS, CLOUD_GUIDES } from "@cloudops/shared";
 
 const createAccountSchema = z.object({
   name: z.string().min(1).max(128),
-  provider: z.enum(["aws", "aliyun", "azure", "tencent", "huawei"]),
+  provider: z.enum(["aws", "aliyun", "azure", "tencent", "huawei", "render", "oracle"]),
   config: z.record(z.unknown()),
 });
 
@@ -25,7 +25,12 @@ export async function providerRoutes(app: FastifyInstance) {
 
   // 列出支持的云厂商元数据（前端用于动态渲染表单）
   app.get("/meta", async () => {
-    return { providers: CLOUD_PROVIDERS };
+    // 将指引数据附加到每个厂商元数据中
+    const providersWithGuide = CLOUD_PROVIDERS.map(p => ({
+      ...p,
+      guide: CLOUD_GUIDES[p.id],
+    }));
+    return { providers: providersWithGuide };
   });
 
   // 列出指定 Provider 的可用区域

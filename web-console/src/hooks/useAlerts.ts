@@ -1,9 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { monitorApi } from '@/api/monitor';
+import { useDemoStore } from '@/stores/demo';
+import { demoListAlerts } from '@/lib/demo/demo-api';
 import type { CreateAlertRuleParams, UpdateAlertRuleParams, ListAlertEventsParams } from '@/types/monitor';
 
 export function useAlertRules() {
-  return useQuery({ queryKey: ['alert-rules'], queryFn: () => monitorApi.listRules() });
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
+  return useQuery({ queryKey: ['alert-rules', isDemoMode], queryFn: () => isDemoMode ? Promise.resolve([]) : monitorApi.listRules() });
 }
 
 export function useCreateAlertRule() {
@@ -31,7 +34,11 @@ export function useDeleteAlertRule() {
 }
 
 export function useAlertEvents(params?: ListAlertEventsParams) {
-  return useQuery({ queryKey: ['alert-events', params], queryFn: () => monitorApi.listEvents(params) });
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
+  return useQuery({
+    queryKey: ['alert-events', params, isDemoMode],
+    queryFn: () => isDemoMode ? demoListAlerts() : monitorApi.listEvents(params),
+  });
 }
 
 export function useResolveAlertEvent() {
