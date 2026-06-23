@@ -70,9 +70,9 @@ export default function Instances() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">云服务器管理</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold">云服务器管理</h1>
+        <div className="flex flex-wrap gap-2">
           {isDemoMode && (
             <Button variant="outline" size="sm" onClick={handleResetDemo} title="还原 Demo 数据">
               <RotateCcw className="h-4 w-4 mr-1" />
@@ -92,8 +92,8 @@ export default function Instances() {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-3">
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="w-full sm:flex-1 sm:min-w-[200px]">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -107,7 +107,7 @@ export default function Instances() {
             <Select
               value={filters.provider || ''}
               onChange={(e) => setFilters((f) => ({ ...f, provider: e.target.value || undefined }))}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
             >
               <option value="">全部云厂商</option>
               {(providersData?.providers || []).map((p) => (
@@ -117,7 +117,7 @@ export default function Instances() {
             <Select
               value={filters.status || ''}
               onChange={(e) => setFilters((f) => ({ ...f, status: (e.target.value || undefined) as InstanceStatus | undefined }))}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
             >
               <option value="">全部状态</option>
               <option value="running">运行中</option>

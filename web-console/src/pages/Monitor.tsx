@@ -21,10 +21,10 @@ export default function Monitor() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">监控告警</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">监控告警</h1>
 
       <div className="border-b">
-        <div className="flex gap-4">
+        <div className="flex gap-4 overflow-x-auto">
           {([
             { key: 'rules' as const, label: '告警规则' },
             { key: 'events' as const, label: '告警事件' },
@@ -34,7 +34,7 @@ export default function Monitor() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={cn(
-                'pb-2 px-1 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'pb-2 px-1 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                 tab === t.key
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -70,7 +70,7 @@ function RulesTab() {
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-lg font-semibold">告警规则</h2>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />新建规则
@@ -276,7 +276,7 @@ function ChannelsTab() {
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-lg font-semibold">通知渠道</h2>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />新建渠道

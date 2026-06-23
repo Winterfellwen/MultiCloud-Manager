@@ -28,26 +28,26 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
   }
 
   return (
-    <header className="h-14 border-b bg-card flex items-center justify-between px-3 md:px-6">
-      <div className="flex items-center gap-3">
+    <header className="h-14 border-b bg-card flex items-center justify-between px-3 md:px-6 gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={onToggleSidebar} title="打开菜单">
+          <Button variant="ghost" size="icon" onClick={onToggleSidebar} title="打开菜单" className="shrink-0">
             <Menu className="h-5 w-5" />
           </Button>
         )}
-        <div className="text-sm text-muted-foreground hidden sm:block">多云管理控制台</div>
+        <div className="text-sm text-muted-foreground hidden sm:block shrink-0">多云管理控制台</div>
       </div>
-      <div className="flex items-center gap-2 md:gap-4">
-        <div className="flex items-center gap-2 text-sm">
-          <UserIcon className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{user?.username}</span>
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        <div className="flex items-center gap-2 text-sm min-w-0">
+          <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="font-medium truncate max-w-[80px] sm:max-w-none">{user?.username}</span>
           {user && (
-            <span className="hidden sm:inline text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+            <span className="hidden sm:inline text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded shrink-0">
               {ROLE_LABELS[user.role] || user.role}
             </span>
           )}
         </div>
-        <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录">
+        <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录" className="shrink-0">
           <LogOut className="h-4 w-4" />
         </Button>
       </div>

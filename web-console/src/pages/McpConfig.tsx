@@ -80,14 +80,14 @@ export default function McpConfig() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">MCP 配置</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">MCP 配置</h1>
           <p className="text-sm text-muted-foreground mt-1">
             管理 Model Context Protocol 服务器配置
           </p>
         </div>
-        <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+        <Button size="sm" onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-1.5 h-4 w-4" />
           添加服务器
         </Button>

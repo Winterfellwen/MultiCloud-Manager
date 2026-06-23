@@ -178,11 +178,11 @@ export default function CloudAccounts() {
   const currentMeta = providersMap[form.provider];
 
   return (
-    <div className="container mx-auto max-w-4xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto max-w-4xl space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Cloud className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-2xl font-bold">云厂商管理</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">云厂商管理</h1>
         </div>
         <Button onClick={handleOpenCreate} size="sm">
           <Plus className="mr-1 h-4 w-4" />
@@ -215,7 +215,7 @@ export default function CloudAccounts() {
                     key={account.id}
                     className="rounded-md border p-4"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                       <div
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-sm font-bold text-white"
                         style={{ backgroundColor: meta?.color || '#6b7280' }}
@@ -223,13 +223,13 @@ export default function CloudAccounts() {
                         {meta?.label?.[0] || account.provider[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">{account.name}</span>
                           <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
                             {meta?.label || account.provider}
                           </span>
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           {account.status === 'active' ? (
                             <><CheckCircle2 className="h-3 w-3 text-green-500" /> 已激活</>
                           ) : (
@@ -256,7 +256,7 @@ export default function CloudAccounts() {
                           </div>
                         )}
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
                         <Button
                           variant="ghost"
                           size="sm"

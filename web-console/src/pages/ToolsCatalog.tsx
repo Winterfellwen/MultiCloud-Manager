@@ -59,7 +59,7 @@ export default function ToolsCatalog() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">工具目录</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">工具目录</h1>
           <p className="text-sm text-muted-foreground mt-1">
             共 {totalTools} 个可用工具
           </p>
@@ -69,8 +69,8 @@ export default function ToolsCatalog() {
       {/* 搜索和筛选栏 */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-3">
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="w-full sm:flex-1 sm:min-w-[200px]">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -84,7 +84,7 @@ export default function ToolsCatalog() {
             <Select
               value={riskFilter}
               onChange={(e) => setRiskFilter(e.target.value as RiskFilter)}
-              className="w-[140px]"
+              className="w-full sm:w-[140px]"
             >
               <option value="all">全部风险级别</option>
               <option value="low">低风险</option>

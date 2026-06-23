@@ -242,15 +242,15 @@ export default function AiSettings() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl space-y-6 p-6">
+    <div className="container mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-2">
         <Settings2 className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-2xl font-bold">AI 模型设置</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">AI 模型设置</h1>
       </div>
 
       {/* Provider 管理 */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Server className="h-4 w-4" />
             LLM Provider 管理
@@ -273,25 +273,29 @@ export default function AiSettings() {
             <div className="space-y-2">
               {providers.map((provider) => (
                 <div key={provider.id} className="rounded-md border">
-                  <div className="flex items-center gap-3 p-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold">
-                      {provider.name[0]?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{provider.name}</span>
-                        <span className="text-xs text-muted-foreground">({provider.id})</span>
+                  <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold">
+                        {provider.name[0]?.toUpperCase()}
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">{provider.baseUrl}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{provider.name}</span>
+                          <span className="text-xs text-muted-foreground">({provider.id})</span>
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">{provider.baseUrl}</div>
+                      </div>
                     </div>
-                    <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs">
-                      {provider.models?.length || 0} 模型
-                    </span>
-                    {provider.compat?.thinkingFormat && (
-                      <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700" title="Thinking 方言">
-                        {THINKING_FORMAT_LABELS[provider.compat.thinkingFormat] || provider.compat.thinkingFormat}
+                    <div className="flex items-center gap-1.5 sm:shrink-0 flex-wrap">
+                      <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs">
+                        {provider.models?.length || 0} 模型
                       </span>
-                    )}
+                      {provider.compat?.thinkingFormat && (
+                        <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700" title="Thinking 方言">
+                          {THINKING_FORMAT_LABELS[provider.compat.thinkingFormat] || provider.compat.thinkingFormat}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <Button
                         variant="ghost" size="sm"
@@ -419,7 +423,7 @@ export default function AiSettings() {
                       {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm">{model.name}</span>
                         <span className="text-xs text-muted-foreground">{model.provider}</span>
                       </div>
@@ -429,7 +433,7 @@ export default function AiSettings() {
                         </span>
                       )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
+                    <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground flex-wrap justify-end">
                       {model.reasoning && (
                         <span className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs">
                           <Brain className="h-3 w-3" /> 推理

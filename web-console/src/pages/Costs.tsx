@@ -36,8 +36,8 @@ export default function Costs() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">成本分析</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold">成本分析</h1>
         <Button variant="outline" size="sm" onClick={handleCollect} disabled={collect.isPending}>
           <RefreshCw className={`h-4 w-4 mr-1 ${collect.isPending ? 'animate-spin' : ''}`} />
           采集成本

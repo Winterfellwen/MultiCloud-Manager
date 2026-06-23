@@ -128,7 +128,7 @@ export default function Resources() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col md:flex-row">
       <ResourceTypeNav
         types={types || []}
         stats={stats}
@@ -136,9 +136,9 @@ export default function Resources() {
         onSelect={setSelectedType}
       />
 
-      <div className="flex-1 space-y-6 overflow-auto p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">资源总览</h1>
+      <div className="flex-1 space-y-6 overflow-auto p-3 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold">资源总览</h1>
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />
             同步
@@ -147,8 +147,8 @@ export default function Resources() {
 
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[200px]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="w-full sm:flex-1 sm:min-w-[200px]">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -162,7 +162,7 @@ export default function Resources() {
               <Select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                className="w-[140px]"
+                className="w-full sm:w-[140px]"
               >
                 <option value="">全部厂商</option>
                 {PROVIDERS.map((p) => (
@@ -174,7 +174,7 @@ export default function Resources() {
               <Select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-[140px]"
+                className="w-full sm:w-[140px]"
               >
                 <option value="">全部状态</option>
                 <option value="running">运行中</option>

@@ -47,25 +47,25 @@ export default function Audit() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">审计日志</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">审计日志</h1>
 
       {/* 筛选栏 */}
-      <div className="flex flex-wrap items-end gap-3 rounded-md border p-4">
-        <div className="space-y-1">
+      <div className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="space-y-1 w-full sm:w-[180px]">
           <label className="text-xs text-muted-foreground">操作类型</label>
           <Input
             value={query.action || ''}
             onChange={(e) => setQuery({ ...query, action: e.target.value || undefined })}
             placeholder="如 instance.start"
-            className="w-[180px]"
+            className="w-full"
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-[140px]">
           <label className="text-xs text-muted-foreground">云厂商</label>
           <Select
             value={query.provider || ''}
             onChange={(e) => setQuery({ ...query, provider: e.target.value || undefined })}
-            className="w-[140px]"
+            className="w-full"
           >
             <option value="">全部</option>
             {PROVIDER_OPTIONS.map((opt) => (
@@ -75,7 +75,7 @@ export default function Audit() {
             ))}
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-[160px]">
           <label className="text-xs text-muted-foreground">开始日期</label>
           <Input
             type="date"
@@ -86,10 +86,10 @@ export default function Audit() {
                 startDate: e.target.value ? new Date(e.target.value).toISOString() : undefined,
               })
             }
-            className="w-[160px]"
+            className="w-full"
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-[160px]">
           <label className="text-xs text-muted-foreground">结束日期</label>
           <Input
             type="date"
@@ -102,10 +102,10 @@ export default function Audit() {
                   : undefined,
               })
             }
-            className="w-[160px]"
+            className="w-full"
           />
         </div>
-        <Button onClick={handleSearch} size="sm">
+        <Button onClick={handleSearch} size="sm" className="w-full sm:w-auto">
           <Search className="mr-1.5 h-4 w-4" />
           查询
         </Button>
@@ -218,7 +218,7 @@ export default function Audit() {
       </div>
 
       {/* 分页 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm text-muted-foreground">
           第 {currentPage} 页
         </span>

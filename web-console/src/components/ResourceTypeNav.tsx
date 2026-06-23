@@ -54,13 +54,13 @@ export function ResourceTypeNav({ types, stats, selected, onSelect }: ResourceTy
     stats?.byType?.filter((i) => i.resourceType === type).reduce((s, i) => s + i.count, 0) ?? 0;
 
   return (
-    <nav className="w-56 shrink-0 border-r bg-card overflow-y-auto">
+    <nav className="w-full shrink-0 border-b bg-card overflow-x-auto md:w-56 md:border-b-0 md:border-r md:overflow-y-auto">
       <div className="p-3">
         <button
           type="button"
           onClick={() => onSelect('all')}
           className={cn(
-            'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+            'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap',
             selected === 'all'
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -72,7 +72,7 @@ export function ResourceTypeNav({ types, stats, selected, onSelect }: ResourceTy
         </button>
       </div>
 
-      <div className="space-y-3 px-3 pb-3">
+      <div className="space-y-3 px-3 pb-3 md:block hidden">
         {RESOURCE_CATEGORY_ORDER.map((cat) => {
           const items = grouped.get(cat) || [];
           if (items.length === 0) return null;
@@ -94,7 +94,7 @@ export function ResourceTypeNav({ types, stats, selected, onSelect }: ResourceTy
                       title={t.displayName}
                       onClick={() => onSelect(t.type)}
                       className={cn(
-                        'flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm transition-colors',
+                        'flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm transition-colors whitespace-nowrap',
                         active
                           ? 'bg-secondary text-secondary-foreground'
                           : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -107,6 +107,30 @@ export function ResourceTypeNav({ types, stats, selected, onSelect }: ResourceTy
                 })}
               </div>
             </div>
+          );
+        })}
+      </div>
+
+      {/* 移动端：扁平化的水平滚动列表 */}
+      <div className="flex gap-1 px-3 pb-3 md:hidden">
+        {RESOURCE_CATEGORY_ORDER.flatMap((cat) => grouped.get(cat) || []).map((t) => {
+          const count = getCount(t.type);
+          const active = selected === t.type;
+          return (
+            <button
+              key={t.type}
+              type="button"
+              onClick={() => onSelect(t.type)}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors whitespace-nowrap',
+                active
+                  ? 'bg-secondary text-secondary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              {t.displayName}
+              <span className="text-xs text-muted-foreground">{count}</span>
+            </button>
           );
         })}
       </div>

@@ -23,7 +23,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">总览</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">总览</h1>
 
       {error && (
         <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
