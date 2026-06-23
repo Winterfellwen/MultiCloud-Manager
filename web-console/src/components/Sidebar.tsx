@@ -126,12 +126,12 @@ export function Sidebar() {
                   'transition-colors',
                   'hover:bg-accent hover:text-accent-foreground',
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    ? 'bg-foreground text-background shadow-sm'
                     : 'text-muted-foreground'
                 )}
               >
                 {isActive && (
-                  <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-primary-foreground/80" />
+                  <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-foreground" />
                 )}
                 <item.icon className="h-4 w-4" />
                 {item.label}
@@ -149,7 +149,7 @@ export function Sidebar() {
                           'transition-colors',
                           'hover:bg-accent hover:text-accent-foreground',
                           childActive
-                            ? 'bg-secondary text-secondary-foreground font-medium'
+                            ? 'bg-foreground text-background font-semibold'
                             : 'text-muted-foreground'
                         )}
                       >
