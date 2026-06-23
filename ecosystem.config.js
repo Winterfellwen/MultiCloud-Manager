@@ -29,8 +29,9 @@ module.exports = {
       script: './cloud-service/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '160M',
-      node_args: '--max-old-space-size=128',
+      max_memory_restart: '256M',
+      node_args: '--max-old-space-size=224',
+      exp_backoff_restart_delay: 100,
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
