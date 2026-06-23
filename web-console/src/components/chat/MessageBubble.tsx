@@ -3,10 +3,12 @@
 // 支持深度思考（reasoning）独立折叠展示
 // 支持按时间顺序渲染 blocks（reasoning / text / tool_call 按实际输出顺序）
 import { useState } from 'react';
-import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import type { ChatMessage, ContentBlock } from '../../types/chat';
 import { ToolCallCard } from './ToolCallCard';
 import { cn } from '../../lib/utils';
+import { fadeUp, baseTransition } from '../../lib/motion';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -32,7 +34,11 @@ function ReasoningBlock({ reasoning, isStreaming }: { reasoning: string; isStrea
         )}
         <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">思考</span>
         {isStreaming && (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+          <motion.div
+            className="h-2 w-12 rounded bg-gradient-to-r from-muted-foreground/30 via-muted-foreground/50 to-muted-foreground/30 bg-[length:200%_100%]"
+            animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+          />
         )}
         {!expanded && previewLines && (
           <span className="ml-1 min-w-0 flex-1 truncate text-xs italic text-muted-foreground/70">
@@ -63,13 +69,21 @@ function TextBlock({ content, isStreaming }: { content: string; isStreaming: boo
         <div className="whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
           {content}
           {isStreaming && (
-            <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle" />
+            <motion.span
+              className="ml-0.5 inline-block h-3.5 w-1.5 bg-current align-middle"
+              animate={{ opacity: [1, 1, 0, 0] }}
+              transition={{ duration: 1, times: [0, 0.5, 0.5, 1], repeat: Infinity }}
+            />
           )}
         </div>
       )}
       {isStreaming && !content && (
-        <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <motion.div
+            className="h-2 w-20 rounded bg-gradient-to-r from-muted-foreground/30 via-muted-foreground/50 to-muted-foreground/30 bg-[length:200%_100%]"
+            animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+          />
           <span>AI 运作中...</span>
         </div>
       )}
@@ -125,8 +139,12 @@ function BlocksRenderer({
       })}
       {/* 流式输出中但尚无内容时的提示 */}
       {isStreaming && blocks.length === 0 && (
-        <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <motion.div
+            className="h-2 w-20 rounded bg-gradient-to-r from-muted-foreground/30 via-muted-foreground/50 to-muted-foreground/30 bg-[length:200%_100%]"
+            animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+          />
           <span>思考中...</span>
         </div>
       )}
@@ -168,11 +186,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
 
   return (
-    <div
-      className={cn(
-        'group flex gap-3 px-4 py-3 animate-in fade-in slide-in-from-bottom-2 duration-300',
-        isUser && 'flex-row-reverse'
-      )}
+    <motion.div
+      variants={fadeUp}
+      initial="initial"
+      animate="animate"
+      transition={baseTransition}
+      className={cn('group flex gap-3 px-4 py-3', isUser && 'flex-row-reverse')}
     >
       <div
         className={cn(
@@ -207,8 +226,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         ) : !isUser && isStreaming && !message.content && message.toolCalls.length === 0 ? (
           // assistant 消息刚创建（blocks 为空、无内容），显示"思考中"提示
-          <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <motion.div
+              className="h-2 w-20 rounded bg-gradient-to-r from-muted-foreground/30 via-muted-foreground/50 to-muted-foreground/30 bg-[length:200%_100%]"
+              animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+            />
             <span>思考中...</span>
           </div>
         ) : (
@@ -241,7 +264,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               >
                 {message.content}
                 {isStreaming && (
-                  <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle" />
+                  <motion.span
+                    className="ml-0.5 inline-block h-3.5 w-1.5 bg-current align-middle"
+                    animate={{ opacity: [1, 1, 0, 0] }}
+                    transition={{ duration: 1, times: [0, 0.5, 0.5, 1], repeat: Infinity }}
+                  />
                 )}
               </div>
             )}
@@ -283,6 +310,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
