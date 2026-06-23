@@ -168,7 +168,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   };
 
   return (
-    <div className={cn('group flex gap-3 px-4 py-3', isUser && 'flex-row-reverse')}>
+    <div
+      className={cn(
+        'group flex gap-3 px-4 py-3 animate-in fade-in slide-in-from-bottom-2 duration-300',
+        isUser && 'flex-row-reverse'
+      )}
+    >
       <div
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',

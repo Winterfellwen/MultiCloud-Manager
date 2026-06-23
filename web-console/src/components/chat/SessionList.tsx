@@ -185,8 +185,10 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
               <div
                 key={session.sessionKey}
                 className={cn(
-                  'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted',
-                  currentSessionKey === session.sessionKey && 'bg-muted'
+                  'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+                  'transition-all duration-200 ease-out',
+                  'hover:translate-x-0.5 hover:bg-muted',
+                  currentSessionKey === session.sessionKey && 'bg-muted font-medium'
                 )}
                 onClick={() => {
                   if (isEditing) {

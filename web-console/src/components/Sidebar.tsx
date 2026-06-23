@@ -106,7 +106,7 @@ export function Sidebar() {
   return (
     <aside className="w-60 border-r bg-card flex flex-col h-full shadow-lg">
       <div className="h-14 flex items-center px-6 border-b">
-        <span className="font-bold text-lg">CloudOps AI</span>
+        <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
       </div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {visibleItems.map((item) => (
@@ -115,14 +115,16 @@ export function Sidebar() {
               to={item.children ? item.children[0].to : item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
+                  'transition-all duration-200 ease-out',
+                  'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground'
                 )
               }
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
               {item.label}
             </NavLink>
             {item.children && (
@@ -133,10 +135,12 @@ export function Sidebar() {
                     to={child.to}
                     className={({ isActive }) =>
                       cn(
-                        'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
+                        'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
+                        'transition-all duration-200 ease-out',
+                        'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
                         isActive
-                          ? 'bg-secondary text-secondary-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          ? 'bg-secondary text-secondary-foreground font-medium'
+                          : 'text-muted-foreground'
                       )
                     }
                   >
