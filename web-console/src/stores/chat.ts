@@ -845,6 +845,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       }
 
+      // 竞态修复：如果 inFlightRun 的 runId 已在 serverRunIds 中（DB 有 user_message 但无 assistant_complete），
+      // acpEventsToMessages 已将 assistant 消息错误标记为 complete。需要恢复为 streaming 并设置 isSending。
+      if (res.inFlightRun && serverRunIds.has(res.inFlightRun.runId) && res.inFlightRun.isRunning) {
+        const { runId } = res.inFlightRun;
+        // 记录 runId 映射
+        set((state) => ({
+          runIdToSession: { ...state.runIdToSession, [runId]: sessionKey },
+        }));
+        // 将该 runId 的 assistant 消息恢复为 streaming 状态
+        const updatedMessages = finalMessages.map((m) =>
+          m.runId === runId && m.role === 'assistant' ? { ...m, status: 'streaming' as const } : m
+        );
+        finalMessages.length = 0;
+        finalMessages.push(...updatedMessages);
+        set({ isSending: true });
+        // 同样启动安全超时
+        if (isSendingSafetyTimer) clearTimeout(isSendingSafetyTimer);
+        isSendingSafetyTimer = setTimeout(() => {
+          const state = get();
+          if (state.isSending) {
+            console.warn('[chat] isSending safety timeout (race fix): forcing reset');
+            const sessionMessages = state.messagesBySession[sessionKey] || [];
+            const msgs = sessionMessages.map((m) =>
+              m.runId === runId && m.status === 'streaming' ? { ...m, status: 'complete' as const } : m
+            );
+            set({
+              isSending: false,
+              messagesBySession: { ...state.messagesBySession, [sessionKey]: msgs },
+            });
+          }
+          isSendingSafetyTimer = null;
+        }, IS_SENDING_SAFETY_TIMEOUT_MS);
+      }
+
       set((state) => ({
         messagesBySession: { ...state.messagesBySession, [sessionKey]: finalMessages },
       }));
