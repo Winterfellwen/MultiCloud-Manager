@@ -21,7 +21,8 @@
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
     "lucide-react": "^0.446.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "framer-motion": "^11.11.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",

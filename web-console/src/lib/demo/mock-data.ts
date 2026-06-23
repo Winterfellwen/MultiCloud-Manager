@@ -184,6 +184,14 @@ export function getDemoResources(): CloudResource[] {
   return _resourcesCache;
 }
 
+export function deleteDemoResource(id: string): boolean {
+  const list = getDemoResources();
+  const idx = list.findIndex((r) => r.id === id);
+  if (idx === -1) return false;
+  list.splice(idx, 1);
+  return true;
+}
+
 // ===== 告警 =====
 export interface DemoAlert {
   id: string;

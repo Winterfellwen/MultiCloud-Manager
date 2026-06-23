@@ -11,6 +11,7 @@ import {
   deleteDemoInstance,
   addDemoInstance,
   resetDemoInstances,
+  deleteDemoResource,
 } from './mock-data';
 import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
@@ -171,4 +172,10 @@ export function demoResetAll(): Promise<{ success: boolean }> {
     localStorage.removeItem('demo-chat-history');
   } catch { /* ignore */ }
   return Promise.resolve({ success: true });
+}
+
+export function demoDeleteResource(id: string): Promise<{ ok: boolean }> {
+  const ok = deleteDemoResource(id);
+  if (!ok) throw new Error(`Resource ${id} not found`);
+  return Promise.resolve({ ok: true });
 }
