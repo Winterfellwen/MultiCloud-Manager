@@ -21,6 +21,7 @@ export function useResources(filters: ResourceFilters) {
     queryFn: () => isDemoMode
       ? demoListResources(filters as any).then(items => ({ items, total: items.length }))
       : resourceApi.list(filters),
+    gcTime: 5 * 60_000,
   });
 }
 

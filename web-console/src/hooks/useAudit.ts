@@ -7,5 +7,6 @@ export function useAuditLogs(query: AuditLogQuery) {
   return useQuery({
     queryKey: ['audit', query],
     queryFn: () => auditApi.list(query),
+    gcTime: 5 * 60_000,
   });
 }

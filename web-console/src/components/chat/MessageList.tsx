@@ -1,5 +1,5 @@
 // 消息列表：消息按顺序排列，自动滚动到底部
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import type { ChatMessage } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { ScrollArea } from '../ui/scroll-area';
@@ -11,9 +11,13 @@ interface MessageListProps {
 export function MessageList({ messages }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   if (messages.length === 0) {
     return (

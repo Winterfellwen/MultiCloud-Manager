@@ -2,7 +2,7 @@
 // 支持复制：hover 显示复制按钮，点击复制消息内容
 // 支持深度思考（reasoning）独立折叠展示
 // 支持按时间顺序渲染 blocks（reasoning / text / tool_call 按实际输出顺序）
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import type { ChatMessage, ContentBlock } from '../../types/chat';
 import { ToolCallCard } from './ToolCallCard';
@@ -134,7 +134,7 @@ function BlocksRenderer({
   );
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+function MessageBubbleInner({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isError = message.status === 'error';
   const isStreaming = message.status === 'streaming';
@@ -286,3 +286,5 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     </div>
   );
 }
+
+export const MessageBubble = memo(MessageBubbleInner);

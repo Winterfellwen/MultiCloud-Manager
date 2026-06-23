@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useInstances, useInstanceAction, useSyncInstances, useProviders, useRegions, useInstanceTypes, useImages, useCreateInstance } from '@/hooks/useInstances';
 import { useDemoStore } from '@/stores/demo';
 import { demoResetAll } from '@/lib/demo/demo-api';
@@ -28,16 +28,18 @@ export default function Instances() {
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const qc = useQueryClient();
 
-  const filtered = (instances || []).filter((inst) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      (inst.name?.toLowerCase().includes(s)) ||
-      (inst.providerInstanceId?.toLowerCase().includes(s)) ||
-      (inst.publicIp?.includes(s)) ||
-      (inst.region?.toLowerCase().includes(s))
-    );
-  });
+  const filtered = useMemo(() => {
+    return (instances || []).filter((inst) => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (
+        (inst.name?.toLowerCase().includes(s)) ||
+        (inst.providerInstanceId?.toLowerCase().includes(s)) ||
+        (inst.publicIp?.includes(s)) ||
+        (inst.region?.toLowerCase().includes(s))
+      );
+    });
+  }, [instances, search]);
 
   async function handleAction(id: string, act: 'start' | 'stop' | 'reboot' | 'delete') {
     try {

@@ -17,6 +17,7 @@ export function useInstances(params?: ListInstancesParams) {
   return useQuery({
     queryKey: ['instances', params, isDemoMode],
     queryFn: () => isDemoMode ? demoListInstances(params) : cloudApi.listInstances(params),
+    gcTime: 5 * 60_000,
   });
 }
 

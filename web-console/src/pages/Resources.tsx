@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import {
   useResources,
   useResourceTypes,
@@ -103,8 +103,10 @@ export default function Resources() {
   const sync = useSyncResources();
 
   const items = result?.items || [];
-  const extraCols =
-    selectedType !== 'all' ? COLUMN_DEFS[selectedType] || [] : [];
+  const extraCols = useMemo(() =>
+    selectedType !== 'all' ? COLUMN_DEFS[selectedType] || [] : [],
+    [selectedType]
+  );
 
   async function handleDelete(id: string) {
     try {
