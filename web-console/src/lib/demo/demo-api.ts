@@ -7,8 +7,12 @@ import {
   getDemoUsers,
   getDemoMetrics,
   getDemoCloudAccounts,
+  updateDemoInstance,
+  deleteDemoInstance,
+  addDemoInstance,
+  resetDemoInstances,
 } from './mock-data';
-import type { ListInstancesParams, InstanceRow } from '@/types/cloud';
+import type { ListInstancesParams, InstanceRow, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
 
 export function demoListInstances(params?: ListInstancesParams): Promise<InstanceRow[]> {
@@ -83,4 +87,67 @@ export function demoDashboardStats() {
     byProvider,
     errors: { instances: false, alerts: false, costs: false },
   });
+}
+
+// ===== Demo 写操作 =====
+export function demoStartInstance(id: string): Promise<{ success: boolean; status: string }> {
+  const updated = updateDemoInstance(id, { status: 'running' });
+  if (!updated) throw new Error(`Instance ${id} not found`);
+  return Promise.resolve({ success: true, status: 'running' });
+}
+
+export function demoStopInstance(id: string): Promise<{ success: boolean; status: string }> {
+  const updated = updateDemoInstance(id, { status: 'stopped', publicIp: null });
+  if (!updated) throw new Error(`Instance ${id} not found`);
+  return Promise.resolve({ success: true, status: 'stopped' });
+}
+
+export function demoRebootInstance(id: string): Promise<{ success: boolean; status: string }> {
+  const updated = updateDemoInstance(id, { status: 'pending' });
+  if (!updated) throw new Error(`Instance ${id} not found`);
+  // 模拟重启：pending -> running
+  setTimeout(() => updateDemoInstance(id, { status: 'running' }), 2000);
+  return Promise.resolve({ success: true, status: 'restarting' });
+}
+
+export function demoDeleteInstance(id: string): Promise<{ success: boolean }> {
+  const ok = deleteDemoInstance(id);
+  if (!ok) throw new Error(`Instance ${id} not found`);
+  return Promise.resolve({ success: true });
+}
+
+export function demoCreateInstance(params: CreateInstanceParams): Promise<InstanceRow> {
+  const list = getAllDemoInstances();
+  const newInst: InstanceRow = {
+    id: `demo-${params.provider}-${Date.now()}`,
+    provider: params.provider,
+    providerInstanceId: `i-${params.provider}-${Date.now().toString(36)}`,
+    name: params.name,
+    region: params.region,
+    status: 'pending',
+    cpu: 2,
+    memoryMb: 4096,
+    diskGb: 40,
+    publicIp: null,
+    privateIp: `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`,
+    monthlyCost: '32.00',
+    tags: { env: 'dev', team: 'Demo', project: 'cloudops' },
+    lastSyncedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    cloudAccountId: `demo-account-${params.provider}`,
+  };
+  addDemoInstance(newInst);
+  // 模拟启动过程
+  setTimeout(() => updateDemoInstance(newInst.id, { status: 'running', publicIp: `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}` }), 3000);
+  return Promise.resolve(newInst);
+}
+
+export function demoResetAll(): Promise<{ success: boolean }> {
+  resetDemoInstances();
+  // 清除 localStorage 中的 demo 数据
+  try {
+    localStorage.removeItem('demo-chat-sessions');
+    localStorage.removeItem('demo-chat-history');
+  } catch { /* ignore */ }
+  return Promise.resolve({ success: true });
 }

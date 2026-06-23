@@ -107,13 +107,37 @@ export function generateInstances(provider: string): InstanceRow[] {
   });
 }
 
-// ===== 所有实例 =====
+// ===== 所有实例（可变，支持 demo CRUD + 一键还原） =====
 let _instancesCache: InstanceRow[] | null = null;
+function generateAllInstances(): InstanceRow[] {
+  return Object.keys(PROVIDER_INSTANCE_COUNTS).flatMap(generateInstances);
+}
 export function getAllDemoInstances(): InstanceRow[] {
   if (!_instancesCache) {
-    _instancesCache = Object.keys(PROVIDER_INSTANCE_COUNTS).flatMap(generateInstances);
+    _instancesCache = generateAllInstances();
   }
   return _instancesCache;
+}
+export function resetDemoInstances(): void {
+  _instancesCache = generateAllInstances();
+}
+export function updateDemoInstance(id: string, updates: Partial<InstanceRow>): InstanceRow | null {
+  const list = getAllDemoInstances();
+  const idx = list.findIndex((i) => i.id === id);
+  if (idx === -1) return null;
+  const updated = { ...list[idx], ...updates };
+  list[idx] = updated;
+  return updated;
+}
+export function deleteDemoInstance(id: string): boolean {
+  const list = getAllDemoInstances();
+  const idx = list.findIndex((i) => i.id === id);
+  if (idx === -1) return false;
+  list.splice(idx, 1);
+  return true;
+}
+export function addDemoInstance(inst: InstanceRow): void {
+  getAllDemoInstances().push(inst);
 }
 
 // ===== 资源生成 =====

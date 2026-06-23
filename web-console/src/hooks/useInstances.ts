@@ -1,7 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cloudApi } from '@/api/cloud';
 import { useDemoStore } from '@/stores/demo';
-import { demoListInstances, demoGetInstance } from '@/lib/demo/demo-api';
+import {
+  demoListInstances,
+  demoGetInstance,
+  demoStartInstance,
+  demoStopInstance,
+  demoRebootInstance,
+  demoDeleteInstance,
+  demoCreateInstance,
+} from '@/lib/demo/demo-api';
 import type { ListInstancesParams, CreateInstanceParams } from '@/types/cloud';
 
 export function useInstances(params?: ListInstancesParams) {
@@ -23,16 +31,24 @@ export function useInstance(id: string | undefined) {
 
 export function useCreateInstance() {
   const qc = useQueryClient();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useMutation({
-    mutationFn: (params: CreateInstanceParams) => cloudApi.createInstance(params),
+    mutationFn: (params: CreateInstanceParams) => isDemoMode ? demoCreateInstance(params) : cloudApi.createInstance(params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['instances'] }),
   });
 }
 
 export function useInstanceAction() {
   const qc = useQueryClient();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useMutation({
     mutationFn: async ({ id, action }: { id: string; action: 'start' | 'stop' | 'reboot' | 'delete' }) => {
+      if (isDemoMode) {
+        if (action === 'start') return demoStartInstance(id);
+        if (action === 'stop') return demoStopInstance(id);
+        if (action === 'reboot') return demoRebootInstance(id);
+        return demoDeleteInstance(id);
+      }
       if (action === 'start') return cloudApi.startInstance(id);
       if (action === 'stop') return cloudApi.stopInstance(id);
       if (action === 'reboot') return cloudApi.rebootInstance(id);
