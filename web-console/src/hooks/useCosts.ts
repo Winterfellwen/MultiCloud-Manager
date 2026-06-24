@@ -9,8 +9,12 @@ export function useCostSummary(params?: CostSummaryParams) {
   return useQuery<CostSummaryItem[]>({
     queryKey: ['cost-summary', params, isDemoMode],
     queryFn: async () => {
-      if (isDemoMode && params?.start && params?.end) {
-        const demos = await demoGetCostSummary(params.start, params.end);
+      if (isDemoMode) {
+        // 在 demo 模式下，如果没有提供 start/end 参数，使用默认的本月时间范围
+        const now = new Date();
+        const start = params?.start || new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const end = params?.end || new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        const demos = await demoGetCostSummary(start, end);
         // 转换 demo 成本数据为 CostSummaryItem 格式
         const items: CostSummaryItem[] = [];
         for (const d of demos) {
@@ -40,8 +44,9 @@ export function useInstanceCosts() {
 
 export function useCollectCosts() {
   const qc = useQueryClient();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useMutation({
-    mutationFn: () => monitorApi.collectCosts(),
+    mutationFn: () => isDemoMode ? Promise.resolve({ success: true }) : monitorApi.collectCosts(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cost-summary'] });
       qc.invalidateQueries({ queryKey: ['instance-costs'] });

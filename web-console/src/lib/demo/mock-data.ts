@@ -357,3 +357,138 @@ export function getDemoCloudAccounts(): DemoCloudAccount[] {
     { id: 'demo-acc-oracle', name: 'Demo Oracle', provider: 'oracle', config: {}, credentialHint: { userOcid: 'ocid1.user****' }, status: 'active', createdAt: '2024-05-01T08:00:00Z', updatedAt: '2026-06-22T10:30:00Z' },
   ];
 }
+
+// ===== 审计日志 =====
+export interface DemoAuditLog {
+  id: string;
+  timestamp: string;
+  userId: string;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  provider: string | null;
+  region: string | null;
+  params: Record<string, unknown> | null;
+  result: 'success' | 'failure';
+  ip: string | null;
+  traceId: string | null;
+}
+
+export function getDemoAuditLogs(): DemoAuditLog[] {
+  const now = Date.now();
+  const logs: DemoAuditLog[] = [
+    {
+      id: 'demo-audit-1',
+      timestamp: new Date(now - 1000 * 60 * 5).toISOString(),
+      userId: 'demo-u-1',
+      action: 'instance.start',
+      resourceType: 'instance',
+      resourceId: 'demo-aws-1',
+      provider: 'aws',
+      region: 'us-east-1',
+      params: { instanceId: 'demo-aws-1' },
+      result: 'success',
+      ip: '192.168.1.100',
+      traceId: 'trace-001',
+    },
+    {
+      id: 'demo-audit-2',
+      timestamp: new Date(now - 1000 * 60 * 15).toISOString(),
+      userId: 'demo-u-2',
+      action: 'instance.stop',
+      resourceType: 'instance',
+      resourceId: 'demo-aliyun-2',
+      provider: 'aliyun',
+      region: 'cn-hangzhou',
+      params: { instanceId: 'demo-aliyun-2', reason: 'maintenance' },
+      result: 'success',
+      ip: '10.0.0.50',
+      traceId: 'trace-002',
+    },
+    {
+      id: 'demo-audit-3',
+      timestamp: new Date(now - 1000 * 60 * 30).toISOString(),
+      userId: 'demo-u-3',
+      action: 'instance.create',
+      resourceType: 'instance',
+      resourceId: 'demo-azure-1',
+      provider: 'azure',
+      region: 'eastus',
+      params: { name: 'web-server-01', size: 'Standard_D2s_v3' },
+      result: 'success',
+      ip: '172.16.0.25',
+      traceId: 'trace-003',
+    },
+    {
+      id: 'demo-audit-4',
+      timestamp: new Date(now - 1000 * 60 * 60).toISOString(),
+      userId: 'demo-u-1',
+      action: 'instance.delete',
+      resourceType: 'instance',
+      resourceId: 'demo-tencent-1',
+      provider: 'tencent',
+      region: 'ap-guangzhou',
+      params: { instanceId: 'demo-tencent-1' },
+      result: 'failure',
+      ip: '192.168.1.100',
+      traceId: 'trace-004',
+    },
+    {
+      id: 'demo-audit-5',
+      timestamp: new Date(now - 1000 * 60 * 120).toISOString(),
+      userId: 'demo-u-4',
+      action: 'cloud_account.sync',
+      resourceType: 'cloud_account',
+      resourceId: 'demo-acc-aws',
+      provider: 'aws',
+      region: null,
+      params: { accountId: 'demo-acc-aws' },
+      result: 'success',
+      ip: '10.1.0.10',
+      traceId: 'trace-005',
+    },
+    {
+      id: 'demo-audit-6',
+      timestamp: new Date(now - 1000 * 60 * 180).toISOString(),
+      userId: 'demo-u-2',
+      action: 'alert.acknowledge',
+      resourceType: 'alert',
+      resourceId: 'demo-alert-1',
+      provider: 'aws',
+      region: 'us-east-1',
+      params: { alertId: 'demo-alert-1', message: 'High CPU usage' },
+      result: 'success',
+      ip: '10.0.0.50',
+      traceId: 'trace-006',
+    },
+    {
+      id: 'demo-audit-7',
+      timestamp: new Date(now - 1000 * 60 * 240).toISOString(),
+      userId: 'demo-u-1',
+      action: 'user.login',
+      resourceType: 'user',
+      resourceId: 'demo-u-1',
+      provider: null,
+      region: null,
+      params: { username: 'demo-admin' },
+      result: 'success',
+      ip: '192.168.1.100',
+      traceId: 'trace-007',
+    },
+    {
+      id: 'demo-audit-8',
+      timestamp: new Date(now - 1000 * 60 * 300).toISOString(),
+      userId: 'demo-u-5',
+      action: 'instance.reboot',
+      resourceType: 'instance',
+      resourceId: 'demo-huawei-1',
+      provider: 'huawei',
+      region: 'cn-north-1',
+      params: { instanceId: 'demo-huawei-1' },
+      result: 'success',
+      ip: '10.2.0.30',
+      traceId: 'trace-008',
+    },
+  ];
+  return logs;
+}

@@ -12,6 +12,7 @@ import {
   addDemoInstance,
   resetDemoInstances,
   deleteDemoResource,
+  getDemoAuditLogs,
 } from './mock-data';
 import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
@@ -68,6 +69,18 @@ export function demoGetMetrics(instanceId: string) {
 
 export function demoListCloudAccounts(): Promise<unknown[]> {
   return Promise.resolve(getDemoCloudAccounts() as unknown[]);
+}
+
+export function demoAuditLogs(query?: { userId?: string; action?: string; provider?: string; startDate?: string; endDate?: string; limit?: number; offset?: number }): Promise<unknown[]> {
+  let logs = getDemoAuditLogs();
+  if (query?.userId) logs = logs.filter(l => l.userId.includes(query.userId!));
+  if (query?.action) logs = logs.filter(l => l.action.includes(query.action!));
+  if (query?.provider) logs = logs.filter(l => l.provider === query.provider);
+  if (query?.startDate) logs = logs.filter(l => l.timestamp >= query.startDate!);
+  if (query?.endDate) logs = logs.filter(l => l.timestamp <= query.endDate!);
+  const offset = query?.offset || 0;
+  const limit = query?.limit || logs.length;
+  return Promise.resolve(logs.slice(offset, offset + limit) as unknown[]);
 }
 
 export function demoDashboardStats() {
