@@ -16,7 +16,7 @@ import dagre from 'dagre';
 import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailPanel } from './NodeDetailPanel';
-import { type TopologyNode, type TopologyEdge, type TopologyView } from '@/types/topology';
+import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 
 const nodeTypes = {
   resource: ResourceNode,
@@ -29,11 +29,10 @@ const edgeTypes = {
 interface TopologyCanvasProps {
   nodes: TopologyNode[];
   edges: TopologyEdge[];
-  view: TopologyView;
   isLoading?: boolean;
 }
 
-export function TopologyCanvas({ nodes, edges, view: _view, isLoading }: TopologyCanvasProps) {
+export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
@@ -102,20 +101,7 @@ export function TopologyCanvas({ nodes, edges, view: _view, isLoading }: Topolog
   const onNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const topologyNode = node.data as unknown as TopologyNode;
-      const routeMap: Record<string, string> = {
-        instance: '/instances',
-        disk: '/resources',
-        database: '/resources',
-        cache: '/resources',
-        bucket: '/resources',
-        loadbalancer: '/resources',
-        vpc: '/resources',
-        securitygroup: '/resources',
-        cdn: '/resources',
-        cluster: '/resources',
-        aiservice: '/resources',
-      };
-      const baseRoute = routeMap[topologyNode.type] || '/resources';
+      const baseRoute = RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources';
       navigate(baseRoute);
     },
     [navigate]

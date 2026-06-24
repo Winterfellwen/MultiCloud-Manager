@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { TOPOLOGY_CATEGORY_LABELS, type TopologyNode, type TopologyCategory } from '@/types/topology';
+import { TOPOLOGY_CATEGORY_LABELS, RESOURCE_TYPE_ROUTE_MAP, type TopologyNode, type TopologyCategory } from '@/types/topology';
 import { getStatusColor } from '@/types/resource';
 
 interface NodeDetailPanelProps {
@@ -21,21 +21,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
 
   function handleViewDetails() {
     if (!node) return;
-    // 根据资源类型跳转到对应页面
-    const routeMap: Record<string, string> = {
-      instance: '/instances',
-      disk: '/resources',
-      database: '/resources',
-      cache: '/resources',
-      bucket: '/resources',
-      loadbalancer: '/resources',
-      vpc: '/resources',
-      securitygroup: '/resources',
-      cdn: '/resources',
-      cluster: '/resources',
-      aiservice: '/resources',
-    };
-    const baseRoute = routeMap[node.type] || '/resources';
+    const baseRoute = RESOURCE_TYPE_ROUTE_MAP[node.type] || '/resources';
     navigate(baseRoute);
   }
 

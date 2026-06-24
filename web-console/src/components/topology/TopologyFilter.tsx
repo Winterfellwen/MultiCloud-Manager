@@ -86,6 +86,7 @@ export function TopologyFilter({ filters, onChange }: TopologyFilterProps) {
             <option value="securitygroup">{t('resourceTypes.securitygroup')}</option>
             <option value="cdn">{t('resourceTypes.cdn')}</option>
             <option value="cluster">{t('resourceTypes.cluster')}</option>
+            <option value="aiservice">{t('resourceTypes.aiservice')}</option>
           </Select>
         </div>
 

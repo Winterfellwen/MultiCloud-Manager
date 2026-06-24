@@ -63,6 +63,21 @@ export const TOPOLOGY_CATEGORY_LABELS: Record<TopologyCategory, string> = {
   ai: 'AI 服务',
 };
 
+/** 资源类型到路由的映射 */
+export const RESOURCE_TYPE_ROUTE_MAP: Record<string, string> = {
+  instance: '/instances',
+  disk: '/resources',
+  database: '/resources',
+  cache: '/resources',
+  bucket: '/resources',
+  loadbalancer: '/resources',
+  vpc: '/resources',
+  securitygroup: '/resources',
+  cdn: '/resources',
+  cluster: '/resources',
+  aiservice: '/resources',
+};
+
 /** 视角配置 */
 export const VIEW_CONFIG: Record<TopologyView, {
   label: string;

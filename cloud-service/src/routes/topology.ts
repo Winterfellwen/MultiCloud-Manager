@@ -20,6 +20,7 @@ export async function topologyRoutes(app: FastifyInstance) {
     if (query.region) filters.region = query.region;
     if (query.resourceType) filters.resourceType = query.resourceType as ResourceType;
     if (query.status) filters.status = query.status;
+    if (query.cloudAccountId) filters.cloudAccountId = query.cloudAccountId;
 
     return resourceService.getTopology(filters);
   });

@@ -54,7 +54,6 @@ export default function Topology() {
           <TopologyCanvas
             nodes={filteredNodes}
             edges={filteredEdges}
-            view={view}
             isLoading={isLoading}
           />
         </div>
