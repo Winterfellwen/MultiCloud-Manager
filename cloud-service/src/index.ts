@@ -6,6 +6,7 @@ import { syncService } from "./services/sync.service.js";
 import { instanceRoutes } from "./routes/instances.js";
 import { resourceRoutes } from "./routes/resources.js";
 import { providerRoutes, accountRoutes } from "./routes/providers.js";
+import { topologyRoutes } from "./routes/topology.js";
 import { AppError } from "@cloudops/shared";
 import { runMigrations } from "./db/migrate.js";
 
@@ -70,6 +71,7 @@ await app.register(instanceRoutes, { prefix: "/cloud/instances" });
 await app.register(resourceRoutes, { prefix: "/cloud/resources" });
 await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
+await app.register(topologyRoutes, { prefix: "/topology" });
 
 // 首次访问云资源时触发同步
 app.addHook('onRequest', async (request) => {
