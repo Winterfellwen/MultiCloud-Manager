@@ -478,6 +478,9 @@
       "region": "Region",
       "attributes": "Attributes",
       "viewDetails": "View Details"
-    }
+    },
+    "loading": "Loading topology data...",
+    "empty": "No topology data",
+    "emptyHint": "Add cloud accounts and sync resources to view topology"
   }
 }
