@@ -46,7 +46,7 @@ export function useCollectCosts() {
   const qc = useQueryClient();
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useMutation({
-    mutationFn: () => isDemoMode ? Promise.resolve({ success: true }) : monitorApi.collectCosts(),
+    mutationFn: () => isDemoMode ? Promise.resolve({ ok: true as const, message: 'Demo mode: costs collected' }) : monitorApi.collectCosts(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cost-summary'] });
       qc.invalidateQueries({ queryKey: ['instance-costs'] });
