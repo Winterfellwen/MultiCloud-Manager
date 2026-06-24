@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ReactFlow,
@@ -15,7 +15,7 @@ import dagre from 'dagre';
 import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailPanel } from './NodeDetailPanel';
-import { type TopologyNode, type TopologyEdge } from '@/types/topology';
+import { type TopologyNode, type TopologyEdge, type TopologyView } from '@/types/topology';
 
 const nodeTypes = {
   resource: ResourceNode,
@@ -28,10 +28,11 @@ const edgeTypes = {
 interface TopologyCanvasProps {
   nodes: TopologyNode[];
   edges: TopologyEdge[];
+  view: TopologyView;
   isLoading?: boolean;
 }
 
-export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps) {
+export function TopologyCanvas({ nodes, edges, view, isLoading }: TopologyCanvasProps) {
   const { t } = useTranslation();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 
@@ -80,7 +81,7 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
 
   // 更新节点和边当数据变化时
-  useMemo(() => {
+  useEffect(() => {
     setNodes(layoutNodes);
     setEdges(layoutEdges);
   }, [layoutNodes, layoutEdges, setNodes, setEdges]);
