@@ -480,6 +480,7 @@
       "viewDetails": "查看详情"
     },
     "loading": "加载拓扑数据中...",
+    "loadFailed": "加载失败",
     "empty": "暂无拓扑数据",
     "emptyHint": "请添加云账号并同步资源以查看拓扑"
   }
