@@ -8,6 +8,7 @@ export interface UserRow {
   email: string | null;
   role: UserRole;
   team: string;
+  teamId: string | null;
   createdAt: string;
   lastLoginAt: string | null;
 }

@@ -3,6 +3,7 @@
 import type { InstanceRow } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
 import type { TopologyNode, TopologyEdge } from '@/types/topology';
+import type { Team, TeamMember } from '@/types/team';
 
 // ===== 工具函数 =====
 function seededRandom(seed: number): () => number {
@@ -292,18 +293,77 @@ export interface DemoUser {
   email: string | null;
   role: 'admin' | 'ops_manager' | 'ops_engineer' | 'viewer';
   team: string;
+  teamId: string | null;
   createdAt: string;
   lastLoginAt: string | null;
 }
 
 export function getDemoUsers(): DemoUser[] {
   return [
-    { id: 'demo-u-1', username: 'demo-admin', email: 'admin@demo.cloudops.io', role: 'admin', team: 'Platform', createdAt: '2024-01-15T08:00:00Z', lastLoginAt: '2026-06-22T10:30:00Z' },
-    { id: 'demo-u-2', username: 'demo-manager', email: 'manager@demo.cloudops.io', role: 'ops_manager', team: 'SRE', createdAt: '2024-02-20T08:00:00Z', lastLoginAt: '2026-06-23T09:15:00Z' },
-    { id: 'demo-u-3', username: 'demo-engineer-1', email: 'eng1@demo.cloudops.io', role: 'ops_engineer', team: 'DevOps', createdAt: '2024-03-10T08:00:00Z', lastLoginAt: '2026-06-23T08:45:00Z' },
-    { id: 'demo-u-4', username: 'demo-engineer-2', email: 'eng2@demo.cloudops.io', role: 'ops_engineer', team: 'Backend', createdAt: '2024-04-05T08:00:00Z', lastLoginAt: '2026-06-22T16:20:00Z' },
-    { id: 'demo-u-5', username: 'demo-viewer', email: 'viewer@demo.cloudops.io', role: 'viewer', team: 'Finance', createdAt: '2024-05-12T08:00:00Z', lastLoginAt: '2026-06-20T14:00:00Z' },
+    { id: 'demo-u-1', username: 'demo-admin', email: 'admin@demo.cloudops.io', role: 'admin', team: 'Platform', teamId: 'demo-team-1', createdAt: '2024-01-15T08:00:00Z', lastLoginAt: '2026-06-22T10:30:00Z' },
+    { id: 'demo-u-2', username: 'demo-manager', email: 'manager@demo.cloudops.io', role: 'ops_manager', team: 'SRE', teamId: 'demo-team-2', createdAt: '2024-02-20T08:00:00Z', lastLoginAt: '2026-06-23T09:15:00Z' },
+    { id: 'demo-u-3', username: 'demo-engineer-1', email: 'eng1@demo.cloudops.io', role: 'ops_engineer', team: 'DevOps', teamId: 'demo-team-3', createdAt: '2024-03-10T08:00:00Z', lastLoginAt: '2026-06-23T08:45:00Z' },
+    { id: 'demo-u-4', username: 'demo-engineer-2', email: 'eng2@demo.cloudops.io', role: 'ops_engineer', team: 'Backend', teamId: 'demo-team-3', createdAt: '2024-04-05T08:00:00Z', lastLoginAt: '2026-06-22T16:20:00Z' },
+    { id: 'demo-u-5', username: 'demo-viewer', email: 'viewer@demo.cloudops.io', role: 'viewer', team: 'Finance', teamId: null, createdAt: '2024-05-12T08:00:00Z', lastLoginAt: '2026-06-20T14:00:00Z' },
   ];
+}
+
+// ===== 团队 =====
+let _teamsCache: Team[] | null = null;
+
+export function getDemoTeams(): Team[] {
+  if (!_teamsCache) {
+    _teamsCache = [
+      { id: 'demo-team-1', name: 'Platform', createdAt: '2024-01-15T08:00:00Z' },
+      { id: 'demo-team-2', name: 'SRE', createdAt: '2024-02-20T08:00:00Z' },
+      { id: 'demo-team-3', name: 'DevOps', createdAt: '2024-03-10T08:00:00Z' },
+      { id: 'demo-team-4', name: 'Backend', createdAt: '2024-04-05T08:00:00Z' },
+      { id: 'demo-team-5', name: 'Frontend', createdAt: '2024-05-12T08:00:00Z' },
+      { id: 'demo-team-6', name: 'Data', createdAt: '2024-06-01T08:00:00Z' },
+    ];
+  }
+  return _teamsCache;
+}
+
+export function getDemoTeamById(id: string): Team | null {
+  return getDemoTeams().find(t => t.id === id) || null;
+}
+
+export function addDemoTeam(team: Team): void {
+  getDemoTeams().push(team);
+}
+
+export function updateDemoTeam(id: string, updates: Partial<Team>): Team | null {
+  const list = getDemoTeams();
+  const idx = list.findIndex(t => t.id === id);
+  if (idx === -1) return null;
+  const updated = { ...list[idx], ...updates };
+  list[idx] = updated;
+  return updated;
+}
+
+export function deleteDemoTeam(id: string): boolean {
+  const list = getDemoTeams();
+  const idx = list.findIndex(t => t.id === id);
+  if (idx === -1) return false;
+  list.splice(idx, 1);
+  return true;
+}
+
+export function getDemoTeamMembers(teamId: string): TeamMember[] {
+  const users = getDemoUsers();
+  return users
+    .filter(u => u.teamId === teamId)
+    .map(u => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role,
+      team: u.team,
+      teamId: u.teamId,
+      createdAt: u.createdAt,
+      lastLoginAt: u.lastLoginAt,
+    }));
 }
 
 // ===== 监控时间序列 =====

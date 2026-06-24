@@ -14,10 +14,17 @@ import {
   deleteDemoResource,
   getDemoAuditLogs,
   getDemoTopology,
+  getDemoTeams,
+  getDemoTeamById,
+  addDemoTeam,
+  updateDemoTeam,
+  deleteDemoTeam,
+  getDemoTeamMembers,
 } from './mock-data';
 import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
 import type { TopologyData } from '@/types/topology';
+import type { Team, TeamMember, CreateTeamParams, UpdateTeamParams, AssignUserToTeamParams } from '@/types/team';
 
 let _dashboardStatsCache: unknown = null;
 
@@ -203,4 +210,58 @@ export function demoGetTopology(filters?: {
   cloudAccountId?: string;
 }): Promise<TopologyData> {
   return Promise.resolve(getDemoTopology(filters));
+}
+
+// ===== Demo 团队 API =====
+export function demoListTeams(): Promise<Team[]> {
+  return Promise.resolve(getDemoTeams());
+}
+
+export function demoGetTeam(id: string): Promise<Team> {
+  const team = getDemoTeamById(id);
+  if (!team) throw new Error(`Team ${id} not found`);
+  return Promise.resolve(team);
+}
+
+export function demoCreateTeam(params: CreateTeamParams): Promise<Team> {
+  const newTeam: Team = {
+    id: `demo-team-${Date.now()}`,
+    name: params.name,
+    createdAt: new Date().toISOString(),
+  };
+  addDemoTeam(newTeam);
+  return Promise.resolve(newTeam);
+}
+
+export function demoUpdateTeam(id: string, params: UpdateTeamParams): Promise<Team> {
+  const updated = updateDemoTeam(id, params);
+  if (!updated) throw new Error(`Team ${id} not found`);
+  return Promise.resolve(updated);
+}
+
+export function demoDeleteTeam(id: string): Promise<{ success: boolean }> {
+  const ok = deleteDemoTeam(id);
+  if (!ok) throw new Error(`Team ${id} not found`);
+  return Promise.resolve({ success: true });
+}
+
+export function demoGetTeamMembers(teamId: string): Promise<TeamMember[]> {
+  return Promise.resolve(getDemoTeamMembers(teamId));
+}
+
+export function demoAssignUserToTeam(userId: string, params: AssignUserToTeamParams): Promise<{ success: boolean }> {
+  const users = getDemoUsers();
+  const userIdx = users.findIndex(u => u.id === userId);
+  if (userIdx === -1) throw new Error(`User ${userId} not found`);
+  
+  const teamId = params.teamId;
+  let teamName = '';
+  if (teamId) {
+    const team = getDemoTeamById(teamId);
+    if (!team) throw new Error(`Team ${teamId} not found`);
+    teamName = team.name;
+  }
+  
+  users[userIdx] = { ...users[userIdx], teamId, team: teamName };
+  return Promise.resolve({ success: true });
 }
