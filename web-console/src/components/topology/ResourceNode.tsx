@@ -1,7 +1,7 @@
 import { memo, type CSSProperties } from 'react';
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { Server, Database, HardDrive, Share2, GitBranch, Shield, Globe, Boxes, Cpu, Zap, type LucideIcon } from 'lucide-react';
-import { NODE_COLORS, type TopologyNode } from '@/types/topology';
+import { NODE_COLORS, type TopologyNode, type TopologyCategory } from '@/types/topology';
 import { cn } from '@/lib/utils';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -17,11 +17,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
   zap: Zap,
 };
 
-type ResourceNode = Node<TopologyNode & Record<string, unknown>>;
+type ResourceNodeData = Node<TopologyNode & Record<string, unknown>>;
 
-function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNode>) {
+function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) {
   const Icon = ICON_MAP[data.icon] || Server;
-  const color = NODE_COLORS[data.category as keyof typeof NODE_COLORS] || '#6b7280';
+  const color = NODE_COLORS[data.category as TopologyCategory] || '#6b7280';
 
   return (
     <div
@@ -31,6 +31,7 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNode>) {
         'min-w-[120px]'
       )}
       style={{ borderColor: selected ? color : undefined }}
+      aria-label={`${data.label} - ${data.status}`}
     >
       <Handle type="target" position={Position.Top} className="!bg-gray-400" />
       
