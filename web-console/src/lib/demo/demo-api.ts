@@ -13,6 +13,7 @@ import {
   resetDemoInstances,
   deleteDemoResource,
   getDemoAuditLogs,
+  getDemoTopology,
 } from './mock-data';
 import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
@@ -191,4 +192,13 @@ export function demoDeleteResource(id: string): Promise<{ ok: boolean }> {
   const ok = deleteDemoResource(id);
   if (!ok) throw new Error(`Resource ${id} not found`);
   return Promise.resolve({ ok: true });
+}
+
+export function demoGetTopology(filters?: {
+  provider?: string;
+  region?: string;
+  resourceType?: string;
+  status?: string;
+}): Promise<{ nodes: Array<{ id: string; type: string; label: string; provider: string; region: string; status: string; category: string; icon: string; data: Record<string, unknown> }>; edges: Array<{ id: string; source: string; target: string; type: string; label?: string }> }> {
+  return Promise.resolve(getDemoTopology(filters));
 }

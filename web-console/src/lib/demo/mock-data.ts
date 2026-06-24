@@ -492,3 +492,271 @@ export function getDemoAuditLogs(): DemoAuditLog[] {
   ];
   return logs;
 }
+
+// ===== 拓扑模拟数据 =====
+export interface DemoTopologyNode {
+  id: string;
+  type: string;
+  label: string;
+  provider: string;
+  region: string;
+  status: string;
+  category: string;
+  icon: string;
+  data: Record<string, unknown>;
+}
+
+export interface DemoTopologyEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  label?: string;
+}
+
+let _topologyCache: { nodes: DemoTopologyNode[]; edges: DemoTopologyEdge[] } | null = null;
+
+export function getDemoTopology(filters?: {
+  provider?: string;
+  region?: string;
+  resourceType?: string;
+  status?: string;
+}): { nodes: DemoTopologyNode[]; edges: DemoTopologyEdge[] } {
+  if (!_topologyCache) {
+    const rand = seededRandom(789);
+    const nodes: DemoTopologyNode[] = [];
+    const edges: DemoTopologyEdge[] = [];
+    let nodeIdx = 0;
+
+    // 创建 VPC（3个）
+    const vpcs = Array.from({ length: 3 }, (_, i) => {
+      const id = `demo-vpc-${i}`;
+      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
+      const region = pick(PROVIDER_REGIONS[provider], rand);
+      nodes.push({
+        id,
+        type: 'vpc',
+        label: `VPC-${i + 1}`,
+        provider,
+        region,
+        status: 'active',
+        category: 'network',
+        icon: 'git-branch',
+        data: { cidrBlock: `10.${i}.0.0/16`, subnetCount: 2 + Math.floor(rand() * 2) },
+      });
+      return { id, provider, region };
+    });
+
+    // 创建子网（每个 VPC 2-3 个）
+    const subnets: Array<{ id: string; provider: string; region: string; vpcId: string }> = [];
+    for (const vpc of vpcs) {
+      const subnetCount = 2 + Math.floor(rand() * 2);
+      for (let i = 0; i < subnetCount; i++) {
+        const id = `demo-subnet-${nodeIdx++}`;
+        subnets.push({ id, provider: vpc.provider, region: vpc.region, vpcId: vpc.id });
+        nodes.push({
+          id,
+          type: 'subnet',
+          label: `Subnet-${vpc.id.split('-').pop()}-${i + 1}`,
+          provider: vpc.provider,
+          region: vpc.region,
+          status: 'active',
+          category: 'network',
+          icon: 'git-branch',
+          data: { cidrBlock: `10.${vpc.id.split('-').pop()}.${i}.0/24` },
+        });
+        edges.push({
+          id: `edge-${id}-${vpc.id}`,
+          source: id,
+          target: vpc.id,
+          type: 'contains',
+          label: '位于',
+        });
+      }
+    }
+
+    // 创建实例（每个子网 5-10 个）
+    const instances: Array<{ id: string; provider: string; region: string }> = [];
+    for (const subnet of subnets) {
+      const instanceCount = 5 + Math.floor(rand() * 6);
+      for (let i = 0; i < instanceCount; i++) {
+        const id = `demo-instance-${nodeIdx++}`;
+        const status = weightedPick(['running', 'stopped', 'pending'], [0.7, 0.2, 0.1], rand);
+        instances.push({ id, provider: subnet.provider, region: subnet.region });
+        nodes.push({
+          id,
+          type: 'instance',
+          label: `Instance-${instances.length}`,
+          provider: subnet.provider,
+          region: subnet.region,
+          status,
+          category: 'compute',
+          icon: 'server',
+          data: { cpu: pick([1, 2, 4, 8], rand), memoryMb: pick([2048, 4096, 8192, 16384], rand) },
+        });
+        edges.push({
+          id: `edge-${id}-${subnet.id}`,
+          source: id,
+          target: subnet.id,
+          type: 'contains',
+          label: '位于',
+        });
+      }
+    }
+
+    // 创建安全组（每个 VPC 2 个）
+    for (const vpc of vpcs) {
+      for (let i = 0; i < 2; i++) {
+        const id = `demo-sg-${nodeIdx++}`;
+        nodes.push({
+          id,
+          type: 'securitygroup',
+          label: `SG-${vpc.id.split('-').pop()}-${i + 1}`,
+          provider: vpc.provider,
+          region: vpc.region,
+          status: 'active',
+          category: 'security',
+          icon: 'shield',
+          data: { ruleCount: 5 + Math.floor(rand() * 10) },
+        });
+        // 随机选择一些实例关联此安全组
+        const relatedInstances = instances
+          .filter(inst => inst.region === vpc.region && rand() > 0.5)
+          .slice(0, 3);
+        for (const inst of relatedInstances) {
+          edges.push({
+            id: `edge-${inst.id}-${id}`,
+            source: inst.id,
+            target: id,
+            type: 'protected-by',
+            label: '受保护',
+          });
+        }
+      }
+    }
+
+    // 创建负载均衡器（2个）
+    for (let i = 0; i < 2; i++) {
+      const id = `demo-lb-${nodeIdx++}`;
+      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
+      const region = pick(PROVIDER_REGIONS[provider], rand);
+      nodes.push({
+        id,
+        type: 'loadbalancer',
+        label: `LB-${i + 1}`,
+        provider,
+        region,
+        status: 'active',
+        category: 'network',
+        icon: 'share-2',
+        data: { type: pick(['application', 'network'], rand), scheme: 'internet-facing' },
+      });
+      // 关联一些实例
+      const targetInstances = instances
+        .filter(inst => inst.region === region)
+        .slice(0, 3);
+      for (const inst of targetInstances) {
+        edges.push({
+          id: `edge-${id}-${inst.id}`,
+          source: id,
+          target: inst.id,
+          type: 'routes-to',
+          label: '转发',
+        });
+      }
+    }
+
+    // 创建数据库（3个）
+    for (let i = 0; i < 3; i++) {
+      const id = `demo-db-${nodeIdx++}`;
+      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
+      const region = pick(PROVIDER_REGIONS[provider], rand);
+      const vpc = vpcs.find(v => v.region === region) || vpcs[0];
+      nodes.push({
+        id,
+        type: 'database',
+        label: `DB-${i + 1}`,
+        provider,
+        region,
+        status: 'active',
+        category: 'database',
+        icon: 'database',
+        data: { engine: pick(['mysql', 'postgresql', 'mongodb'], rand), engineVersion: '8.0' },
+      });
+      edges.push({
+        id: `edge-${id}-${vpc.id}`,
+        source: id,
+        target: vpc.id,
+        type: 'contains',
+        label: '位于',
+      });
+    }
+
+    // 创建缓存（2个）
+    for (let i = 0; i < 2; i++) {
+      const id = `demo-cache-${nodeIdx++}`;
+      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
+      const region = pick(PROVIDER_REGIONS[provider], rand);
+      nodes.push({
+        id,
+        type: 'cache',
+        label: `Redis-${i + 1}`,
+        provider,
+        region,
+        status: 'active',
+        category: 'database',
+        icon: 'zap',
+        data: { engine: 'redis', engineVersion: '7.0', memoryMb: pick([256, 512, 1024], rand) },
+      });
+    }
+
+    // 创建对象存储（3个）
+    for (let i = 0; i < 3; i++) {
+      const id = `demo-bucket-${nodeIdx++}`;
+      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
+      const region = pick(PROVIDER_REGIONS[provider], rand);
+      nodes.push({
+        id,
+        type: 'bucket',
+        label: `Bucket-${i + 1}`,
+        provider,
+        region,
+        status: 'active',
+        category: 'storage',
+        icon: 'database',
+        data: { storageClass: pick(['standard', 'standard-ia', 'glacier'], rand), sizeBytes: Math.floor(rand() * 1000000000) },
+      });
+    }
+
+    _topologyCache = { nodes, edges };
+  }
+
+  // 应用筛选
+  let { nodes, edges } = _topologyCache;
+
+  if (filters?.provider) {
+    const nodeIds = new Set(nodes.filter(n => n.provider === filters.provider).map(n => n.id));
+    nodes = nodes.filter(n => nodeIds.has(n.id));
+    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+  }
+
+  if (filters?.region) {
+    const nodeIds = new Set(nodes.filter(n => n.region === filters.region).map(n => n.id));
+    nodes = nodes.filter(n => nodeIds.has(n.id));
+    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+  }
+
+  if (filters?.resourceType) {
+    const nodeIds = new Set(nodes.filter(n => n.type === filters.resourceType).map(n => n.id));
+    nodes = nodes.filter(n => nodeIds.has(n.id));
+    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+  }
+
+  if (filters?.status) {
+    const nodeIds = new Set(nodes.filter(n => n.status === filters.status).map(n => n.id));
+    nodes = nodes.filter(n => nodeIds.has(n.id));
+    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+  }
+
+  return { nodes, edges };
+}
