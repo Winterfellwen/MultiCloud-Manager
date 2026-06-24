@@ -34,7 +34,8 @@
     "tools": "Tools",
     "mcp": "MCP Config",
     "users": "Users",
-    "audit": "Audit Logs"
+    "audit": "Audit Logs",
+    "topology": "Topology"
   },
   "topbar": {
     "title": "Multi-Cloud Console",
@@ -455,6 +456,7 @@
     "cluster": "Cluster"
   },
   "topology": {
+    "title": "Topology View",
     "filters": {
       "title": "Filters",
       "reset": "Reset",
@@ -476,6 +478,7 @@
       "type": "Type",
       "provider": "Provider",
       "region": "Region",
+      "status": "Status",
       "attributes": "Attributes",
       "viewDetails": "View Details"
     },

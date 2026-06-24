@@ -18,6 +18,7 @@ import ToolsCatalog from '@/pages/ToolsCatalog';
 import McpConfig from '@/pages/McpConfig';
 import AiSettings from '@/pages/AiSettings';
 import CloudAccounts from '@/pages/CloudAccounts';
+import Topology from '@/pages/Topology';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient({
@@ -61,6 +62,14 @@ export default function App() {
                 element={
                   <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
                     <Resources />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/topology"
+                element={
+                  <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
+                    <Topology />
                   </ProtectedRoute>
                 }
               />

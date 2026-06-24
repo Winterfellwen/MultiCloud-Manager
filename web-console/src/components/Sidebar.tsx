@@ -13,6 +13,7 @@ import {
   Settings2,
   Cloud,
   Boxes,
+  Network,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,12 @@ export function Sidebar() {
       label: t('nav.resources'),
       to: '/resources',
       icon: Boxes,
+      permission: { resource: 'instance', action: 'list' },
+    },
+    {
+      label: t('nav.topology'),
+      to: '/topology',
+      icon: Network,
       permission: { resource: 'instance', action: 'list' },
     },
     {

@@ -20,6 +20,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
   const categoryLabel = TOPOLOGY_CATEGORY_LABELS[node.category as TopologyCategory] || node.category;
 
   function handleViewDetails() {
+    if (!node) return;
     // 根据资源类型跳转到对应页面
     const routeMap: Record<string, string> = {
       instance: '/instances',

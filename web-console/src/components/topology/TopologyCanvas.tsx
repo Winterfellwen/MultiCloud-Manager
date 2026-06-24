@@ -32,7 +32,7 @@ interface TopologyCanvasProps {
   isLoading?: boolean;
 }
 
-export function TopologyCanvas({ nodes, edges, view, isLoading }: TopologyCanvasProps) {
+export function TopologyCanvas({ nodes, edges, view: _view, isLoading }: TopologyCanvasProps) {
   const { t } = useTranslation();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 
