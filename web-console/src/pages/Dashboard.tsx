@@ -1,5 +1,6 @@
 // Dashboard 总览页：统计卡片 + 云厂商分布
 import { Server, DollarSign, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -10,6 +11,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { data: stats, isLoading, error } = useDashboardStats();
 
   const formatCost = (cost: number) => {
@@ -23,12 +25,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold">总览</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">{t('dashboard.title')}</h1>
 
       {error && (
         <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          加载失败：{(error as Error).message}
+          {t('dashboard.loadFailed')}：{(error as Error).message}
         </div>
       )}
 
@@ -37,7 +39,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">总实例数</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.totalInstances')}</CardTitle>
               <Server className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
@@ -50,7 +52,7 @@ export default function Dashboard() {
               <div className="text-2xl font-bold text-muted-foreground">-</div>
             )}
             {stats?.errors.instances && (
-              <p className="mt-1 text-xs text-destructive">实例数据加载失败</p>
+              <p className="mt-1 text-xs text-destructive">{t('dashboard.instancesFailed')}</p>
             )}
           </CardContent>
         </Card>
@@ -58,7 +60,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">运行中</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.running')}</CardTitle>
               <Server className="h-4 w-4 text-green-500" />
             </div>
           </CardHeader>
@@ -70,7 +72,7 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold text-green-600">{stats.runningInstances}</div>
                 {stats.totalInstances > 0 && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    占比 {((stats.runningInstances / stats.totalInstances) * 100).toFixed(1)}%
+                    {t('dashboard.ratio')} {((stats.runningInstances / stats.totalInstances) * 100).toFixed(1)}%
                   </p>
                 )}
               </>
@@ -83,7 +85,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">告警数</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.alertCount')}</CardTitle>
               <AlertTriangle className="h-4 w-4 text-yellow-500" />
             </div>
           </CardHeader>
@@ -102,7 +104,7 @@ export default function Dashboard() {
               <div className="text-2xl font-bold text-muted-foreground">-</div>
             )}
             {stats?.errors.alerts && (
-              <p className="mt-1 text-xs text-destructive">告警数据加载失败</p>
+              <p className="mt-1 text-xs text-destructive">{t('dashboard.alertsFailed')}</p>
             )}
           </CardContent>
         </Card>
@@ -110,7 +112,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">本月费用</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.monthlyCost')}</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
@@ -123,7 +125,7 @@ export default function Dashboard() {
               <div className="text-2xl font-bold text-muted-foreground">-</div>
             )}
             {stats?.errors.costs && (
-              <p className="mt-1 text-xs text-destructive">费用数据加载失败</p>
+              <p className="mt-1 text-xs text-destructive">{t('dashboard.costsFailed')}</p>
             )}
           </CardContent>
         </Card>
@@ -132,7 +134,7 @@ export default function Dashboard() {
       {/* 云厂商分布 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">云厂商分布</CardTitle>
+          <CardTitle className="text-base">{t('dashboard.providerDist')}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -145,7 +147,7 @@ export default function Dashboard() {
                 <div key={provider} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span>{PROVIDER_LABELS[provider] || provider}</span>
-                    <span className="text-muted-foreground">{count} 台</span>
+                    <span className="text-muted-foreground">{count} {t('dashboard.instances')}</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -157,7 +159,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">暂无实例数据</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('dashboard.noInstances')}</p>
           )}
         </CardContent>
       </Card>

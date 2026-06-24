@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useAlertRules, useCreateAlertRule, useDeleteAlertRule, useAlertEvents, useResolveAlertEvent } from '@/hooks/useAlerts';
 import { useChannels, useCreateChannel, useDeleteChannel } from '@/hooks/useChannels';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,7 @@ import { Select } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { AlertSeverityBadge, AlertStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
@@ -17,30 +20,31 @@ import { cn } from '@/lib/utils';
 type Tab = 'rules' | 'events' | 'channels';
 
 export default function Monitor() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('rules');
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold">监控告警</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">{t('monitor.title')}</h1>
 
       <div className="border-b">
         <div className="flex gap-4 overflow-x-auto">
           {([
-            { key: 'rules' as const, label: '告警规则' },
-            { key: 'events' as const, label: '告警事件' },
-            { key: 'channels' as const, label: '通知渠道' },
-          ]).map((t) => (
+            { key: 'rules' as const, label: t('monitor.tabRules') },
+            { key: 'events' as const, label: t('monitor.tabEvents') },
+            { key: 'channels' as const, label: t('monitor.tabChannels') },
+          ]).map((tabItem) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={tabItem.key}
+              onClick={() => setTab(tabItem.key)}
               className={cn(
                 'pb-2 px-1 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
-                tab === t.key
+                tab === tabItem.key
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               )}
             >
-              {t.label}
+              {tabItem.label}
             </button>
           ))}
         </div>
@@ -54,16 +58,17 @@ export default function Monitor() {
 }
 
 function RulesTab() {
+  const { t } = useTranslation();
   const { data: rules, isLoading } = useAlertRules();
   const del = useDeleteAlertRule();
   const [createOpen, setCreateOpen] = useState(false);
 
   async function handleDelete(id: string) {
-    if (!confirm('确定删除此规则？')) return;
+    if (!confirm(t('monitor.confirmDeleteRule'))) return;
     try {
       await del.mutateAsync(id);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '删除失败');
+      toast.error(err instanceof ApiError ? err.message : t('monitor.deleteFailed'));
     }
   }
 
@@ -71,26 +76,26 @@ function RulesTab() {
     <Card>
       <CardContent className="pt-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-lg font-semibold">告警规则</h2>
+          <h2 className="text-lg font-semibold">{t('monitor.rulesTitle')}</h2>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />新建规则
+            <Plus className="h-4 w-4 mr-1" />{t('monitor.createRule')}
           </Button>
         </div>
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">加载中...</div>
+          <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : (rules || []).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">暂无规则</div>
+          <div className="text-center py-8 text-muted-foreground">{t('monitor.noRules')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>指标</TableHead>
-                <TableHead>条件</TableHead>
-                <TableHead>持续时间</TableHead>
-                <TableHead>严重级别</TableHead>
-                <TableHead>启用</TableHead>
-                <TableHead>操作</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('monitor.metric')}</TableHead>
+                <TableHead>{t('monitor.condition')}</TableHead>
+                <TableHead>{t('monitor.duration')}</TableHead>
+                <TableHead>{t('monitor.severity')}</TableHead>
+                <TableHead>{t('common.enabled')}</TableHead>
+                <TableHead>{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,13 +108,18 @@ function RulesTab() {
                   <TableCell><AlertSeverityBadge severity={rule.severity as AlertSeverity} /></TableCell>
                   <TableCell>
                     <span className={rule.enabled ? 'text-green-600' : 'text-muted-foreground'}>
-                      {rule.enabled ? '已启用' : '已禁用'}
+                      {rule.enabled ? t('common.enabled') : t('common.disabled')}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" title="删除" onClick={() => handleDelete(rule.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(rule.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -123,6 +133,7 @@ function RulesTab() {
 }
 
 function CreateRuleDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const create = useCreateAlertRule();
   const [name, setName] = useState('');
   const [metric, setMetric] = useState('cpu_usage');
@@ -143,59 +154,59 @@ function CreateRuleDialog({ open, onClose }: { open: boolean; onClose: () => voi
       setName(''); setMetric('cpu_usage'); setCondition('> 80'); setDuration('5m');
       setSeverity('warning'); setActionType('notify'); setActionTargets('');
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '创建失败');
+      toast.error(err instanceof ApiError ? err.message : t('monitor.createFailed'));
     }
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="新建告警规则">
+    <Dialog open={open} onClose={onClose} title={t('monitor.createRuleTitle')}>
       <form onSubmit={handleSubmit} className="space-y-4 mt-2">
         <div className="space-y-2">
-          <Label>规则名称</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="CPU 使用率告警" />
+          <Label>{t('monitor.ruleName')}</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder={t('monitor.ruleNamePlaceholder')} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>指标</Label>
-            <Input value={metric} onChange={(e) => setMetric(e.target.value)} required placeholder="cpu_usage" />
+            <Label>{t('monitor.metric')}</Label>
+            <Input value={metric} onChange={(e) => setMetric(e.target.value)} required placeholder={t('monitor.metricPlaceholder')} />
           </div>
           <div className="space-y-2">
-            <Label>条件</Label>
-            <Input value={condition} onChange={(e) => setCondition(e.target.value)} required placeholder="> 80" />
+            <Label>{t('monitor.condition')}</Label>
+            <Input value={condition} onChange={(e) => setCondition(e.target.value)} required placeholder={t('monitor.conditionPlaceholder')} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>持续时间</Label>
-            <Input value={duration} onChange={(e) => setDuration(e.target.value)} required placeholder="5m" />
+            <Label>{t('monitor.duration')}</Label>
+            <Input value={duration} onChange={(e) => setDuration(e.target.value)} required placeholder={t('monitor.durationPlaceholder')} />
           </div>
           <div className="space-y-2">
-            <Label>严重级别</Label>
+            <Label>{t('monitor.severity')}</Label>
             <Select value={severity} onChange={(e) => setSeverity(e.target.value as AlertSeverity)}>
-              <option value="info">信息</option>
-              <option value="warning">警告</option>
-              <option value="critical">严重</option>
-              <option value="emergency">紧急</option>
+              <option value="info">{t('monitor.severityInfo')}</option>
+              <option value="warning">{t('monitor.severityWarning')}</option>
+              <option value="critical">{t('monitor.severityCritical')}</option>
+              <option value="emergency">{t('monitor.severityEmergency')}</option>
             </Select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>动作类型</Label>
+            <Label>{t('monitor.actionType')}</Label>
             <Select value={actionType} onChange={(e) => setActionType(e.target.value as AlertActionType)}>
-              <option value="notify">通知</option>
-              <option value="suggest">建议</option>
-              <option value="auto">自动处理</option>
+              <option value="notify">{t('monitor.actionNotify')}</option>
+              <option value="suggest">{t('monitor.actionSuggest')}</option>
+              <option value="auto">{t('monitor.actionAuto')}</option>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>目标（逗号分隔）</Label>
+            <Label>{t('monitor.actionTargets')}</Label>
             <Input value={actionTargets} onChange={(e) => setActionTargets(e.target.value)} placeholder="channel-1,channel-2" />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>取消</Button>
-          <Button type="submit" disabled={create.isPending}>{create.isPending ? '创建中...' : '创建'}</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" disabled={create.isPending}>{create.isPending ? t('common.creating') : t('common.create')}</Button>
         </div>
       </form>
     </Dialog>
@@ -203,6 +214,7 @@ function CreateRuleDialog({ open, onClose }: { open: boolean; onClose: () => voi
 }
 
 function EventsTab() {
+  const { t } = useTranslation();
   const { data: events, isLoading } = useAlertEvents();
   const resolve = useResolveAlertEvent();
 
@@ -210,27 +222,27 @@ function EventsTab() {
     try {
       await resolve.mutateAsync(id);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '操作失败');
+      toast.error(err instanceof ApiError ? err.message : t('monitor.opFailed'));
     }
   }
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-lg font-semibold mb-4">告警事件</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('monitor.eventsTitle')}</h2>
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">加载中...</div>
+          <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : (events || []).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">暂无告警事件</div>
+          <div className="text-center py-8 text-muted-foreground">{t('monitor.noEvents')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>严重级别</TableHead>
-                <TableHead>消息</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>触发时间</TableHead>
-                <TableHead>操作</TableHead>
+                <TableHead>{t('monitor.severity')}</TableHead>
+                <TableHead>{t('monitor.message')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
+                <TableHead>{t('monitor.firedAt')}</TableHead>
+                <TableHead>{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -245,7 +257,7 @@ function EventsTab() {
                   <TableCell>
                     {evt.status === 'firing' && (
                       <Button variant="ghost" size="sm" onClick={() => handleResolve(evt.id)}>
-                        <CheckCircle className="h-4 w-4 mr-1" />解决
+                        <CheckCircle className="h-4 w-4 mr-1" />{t('monitor.resolve')}
                       </Button>
                     )}
                   </TableCell>
@@ -260,16 +272,17 @@ function EventsTab() {
 }
 
 function ChannelsTab() {
+  const { t } = useTranslation();
   const { data: channels, isLoading } = useChannels();
   const del = useDeleteChannel();
   const [createOpen, setCreateOpen] = useState(false);
 
   async function handleDelete(id: string) {
-    if (!confirm('确定删除此渠道？')) return;
+    if (!confirm(t('monitor.confirmDeleteChannel'))) return;
     try {
       await del.mutateAsync(id);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '删除失败');
+      toast.error(err instanceof ApiError ? err.message : t('monitor.deleteFailed'));
     }
   }
 
@@ -277,24 +290,24 @@ function ChannelsTab() {
     <Card>
       <CardContent className="pt-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-lg font-semibold">通知渠道</h2>
+          <h2 className="text-lg font-semibold">{t('monitor.channelsTitle')}</h2>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />新建渠道
+            <Plus className="h-4 w-4 mr-1" />{t('monitor.createChannel')}
           </Button>
         </div>
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">加载中...</div>
+          <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : (channels || []).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">暂无渠道</div>
+          <div className="text-center py-8 text-muted-foreground">{t('monitor.noChannels')}</div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>名称</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>配置</TableHead>
-                <TableHead>启用</TableHead>
-                <TableHead>操作</TableHead>
+                <TableHead>{t('common.name')}</TableHead>
+                <TableHead>{t('monitor.type')}</TableHead>
+                <TableHead>{t('monitor.config')}</TableHead>
+                <TableHead>{t('common.enabled')}</TableHead>
+                <TableHead>{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -307,13 +320,18 @@ function ChannelsTab() {
                   </TableCell>
                   <TableCell>
                     <span className={ch.enabled ? 'text-green-600' : 'text-muted-foreground'}>
-                      {ch.enabled ? '已启用' : '已禁用'}
+                      {ch.enabled ? t('common.enabled') : t('common.disabled')}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" title="删除" onClick={() => handleDelete(ch.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -327,6 +345,7 @@ function ChannelsTab() {
 }
 
 function CreateChannelDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const create = useCreateChannel();
   const [name, setName] = useState('');
   const [type, setType] = useState<ChannelType>('webhook');
@@ -341,30 +360,30 @@ function CreateChannelDialog({ open, onClose }: { open: boolean; onClose: () => 
       setName(''); setType('webhook'); setConfig('{\n  "url": "https://example.com/webhook"\n}');
     } catch (err) {
       if (err instanceof SyntaxError) {
-        alert('配置 JSON 格式错误');
+        toast.error(t('monitor.jsonError'));
       } else {
-        alert(err instanceof ApiError ? err.message : '创建失败');
+        toast.error(err instanceof ApiError ? err.message : t('monitor.createFailed'));
       }
     }
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="新建通知渠道">
+    <Dialog open={open} onClose={onClose} title={t('monitor.createChannelTitle')}>
       <form onSubmit={handleSubmit} className="space-y-4 mt-2">
         <div className="space-y-2">
-          <Label>渠道名称</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="运维通知群" />
+          <Label>{t('monitor.channelName')}</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder={t('monitor.channelNamePlaceholder')} />
         </div>
         <div className="space-y-2">
-          <Label>类型</Label>
+          <Label>{t('monitor.type')}</Label>
           <Select value={type} onChange={(e) => setType(e.target.value as ChannelType)}>
-            <option value="webhook">Webhook</option>
-            <option value="email">邮件</option>
-            <option value="slack">Slack</option>
+            <option value="webhook">{t('monitor.typeWebhook')}</option>
+            <option value="email">{t('monitor.typeEmail')}</option>
+            <option value="slack">{t('monitor.typeSlack')}</option>
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>配置（JSON）</Label>
+          <Label>{t('monitor.configJson')}</Label>
           <textarea
             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px]"
             value={config}
@@ -373,8 +392,8 @@ function CreateChannelDialog({ open, onClose }: { open: boolean; onClose: () => 
           />
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>取消</Button>
-          <Button type="submit" disabled={create.isPending}>{create.isPending ? '创建中...' : '创建'}</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" disabled={create.isPending}>{create.isPending ? t('common.creating') : t('common.create')}</Button>
         </div>
       </form>
     </Dialog>

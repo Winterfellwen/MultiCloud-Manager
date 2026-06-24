@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useCostSummary, useInstanceCosts, useCollectCosts } from '@/hooks/useCosts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +9,7 @@ import { ApiError } from '@/api/client';
 import { RefreshCw } from 'lucide-react';
 
 export default function Costs() {
+  const { t } = useTranslation();
   const { data: summary, isLoading: summaryLoading } = useCostSummary();
   const { data: instanceCosts, isLoading: instLoading } = useInstanceCosts();
   const collect = useCollectCosts();
@@ -30,24 +33,24 @@ export default function Costs() {
     try {
       await collect.mutateAsync();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '采集失败');
+      toast.error(err instanceof ApiError ? err.message : t('costs.collectFailed'));
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl sm:text-2xl font-bold">成本分析</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">{t('costs.title')}</h1>
         <Button variant="outline" size="sm" onClick={handleCollect} disabled={collect.isPending}>
           <RefreshCw className={`h-4 w-4 mr-1 ${collect.isPending ? 'animate-spin' : ''}`} />
-          采集成本
+          {t('costs.collect')}
         </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">总成本</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('costs.totalCost')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">¥{grandTotal.toFixed(2)}</div>
@@ -67,19 +70,19 @@ export default function Costs() {
 
       <Card>
         <CardContent className="pt-6">
-          <h2 className="text-lg font-semibold mb-4">服务成本分解</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('costs.serviceBreakdown')}</h2>
           {summaryLoading ? (
-            <div className="text-center py-8 text-muted-foreground">加载中...</div>
+            <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
           ) : (summary || []).length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">暂无成本数据</div>
+            <div className="text-center py-8 text-muted-foreground">{t('costs.noCostData')}</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>云厂商</TableHead>
-                  <TableHead>服务</TableHead>
-                  <TableHead>金额</TableHead>
-                  <TableHead>币种</TableHead>
+                  <TableHead>{t('common.provider')}</TableHead>
+                  <TableHead>{t('costs.service')}</TableHead>
+                  <TableHead>{t('costs.amount')}</TableHead>
+                  <TableHead>{t('costs.currency')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -99,19 +102,19 @@ export default function Costs() {
 
       <Card>
         <CardContent className="pt-6">
-          <h2 className="text-lg font-semibold mb-4">实例月度成本</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('costs.instanceMonthly')}</h2>
           {instLoading ? (
-            <div className="text-center py-8 text-muted-foreground">加载中...</div>
+            <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
           ) : (instanceCosts || []).length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">暂无实例成本数据</div>
+            <div className="text-center py-8 text-muted-foreground">{t('costs.noInstanceCost')}</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>实例名称</TableHead>
-                  <TableHead>云厂商</TableHead>
-                  <TableHead>区域</TableHead>
-                  <TableHead>月费用</TableHead>
+                  <TableHead>{t('costs.instanceName')}</TableHead>
+                  <TableHead>{t('common.provider')}</TableHead>
+                  <TableHead>{t('common.region')}</TableHead>
+                  <TableHead>{t('instances.monthlyCost')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

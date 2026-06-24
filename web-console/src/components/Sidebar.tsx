@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Server,
@@ -26,76 +27,77 @@ interface NavItem {
   children?: Array<{ label: string; to: string }>;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: '总览', to: '/dashboard', icon: LayoutDashboard },
-  {
-    label: '云服务器管理',
-    to: '/instances',
-    icon: Server,
-    permission: { resource: 'instance', action: 'list' },
-  },
-  {
-    label: '资源总览',
-    to: '/resources',
-    icon: Boxes,
-    permission: { resource: 'instance', action: 'list' },
-  },
-  {
-    label: '云厂商管理',
-    to: '/cloud-accounts',
-    icon: Cloud,
-    permission: { resource: 'instance', action: 'list' },
-  },
-  {
-    label: '监控告警',
-    to: '/monitor',
-    icon: Activity,
-    permission: { resource: 'monitor', action: 'view' },
-  },
-  {
-    label: '成本分析',
-    to: '/costs',
-    icon: DollarSign,
-    permission: { resource: 'cost', action: 'view' },
-  },
-  {
-    label: 'AI 对话',
-    to: '/chat/react',
-    icon: MessageSquare,
-  },
-  {
-    label: 'AI 设置',
-    to: '/ai-settings',
-    icon: Settings2,
-  },
-  {
-    label: '工具目录',
-    to: '/tools',
-    icon: Wrench,
-    permission: { resource: 'instance', action: 'view' },
-  },
-  {
-    label: 'MCP 配置',
-    to: '/mcp',
-    icon: Plug,
-    permission: { resource: 'mcp', action: 'manage' },
-  },
-  {
-    label: '用户管理',
-    to: '/users',
-    icon: Users,
-    permission: { resource: 'user', action: 'list' },
-  },
-  {
-    label: '审计日志',
-    to: '/audit',
-    icon: ScrollText,
-    permission: { resource: 'audit', action: 'view' },
-  },
-];
-
 export function Sidebar() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
+
+  const NAV_ITEMS: NavItem[] = [
+    { label: t('nav.dashboard'), to: '/dashboard', icon: LayoutDashboard },
+    {
+      label: t('nav.instances'),
+      to: '/instances',
+      icon: Server,
+      permission: { resource: 'instance', action: 'list' },
+    },
+    {
+      label: t('nav.resources'),
+      to: '/resources',
+      icon: Boxes,
+      permission: { resource: 'instance', action: 'list' },
+    },
+    {
+      label: t('nav.cloudAccounts'),
+      to: '/cloud-accounts',
+      icon: Cloud,
+      permission: { resource: 'instance', action: 'list' },
+    },
+    {
+      label: t('nav.monitor'),
+      to: '/monitor',
+      icon: Activity,
+      permission: { resource: 'monitor', action: 'view' },
+    },
+    {
+      label: t('nav.costs'),
+      to: '/costs',
+      icon: DollarSign,
+      permission: { resource: 'cost', action: 'view' },
+    },
+    {
+      label: t('nav.chat'),
+      to: '/chat/react',
+      icon: MessageSquare,
+    },
+    {
+      label: t('nav.aiSettings'),
+      to: '/ai-settings',
+      icon: Settings2,
+    },
+    {
+      label: t('nav.tools'),
+      to: '/tools',
+      icon: Wrench,
+      permission: { resource: 'instance', action: 'view' },
+    },
+    {
+      label: t('nav.mcp'),
+      to: '/mcp',
+      icon: Plug,
+      permission: { resource: 'mcp', action: 'manage' },
+    },
+    {
+      label: t('nav.users'),
+      to: '/users',
+      icon: Users,
+      permission: { resource: 'user', action: 'list' },
+    },
+    {
+      label: t('nav.audit'),
+      to: '/audit',
+      icon: ScrollText,
+      permission: { resource: 'audit', action: 'view' },
+    },
+  ];
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (!item.permission) return true;

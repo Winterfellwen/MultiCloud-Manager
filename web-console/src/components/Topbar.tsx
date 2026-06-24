@@ -1,15 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/stores/auth';
 import { useDemoStore } from '@/stores/demo';
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: '管理员',
-  ops_manager: '运维经理',
-  ops_engineer: '运维工程师',
-  viewer: '查看者',
-};
 
 interface TopbarProps {
   onToggleSidebar?: () => void;
@@ -17,6 +13,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const exitDemo = useDemoStore((s) => s.exitDemo);
@@ -27,15 +24,22 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
     navigate('/login', { replace: true });
   }
 
+  const roleLabel = user ? t(`roles.${user.role}`) : '';
+
   return (
     <header className="h-14 border-b bg-card flex items-center justify-between px-3 md:px-6 gap-2">
       <div className="flex items-center gap-2 min-w-0">
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={onToggleSidebar} title="打开菜单" className="shrink-0">
-            <Menu className="h-5 w-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="shrink-0">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('topbar.menu')}</TooltipContent>
+          </Tooltip>
         )}
-        <div className="text-sm text-muted-foreground hidden sm:block shrink-0">多云管理控制台</div>
+        <div className="text-sm text-muted-foreground hidden sm:block shrink-0">{t('topbar.title')}</div>
       </div>
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
         <div className="flex items-center gap-2 text-sm min-w-0">
@@ -43,13 +47,19 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
           <span className="font-medium truncate max-w-[80px] sm:max-w-none">{user?.username}</span>
           {user && (
             <span className="hidden sm:inline text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded shrink-0">
-              {ROLE_LABELS[user.role] || user.role}
+              {roleLabel}
             </span>
           )}
         </div>
-        <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录" className="shrink-0">
-          <LogOut className="h-4 w-4" />
-        </Button>
+        <LanguageSwitcher />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="shrink-0">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('topbar.logout')}</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );

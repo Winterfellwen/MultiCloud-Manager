@@ -1,4 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useResources,
   useResourceTypes,
@@ -14,8 +15,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getStatusColor, type ResourceType } from '@/types/resource';
 import { ApiError } from '@/api/client';
+import { toast } from 'sonner';
 import { Search, RefreshCw, Trash2 } from 'lucide-react';
 
 const PROVIDERS = ['aws', 'aliyun', 'azure', 'tencent', 'huawei'];
@@ -84,6 +87,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function Resources() {
+  const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState<ResourceType | 'all'>('all');
   const [search, setSearch] = useState('');
   const [provider, setProvider] = useState('');
@@ -113,7 +117,7 @@ export default function Resources() {
       await del.mutateAsync(id);
       setConfirmDelete(null);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '删除失败');
+      toast.error(err instanceof ApiError ? err.message : t('resources.deleteFailed'));
     }
   }
 
@@ -123,7 +127,7 @@ export default function Resources() {
         resourceType: selectedType === 'all' ? undefined : selectedType,
       });
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '同步失败');
+      toast.error(err instanceof ApiError ? err.message : t('resources.syncFailed'));
     }
   }
 
@@ -138,10 +142,10 @@ export default function Resources() {
 
       <div className="flex-1 space-y-6 overflow-auto p-3 md:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold">资源总览</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('resources.title')}</h1>
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />
-            同步
+            {t('resources.sync')}
           </Button>
         </div>
 
@@ -152,7 +156,7 @@ export default function Resources() {
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="搜索资源名称/ID..."
+                    placeholder={t('resources.searchPlaceholder')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-8"
@@ -164,7 +168,7 @@ export default function Resources() {
                 onChange={(e) => setProvider(e.target.value)}
                 className="w-full sm:w-[140px]"
               >
-                <option value="">全部厂商</option>
+                <option value="">{t('resources.allProviders')}</option>
                 {PROVIDERS.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -176,11 +180,11 @@ export default function Resources() {
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full sm:w-[140px]"
               >
-                <option value="">全部状态</option>
-                <option value="running">运行中</option>
-                <option value="stopped">已停止</option>
-                <option value="pending">处理中</option>
-                <option value="error">错误</option>
+                <option value="">{t('resources.allStatus')}</option>
+                <option value="running">{t('resources.running')}</option>
+                <option value="stopped">{t('resources.stopped')}</option>
+                <option value="pending">{t('resources.pending')}</option>
+                <option value="error">{t('resources.error')}</option>
               </Select>
             </div>
           </CardContent>
@@ -189,21 +193,21 @@ export default function Resources() {
         <Card>
           <CardContent className="pt-6">
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">加载中...</div>
+              <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
             ) : items.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">暂无资源</div>
+              <div className="text-center py-8 text-muted-foreground">{t('resources.noResources')}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>名称</TableHead>
-                    <TableHead>厂商</TableHead>
-                    <TableHead>区域</TableHead>
-                    <TableHead>状态</TableHead>
+                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead>{t('common.providerShort')}</TableHead>
+                    <TableHead>{t('common.region')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
                     {extraCols.map((c) => (
                       <TableHead key={c.key}>{c.label}</TableHead>
                     ))}
-                    <TableHead>操作</TableHead>
+                    <TableHead>{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -223,14 +227,18 @@ export default function Resources() {
                         </TableCell>
                       ))}
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title="删除"
-                          onClick={() => setConfirmDelete(r.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setConfirmDelete(r.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -244,18 +252,18 @@ export default function Resources() {
       <Dialog
         open={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
-        title="确认删除"
-        description="此操作不可撤销，确定要删除该资源吗？"
+        title={t('resources.confirmDeleteTitle')}
+        description={t('resources.confirmDeleteDesc')}
       >
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setConfirmDelete(null)}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button
             variant="destructive"
             onClick={() => confirmDelete && handleDelete(confirmDelete)}
           >
-            确认删除
+            {t('resources.confirmDelete')}
           </Button>
         </div>
       </Dialog>

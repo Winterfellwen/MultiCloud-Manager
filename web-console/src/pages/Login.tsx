@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { useDemoStore } from '@/stores/demo';
 import { ApiError } from '@/api/client';
 
 export default function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const setTokens = useAuthStore((s) => s.setTokens);
@@ -36,7 +38,7 @@ export default function Login() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('登录失败，请检查网络连接');
+        setError(t('login.failed'));
       }
     } finally {
       setLoading(false);
@@ -65,30 +67,30 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-muted/50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">CloudOps AI</CardTitle>
-          <p className="text-sm text-muted-foreground text-center">多云管理控制台登录</p>
+          <CardTitle className="text-2xl text-center">{t('login.title')}</CardTitle>
+          <p className="text-sm text-muted-foreground text-center">{t('login.subtitle')}</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">用户名</Label>
+              <Label htmlFor="username">{t('login.username')}</Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="请输入用户名"
+                placeholder={t('login.usernamePlaceholder')}
                 required
                 autoComplete="username"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">密码</Label>
+              <Label htmlFor="password">{t('login.password')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="请输入密码"
+                placeholder={t('login.passwordPlaceholder')}
                 required
                 autoComplete="current-password"
               />
@@ -99,14 +101,14 @@ export default function Login() {
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? '登录中...' : '登录'}
+              {loading ? t('login.loading') : t('login.submit')}
             </Button>
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">或</span>
+                <span className="bg-card px-2 text-muted-foreground">{t('login.or')}</span>
               </div>
             </div>
             <Button
@@ -115,10 +117,10 @@ export default function Login() {
               className="w-full"
               onClick={handleDemoLogin}
             >
-              🎭 Demo 演示（无需登录）
+              {t('login.demo')}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              Demo 模式使用模拟数据体验所有功能
+              {t('login.demoHint')}
             </p>
           </form>
         </CardContent>
