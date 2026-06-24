@@ -425,5 +425,47 @@
     "ops_manager": "运维经理",
     "ops_engineer": "运维工程师",
     "viewer": "查看者"
+  },
+  "providers": {
+    "aws": "AWS",
+    "aliyun": "阿里云",
+    "azure": "Azure",
+    "tencent": "腾讯云",
+    "huawei": "华为云",
+    "render": "Render",
+    "oracle": "Oracle"
+  },
+  "statuses": {
+    "running": "运行中",
+    "stopped": "已停止",
+    "pending": "启动中",
+    "error": "错误",
+    "active": "已激活"
+  },
+  "resourceTypes": {
+    "instance": "实例",
+    "disk": "磁盘",
+    "database": "数据库",
+    "cache": "缓存",
+    "bucket": "存储桶",
+    "loadbalancer": "负载均衡",
+    "vpc": "VPC",
+    "securitygroup": "安全组",
+    "cdn": "CDN",
+    "cluster": "集群"
+  },
+  "topology": {
+    "filters": {
+      "title": "筛选",
+      "reset": "重置",
+      "provider": "云厂商",
+      "allProviders": "全部云厂商",
+      "region": "区域",
+      "regionPlaceholder": "例如：cn-hangzhou",
+      "resourceType": "资源类型",
+      "allTypes": "全部类型",
+      "status": "状态",
+      "allStatuses": "全部状态"
+    }
   }
 }

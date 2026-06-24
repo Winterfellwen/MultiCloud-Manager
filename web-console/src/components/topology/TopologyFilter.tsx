@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
 import type { TopologyFilters } from '@/types/topology';
@@ -35,39 +36,41 @@ export function TopologyFilter({ filters, onChange }: TopologyFilterProps) {
 
       <div className="space-y-3">
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
+          <label htmlFor="topology-provider" className="text-xs text-muted-foreground mb-1 block">
             {t('topology.filters.provider')}
           </label>
           <Select
+            id="topology-provider"
             value={filters.provider || ''}
             onChange={(e) => handleChange('provider', e.target.value)}
             className="w-full"
           >
             <option value="">{t('topology.filters.allProviders')}</option>
             {PROVIDERS.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>{t(`providers.${p}`)}</option>
             ))}
           </Select>
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
+          <label htmlFor="topology-region" className="text-xs text-muted-foreground mb-1 block">
             {t('topology.filters.region')}
           </label>
-          <input
+          <Input
+            id="topology-region"
             type="text"
             value={filters.region || ''}
             onChange={(e) => handleChange('region', e.target.value)}
             placeholder={t('topology.filters.regionPlaceholder')}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
+          <label htmlFor="topology-resourceType" className="text-xs text-muted-foreground mb-1 block">
             {t('topology.filters.resourceType')}
           </label>
           <Select
+            id="topology-resourceType"
             value={filters.resourceType || ''}
             onChange={(e) => handleChange('resourceType', e.target.value)}
             className="w-full"
@@ -87,17 +90,18 @@ export function TopologyFilter({ filters, onChange }: TopologyFilterProps) {
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
+          <label htmlFor="topology-status" className="text-xs text-muted-foreground mb-1 block">
             {t('topology.filters.status')}
           </label>
           <Select
+            id="topology-status"
             value={filters.status || ''}
             onChange={(e) => handleChange('status', e.target.value)}
             className="w-full"
           >
             <option value="">{t('topology.filters.allStatuses')}</option>
             {STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{t(`statuses.${s}`)}</option>
             ))}
           </Select>
         </div>

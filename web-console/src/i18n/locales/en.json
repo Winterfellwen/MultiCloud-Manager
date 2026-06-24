@@ -425,5 +425,47 @@
     "ops_manager": "Ops Manager",
     "ops_engineer": "Ops Engineer",
     "viewer": "Viewer"
+  },
+  "providers": {
+    "aws": "AWS",
+    "aliyun": "Alibaba Cloud",
+    "azure": "Azure",
+    "tencent": "Tencent Cloud",
+    "huawei": "Huawei Cloud",
+    "render": "Render",
+    "oracle": "Oracle"
+  },
+  "statuses": {
+    "running": "Running",
+    "stopped": "Stopped",
+    "pending": "Pending",
+    "error": "Error",
+    "active": "Active"
+  },
+  "resourceTypes": {
+    "instance": "Instance",
+    "disk": "Disk",
+    "database": "Database",
+    "cache": "Cache",
+    "bucket": "Bucket",
+    "loadbalancer": "Load Balancer",
+    "vpc": "VPC",
+    "securitygroup": "Security Group",
+    "cdn": "CDN",
+    "cluster": "Cluster"
+  },
+  "topology": {
+    "filters": {
+      "title": "Filters",
+      "reset": "Reset",
+      "provider": "Provider",
+      "allProviders": "All Providers",
+      "region": "Region",
+      "regionPlaceholder": "e.g. us-east-1",
+      "resourceType": "Resource Type",
+      "allTypes": "All Types",
+      "status": "Status",
+      "allStatuses": "All Statuses"
+    }
   }
 }
