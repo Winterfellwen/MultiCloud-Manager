@@ -7,6 +7,7 @@ import { runMigrations } from './db/migrate.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { auditRoutes } from './routes/audit.js';
+import { teamRoutes } from './routes/teams.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -136,6 +137,7 @@ app.get('/health', async () => ({ status: 'ok', service: 'auth-service' }));
 await app.register(authRoutes, { prefix: '/auth' });
 await app.register(userRoutes, { prefix: '/users' });
 await app.register(auditRoutes, { prefix: '/audit' });
+await app.register(teamRoutes, { prefix: '/teams' });
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' });
