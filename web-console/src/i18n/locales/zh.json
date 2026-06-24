@@ -466,6 +466,10 @@
       "allTypes": "全部类型",
       "status": "状态",
       "allStatuses": "全部状态"
+    },
+    "view": {
+      "network": "网络",
+      "storage": "存储"
     }
   }
 }

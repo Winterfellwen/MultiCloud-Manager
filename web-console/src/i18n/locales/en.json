@@ -466,6 +466,10 @@
       "allTypes": "All Types",
       "status": "Status",
       "allStatuses": "All Statuses"
+    },
+    "view": {
+      "network": "Network",
+      "storage": "Storage"
     }
   }
 }
