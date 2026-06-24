@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { teams, users } from '../db/schema.js';
 import { NotFoundError } from '@cloudops/shared';
+import type { User, UserRole } from '@cloudops/shared';
 
 export interface CreateTeamParams {
   name: string;
@@ -9,6 +10,10 @@ export interface CreateTeamParams {
 
 export interface UpdateTeamParams {
   name?: string;
+}
+
+export interface TeamMember extends Omit<User, 'apiKey'> {
+  teamId: string | null;
 }
 
 export class TeamService {
@@ -51,8 +56,8 @@ export class TeamService {
     }
   }
 
-  async getMembers(teamId: string): Promise<Omit<typeof users.$inferSelect, 'passwordHash' | 'apiKey'>[]> {
-    return db
+  async getMembers(teamId: string): Promise<TeamMember[]> {
+    const result = await db
       .select({
         id: users.id,
         username: users.username,
@@ -65,6 +70,7 @@ export class TeamService {
       })
       .from(users)
       .where(eq(users.teamId, teamId));
+    return result.map((u) => ({ ...u, role: u.role as UserRole }));
   }
 
   async assignUserToTeam(userId: string, teamId: string | null): Promise<void> {
