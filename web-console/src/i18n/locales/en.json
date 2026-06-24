@@ -470,6 +470,14 @@
     "view": {
       "network": "Network",
       "storage": "Storage"
+    },
+    "nodeDetail": {
+      "title": "Node Details",
+      "type": "Type",
+      "provider": "Provider",
+      "region": "Region",
+      "attributes": "Attributes",
+      "viewDetails": "View Details"
     }
   }
 }

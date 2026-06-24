@@ -470,6 +470,14 @@
     "view": {
       "network": "网络",
       "storage": "存储"
+    },
+    "nodeDetail": {
+      "title": "节点详情",
+      "type": "类型",
+      "provider": "云厂商",
+      "region": "区域",
+      "attributes": "属性",
+      "viewDetails": "查看详情"
     }
   }
 }
