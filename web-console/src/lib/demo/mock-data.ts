@@ -2,6 +2,7 @@
 // 为 7 家云厂商生成大量模拟资源数据
 import type { InstanceRow } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
+import type { TopologyNode, TopologyEdge } from '@/types/topology';
 
 // ===== 工具函数 =====
 function seededRandom(seed: number): () => number {
@@ -494,38 +495,18 @@ export function getDemoAuditLogs(): DemoAuditLog[] {
 }
 
 // ===== 拓扑模拟数据 =====
-export interface DemoTopologyNode {
-  id: string;
-  type: string;
-  label: string;
-  provider: string;
-  region: string;
-  status: string;
-  category: string;
-  icon: string;
-  data: Record<string, unknown>;
-}
-
-export interface DemoTopologyEdge {
-  id: string;
-  source: string;
-  target: string;
-  type: string;
-  label?: string;
-}
-
-let _topologyCache: { nodes: DemoTopologyNode[]; edges: DemoTopologyEdge[] } | null = null;
+let _topologyCache: { nodes: TopologyNode[]; edges: TopologyEdge[] } | null = null;
 
 export function getDemoTopology(filters?: {
   provider?: string;
   region?: string;
   resourceType?: string;
   status?: string;
-}): { nodes: DemoTopologyNode[]; edges: DemoTopologyEdge[] } {
+}): { nodes: TopologyNode[]; edges: TopologyEdge[] } {
   if (!_topologyCache) {
     const rand = seededRandom(789);
-    const nodes: DemoTopologyNode[] = [];
-    const edges: DemoTopologyEdge[] = [];
+    const nodes: TopologyNode[] = [];
+    const edges: TopologyEdge[] = [];
     let nodeIdx = 0;
 
     // 创建 VPC（3个）

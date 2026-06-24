@@ -17,6 +17,7 @@ import {
 } from './mock-data';
 import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
+import type { TopologyData } from '@/types/topology';
 
 let _dashboardStatsCache: unknown = null;
 
@@ -199,6 +200,6 @@ export function demoGetTopology(filters?: {
   region?: string;
   resourceType?: string;
   status?: string;
-}): Promise<{ nodes: Array<{ id: string; type: string; label: string; provider: string; region: string; status: string; category: string; icon: string; data: Record<string, unknown> }>; edges: Array<{ id: string; source: string; target: string; type: string; label?: string }> }> {
+}): Promise<TopologyData> {
   return Promise.resolve(getDemoTopology(filters));
 }
