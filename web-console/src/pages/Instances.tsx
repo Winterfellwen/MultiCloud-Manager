@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useInstances, useInstanceAction, useSyncInstances, useProviders, useRegions, useInstanceTypes, useImages, useCreateInstance } from '@/hooks/useInstances';
+import { useDemoStore } from '@/stores/demo';
+import { demoResetAll } from '@/lib/demo/demo-api';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +13,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { InstanceStatus } from '@/types/cloud';
-import { Plus, RefreshCw, Search, Play, Square, RotateCw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Search, Play, Square, RotateCw, Trash2, RotateCcw } from 'lucide-react';
 
 export default function Instances() {
   const [filters, setFilters] = useState<{ provider?: string; status?: InstanceStatus }>({});
@@ -22,17 +25,21 @@ export default function Instances() {
   const { data: providersData } = useProviders();
   const action = useInstanceAction();
   const sync = useSyncInstances();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
+  const qc = useQueryClient();
 
-  const filtered = (instances || []).filter((inst) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      (inst.name?.toLowerCase().includes(s)) ||
-      (inst.providerInstanceId?.toLowerCase().includes(s)) ||
-      (inst.publicIp?.includes(s)) ||
-      (inst.region?.toLowerCase().includes(s))
-    );
-  });
+  const filtered = useMemo(() => {
+    return (instances || []).filter((inst) => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (
+        (inst.name?.toLowerCase().includes(s)) ||
+        (inst.providerInstanceId?.toLowerCase().includes(s)) ||
+        (inst.publicIp?.includes(s)) ||
+        (inst.region?.toLowerCase().includes(s))
+      );
+    });
+  }, [instances, search]);
 
   async function handleAction(id: string, act: 'start' | 'stop' | 'reboot' | 'delete') {
     try {
@@ -51,11 +58,27 @@ export default function Instances() {
     }
   }
 
+  async function handleResetDemo() {
+    if (!confirm('确定要还原所有 Demo 数据吗？这将清除所有修改并恢复初始状态。')) return;
+    try {
+      await demoResetAll();
+      qc.invalidateQueries({ queryKey: ['instances'] });
+    } catch (err) {
+      alert('还原失败');
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">云服务器管理</h1>
         <div className="flex gap-2">
+          {isDemoMode && (
+            <Button variant="outline" size="sm" onClick={handleResetDemo} title="还原 Demo 数据">
+              <RotateCcw className="h-4 w-4 mr-1" />
+              还原 Demo
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />
             同步

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { resourceApi, type SyncParams } from '@/api/resource';
 import { useDemoStore } from '@/stores/demo';
-import { demoListResources } from '@/lib/demo/demo-api';
+import { demoListResources, demoDeleteResource } from '@/lib/demo/demo-api';
 import type { ResourceFilters } from '@/types/resource';
 
 /** 获取资源类型元数据 */
@@ -21,6 +21,7 @@ export function useResources(filters: ResourceFilters) {
     queryFn: () => isDemoMode
       ? demoListResources(filters as any).then(items => ({ items, total: items.length }))
       : resourceApi.list(filters),
+    gcTime: 5 * 60_000,
   });
 }
 
@@ -47,8 +48,9 @@ export function useResourceStats() {
 /** 删除资源 */
 export function useDeleteResource() {
   const qc = useQueryClient();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useMutation({
-    mutationFn: (id: string) => resourceApi.delete(id),
+    mutationFn: (id: string) => isDemoMode ? demoDeleteResource(id) : resourceApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['resources'] });
       qc.invalidateQueries({ queryKey: ['resource-stats'] });

@@ -213,6 +213,8 @@ export async function handleChatSend(
         }
       } finally {
         completeChatRun(context.chatAbortControllers, runId);
+        // 清理 recordEventQueue 防止内存泄漏
+        recordEventQueue.delete(sessionKey);
         // 延迟清理缓冲（供短暂断线重连恢复）
         setTimeout(() => cleanupRun(context.chatRunState, runId), 30000);
       }

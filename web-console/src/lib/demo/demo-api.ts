@@ -1,17 +1,22 @@
 // Demo API 替换函数 - 提供与真实 API 兼容的接口
 import {
   getAllDemoInstances,
-  getDemoAlerts,
-  getDemoAuditLogs,
-  getDemoCloudAccounts,
-  getDemoCostSummary,
-  getDemoMetrics,
   getDemoResources,
+  getDemoAlerts,
+  getDemoCostSummary,
   getDemoUsers,
+  getDemoMetrics,
+  getDemoCloudAccounts,
+  updateDemoInstance,
+  deleteDemoInstance,
+  addDemoInstance,
+  resetDemoInstances,
+  deleteDemoResource,
 } from './mock-data';
-import type { AuditLogQuery, AuditLogRow } from '@/types/audit';
-import type { ListInstancesParams, InstanceRow } from '@/types/cloud';
+import type { ListInstancesParams, InstanceRow, Instance, CreateInstanceParams } from '@/types/cloud';
 import type { CloudResource } from '@/types/resource';
+
+let _dashboardStatsCache: unknown = null;
 
 export function demoListInstances(params?: ListInstancesParams): Promise<InstanceRow[]> {
   let list = getAllDemoInstances();
@@ -57,18 +62,6 @@ export function demoListUsers() {
   return Promise.resolve(getDemoUsers());
 }
 
-export function demoListAuditLogs(query?: AuditLogQuery): Promise<AuditLogRow[]> {
-  let list = getDemoAuditLogs();
-  if (query?.userId) list = list.filter((r) => r.userId === query.userId);
-  if (query?.action) list = list.filter((r) => r.action === query.action);
-  if (query?.provider) list = list.filter((r) => r.provider === query.provider);
-  if (query?.startDate) list = list.filter((r) => r.timestamp >= query.startDate!);
-  if (query?.endDate) list = list.filter((r) => r.timestamp <= query.endDate!);
-  const offset = query?.offset || 0;
-  const limit = query?.limit || list.length;
-  return Promise.resolve(list.slice(offset, offset + limit));
-}
-
 export function demoGetMetrics(instanceId: string) {
   return Promise.resolve(getDemoMetrics(instanceId));
 }
@@ -78,23 +71,111 @@ export function demoListCloudAccounts(): Promise<unknown[]> {
 }
 
 export function demoDashboardStats() {
-  const instances = getAllDemoInstances();
-  const alerts = getDemoAlerts();
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-  const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString();
-  const costs = getDemoCostSummary(monthStart, monthEnd);
+  if (!_dashboardStatsCache) {
+    const instances = getAllDemoInstances();
+    const alerts = getDemoAlerts();
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const costs = getDemoCostSummary(monthStart, monthEnd);
 
-  const byProvider: Record<string, number> = {};
-  for (const inst of instances) {
-    byProvider[inst.provider] = (byProvider[inst.provider] || 0) + 1;
+    const byProvider: Record<string, number> = {};
+    for (const inst of instances) {
+      byProvider[inst.provider] = (byProvider[inst.provider] || 0) + 1;
+    }
+
+    _dashboardStatsCache = {
+      totalInstances: instances.length,
+      runningInstances: instances.filter((i) => i.status === 'running').length,
+      alertCount: alerts.filter((a) => a.status === 'firing').length,
+      monthlyCost: costs.reduce((sum, c) => sum + (c.currency === 'USD' ? c.totalAmount : c.totalAmount * 0.14), 0),
+      byProvider,
+      errors: { instances: false, alerts: false, costs: false },
+    };
   }
+  return Promise.resolve(_dashboardStatsCache);
+}
 
+// ===== Demo 写操作 =====
+export function demoStartInstance(id: string): Promise<{ success: boolean; status: string }> {
+  const updated = updateDemoInstance(id, { status: 'running' });
+  if (!updated) throw new Error(`Instance ${id} not found`);
+  return Promise.resolve({ success: true, status: 'running' });
+}
+
+export function demoStopInstance(id: string): Promise<{ success: boolean; status: string }> {
+  const updated = updateDemoInstance(id, { status: 'stopped', publicIp: null });
+  if (!updated) throw new Error(`Instance ${id} not found`);
+  return Promise.resolve({ success: true, status: 'stopped' });
+}
+
+export function demoRebootInstance(id: string): Promise<{ success: boolean; status: string }> {
+  const updated = updateDemoInstance(id, { status: 'pending' });
+  if (!updated) throw new Error(`Instance ${id} not found`);
+  // 模拟重启：pending -> running
+  setTimeout(() => updateDemoInstance(id, { status: 'running' }), 2000);
+  return Promise.resolve({ success: true, status: 'restarting' });
+}
+
+export function demoDeleteInstance(id: string): Promise<{ success: boolean }> {
+  const ok = deleteDemoInstance(id);
+  if (!ok) throw new Error(`Instance ${id} not found`);
+  return Promise.resolve({ success: true });
+}
+
+export function demoCreateInstance(params: CreateInstanceParams): Promise<Instance> {
+  const id = `demo-${params.provider}-${Date.now()}`;
+  const newInst: InstanceRow = {
+    id,
+    provider: params.provider,
+    providerInstanceId: `i-${params.provider}-${Date.now().toString(36)}`,
+    name: params.name,
+    region: params.region,
+    status: 'pending',
+    cpu: 2,
+    memoryMb: 4096,
+    diskGb: 40,
+    publicIp: null,
+    privateIp: `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`,
+    monthlyCost: '32.00',
+    tags: { env: 'dev', team: 'Demo', project: 'cloudops' },
+    lastSyncedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    cloudAccountId: `demo-account-${params.provider}`,
+  };
+  addDemoInstance(newInst);
+  // 模拟启动过程
+  setTimeout(() => updateDemoInstance(id, { status: 'running', publicIp: `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}` }), 3000);
+  // 返回 Instance 格式（spec 对象而非扁平字段）
   return Promise.resolve({
-    totalInstances: instances.length,
-    runningInstances: instances.filter((i) => i.status === 'running').length,
-    alertCount: alerts.filter((a) => a.status === 'firing').length,
-    monthlyCost: costs.reduce((sum, c) => sum + (c.currency === 'USD' ? c.totalAmount : c.totalAmount * 0.14), 0),
-    byProvider,
-    errors: { instances: false, alerts: false, costs: false },
+    id: newInst.id,
+    provider: newInst.provider,
+    providerInstanceId: newInst.providerInstanceId,
+    name: newInst.name || '',
+    region: newInst.region,
+    status: newInst.status,
+    spec: { cpu: newInst.cpu || 2, memoryMb: newInst.memoryMb || 4096, diskGb: newInst.diskGb || 40 },
+    publicIp: newInst.publicIp,
+    privateIp: newInst.privateIp,
+    monthlyCost: parseFloat(newInst.monthlyCost || '0'),
+    tags: newInst.tags || {},
+    lastSyncedAt: newInst.lastSyncedAt || '',
+    createdAt: newInst.createdAt || '',
   });
+}
+
+export function demoResetAll(): Promise<{ success: boolean }> {
+  resetDemoInstances();
+  _dashboardStatsCache = null;
+  // 清除 localStorage 中的 demo 数据
+  try {
+    localStorage.removeItem('demo-chat-sessions');
+    localStorage.removeItem('demo-chat-history');
+  } catch { /* ignore */ }
+  return Promise.resolve({ success: true });
+}
+
+export function demoDeleteResource(id: string): Promise<{ ok: boolean }> {
+  const ok = deleteDemoResource(id);
+  if (!ok) throw new Error(`Resource ${id} not found`);
+  return Promise.resolve({ ok: true });
 }

@@ -5,7 +5,8 @@ module.exports = {
       script: './auth-service/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '300M',
+      max_memory_restart: '200M',
+      node_args: '--max-old-space-size=256',
       env: {
         NODE_ENV: 'production',
         PORT: 3004,
@@ -16,7 +17,8 @@ module.exports = {
       script: './api-gateway/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '300M',
+      max_memory_restart: '200M',
+      node_args: '--max-old-space-size=256',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
@@ -27,7 +29,8 @@ module.exports = {
       script: './cloud-service/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '300M',
+      max_memory_restart: '200M',
+      node_args: '--max-old-space-size=256',
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
@@ -38,7 +41,8 @@ module.exports = {
       script: './monitor-service/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '300M',
+      max_memory_restart: '200M',
+      node_args: '--max-old-space-size=256',
       env: {
         NODE_ENV: 'production',
         PORT: 3002,
@@ -49,7 +53,8 @@ module.exports = {
       script: './ai-agent/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '500M',
+      max_memory_restart: '300M',
+      node_args: '--max-old-space-size=256',
       env: {
         NODE_ENV: 'production',
         PORT: 3003,
@@ -60,7 +65,8 @@ module.exports = {
       script: './ai-gateway/dist/index.js',
       cwd: '/app',
       instances: 1,
-      max_memory_restart: '400M',
+      max_memory_restart: '300M',
+      node_args: '--max-old-space-size=256',
       env: {
         NODE_ENV: 'production',
         PORT: 3005,

@@ -160,6 +160,10 @@ const initialSessionKey = localStorage.getItem(LS_KEY_SESSION) || null;
 // 正在加载历史的 session 集合（防止并发调用 loadSessionHistory 导致竞态）
 const loadingSessions = new Set<string>();
 
+// 安全超时：isSending 从 inFlightRun snapshot 设置时启动，防止 done 事件丢失导致卡死
+let isSendingSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+const IS_SENDING_SAFETY_TIMEOUT_MS = 15_000;
+
 /** ACP 事件 → ChatMessage 转换（处理 eventType 命名差异） */
 function acpEventsToMessages(sessionKey: string, events: AcpEvent[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
@@ -353,10 +357,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const chatPayload = payload as ChatEventPayload;
     const { runId, type } = chatPayload;
     const state = get();
-    const sessionKey = state.runIdToSession[runId];
+    let sessionKey = state.runIdToSession[runId];
+
+    // 竞态修复：如果 runIdToSession 中没有映射（页面刷新后 done 事件先到），
+    // 从 messagesBySession 中查找匹配的 session
+    if (!sessionKey) {
+      for (const [sk, msgs] of Object.entries(state.messagesBySession)) {
+        if (msgs.some((m) => m.runId === runId)) {
+          sessionKey = sk;
+          // 补充映射，后续事件无需再查
+          set((s) => ({ runIdToSession: { ...s.runIdToSession, [runId]: sk } }));
+          break;
+        }
+      }
+    }
 
     if (!sessionKey) {
-      // 未知 runId，可能是其他客户端触发的，忽略
+      // 未知 runId，忽略
       return;
     }
 
@@ -462,6 +479,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       case 'done': {
         const finalText = (chatPayload as { finalText: string }).finalText;
+        // 清除安全超时（done 事件已到达，无需兜底）
+        if (isSendingSafetyTimer) { clearTimeout(isSendingSafetyTimer); isSendingSafetyTimer = null; }
         if (msgIndex >= 0) {
           const existing = messages[msgIndex];
           const newBlocks = existing.blocks ? existing.blocks.map((b) => ({ ...b })) : [];
@@ -495,6 +514,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       case 'error': {
         const errorMsg = (chatPayload as { error: string }).error;
+        if (isSendingSafetyTimer) { clearTimeout(isSendingSafetyTimer); isSendingSafetyTimer = null; }
         if (msgIndex >= 0) {
           newMessages[msgIndex] = {
             ...messages[msgIndex],
@@ -513,6 +533,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       case 'aborted': {
         // 中止事件：将消息标记为 aborted，清理缓冲
+        if (isSendingSafetyTimer) { clearTimeout(isSendingSafetyTimer); isSendingSafetyTimer = null; }
         if (msgIndex >= 0) {
           newMessages[msgIndex] = {
             ...messages[msgIndex],
@@ -773,14 +794,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           runIdToSession: { ...state.runIdToSession, [runId]: sessionKey },
         }));
 
-        // 如果有缓冲文本或推理过程，创建 assistant 消息（runId 不存在于 serverMessages）
-        if (bufferedText || bufferedReasoning) {
+        // 始终创建 assistant 占位符（包括 bufferedText 为空时），确保 done 事件有 msgIndex
+        if (isRunning || bufferedText || bufferedReasoning) {
           const snapshotBlocks: ContentBlock[] = [];
           if (bufferedReasoning) {
             snapshotBlocks.push({ type: 'reasoning', id: `blk-r-${Date.now()}`, content: bufferedReasoning });
           }
           if (bufferedText) {
             snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: bufferedText });
+          }
+          // 如果没有任何 block，创建空 text block 作为占位
+          if (snapshotBlocks.length === 0) {
+            snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: '' });
           }
           finalMessages.push({
             id: generateMessageId(),
@@ -803,7 +828,85 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         if (isRunning) {
           set({ isSending: true });
+          // 安全超时：如果 done 事件丢失（竞态条件），超时后强制重置 isSending
+          if (isSendingSafetyTimer) clearTimeout(isSendingSafetyTimer);
+          isSendingSafetyTimer = setTimeout(() => {
+            const state = get();
+            if (state.isSending) {
+              console.warn('[chat] isSending safety timeout: forcing reset');
+              // 将所有 streaming 消息标记为 complete
+              const sessionMessages = state.messagesBySession[sessionKey] || [];
+              const updatedMessages = sessionMessages.map((m) =>
+                m.runId === runId && m.status === 'streaming' ? { ...m, status: 'complete' as const } : m
+              );
+              set({
+                isSending: false,
+                messagesBySession: { ...state.messagesBySession, [sessionKey]: updatedMessages },
+              });
+            }
+            isSendingSafetyTimer = null;
+          }, IS_SENDING_SAFETY_TIMEOUT_MS);
         }
+      }
+
+      // 竞态修复：如果 inFlightRun 的 runId 已在 serverRunIds 中（DB 有 user_message 但无 assistant_complete），
+      // acpEventsToMessages 已将 assistant 消息错误标记为 complete。需要恢复为 streaming 并设置 isSending。
+      if (res.inFlightRun && serverRunIds.has(res.inFlightRun.runId) && res.inFlightRun.isRunning) {
+        const { runId, bufferedText, bufferedReasoning } = res.inFlightRun;
+        // 记录 runId 映射
+        set((state) => ({
+          runIdToSession: { ...state.runIdToSession, [runId]: sessionKey },
+        }));
+
+        // 查找或创建 assistant 消息
+        const existingIdx = finalMessages.findIndex((m) => m.runId === runId && m.role === 'assistant');
+        if (existingIdx >= 0) {
+          // 已有 assistant 消息，恢复为 streaming 状态
+          finalMessages[existingIdx] = { ...finalMessages[existingIdx], status: 'streaming' };
+        } else {
+          // 没有 assistant 消息（DB 只有 user_message），创建占位消息
+          const snapshotBlocks: ContentBlock[] = [];
+          if (bufferedReasoning) {
+            snapshotBlocks.push({ type: 'reasoning', id: `blk-r-${Date.now()}`, content: bufferedReasoning });
+          }
+          if (bufferedText) {
+            snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: bufferedText });
+          }
+          if (snapshotBlocks.length === 0) {
+            snapshotBlocks.push({ type: 'text', id: `blk-t-${Date.now()}`, content: '' });
+          }
+          finalMessages.push({
+            id: generateMessageId(),
+            sessionKey,
+            runId,
+            role: 'assistant',
+            content: bufferedText || '',
+            ...(bufferedReasoning ? { reasoning: bufferedReasoning } : {}),
+            toolCalls: [],
+            blocks: snapshotBlocks,
+            status: 'streaming',
+            createdAt: res.inFlightRun.startedAt,
+          });
+        }
+
+        set({ isSending: true });
+        // 同样启动安全超时
+        if (isSendingSafetyTimer) clearTimeout(isSendingSafetyTimer);
+        isSendingSafetyTimer = setTimeout(() => {
+          const state = get();
+          if (state.isSending) {
+            console.warn('[chat] isSending safety timeout (race fix): forcing reset');
+            const sessionMessages = state.messagesBySession[sessionKey] || [];
+            const msgs = sessionMessages.map((m) =>
+              m.runId === runId && m.status === 'streaming' ? { ...m, status: 'complete' as const } : m
+            );
+            set({
+              isSending: false,
+              messagesBySession: { ...state.messagesBySession, [sessionKey]: msgs },
+            });
+          }
+          isSendingSafetyTimer = null;
+        }, IS_SENDING_SAFETY_TIMEOUT_MS);
       }
 
       set((state) => ({

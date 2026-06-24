@@ -1,0 +1,67 @@
+<h2>动画风格选哪个？</h2>
+<p class="subtitle">参考 LibreChat、ChatGPT、Linear、Notion 各自的风格基线。点击选择你想要的基线。</p>
+
+<style>
+  .preview-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .preview { padding: 16px; border: 1px solid var(--border); border-radius: 8px; min-height: 180px; position: relative; }
+  .preview h3 { margin: 0 0 4px; font-size: 14px; }
+  .preview .meta { color: var(--muted-foreground); font-size: 12px; margin-bottom: 12px; }
+  .demo-msg { padding: 8px 12px; border-radius: 12px; font-size: 13px; max-width: 80%; margin: 6px 0; opacity: 0; }
+  .demo-msg.user { background: #2563eb; color: #fff; align-self: flex-end; margin-left: auto; }
+  .demo-msg.bot { background: #f3f4f6; color: #111; }
+  .demo-row { display: flex; flex-direction: column; }
+  /* A: Linear-style - 极快、几乎无动效 */
+  .a .demo-msg { animation: a-in 120ms cubic-bezier(0.2, 0, 0.2, 1) forwards; }
+  @keyframes a-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+  /* B: ChatGPT / LibreChat - 轻快、平衡 */
+  .b .demo-msg { animation: b-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes b-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+  /* C: Notion / Apple - 弹性、稍重 */
+  .c .demo-msg { animation: c-in 280ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  @keyframes c-in { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: none; } }
+  /* D: 不用 - 立即出现 */
+  .d .demo-msg { opacity: 1; }
+  .a .demo-msg:nth-child(1) { animation-delay: 0ms; }
+  .a .demo-msg:nth-child(2) { animation-delay: 80ms; }
+  .b .demo-msg:nth-child(1) { animation-delay: 0ms; }
+  .b .demo-msg:nth-child(2) { animation-delay: 120ms; }
+  .c .demo-msg:nth-child(1) { animation-delay: 0ms; }
+  .c .demo-msg:nth-child(2) { animation-delay: 160ms; }
+</style>
+
+<div class="preview-row">
+  <div class="preview a option" data-choice="a" onclick="toggleSelect(this)">
+    <h3>A. Linear 风</h3>
+    <p class="meta">120ms · 极克制的微位移（2px）· 几乎察觉不到</p>
+    <div class="demo-row">
+      <div class="demo-msg user">查看一下这个资源状态</div>
+      <div class="demo-msg bot">资源运行中，CPU 使用率 23%</div>
+    </div>
+  </div>
+  <div class="preview b option" data-choice="b" onclick="toggleSelect(this)">
+    <h3>B. LibreChat 风 ⭐</h3>
+    <p class="meta">200ms · 6px 位移 + 极轻 scale · 流畅专业</p>
+    <div class="demo-row">
+      <div class="demo-msg user">查看一下这个资源状态</div>
+      <div class="demo-msg bot">资源运行中，CPU 使用率 23%</div>
+    </div>
+  </div>
+  <div class="preview c option" data-choice="c" onclick="toggleSelect(this)">
+    <h3>C. Notion 风</h3>
+    <p class="meta">280ms · 12px 位移 + 弹性曲线 · 俏皮活泼</p>
+    <div class="demo-row">
+      <div class="demo-msg user">查看一下这个资源状态</div>
+      <div class="demo-msg bot">资源运行中，CPU 使用率 23%</div>
+    </div>
+  </div>
+  <div class="preview d option" data-choice="d" onclick="toggleSelect(this)">
+    <h3>D. 不加动画</h3>
+    <p class="meta">立即出现 · 性能最好 · 但显得生硬</p>
+    <div class="demo-row">
+      <div class="demo-msg user">查看一下这个资源状态</div>
+      <div class="demo-msg bot">资源运行中，CPU 使用率 23%</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px;">参考：LibreChat 实际用的是 150-200ms，ease-out 曲线，opacity + translateY 8px。</p>

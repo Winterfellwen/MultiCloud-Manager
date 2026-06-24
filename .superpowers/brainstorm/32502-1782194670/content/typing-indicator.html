@@ -1,0 +1,55 @@
+<h2>AI 思考/输入中的"打字"指示器</h2>
+<p class="subtitle">AI 正在生成回复时气泡内的视觉提示。三种成熟方案。</p>
+
+<style>
+  .preview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .preview { padding: 14px; border: 1px solid var(--border); border-radius: 8px; min-height: 160px; cursor: pointer; transition: border-color 0.15s; }
+  .preview:hover { border-color: var(--primary); }
+  .preview.selected { border-color: var(--primary); background: rgba(37, 99, 235, 0.05); }
+  .preview h3 { margin: 0 0 4px; font-size: 14px; }
+  .preview .meta { color: var(--muted-foreground); font-size: 11px; margin-bottom: 14px; }
+  .bubble { background: #f3f4f6; color: #111; padding: 10px 14px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+  .bubble.shimmer { background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #6b7280; }
+  .a .dot:nth-child(1) { animation: bounce 1.2s ease-in-out infinite; }
+  .a .dot:nth-child(2) { animation: bounce 1.2s ease-in-out 0.15s infinite; }
+  .a .dot:nth-child(3) { animation: bounce 1.2s ease-in-out 0.3s infinite; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+  .b .bar { width: 24px; height: 2px; background: #9ca3af; border-radius: 1px; animation: pulse 1.4s ease-in-out infinite; }
+  .b .bar:nth-child(2) { animation-delay: 0.2s; }
+  .b .bar:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scaleX(0.6); } 50% { opacity: 1; transform: scaleX(1); } }
+  .c .content { flex: 1; height: 8px; border-radius: 4px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
+
+<div class="preview-row">
+  <div class="preview a option" data-choice="a" onclick="toggleSelect(this)">
+    <h3>A. 三点跳动 ⭐</h3>
+    <p class="meta">LibreChat / ChatGPT 经典 · 1.2s 循环</p>
+    <div class="bubble">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+  <div class="preview b option" data-choice="b" onclick="toggleSelect(this)">
+    <h3>B. 三条脉冲条</h3>
+    <p class="meta">Notion AI / 现代风 · 横向 scaleX 脉冲</p>
+    <div class="bubble">
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+  </div>
+  <div class="preview c option" data-choice="c" onclick="toggleSelect(this)">
+    <h3>C. 骨架屏 shimmer</h3>
+    <p class="meta">灰色渐变扫光 · 适合内容较长时</p>
+    <div class="bubble shimmer" style="width: 220px;">
+      <div class="content"></div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">注：实际显示时还会有"AI 思考中..."文字标签配合。</p>
