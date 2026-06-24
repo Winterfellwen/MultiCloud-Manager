@@ -1,9 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { teamService } from '../services/team.service.js';
 import { authenticate, requirePermission } from '../middleware/auth.js';
-import { db } from '../db/index.js';
-import { users } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
 
 export async function teamRoutes(app: FastifyInstance) {
   // Apply auth middleware to all team routes
@@ -19,11 +16,9 @@ export async function teamRoutes(app: FastifyInstance) {
       return teams;
     }
     
-    // Non-admin: get user's teamId from database
-    const userData = await db.select({ teamId: users.teamId }).from(users).where(eq(users.id, user.id)).limit(1);
-    
-    if (userData.length > 0 && userData[0].teamId) {
-      const team = await teamService.getById(userData[0].teamId);
+    // Non-admin: use teamId from JWT payload
+    if (user.teamId) {
+      const team = await teamService.getById(user.teamId);
       return team ? [team] : [];
     }
     
@@ -64,6 +59,11 @@ export async function teamRoutes(app: FastifyInstance) {
     preHandler: requirePermission('team', 'delete')
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    
+    const team = await teamService.getById(id);
+    if (!team) {
+      return reply.status(404).send({ error: 'Team not found' });
+    }
     
     await teamService.delete(id);
     return { success: true };

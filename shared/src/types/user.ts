@@ -47,6 +47,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { resource: 'alert', action: 'manage' },
     { resource: 'cost', action: 'view' },
     { resource: 'report', action: 'generate' },
+    { resource: 'team', action: 'list' },
+    { resource: 'team', action: 'read' },
   ],
   ops_engineer: [
     { resource: 'instance', action: 'list' },
@@ -55,11 +57,15 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { resource: 'instance', action: 'stop' },
     { resource: 'instance', action: 'reboot' },
     { resource: 'exec', action: 'command' },
+    { resource: 'team', action: 'list' },
+    { resource: 'team', action: 'read' },
   ],
   viewer: [
     { resource: 'instance', action: 'list' },
     { resource: 'instance', action: 'view' },
     { resource: 'monitor', action: 'view' },
     { resource: 'cost', action: 'view' },
+    { resource: 'team', action: 'list' },
+    { resource: 'team', action: 'read' },
   ],
 };

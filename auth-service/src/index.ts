@@ -137,7 +137,7 @@ app.get('/health', async () => ({ status: 'ok', service: 'auth-service' }));
 await app.register(authRoutes, { prefix: '/auth' });
 await app.register(userRoutes, { prefix: '/users' });
 await app.register(auditRoutes, { prefix: '/audit' });
-await app.register(teamRoutes, { prefix: '/teams' });
+await app.register(teamRoutes, { prefix: '/auth' });
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' });

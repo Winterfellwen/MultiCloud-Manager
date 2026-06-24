@@ -8,6 +8,7 @@ export interface AuthUser {
   id: string;
   username: string;
   role: UserRole;
+  teamId: string | null;
 }
 
 declare module 'fastify' {
@@ -29,6 +30,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
       id: payload.sub,
       username: payload.username,
       role: payload.role,
+      teamId: payload.teamId,
     };
   } catch {
     throw new UnauthorizedError('Invalid or expired token');
