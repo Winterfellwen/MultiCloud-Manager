@@ -406,9 +406,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.0
         version: 5.101.0(react@18.3.1)
-      '@types/dagre':
-        specifier: ^0.7.54
-        version: 0.7.54
       '@xyflow/react':
         specifier: ^12.11.1
         version: 12.11.1(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -458,6 +455,9 @@ importers:
         specifier: ^4.5.5
         version: 4.5.7(@types/react@18.3.31)(react@18.3.1)
     devDependencies:
+      '@types/dagre':
+        specifier: ^0.7.52
+        version: 0.7.54
       '@types/node':
         specifier: ^20.12.7
         version: 20.19.43
