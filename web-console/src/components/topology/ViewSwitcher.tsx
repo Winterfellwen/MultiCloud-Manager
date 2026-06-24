@@ -32,7 +32,7 @@ export function ViewSwitcher({ currentView, onChange }: ViewSwitcherProps) {
             onClick={() => onChange(view)}
             className={cn(
               'flex items-center gap-2',
-              isActive && 'bg-foreground text-background'
+              isActive && 'bg-primary text-primary-foreground'
             )}
           >
             <Icon className="h-4 w-4" />
