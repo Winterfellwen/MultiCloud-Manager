@@ -1,5 +1,11 @@
 import { pgTable, uuid, varchar, text, timestamp, jsonb, inet, boolean, index } from 'drizzle-orm/pg-core';
 
+export const teams = pgTable('teams', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 64 }).notNull().unique(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   username: varchar('username', { length: 64 }).unique().notNull(),
@@ -7,6 +13,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   role: varchar('role', { length: 32 }).notNull().default('viewer'),
   team: varchar('team', { length: 64 }).notNull().default(''),
+  teamId: uuid('team_id').references(() => teams.id, { onDelete: 'set null' }),
   apiKey: varchar('api_key', { length: 128 }).unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastLoginAt: timestamp('last_login_at'),
