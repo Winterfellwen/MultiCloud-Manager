@@ -144,6 +144,14 @@ export interface CloudResource {
   tags: Record<string, string>;
   attributes: Record<string, unknown>;
   cloudAccountId?: string;
+  /** 拓扑关系字段 */
+  topology?: {
+    vpcId?: string;
+    subnetId?: string;
+    securityGroupIds?: string[];
+    targetInstanceIds?: string[];
+    parentClusterId?: string;
+  };
 }
 
 // ===== 磁盘/卷 =====
