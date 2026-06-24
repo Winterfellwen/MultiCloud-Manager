@@ -43,7 +43,7 @@ export function handleConnection(
     userId: user.userId,
     username: user.username,
     role: user.role,
-    team: user.team,
+    teamId: user.teamId,
     seq: 0,
     subscribedSessions: new Set(),
   };

@@ -117,6 +117,36 @@ export async function readReplay(sessionKey: string, fromSeq: number = 0): Promi
   }));
 }
 
+export interface SessionOwner {
+  userId: string;
+  username: string;
+}
+
+/**
+ * 获取 session 的所有者信息
+ */
+export async function getSessionOwner(sessionKey: string): Promise<SessionOwner | null> {
+  const rows = await db.execute(sql`
+    SELECT user_id, username FROM acp_replay_sessions WHERE session_key = ${sessionKey}
+  `) as unknown as Array<{ user_id: string; username: string }>;
+  if (rows.length === 0) return null;
+  return { userId: rows[0].user_id, username: rows[0].username };
+}
+
+/**
+ * 检查用户是否有权限删除 session
+ */
+export async function canDeleteSession(
+  sessionKey: string,
+  viewerId: string,
+  viewerRole: string
+): Promise<{ allowed: boolean; owner?: SessionOwner }> {
+  const owner = await getSessionOwner(sessionKey);
+  if (!owner) return { allowed: false };
+  const allowed = viewerRole === 'admin' || owner.userId === viewerId;
+  return { allowed, owner };
+}
+
 /**
  * 清理 session 的事件（生成完成后调用）
  */
@@ -188,16 +218,16 @@ interface LastTsRow {
 export async function listSessions(
   viewerId: string,
   viewerRole: string,
-  viewerTeam: string,
+  viewerTeamId: string | null,
   filter: 'mine' | 'team' | 'all' = 'mine'
 ): Promise<SessionListItem[]> {
   let whereClause;
 
   if (filter === 'all' && viewerRole === 'admin') {
     whereClause = sql`WHERE 1=1`;
-  } else if (filter === 'team' && viewerTeam) {
+  } else if (filter === 'team' && viewerTeamId) {
     whereClause = sql`WHERE s.user_id IN (
-      SELECT id::text FROM users WHERE team = ${viewerTeam} AND team != ''
+      SELECT id::text FROM users WHERE team_id = ${viewerTeamId}
     )`;
   } else {
     whereClause = sql`WHERE s.user_id = ${viewerId}`;
@@ -260,7 +290,7 @@ export async function deleteBatchSessions(
   sessionKeys: string[],
   viewerId: string,
   viewerRole: string,
-  viewerTeam: string
+  viewerTeamId: string | null
 ): Promise<DeleteBatchResult> {
   const result: DeleteBatchResult = { deleted: 0, errors: [] };
 
@@ -271,14 +301,6 @@ export async function deleteBatchSessions(
 
   const ownerMap = new Map(ownerRows.map(r => [r.session_key, r.user_id]));
 
-  let teamUserIds: Set<string> = new Set();
-  if (viewerTeam) {
-    const teamRows = await db.execute(sql`
-      SELECT id::text as uid FROM users WHERE team = ${viewerTeam} AND team != ''
-    `) as unknown as Array<{ uid: string }>;
-    teamUserIds = new Set(teamRows.map(r => r.uid));
-  }
-
   for (const key of sessionKeys) {
     const ownerId = ownerMap.get(key);
     if (!ownerId) {
@@ -286,9 +308,10 @@ export async function deleteBatchSessions(
       continue;
     }
 
-    const canDelete = viewerRole === 'admin'
-      || ownerId === viewerId
-      || teamUserIds.has(ownerId);
+    // Admin: can delete ANY session
+    // Owner: can delete own sessions
+    // Team member: CANNOT delete other team members' sessions (only own)
+    const canDelete = viewerRole === 'admin' || ownerId === viewerId;
 
     if (!canDelete) {
       result.errors.push({ key, error: 'NOT_AUTHORIZED' });

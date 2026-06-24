@@ -7,7 +7,7 @@
 import type { ClientConnection } from '../gateway/server-broadcast.js';
 import type { ChatAbortControllerEntry } from '../gateway/chat-abort.js';
 import { abortChatRun } from '../gateway/chat-abort.js';
-import { clearSessionEvents, listSessions, deleteBatchSessions, updateSessionTitle } from '../acp/event-ledger.js';
+import { clearSessionEvents, listSessions, deleteBatchSessions, updateSessionTitle, canDeleteSession } from '../acp/event-ledger.js';
 
 export interface SessionsMethodContext {
   clients: Map<string, ClientConnection>;
@@ -52,9 +52,9 @@ export async function handleSessionsList(
   respond: (ok: boolean, payload: unknown) => void
 ): Promise<void> {
   try {
-    const { userId, role, team } = client;
+    const { userId, role, teamId } = client;
     const filter = params.filter || 'mine';
-    const sessions = await listSessions(userId, role, team, filter);
+    const sessions = await listSessions(userId, role, teamId, filter);
 
     respond(true, { sessions });
   } catch (err) {
@@ -74,7 +74,7 @@ export async function handleSessionsDeleteBatch(
   respond: (ok: boolean, payload: unknown) => void
 ): Promise<void> {
   try {
-    const { userId, role, team } = client;
+    const { userId, role, teamId } = client;
     const { sessionKeys } = params;
     if (!Array.isArray(sessionKeys) || sessionKeys.length === 0) {
       respond(false, { error: 'INVALID_PARAMS', detail: 'sessionKeys must be a non-empty array' });
@@ -89,7 +89,7 @@ export async function handleSessionsDeleteBatch(
       }
     }
 
-    const result = await deleteBatchSessions(sessionKeys, userId, role, team);
+    const result = await deleteBatchSessions(sessionKeys, userId, role, teamId);
 
     for (const sessionKey of sessionKeys) {
       for (const client of context.clients.values()) {
@@ -123,14 +123,22 @@ export async function handleSessionsUpdateTitle(
  * sessions.delete - 删除会话
  * 1. 中止该 session 中正在运行的所有 run
  * 2. 清理数据库中的事件记录
+ * 3. 权限检查：Admin 可删除任意会话，Owner 可删除自己的，Team member 只能删除自己的
  */
 export async function handleSessionsDelete(
-  _client: ClientConnection,
+  client: ClientConnection,
   params: { sessionKey: string },
   context: SessionsMethodContext,
   respond: (ok: boolean, payload: unknown) => void
 ): Promise<void> {
   const { sessionKey } = params;
+
+  // 权限检查
+  const { allowed } = await canDeleteSession(sessionKey, client.userId, client.role);
+  if (!allowed) {
+    respond(false, { error: 'NOT_AUTHORIZED', message: '无权删除此会话' });
+    return;
+  }
 
   // 1. 中止该 session 中正在运行的所有 run
   const abortedRunIds: string[] = [];
@@ -150,8 +158,8 @@ export async function handleSessionsDelete(
   }
 
   // 3. 取消所有客户端对该 session 的订阅
-  for (const client of context.clients.values()) {
-    client.subscribedSessions.delete(sessionKey);
+  for (const c of context.clients.values()) {
+    c.subscribedSessions.delete(sessionKey);
   }
 
   respond(true, { sessionKey, abortedRunIds });

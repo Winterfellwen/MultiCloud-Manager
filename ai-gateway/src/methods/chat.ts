@@ -16,7 +16,17 @@ import { appendToBuffer, appendReasoningToBuffer, cleanupRun } from '../gateway/
 import { broadcastEvent } from '../gateway/server-broadcast.js';
 import { sessionManager } from '../acp/control-plane/manager.js';
 import { recordEvent, readReplay } from '../acp/event-ledger.js';
+import { db } from '../db/index.js';
+import { sql } from 'drizzle-orm';
 import { runAgentTurn, type Attachment } from '../agent/runner.js';
+
+async function getSessionOwner(sessionKey: string): Promise<{ userId: string; username: string } | null> {
+  const rows = await db.execute(sql`
+    SELECT user_id, username FROM acp_replay_sessions WHERE session_key = ${sessionKey}
+  `) as unknown as Array<{ user_id: string; username: string }>;
+  if (rows.length === 0) return null;
+  return { userId: rows[0].user_id, username: rows[0].username };
+}
 
 // 按 sessionKey 串行化 recordEvent，确保事件按调用顺序写入 ledger
 // （fire-and-forget 并发写入会导致 seq 分配顺序与调用顺序不一致，刷新后 blocks 排序错乱）
@@ -77,6 +87,18 @@ export async function handleChatSend(
 ): Promise<void> {
   const runId = params.clientRunId || `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const sessionKey = params.sessionKey;
+
+  // 权限检查：验证用户是否有权继续该会话
+  // Owner: 可以继续自己的会话
+  // Team member: 只能继续自己的会话（不能继续其他团队成员的）
+  // Admin: 只能继续自己的会话（不能继续其他管理员或团队成员的）
+  const sessionOwner = await getSessionOwner(sessionKey);
+  if (!sessionOwner) {
+    // 会话不存在，允许创建新会话（首次发送消息）
+  } else if (sessionOwner.userId !== client.userId) {
+    respond(false, { error: 'NOT_AUTHORIZED', message: '无权继续他人的会话' });
+    return;
+  }
 
   // 幂等性检查：相同 clientRunId 返回 in_flight（不重复执行）
   const existing = context.chatAbortControllers.get(runId);

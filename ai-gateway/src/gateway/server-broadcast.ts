@@ -9,7 +9,7 @@ export interface ClientConnection {
   userId: string;
   username: string;
   role: string;
-  team: string;
+  teamId: string | null;
   /** 该客户端的 seq 计数器 */
   seq: number;
   /** 订阅的 sessionKey 集合 */
