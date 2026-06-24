@@ -8,6 +8,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/dagre": "^0.7.54",
+    "@xyflow/react": "^12.11.1",
+    "dagre": "^0.8.5",
     "lit": "3.3.3",
     "markdown-it": "14.2.0"
   },
