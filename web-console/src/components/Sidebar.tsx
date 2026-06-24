@@ -35,6 +35,11 @@ export function Sidebar() {
   const NAV_ITEMS: NavItem[] = [
     { label: t('nav.dashboard'), to: '/dashboard', icon: LayoutDashboard },
     {
+      label: t('nav.chat'),
+      to: '/chat/react',
+      icon: MessageSquare,
+    },
+    {
       label: t('nav.instances'),
       to: '/instances',
       icon: Server,
@@ -63,11 +68,6 @@ export function Sidebar() {
       to: '/costs',
       icon: DollarSign,
       permission: { resource: 'cost', action: 'view' },
-    },
-    {
-      label: t('nav.chat'),
-      to: '/chat/react',
-      icon: MessageSquare,
     },
     {
       label: t('nav.aiSettings'),
