@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { teams, users } from '../db/schema.js';
+import { NotFoundError } from '@cloudops/shared';
 
 export interface CreateTeamParams {
   name: string;
@@ -11,58 +12,70 @@ export interface UpdateTeamParams {
 }
 
 export class TeamService {
-  async list() {
+  async list(): Promise<typeof teams.$inferSelect[]> {
     return db.select().from(teams);
   }
 
-  async getById(id: string) {
-    const result = await db.select().from(teams).where(eq(teams.id, id));
-    return result[0] || null;
+  async getById(id: string): Promise<typeof teams.$inferSelect> {
+    const result = await db.select().from(teams).where(eq(teams.id, id)).limit(1);
+    if (result.length === 0) {
+      throw new NotFoundError('Team', id);
+    }
+    return result[0];
   }
 
-  async create(params: CreateTeamParams) {
+  async create(params: CreateTeamParams): Promise<typeof teams.$inferSelect> {
     const result = await db.insert(teams).values(params).returning();
     return result[0];
   }
 
-  async update(id: string, params: UpdateTeamParams) {
+  async update(id: string, params: UpdateTeamParams): Promise<typeof teams.$inferSelect> {
     const result = await db
       .update(teams)
       .set(params)
       .where(eq(teams.id, id))
       .returning();
-    return result[0] || null;
+    if (result.length === 0) {
+      throw new NotFoundError('Team', id);
+    }
+    return result[0];
   }
 
-  async delete(id: string) {
-    // Unassign all users from this team (set team_id to NULL)
-    await db
-      .update(users)
-      .set({ teamId: null })
-      .where(eq(users.teamId, id));
-
-    // Delete the team
+  async delete(id: string): Promise<void> {
     const result = await db
       .delete(teams)
       .where(eq(teams.id, id))
       .returning();
-    return result[0] || null;
+    if (result.length === 0) {
+      throw new NotFoundError('Team', id);
+    }
   }
 
-  async getMembers(teamId: string) {
+  async getMembers(teamId: string): Promise<Omit<typeof users.$inferSelect, 'passwordHash' | 'apiKey'>[]> {
     return db
-      .select()
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        role: users.role,
+        team: users.team,
+        teamId: users.teamId,
+        createdAt: users.createdAt,
+        lastLoginAt: users.lastLoginAt,
+      })
       .from(users)
       .where(eq(users.teamId, teamId));
   }
 
-  async assignUserToTeam(userId: string, teamId: string | null) {
+  async assignUserToTeam(userId: string, teamId: string | null): Promise<void> {
     const result = await db
       .update(users)
       .set({ teamId })
       .where(eq(users.id, userId))
       .returning();
-    return result[0] || null;
+    if (result.length === 0) {
+      throw new NotFoundError('User', userId);
+    }
   }
 }
 
