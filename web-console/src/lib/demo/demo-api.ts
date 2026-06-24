@@ -200,6 +200,7 @@ export function demoGetTopology(filters?: {
   region?: string;
   resourceType?: string;
   status?: string;
+  cloudAccountId?: string;
 }): Promise<TopologyData> {
   return Promise.resolve(getDemoTopology(filters));
 }

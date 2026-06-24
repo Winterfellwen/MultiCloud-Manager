@@ -502,6 +502,7 @@ export function getDemoTopology(filters?: {
   region?: string;
   resourceType?: string;
   status?: string;
+  cloudAccountId?: string;
 }): { nodes: TopologyNode[]; edges: TopologyEdge[] } {
   if (!_topologyCache) {
     const rand = seededRandom(789);
@@ -514,6 +515,7 @@ export function getDemoTopology(filters?: {
       const id = `demo-vpc-${i}`;
       const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
       const region = pick(PROVIDER_REGIONS[provider], rand);
+      const cloudAccountId = `demo-${provider}-account`;
       nodes.push({
         id,
         type: 'vpc',
@@ -523,18 +525,18 @@ export function getDemoTopology(filters?: {
         status: 'active',
         category: 'network',
         icon: 'git-branch',
-        data: { cidrBlock: `10.${i}.0.0/16`, subnetCount: 2 + Math.floor(rand() * 2) },
+        data: { cidrBlock: `10.${i}.0.0/16`, subnetCount: 2 + Math.floor(rand() * 2), cloudAccountId },
       });
-      return { id, provider, region };
+      return { id, provider, region, cloudAccountId };
     });
 
     // 创建子网（每个 VPC 2-3 个）
-    const subnets: Array<{ id: string; provider: string; region: string; vpcId: string }> = [];
+    const subnets: Array<{ id: string; provider: string; region: string; vpcId: string; cloudAccountId: string }> = [];
     for (const vpc of vpcs) {
       const subnetCount = 2 + Math.floor(rand() * 2);
       for (let i = 0; i < subnetCount; i++) {
         const id = `demo-subnet-${nodeIdx++}`;
-        subnets.push({ id, provider: vpc.provider, region: vpc.region, vpcId: vpc.id });
+        subnets.push({ id, provider: vpc.provider, region: vpc.region, vpcId: vpc.id, cloudAccountId: vpc.cloudAccountId });
         nodes.push({
           id,
           type: 'subnet',
@@ -544,7 +546,7 @@ export function getDemoTopology(filters?: {
           status: 'active',
           category: 'network',
           icon: 'git-branch',
-          data: { cidrBlock: `10.${vpc.id.split('-').pop()}.${i}.0/24` },
+          data: { cidrBlock: `10.${vpc.id.split('-').pop()}.${i}.0/24`, cloudAccountId: vpc.cloudAccountId },
         });
         edges.push({
           id: `edge-${id}-${vpc.id}`,
@@ -557,13 +559,13 @@ export function getDemoTopology(filters?: {
     }
 
     // 创建实例（每个子网 5-10 个）
-    const instances: Array<{ id: string; provider: string; region: string }> = [];
+    const instances: Array<{ id: string; provider: string; region: string; cloudAccountId: string }> = [];
     for (const subnet of subnets) {
       const instanceCount = 5 + Math.floor(rand() * 6);
       for (let i = 0; i < instanceCount; i++) {
         const id = `demo-instance-${nodeIdx++}`;
         const status = weightedPick(['running', 'stopped', 'pending'], [0.7, 0.2, 0.1], rand);
-        instances.push({ id, provider: subnet.provider, region: subnet.region });
+        instances.push({ id, provider: subnet.provider, region: subnet.region, cloudAccountId: subnet.cloudAccountId });
         nodes.push({
           id,
           type: 'instance',
@@ -573,7 +575,7 @@ export function getDemoTopology(filters?: {
           status,
           category: 'compute',
           icon: 'server',
-          data: { cpu: pick([1, 2, 4, 8], rand), memoryMb: pick([2048, 4096, 8192, 16384], rand) },
+          data: { cpu: pick([1, 2, 4, 8], rand), memoryMb: pick([2048, 4096, 8192, 16384], rand), cloudAccountId: subnet.cloudAccountId },
         });
         edges.push({
           id: `edge-${id}-${subnet.id}`,
@@ -598,7 +600,7 @@ export function getDemoTopology(filters?: {
           status: 'active',
           category: 'security',
           icon: 'shield',
-          data: { ruleCount: 5 + Math.floor(rand() * 10) },
+          data: { ruleCount: 5 + Math.floor(rand() * 10), cloudAccountId: vpc.cloudAccountId },
         });
         // 随机选择一些实例关联此安全组
         const relatedInstances = instances
@@ -621,6 +623,7 @@ export function getDemoTopology(filters?: {
       const id = `demo-lb-${nodeIdx++}`;
       const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
       const region = pick(PROVIDER_REGIONS[provider], rand);
+      const cloudAccountId = `demo-${provider}-account`;
       nodes.push({
         id,
         type: 'loadbalancer',
@@ -630,7 +633,7 @@ export function getDemoTopology(filters?: {
         status: 'active',
         category: 'network',
         icon: 'share-2',
-        data: { type: pick(['application', 'network'], rand), scheme: 'internet-facing' },
+        data: { type: pick(['application', 'network'], rand), scheme: 'internet-facing', cloudAccountId },
       });
       // 关联一些实例
       const targetInstances = instances
@@ -653,6 +656,7 @@ export function getDemoTopology(filters?: {
       const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
       const region = pick(PROVIDER_REGIONS[provider], rand);
       const vpc = vpcs.find(v => v.region === region) || vpcs[0];
+      const cloudAccountId = `demo-${provider}-account`;
       nodes.push({
         id,
         type: 'database',
@@ -662,7 +666,7 @@ export function getDemoTopology(filters?: {
         status: 'active',
         category: 'database',
         icon: 'database',
-        data: { engine: pick(['mysql', 'postgresql', 'mongodb'], rand), engineVersion: '8.0' },
+        data: { engine: pick(['mysql', 'postgresql', 'mongodb'], rand), engineVersion: '8.0', cloudAccountId },
       });
       edges.push({
         id: `edge-${id}-${vpc.id}`,
@@ -678,6 +682,7 @@ export function getDemoTopology(filters?: {
       const id = `demo-cache-${nodeIdx++}`;
       const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
       const region = pick(PROVIDER_REGIONS[provider], rand);
+      const cloudAccountId = `demo-${provider}-account`;
       nodes.push({
         id,
         type: 'cache',
@@ -687,7 +692,7 @@ export function getDemoTopology(filters?: {
         status: 'active',
         category: 'database',
         icon: 'zap',
-        data: { engine: 'redis', engineVersion: '7.0', memoryMb: pick([256, 512, 1024], rand) },
+        data: { engine: 'redis', engineVersion: '7.0', memoryMb: pick([256, 512, 1024], rand), cloudAccountId },
       });
     }
 
@@ -696,6 +701,7 @@ export function getDemoTopology(filters?: {
       const id = `demo-bucket-${nodeIdx++}`;
       const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
       const region = pick(PROVIDER_REGIONS[provider], rand);
+      const cloudAccountId = `demo-${provider}-account`;
       nodes.push({
         id,
         type: 'bucket',
@@ -705,7 +711,7 @@ export function getDemoTopology(filters?: {
         status: 'active',
         category: 'storage',
         icon: 'database',
-        data: { storageClass: pick(['standard', 'standard-ia', 'glacier'], rand), sizeBytes: Math.floor(rand() * 1000000000) },
+        data: { storageClass: pick(['standard', 'standard-ia', 'glacier'], rand), sizeBytes: Math.floor(rand() * 1000000000), cloudAccountId },
       });
     }
 
@@ -735,6 +741,12 @@ export function getDemoTopology(filters?: {
 
   if (filters?.status) {
     const nodeIds = new Set(nodes.filter(n => n.status === filters.status).map(n => n.id));
+    nodes = nodes.filter(n => nodeIds.has(n.id));
+    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+  }
+
+  if (filters?.cloudAccountId) {
+    const nodeIds = new Set(nodes.filter(n => n.data.cloudAccountId === filters.cloudAccountId).map(n => n.id));
     nodes = nodes.filter(n => nodeIds.has(n.id));
     edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
