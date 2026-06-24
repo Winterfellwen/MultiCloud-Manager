@@ -1,0 +1,27 @@
+name: Render Keepalive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render backend
+        run: |
+          echo "Pinging Render backend..."
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://multicloud-backend-md3x.onrender.com/health)
+            echo "HTTP Status: $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Ping successful!"
+              exit 0
+            fi
+            echo "Retrying in 10 seconds..."
+            sleep 10
+          done
+          echo "❌ All attempts failed"
+          exit 1
