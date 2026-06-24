@@ -20,7 +20,6 @@ export function ViewSwitcher({ currentView, onChange }: ViewSwitcherProps) {
   return (
     <div className="flex items-center gap-2">
       {(Object.keys(VIEW_CONFIG) as TopologyView[]).map((view) => {
-        const config = VIEW_CONFIG[view];
         const Icon = VIEW_ICONS[view];
         const isActive = currentView === view;
 
