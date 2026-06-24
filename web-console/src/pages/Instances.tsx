@@ -63,10 +63,14 @@ export default function Instances() {
   }
 
   async function handleResetDemo() {
-    if (!confirm(t('instances.resetConfirm'))) return;
+    if (!window.confirm(t('instances.resetConfirm'))) return;
     try {
       await demoResetAll();
       qc.invalidateQueries({ queryKey: ['instances'] });
+      qc.invalidateQueries({ queryKey: ['resources'] });
+      qc.invalidateQueries({ queryKey: ['cloud-accounts'] });
+      qc.invalidateQueries({ queryKey: ['audit'] });
+      toast.success(t('instances.resetSuccess'));
     } catch (err) {
       toast.error(t('instances.resetFailed'));
     }
@@ -78,10 +82,15 @@ export default function Instances() {
         <h1 className="text-xl sm:text-2xl font-bold">{t('instances.title')}</h1>
         <div className="flex flex-wrap gap-2">
           {isDemoMode && (
-            <Button variant="outline" size="sm" onClick={handleResetDemo}>
-              <RotateCcw className="h-4 w-4 mr-1" />
-              {t('instances.resetDemo')}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleResetDemo}>
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  {t('instances.resetDemo')}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('instances.resetDemoTip')}</TooltipContent>
+            </Tooltip>
           )}
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />

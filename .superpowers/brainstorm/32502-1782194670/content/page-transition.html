@@ -1,0 +1,88 @@
+<h2>页面/路由切换的转场风格？</h2>
+<p class="subtitle">侧边栏点击 /dashboard → /instances 这种跳转。当前没有任何过渡，会显得生硬。</p>
+
+<style>
+  .preview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .preview { padding: 14px; border: 1px solid var(--border); border-radius: 8px; min-height: 220px; cursor: pointer; transition: border-color 0.15s; }
+  .preview:hover { border-color: var(--primary); }
+  .preview.selected { border-color: var(--primary); background: rgba(37, 99, 235, 0.05); }
+  .preview h3 { margin: 0 0 4px; font-size: 14px; }
+  .preview .meta { color: var(--muted-foreground); font-size: 11px; margin-bottom: 12px; }
+  .stage { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; height: 130px; position: relative; overflow: hidden; }
+  .page { position: absolute; inset: 0; padding: 10px; font-size: 11px; color: #6b7280; }
+  .page-title { font-weight: 600; color: #111; margin-bottom: 6px; font-size: 12px; }
+  .skel { background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%); height: 8px; border-radius: 4px; margin: 4px 0; }
+  .skel.long { width: 80%; }
+  .skel.med { width: 55%; }
+  .skel.short { width: 35%; }
+  /* A: 整页交叉淡入 - 新页覆盖在旧页上，旧页淡出 */
+  .a .page-out { animation: a-out 250ms forwards; }
+  .a .page-in { animation: a-in 250ms 100ms forwards; opacity: 0; }
+  @keyframes a-out { to { opacity: 0; } }
+  @keyframes a-in { from { opacity: 0; } to { opacity: 1; } }
+  /* B: 新页从下方滑入（10px），旧页淡出 */
+  .b .page-out { animation: b-out 200ms forwards; }
+  .b .page-in { animation: b-in 250ms 100ms forwards; opacity: 0; }
+  @keyframes b-out { to { opacity: 0; } }
+  @keyframes b-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  /* C: 简单淡入新页（无退出动画） */
+  .c .page-in { animation: c-in 180ms forwards; opacity: 0; }
+  @keyframes c-in { from { opacity: 0; } to { opacity: 1; } }
+  .stage-outer { animation-fill-mode: forwards; }
+  /* replay button */
+  .replay { display: inline-block; margin-top: 8px; font-size: 11px; color: var(--primary); cursor: pointer; user-select: none; }
+</style>
+
+<div class="preview-row">
+  <div class="preview a option" data-choice="a" onclick="toggleSelect(this)">
+    <h3>A. 整页交叉淡入</h3>
+    <p class="meta">250ms · 旧页淡出 + 新页淡入 · 平稳专业</p>
+    <div class="stage stage-outer" id="s-a">
+      <div class="page page-out">
+        <div class="page-title">Dashboard</div>
+        <div class="skel long"></div><div class="skel med"></div>
+        <div class="skel long"></div><div class="skel short"></div>
+      </div>
+      <div class="page page-in">
+        <div class="page-title">Instances</div>
+        <div class="skel long"></div>
+        <div class="skel long"></div>
+        <div class="skel med"></div>
+        <div class="skel short"></div>
+      </div>
+    </div>
+  </div>
+  <div class="preview b option" data-choice="b" onclick="toggleSelect(this)">
+    <h3>B. 新页从下方滑入 ⭐</h3>
+    <p class="meta">250ms · 10px translateY + 淡入 · 更有方向感</p>
+    <div class="stage stage-outer" id="s-b">
+      <div class="page page-out">
+        <div class="page-title">Dashboard</div>
+        <div class="skel long"></div><div class="skel med"></div>
+        <div class="skel long"></div><div class="skel short"></div>
+      </div>
+      <div class="page page-in">
+        <div class="page-title">Instances</div>
+        <div class="skel long"></div>
+        <div class="skel long"></div>
+        <div class="skel med"></div>
+        <div class="skel short"></div>
+      </div>
+    </div>
+  </div>
+  <div class="preview c option" data-choice="c" onclick="toggleSelect(this)">
+    <h3>C. 仅新页淡入</h3>
+    <p class="meta">180ms · 简单快速 · 性能最好</p>
+    <div class="stage stage-outer" id="s-c">
+      <div class="page page-in">
+        <div class="page-title">Instances</div>
+        <div class="skel long"></div>
+        <div class="skel long"></div>
+        <div class="skel med"></div>
+        <div class="skel short"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">说明：上面动画会在加载时自动播放一次模拟效果。点击卡片可选中。</p>

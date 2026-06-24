@@ -1,0 +1,59 @@
+<h2>侧边栏 / 按钮 / 卡片的 hover 反馈</h2>
+<p class="subtitle">鼠标悬停时的视觉反馈。越克制越高级，过度反馈会显得幼稚。</p>
+
+<style>
+  .preview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .preview { padding: 14px; border: 1px solid var(--border); border-radius: 8px; min-height: 200px; cursor: pointer; transition: border-color 0.15s; }
+  .preview:hover { border-color: var(--primary); }
+  .preview.selected { border-color: var(--primary); background: rgba(37, 99, 235, 0.05); }
+  .preview h3 { margin: 0 0 4px; font-size: 14px; }
+  .preview .meta { color: var(--muted-foreground); font-size: 11px; margin-bottom: 14px; }
+  .demo { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: 12px; transition: all 0.18s ease-out; cursor: pointer; color: #374151; }
+  .item:hover { background: #eff6ff; color: #1d4ed8; }
+  .item .icon { width: 14px; height: 14px; background: currentColor; opacity: 0.6; border-radius: 3px; }
+  /* A: 仅背景变色 */
+  .a .item:hover { background: #eff6ff; }
+  /* B: 背景+轻微右移 (translate-x: 2px) */
+  .b .item:hover { background: #eff6ff; transform: translateX(2px); }
+  /* C: 背景+左侧出现 2px 蓝色指示条 */
+  .c .item { position: relative; }
+  .c .item::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: #2563eb; border-radius: 1px; transform: scaleY(0); transform-origin: center; transition: transform 0.18s ease-out; }
+  .c .item:hover { background: #eff6ff; }
+  .c .item:hover::before { transform: scaleY(1); }
+</style>
+
+<div class="preview-row">
+  <div class="preview a option" data-choice="a" onclick="toggleSelect(this)">
+    <h3>A. 仅背景变色 ⭐</h3>
+    <p class="meta">最克制 · 鼠标移上去只换底色</p>
+    <div class="demo">
+      <div class="item"><div class="icon"></div>总览</div>
+      <div class="item"><div class="icon"></div>云服务器管理</div>
+      <div class="item"><div class="icon"></div>资源总览</div>
+      <div class="item"><div class="icon"></div>监控告警</div>
+    </div>
+  </div>
+  <div class="preview b option" data-choice="b" onclick="toggleSelect(this)">
+    <h3>B. 背景 + 轻微右移</h3>
+    <p class="meta">translate-x: 2px · 有"被推"的方向感</p>
+    <div class="demo">
+      <div class="item"><div class="icon"></div>总览</div>
+      <div class="item"><div class="icon"></div>云服务器管理</div>
+      <div class="item"><div class="icon"></div>资源总览</div>
+      <div class="item"><div class="icon"></div>监控告警</div>
+    </div>
+  </div>
+  <div class="preview c option" data-choice="c" onclick="toggleSelect(this)">
+    <h3>C. 背景 + 左侧指示条</h3>
+    <p class="meta">2px 蓝色条 scaleY 出现 · 层次更明确</p>
+    <div class="demo">
+      <div class="item"><div class="icon"></div>总览</div>
+      <div class="item"><div class="icon"></div>云服务器管理</div>
+      <div class="item"><div class="icon"></div>资源总览</div>
+      <div class="item"><div class="icon"></div>监控告警</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">悬停每张卡片内的列表项可以体验效果。点击卡片可选中。</p>

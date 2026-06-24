@@ -1,0 +1,76 @@
+<h2>Dialog / Modal / Toast 的进出动画</h2>
+<p class="subtitle">弹窗类组件的过渡。当前是立即出现/消失，显得突兀。</p>
+
+<style>
+  .preview-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .preview { padding: 14px; border: 1px solid var(--border); border-radius: 8px; min-height: 220px; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.15s; }
+  .preview:hover { border-color: var(--primary); }
+  .preview.selected { border-color: var(--primary); background: rgba(37, 99, 235, 0.05); }
+  .preview h3 { margin: 0 0 4px; font-size: 14px; }
+  .preview .meta { color: var(--muted-foreground); font-size: 11px; margin-bottom: 8px; }
+  .bg { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.3); }
+  .dlg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 78%; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); font-size: 12px; }
+  .dlg-title { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+  .dlg-desc { color: #6b7280; margin-bottom: 10px; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 6px; }
+  .dlg-btn { padding: 4px 10px; border-radius: 4px; font-size: 11px; }
+  .dlg-btn.cancel { background: #f3f4f6; color: #374151; }
+  .dlg-btn.confirm { background: #2563eb; color: white; }
+  /* A: 缩放+淡入 */
+  .a .bg { animation: a-bg 200ms forwards; opacity: 0; }
+  .a .dlg { animation: a-dlg 200ms forwards; opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  @keyframes a-bg { to { opacity: 1; } }
+  @keyframes a-dlg { to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+  /* B: 从下方滑入+淡入 */
+  .b .bg { animation: b-bg 220ms forwards; opacity: 0; }
+  .b .dlg { animation: b-dlg 240ms forwards; opacity: 0; transform: translate(-50%, calc(-50% + 16px)); }
+  @keyframes b-bg { to { opacity: 1; } }
+  @keyframes b-dlg { to { opacity: 1; transform: translate(-50%, -50%); } }
+  /* C: 顶部下落+回弹 */
+  .c .bg { animation: c-bg 250ms forwards; opacity: 0; }
+  .c .dlg { animation: c-dlg 280ms forwards; opacity: 0; transform: translate(-50%, -200%); }
+  @keyframes c-bg { to { opacity: 1; } }
+  @keyframes c-dlg { to { opacity: 1; transform: translate(-50%, -50%); } }
+</style>
+
+<div class="preview-row">
+  <div class="preview a option" data-choice="a" onclick="toggleSelect(this)">
+    <h3>A. 缩放 + 淡入 ⭐</h3>
+    <p class="meta">200ms · scale 0.95→1 · 标准企业级</p>
+    <div class="bg"></div>
+    <div class="dlg">
+      <div class="dlg-title">确认删除对话</div>
+      <div class="dlg-desc">删除后无法恢复</div>
+      <div class="dlg-actions">
+        <div class="dlg-btn cancel">取消</div>
+        <div class="dlg-btn confirm">确认</div>
+      </div>
+    </div>
+  </div>
+  <div class="preview b option" data-choice="b" onclick="toggleSelect(this)">
+    <h3>B. 下方滑入 + 淡入</h3>
+    <p class="meta">240ms · 16px translateY · 自然感</p>
+    <div class="bg"></div>
+    <div class="dlg">
+      <div class="dlg-title">确认删除对话</div>
+      <div class="dlg-desc">删除后无法恢复</div>
+      <div class="dlg-actions">
+        <div class="dlg-btn cancel">取消</div>
+        <div class="dlg-btn confirm">确认</div>
+      </div>
+    </div>
+  </div>
+  <div class="preview c option" data-choice="c" onclick="toggleSelect(this)">
+    <h3>C. 顶部下落 + 回弹</h3>
+    <p class="meta">280ms · 弹性曲线 · 显眼但偏重</p>
+    <div class="bg"></div>
+    <div class="dlg">
+      <div class="dlg-title">确认删除对话</div>
+      <div class="dlg-desc">删除后无法恢复</div>
+      <div class="dlg-actions">
+        <div class="dlg-btn cancel">取消</div>
+        <div class="dlg-btn confirm">确认</div>
+      </div>
+    </div>
+  </div>
+</div>
