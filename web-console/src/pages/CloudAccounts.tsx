@@ -1,6 +1,7 @@
 // 云厂商账号管理页：添加/编辑/删除/测试云账号
 // 参考 MultiCloud-Manager 的声明式字段配置设计，从后端获取厂商元数据动态渲染表单
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cloudApi } from '@/api/cloud';
 import { useDemoStore } from '@/stores/demo';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   Cloud, Plus, Pencil, Trash2, CheckCircle2, XCircle, Loader2,
   Zap, ExternalLink,
@@ -18,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function CloudAccounts() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -126,7 +129,7 @@ export default function CloudAccounts() {
   const handleSubmit = () => {
     setError('');
     if (!form.name.trim()) {
-      setError('请输入账号名称');
+      setError(t('cloudAccounts.nameRequired'));
       return;
     }
     const meta = providersMap[form.provider];
@@ -135,7 +138,7 @@ export default function CloudAccounts() {
       for (const f of meta.fields) {
         if (f.required && !editingId) {
           if (!form.config[f.key]?.trim()) {
-            setError(`请填写 ${f.label}`);
+            setError(t('cloudAccounts.fieldRequired', { label: f.label }));
             return;
           }
         }
@@ -149,7 +152,7 @@ export default function CloudAccounts() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`确定删除云账号 "${name}" 吗？`)) {
+    if (confirm(t('cloudAccounts.confirmDelete', { name }))) {
       deleteMutation.mutate(id);
     }
   };
@@ -182,28 +185,28 @@ export default function CloudAccounts() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Cloud className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-xl sm:text-2xl font-bold">云厂商管理</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('cloudAccounts.title')}</h1>
         </div>
         <Button onClick={handleOpenCreate} size="sm">
           <Plus className="mr-1 h-4 w-4" />
-          添加云账号
+          {t('cloudAccounts.add')}
         </Button>
       </div>
 
       {/* 云账号列表 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">已配置的云账号</CardTitle>
+          <CardTitle className="text-lg">{t('cloudAccounts.configured')}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              加载中...
+              {t('common.loading')}
             </div>
           ) : accounts.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              暂无云账号，点击"添加云账号"开始配置
+              {t('cloudAccounts.empty')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -231,12 +234,12 @@ export default function CloudAccounts() {
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           {account.status === 'active' ? (
-                            <><CheckCircle2 className="h-3 w-3 text-green-500" /> 已激活</>
+                            <><CheckCircle2 className="h-3 w-3 text-green-500" /> {t('cloudAccounts.active')}</>
                           ) : (
-                            <><XCircle className="h-3 w-3 text-muted-foreground" /> {account.status || '未知'}</>
+                            <><XCircle className="h-3 w-3 text-muted-foreground" /> {account.status || t('cloudAccounts.unknown')}</>
                           )}
                           <span>·</span>
-                          <span>创建于 {new Date(account.createdAt).toLocaleDateString()}</span>
+                          <span>{t('cloudAccounts.createdAt')} {new Date(account.createdAt).toLocaleDateString()}</span>
                         </div>
                         {/* 凭证脱敏提示 */}
                         {account.credentialHint && Object.keys(account.credentialHint).length > 0 && (
@@ -257,34 +260,48 @@ export default function CloudAccounts() {
                         )}
                       </div>
                       <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleTest(account.id)}
-                          disabled={testingId === account.id}
-                          title="测试连接"
-                        >
-                          {testingId === account.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Zap className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEdit(account)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(account.id, account.name)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleTest(account.id)}
+                              disabled={testingId === account.id}
+                            >
+                              {testingId === account.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Zap className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.test')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenEdit(account)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.edit')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(account.id, account.name)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
@@ -299,25 +316,25 @@ export default function CloudAccounts() {
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        title={editingId ? '编辑云账号' : '添加云账号'}
-        description="配置云厂商凭证，用于查询和管理云资源"
+        title={editingId ? t('cloudAccounts.editTitle') : t('cloudAccounts.addTitle')}
+        description={t('cloudAccounts.dialogDesc')}
       >
           <div className="space-y-4 py-2">
             {/* 账号名称 */}
             <div className="space-y-2">
-              <Label htmlFor="account-name">账号名称</Label>
+              <Label htmlFor="account-name">{t('cloudAccounts.accountName')}</Label>
               <Input
                 id="account-name"
                 value={form.name}
                 onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="如：生产环境 AWS"
+                placeholder={t('cloudAccounts.accountNamePlaceholder')}
               />
             </div>
 
             {/* 云厂商选择 */}
             {!editingId && (
               <div className="space-y-2">
-                <Label>云厂商</Label>
+                <Label>{t('cloudAccounts.providerLabel')}</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {providersMeta.map(p => (
                     <button
@@ -345,7 +362,7 @@ export default function CloudAccounts() {
             {currentMeta && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>凭证配置</Label>
+                  <Label>{t('cloudAccounts.credentialConfig')}</Label>
                   {currentMeta.docsUrl && (
                     <a
                       href={currentMeta.docsUrl}
@@ -353,7 +370,7 @@ export default function CloudAccounts() {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-primary hover:underline"
                     >
-                      查看文档 <ExternalLink className="h-3 w-3" />
+                      {t('cloudAccounts.viewDocs')} <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
@@ -391,7 +408,7 @@ export default function CloudAccounts() {
                         type={field.type === 'password' ? 'password' : 'text'}
                         value={form.config[field.key] || ''}
                         onChange={(e) => updateConfigField(field.key, e.target.value)}
-                        placeholder={editingId ? '留空则保留原值' : field.placeholder}
+                        placeholder={editingId ? t('cloudAccounts.editPlaceholder') : field.placeholder}
                       />
                     )}
                     {field.help && (
@@ -409,7 +426,7 @@ export default function CloudAccounts() {
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -418,7 +435,7 @@ export default function CloudAccounts() {
               {(createMutation.isPending || updateMutation.isPending) && (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               )}
-              {editingId ? '保存' : '添加'}
+              {editingId ? t('common.save') : t('common.add')}
             </Button>
           </div>
       </Dialog>

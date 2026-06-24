@@ -2,6 +2,7 @@
 // 注意：MCP 配置目前通过环境变量读取，前端展示为主。
 // 添加/删除功能为 UI 层操作，后端保存接口后续补充。
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Plug, Server, Globe, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -49,6 +51,7 @@ const DEFAULT_SERVERS: McpServer[] = [
 ];
 
 export default function McpConfig() {
+  const { t } = useTranslation();
   const [servers, setServers] = useState<McpServer[]>(DEFAULT_SERVERS);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<McpServer | null>(null);
@@ -82,14 +85,14 @@ export default function McpConfig() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">MCP 配置</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('mcp.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            管理 Model Context Protocol 服务器配置
+            {t('mcp.subtitle')}
           </p>
         </div>
         <Button size="sm" onClick={() => setAddDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-1.5 h-4 w-4" />
-          添加服务器
+          {t('mcp.addServer')}
         </Button>
       </div>
 
@@ -97,7 +100,7 @@ export default function McpConfig() {
       <div className="flex items-start gap-2 rounded-md border border-blue-500/50 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-400">
         <Plug className="h-4 w-4 mt-0.5 shrink-0" />
         <div>
-          MCP 配置目前通过环境变量读取，此处展示为主。添加/删除功能为前端 UI 操作，后端持久化接口后续补充。
+          {t('mcp.hint')}
         </div>
       </div>
 
@@ -107,17 +110,17 @@ export default function McpConfig() {
           {servers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Plug className="h-10 w-10 mb-2 opacity-50" />
-              <p>暂无 MCP 服务器配置</p>
+              <p>{t('mcp.empty')}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[180px]">名称</TableHead>
-                  <TableHead className="w-[120px]">传输方式</TableHead>
-                  <TableHead>命令 / 地址</TableHead>
-                  <TableHead className="w-[100px]">状态</TableHead>
-                  <TableHead className="w-[140px]">操作</TableHead>
+                  <TableHead className="w-[180px]">{t('mcp.name')}</TableHead>
+                  <TableHead className="w-[120px]">{t('mcp.transport')}</TableHead>
+                  <TableHead>{t('mcp.command')}</TableHead>
+                  <TableHead className="w-[100px]">{t('mcp.status')}</TableHead>
+                  <TableHead className="w-[140px]">{t('mcp.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -141,7 +144,7 @@ export default function McpConfig() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={server.enabled ? 'success' : 'secondary'}>
-                        {server.enabled ? '已启用' : '已禁用'}
+                        {server.enabled ? t('common.enabled') : t('common.disabled')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -151,16 +154,21 @@ export default function McpConfig() {
                           size="sm"
                           onClick={() => handleToggle(server.id)}
                         >
-                          {server.enabled ? '禁用' : '启用'}
+                          {server.enabled ? t('mcp.disable') : t('mcp.enable')}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteTarget(server)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteTarget(server)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -178,15 +186,15 @@ export default function McpConfig() {
       <Dialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title="确认删除"
-        description={`确定要删除 MCP 服务器 "${deleteTarget?.name}" 吗？此操作不可撤销。`}
+        title={t('mcp.confirmDeleteTitle')}
+        description={t('mcp.confirmDeleteDesc', { name: deleteTarget?.name })}
       >
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => setDeleteTarget(null)}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleDelete}>
-            删除
+            {t('common.delete')}
           </Button>
         </div>
       </Dialog>
@@ -204,6 +212,7 @@ function AddServerDialog({
   onClose: () => void;
   onAdd: (server: Omit<McpServer, 'id' | 'enabled'>) => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [transport, setTransport] = useState<McpTransport>('stdio');
   const [command, setCommand] = useState('');
@@ -231,72 +240,72 @@ function AddServerDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="添加 MCP 服务器"
-      description="配置新的 Model Context Protocol 服务器连接"
+      title={t('mcp.addTitle')}
+      description={t('mcp.addDesc')}
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="mcp-name">服务器名称</Label>
+          <Label htmlFor="mcp-name">{t('mcp.serverName')}</Label>
           <Input
             id="mcp-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="如 filesystem"
+            placeholder={t('mcp.serverNamePlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="mcp-transport">传输方式</Label>
+          <Label htmlFor="mcp-transport">{t('mcp.transportType')}</Label>
           <Select
             id="mcp-transport"
             value={transport}
             onChange={(e) => setTransport(e.target.value as McpTransport)}
           >
-            <option value="stdio">stdio（本地进程）</option>
-            <option value="http">http（远程服务）</option>
+            <option value="stdio">{t('mcp.transportStdio')}</option>
+            <option value="http">{t('mcp.transportHttp')}</option>
           </Select>
         </div>
 
         {transport === 'stdio' ? (
           <>
             <div className="space-y-2">
-              <Label htmlFor="mcp-command">启动命令</Label>
+              <Label htmlFor="mcp-command">{t('mcp.startCommand')}</Label>
               <Input
                 id="mcp-command"
                 value={command}
                 onChange={(e) => setCommand(e.target.value)}
-                placeholder="如 npx"
+                placeholder={t('mcp.startCommandPlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="mcp-args">参数（可选）</Label>
+              <Label htmlFor="mcp-args">{t('mcp.args')}</Label>
               <Input
                 id="mcp-args"
                 value={args}
                 onChange={(e) => setArgs(e.target.value)}
-                placeholder="如 @modelcontextprotocol/server-filesystem /tmp"
+                placeholder={t('mcp.argsPlaceholder')}
               />
             </div>
           </>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="mcp-url">服务地址</Label>
+            <Label htmlFor="mcp-url">{t('mcp.serviceUrl')}</Label>
             <Input
               id="mcp-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="如 http://localhost:3100/mcp"
+              placeholder={t('mcp.serviceUrlPlaceholder')}
             />
           </div>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={!name.trim()}>
             <Server className="mr-1.5 h-4 w-4" />
-            添加
+            {t('common.add')}
           </Button>
         </div>
       </div>

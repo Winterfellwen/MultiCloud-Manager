@@ -1,6 +1,7 @@
 // AI 模型设置页：多 Provider 管理 + 模型选择 + 深度思考 + reasoning effort + 生成参数
 // 支持 compat 配置和 thinkingFormat 方言（参考 openclaw）
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '@/stores/chat';
 import { useModels, useDeleteModel, useTestModel } from '@/hooks/useModels';
 import {
@@ -13,10 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   Brain, Check, Settings2, Plus, Pencil, Trash2, Zap, Loader2, Server, ChevronDown, ChevronUp,
   Search, Download,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 type ReasoningEffort = 'low' | 'medium' | 'high';
@@ -46,6 +49,7 @@ const EMPTY_FORM: ProviderFormState = {
 };
 
 export default function AiSettings() {
+  const { t } = useTranslation();
   const { data: models = [], isLoading: modelsLoading } = useModels();
   const { data: providers = [], isLoading: providersLoading } = useProviders();
   const { data: thinkingFormats = [] } = useThinkingFormats();
@@ -67,7 +71,6 @@ export default function AiSettings() {
 
   const [temperature, setTemperature] = useState(0.3);
   const [maxTokens, setMaxTokens] = useState(4096);
-  const [saved, setSaved] = useState(false);
 
   // Provider 编辑对话框
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
@@ -93,8 +96,7 @@ export default function AiSettings() {
   const handleSaveParams = () => {
     localStorage.setItem('ai-temperature', String(temperature));
     localStorage.setItem('ai-maxTokens', String(maxTokens));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    toast.success(t('aiSettings.configSaved'));
   };
 
   const handleOpenCreateProvider = () => {
@@ -120,15 +122,15 @@ export default function AiSettings() {
   const handleSaveProvider = () => {
     setProviderError('');
     if (!providerForm.name.trim() || !providerForm.baseUrl.trim()) {
-      setProviderError('名称和 Base URL 为必填');
+      setProviderError(t('aiSettings.nameUrlRequired'));
       return;
     }
     if (!editingProvider && !providerForm.apiKey.trim()) {
-      setProviderError('API Key 为必填');
+      setProviderError(t('aiSettings.apiKeyRequired'));
       return;
     }
     if (!editingProvider && !providerForm.id.trim()) {
-      setProviderError('Provider ID 为必填（如 openai、deepseek）');
+      setProviderError(t('aiSettings.providerIdRequired'));
       return;
     }
 
@@ -167,16 +169,16 @@ export default function AiSettings() {
   };
 
   const handleDeleteProvider = (provider: LlmProviderConfig) => {
-    if (confirm(`确定删除 Provider "${provider.name}" 吗？`)) {
+    if (confirm(t('aiSettings.confirmDeleteProvider', { name: provider.name }))) {
       deleteProvider.mutate(provider.id);
     }
   };
 
   const handleTestProvider = (provider: LlmProviderConfig) => {
-    setTestResult(r => ({ ...r, [provider.id]: { ok: false, msg: '测试中...' } }));
+    setTestResult(r => ({ ...r, [provider.id]: { ok: false, msg: t('aiSettings.testConnecting') } }));
     testProvider.mutate(provider.id, {
       onSuccess: (res) => {
-        setTestResult(r => ({ ...r, [provider.id]: { ok: true, msg: res.message || '连接成功' } }));
+        setTestResult(r => ({ ...r, [provider.id]: { ok: true, msg: res.message || t('aiSettings.testSuccess') } }));
       },
       onError: (e: Error) => {
         setTestResult(r => ({ ...r, [provider.id]: { ok: false, msg: e.message } }));
@@ -245,7 +247,7 @@ export default function AiSettings() {
     <div className="container mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-2">
         <Settings2 className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-xl sm:text-2xl font-bold">AI 模型设置</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">{t('aiSettings.title')}</h1>
       </div>
 
       {/* Provider 管理 */}
@@ -253,21 +255,21 @@ export default function AiSettings() {
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Server className="h-4 w-4" />
-            LLM Provider 管理
+            {t('aiSettings.providerMgmt')}
           </CardTitle>
           <Button onClick={handleOpenCreateProvider} size="sm">
             <Plus className="mr-1 h-4 w-4" />
-            添加 Provider
+            {t('aiSettings.addProvider')}
           </Button>
         </CardHeader>
         <CardContent>
           {providersLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('common.loading')}
             </div>
           ) : providers.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              暂无 Provider，点击"添加 Provider"配置自定义 LLM
+              {t('aiSettings.noProvider')}
             </p>
           ) : (
             <div className="space-y-2">
@@ -288,49 +290,72 @@ export default function AiSettings() {
                     </div>
                     <div className="flex items-center gap-1.5 sm:shrink-0 flex-wrap">
                       <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs">
-                        {provider.models?.length || 0} 模型
+                        {provider.models?.length || 0} {t('aiSettings.models')}
                       </span>
                       {provider.compat?.thinkingFormat && (
-                        <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700" title="Thinking 方言">
+                        <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700" title={t('aiSettings.thinkingLabel')}>
                           {THINKING_FORMAT_LABELS[provider.compat.thinkingFormat] || provider.compat.thinkingFormat}
                         </span>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => handleTestProvider(provider)}
-                        disabled={testProvider.isPending}
-                        title="测试连通性"
-                      >
-                        <Zap className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => handleOpenDiscover(provider.id)}
-                        disabled={discoverModels.isPending}
-                        title="从 API 发现模型"
-                      >
-                        <Search className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => setExpandedProvider(expandedProvider === provider.id ? null : provider.id)}
-                      >
-                        {expandedProvider === provider.id
-                          ? <ChevronUp className="h-4 w-4" />
-                          : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleOpenEditProvider(provider)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm"
-                        onClick={() => handleDeleteProvider(provider)}
-                        disabled={deleteProvider.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => handleTestProvider(provider)}
+                            disabled={testProvider.isPending}
+                          >
+                            <Zap className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.test')}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => handleOpenDiscover(provider.id)}
+                            disabled={discoverModels.isPending}
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.discover')}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => setExpandedProvider(expandedProvider === provider.id ? null : provider.id)}
+                          >
+                            {expandedProvider === provider.id
+                              ? <ChevronUp className="h-4 w-4" />
+                              : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.expand')}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="sm" onClick={() => handleOpenEditProvider(provider)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.edit')}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => handleDeleteProvider(provider)}
+                            disabled={deleteProvider.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
 
@@ -347,7 +372,7 @@ export default function AiSettings() {
                   {/* 展开的模型列表 */}
                   {expandedProvider === provider.id && provider.models && provider.models.length > 0 && (
                     <div className="border-t px-3 py-2">
-                      <div className="mb-1 text-xs font-medium text-muted-foreground">模型列表</div>
+                      <div className="mb-1 text-xs font-medium text-muted-foreground">{t('aiSettings.modelList')}</div>
                       <div className="space-y-1">
                         {provider.models.map((m) => (
                           <div key={m.id} className="flex items-center gap-2 text-xs group">
@@ -355,31 +380,35 @@ export default function AiSettings() {
                             <span className="text-muted-foreground">{m.name}</span>
                             {m.reasoning && (
                               <span className="flex items-center gap-0.5 rounded bg-secondary px-1 py-0.5">
-                                <Brain className="h-2.5 w-2.5" /> 推理
+                                <Brain className="h-2.5 w-2.5" /> {t('aiSettings.reasoningBadge')}
                               </span>
                             )}
                             {m.thinkingFormat && (
-                              <span className="rounded bg-blue-50 px-1 py-0.5 text-blue-600" title="模型级 thinkingFormat">
+                              <span className="rounded bg-blue-50 px-1 py-0.5 text-blue-600" title={t('aiSettings.thinkingLabel')}>
                                 {THINKING_FORMAT_LABELS[m.thinkingFormat] || m.thinkingFormat}
                               </span>
                             )}
                             {m.input?.includes('image') && (
-                              <span className="rounded bg-secondary px-1 py-0.5">视觉</span>
+                              <span className="rounded bg-secondary px-1 py-0.5">{t('aiSettings.visionBadge')}</span>
                             )}
                             {m.contextWindow && (
                               <span className="text-muted-foreground">{(m.contextWindow / 1000).toFixed(0)}K</span>
                             )}
-                            <button
-                              className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity"
-                              title="删除模型"
-                              onClick={() => {
-                                if (confirm(`确定删除模型 ${m.id}？`)) {
-                                  deleteModel.mutate({ providerId: provider.id, modelId: m.id });
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity"
+                                  onClick={() => {
+                                    if (confirm(t('aiSettings.confirmDeleteModel', { id: m.id }))) {
+                                      deleteModel.mutate({ providerId: provider.id, modelId: m.id });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('tooltip.deleteModel')}</TooltipContent>
+                            </Tooltip>
                           </div>
                         ))}
                       </div>
@@ -395,13 +424,13 @@ export default function AiSettings() {
       {/* 模型选择 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">模型选择</CardTitle>
+          <CardTitle className="text-lg">{t('aiSettings.modelSelect')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {modelsLoading ? (
-            <p className="text-sm text-muted-foreground">加载模型列表中...</p>
+            <p className="text-sm text-muted-foreground">{t('aiSettings.loadingModels')}</p>
           ) : models.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无可用模型，请先添加 Provider</p>
+            <p className="text-sm text-muted-foreground">{t('aiSettings.noModels')}</p>
           ) : (
             <div className="space-y-2">
               {models.map((model) => {
@@ -429,23 +458,23 @@ export default function AiSettings() {
                       </div>
                       {model.contextWindow && (
                         <span className="text-xs text-muted-foreground">
-                          上下文窗口: {(model.contextWindow / 1000).toFixed(0)}K tokens
+                          {t('aiSettings.contextWindow', { value: (model.contextWindow / 1000).toFixed(0) })}
                         </span>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground flex-wrap justify-end">
                       {model.reasoning && (
                         <span className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs">
-                          <Brain className="h-3 w-3" /> 推理
+                          <Brain className="h-3 w-3" /> {t('aiSettings.reasoningBadge')}
                         </span>
                       )}
                       {model.thinkingFormat && (
-                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600" title="Thinking 方言">
+                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600" title={t('aiSettings.thinkingLabel')}>
                           {THINKING_FORMAT_LABELS[model.thinkingFormat] || model.thinkingFormat}
                         </span>
                       )}
                       {model.input?.includes('image') && (
-                        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs">视觉</span>
+                        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs">{t('aiSettings.visionBadge')}</span>
                       )}
                       {modelTestResult[model.id] && (
                         <span className={cn(
@@ -455,45 +484,53 @@ export default function AiSettings() {
                           {modelTestResult[model.id].ok ? '✓' : '✗'} {modelTestResult[model.id].msg}
                         </span>
                       )}
-                      <button
-                        className="text-muted-foreground hover:text-green-600 transition-colors ml-1"
-                        title="测试模型"
-                        disabled={testModel.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          testModel.mutate(
-                            { providerId: model.provider, modelId: model.id },
-                            {
-                              onSuccess: (res) => {
-                                setModelTestResult(prev => ({
-                                  ...prev,
-                                  [model.id]: { ok: res.ok, msg: res.message || (res.ok ? '成功' : '失败') },
-                                }));
-                              },
-                              onError: (err) => {
-                                setModelTestResult(prev => ({
-                                  ...prev,
-                                  [model.id]: { ok: false, msg: err.message },
-                                }));
-                              },
-                            }
-                          );
-                        }}
-                      >
-                        <Zap className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
-                        title="删除模型"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`确定删除模型 ${model.id}？`)) {
-                            deleteModel.mutate({ providerId: model.provider, modelId: model.id });
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className="text-muted-foreground hover:text-green-600 transition-colors ml-1"
+                            disabled={testModel.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              testModel.mutate(
+                                { providerId: model.provider, modelId: model.id },
+                                {
+                                  onSuccess: (res) => {
+                                    setModelTestResult(prev => ({
+                                      ...prev,
+                                      [model.id]: { ok: res.ok, msg: res.message || (res.ok ? t('aiSettings.testModelSuccess') : t('aiSettings.testModelFailed')) },
+                                    }));
+                                  },
+                                  onError: (err) => {
+                                    setModelTestResult(prev => ({
+                                      ...prev,
+                                      [model.id]: { ok: false, msg: err.message },
+                                    }));
+                                  },
+                                }
+                              );
+                            }}
+                          >
+                            <Zap className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.testModel')}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(t('aiSettings.confirmDeleteModel', { id: model.id }))) {
+                                deleteModel.mutate({ providerId: model.provider, modelId: model.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.deleteModel')}</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
                 );
@@ -502,8 +539,8 @@ export default function AiSettings() {
           )}
           {selectedModel && (
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-muted-foreground">当前选择: {selectedModel}</span>
-              <Button variant="ghost" size="sm" onClick={() => setModel(null)}>使用默认</Button>
+              <span className="text-xs text-muted-foreground">{t('aiSettings.currentModel', { model: selectedModel })}</span>
+              <Button variant="ghost" size="sm" onClick={() => setModel(null)}>{t('aiSettings.useDefault')}</Button>
             </div>
           )}
         </CardContent>
@@ -514,7 +551,7 @@ export default function AiSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Brain className="h-4 w-4" />
-            深度思考（Reasoning）
+            {t('aiSettings.reasoning')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -532,16 +569,16 @@ export default function AiSettings() {
               {enableThinking && <Check className="h-3 w-3 text-primary-foreground" />}
             </div>
             <div className="flex-1">
-              <div className="font-medium text-sm">启用深度思考模式</div>
+              <div className="font-medium text-sm">{t('aiSettings.enableThinking')}</div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                开启后，AI 会在回答前进行内部推理（思维链），适合复杂问题求解、代码生成和多步骤任务。
+                {t('aiSettings.enableThinkingDesc')}
               </p>
             </div>
           </div>
 
           {enableThinking && (
             <div className="space-y-2">
-              <Label>推理努力程度（Reasoning Effort）</Label>
+              <Label>{t('aiSettings.reasoningEffort')}</Label>
               <div className="grid grid-cols-3 gap-2">
                 {(['low', 'medium', 'high'] as ReasoningEffort[]).map(effort => (
                   <button
@@ -555,14 +592,14 @@ export default function AiSettings() {
                         : 'border-border hover:bg-accent'
                     )}
                   >
-                    {effort === 'low' ? '低' : effort === 'medium' ? '中' : '高'}
+                    {effort === 'low' ? t('aiSettings.effortLow') : effort === 'medium' ? t('aiSettings.effortMedium') : t('aiSettings.effortHigh')}
                   </button>
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                {reasoningEffort === 'low' && '低：快速推理，适合简单任务，响应最快'}
-                {reasoningEffort === 'medium' && '中：平衡推理深度和速度，适合日常任务'}
-                {reasoningEffort === 'high' && '高：完整推理链，适合复杂问题求解和代码生成'}
+                {reasoningEffort === 'low' && t('aiSettings.effortLowDesc')}
+                {reasoningEffort === 'medium' && t('aiSettings.effortMediumDesc')}
+                {reasoningEffort === 'high' && t('aiSettings.effortHighDesc')}
               </p>
             </div>
           )}
@@ -572,11 +609,11 @@ export default function AiSettings() {
       {/* 生成参数 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">生成参数</CardTitle>
+          <CardTitle className="text-lg">{t('aiSettings.genParams')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="temperature">温度（Temperature）: {temperature.toFixed(2)}</Label>
+            <Label htmlFor="temperature">{t('aiSettings.temperature', { value: temperature.toFixed(2) })}</Label>
             <input
               id="temperature" type="range" min="0" max="2" step="0.1"
               value={temperature}
@@ -584,23 +621,22 @@ export default function AiSettings() {
               className="w-full"
             />
             <p className="text-xs text-muted-foreground">
-              控制随机性。0 = 确定性输出，2 = 高度随机。推荐 0.3 用于运维场景。
+              {t('aiSettings.temperatureDesc')}
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="maxTokens">最大 Token 数</Label>
+            <Label htmlFor="maxTokens">{t('aiSettings.maxTokens')}</Label>
             <Input
               id="maxTokens" type="number" min="256" max="32768" step="256"
               value={maxTokens}
               onChange={(e) => setMaxTokens(parseInt(e.target.value) || 4096)}
             />
             <p className="text-xs text-muted-foreground">
-              单次回复的最大 token 数。增大可获得更长回复，但会增加延迟和成本。
+              {t('aiSettings.maxTokensDesc')}
             </p>
           </div>
           <div className="flex items-center gap-3 pt-2">
-            <Button onClick={handleSaveParams} size="sm">保存配置</Button>
-            {saved && <span className="text-xs text-green-600">配置已保存</span>}
+            <Button onClick={handleSaveParams} size="sm">{t('aiSettings.saveConfig')}</Button>
           </div>
         </CardContent>
       </Card>
@@ -609,49 +645,49 @@ export default function AiSettings() {
       <Dialog
         open={providerDialogOpen}
         onClose={() => setProviderDialogOpen(false)}
-        title={editingProvider ? '编辑 Provider' : '添加 Provider'}
-        description="配置自定义 LLM Provider（兼容 OpenAI API 格式）"
+        title={editingProvider ? t('aiSettings.editProviderTitle') : t('aiSettings.addProviderTitle')}
+        description={t('aiSettings.providerDialogDesc')}
         className="max-w-md"
       >
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="provider-id">Provider ID</Label>
+              <Label htmlFor="provider-id">{t('aiSettings.providerId')}</Label>
               <Input
                 id="provider-id"
                 value={providerForm.id}
                 onChange={(e) => setProviderForm(f => ({ ...f, id: e.target.value }))}
-                placeholder="如：openai、deepseek、moonshot"
+                placeholder={t('aiSettings.providerIdPlaceholder')}
                 disabled={!!editingProvider}
               />
-              <p className="text-xs text-muted-foreground">唯一标识，创建后不可修改</p>
+              <p className="text-xs text-muted-foreground">{t('aiSettings.providerIdHint')}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="provider-name">显示名称</Label>
+              <Label htmlFor="provider-name">{t('aiSettings.displayName')}</Label>
               <Input
                 id="provider-name"
                 value={providerForm.name}
                 onChange={(e) => setProviderForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="如：OpenAI"
+                placeholder={t('aiSettings.displayNamePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="provider-url">Base URL</Label>
+              <Label htmlFor="provider-url">{t('aiSettings.baseUrl')}</Label>
               <Input
                 id="provider-url"
                 value={providerForm.baseUrl}
                 onChange={(e) => setProviderForm(f => ({ ...f, baseUrl: e.target.value }))}
-                placeholder="https://api.openai.com/v1"
+                placeholder={t('aiSettings.baseUrlPlaceholder')}
               />
-              <p className="text-xs text-muted-foreground">OpenAI 兼容的 API 地址</p>
+              <p className="text-xs text-muted-foreground">{t('aiSettings.baseUrlHint')}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="provider-key">API Key</Label>
+              <Label htmlFor="provider-key">{t('aiSettings.apiKey')}</Label>
               <Input
                 id="provider-key"
                 type="password"
                 value={providerForm.apiKey}
                 onChange={(e) => setProviderForm(f => ({ ...f, apiKey: e.target.value }))}
-                placeholder={editingProvider ? '留空则不修改' : 'sk-...'}
+                placeholder={editingProvider ? t('aiSettings.apiKeyEditPlaceholder') : t('aiSettings.apiKeyPlaceholder')}
               />
             </div>
 
@@ -659,15 +695,15 @@ export default function AiSettings() {
             <div className="space-y-3 rounded-md border bg-muted/30 p-3">
               <div className="flex items-center gap-1.5 text-sm font-medium">
                 <Settings2 className="h-3.5 w-3.5" />
-                兼容性配置（Compat）
+                {t('aiSettings.compatConfig')}
               </div>
               <p className="text-xs text-muted-foreground">
-                未配置时根据 Base URL 自动检测。手动配置可覆盖自动检测结果。
+                {t('aiSettings.compatDesc')}
               </p>
 
               {/* thinkingFormat 选择 */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Thinking 方言</Label>
+                <Label className="text-xs">{t('aiSettings.thinkingDialect')}</Label>
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={providerForm.compat.thinkingFormat || ''}
@@ -679,7 +715,7 @@ export default function AiSettings() {
                     },
                   }))}
                 >
-                  <option value="">自动检测</option>
+                  <option value="">{t('aiSettings.autoDetect')}</option>
                   {thinkingFormats.map(fmt => (
                     <option key={fmt} value={fmt}>
                       {THINKING_FORMAT_LABELS[fmt] || fmt}
@@ -687,13 +723,13 @@ export default function AiSettings() {
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  不同 provider 的 reasoning 控制参数形状不同，选择对应方言以正确发送思考参数。
+                  {t('aiSettings.thinkingDialectDesc')}
                 </p>
               </div>
 
               {/* maxTokensField 选择 */}
               <div className="space-y-1.5">
-                <Label className="text-xs">max_tokens 字段名</Label>
+                <Label className="text-xs">{t('aiSettings.maxTokensField')}</Label>
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={providerForm.compat.maxTokensField || 'max_tokens'}
@@ -705,8 +741,8 @@ export default function AiSettings() {
                     },
                   }))}
                 >
-                  <option value="max_tokens">max_tokens（默认）</option>
-                  <option value="max_completion_tokens">max_completion_tokens（OpenAI o1+）</option>
+                  <option value="max_tokens">{t('aiSettings.maxTokensDefault')}</option>
+                  <option value="max_completion_tokens">{t('aiSettings.maxTokensCompletion')}</option>
                 </select>
               </div>
 
@@ -722,7 +758,7 @@ export default function AiSettings() {
                       compat: { ...f.compat, supportsReasoningEffort: e.target.checked },
                     }))}
                   />
-                  <span>支持 reasoning_effort 参数（OpenAI 风格）</span>
+                  <span>{t('aiSettings.supportsReasoningEffort')}</span>
                 </label>
                 <label className="flex items-center gap-2 text-xs cursor-pointer">
                   <input
@@ -734,7 +770,7 @@ export default function AiSettings() {
                       compat: { ...f.compat, supportsTools: e.target.checked },
                     }))}
                   />
-                  <span>支持工具调用（function calling）</span>
+                  <span>{t('aiSettings.supportsTools')}</span>
                 </label>
                 <label className="flex items-center gap-2 text-xs cursor-pointer">
                   <input
@@ -746,7 +782,7 @@ export default function AiSettings() {
                       compat: { ...f.compat, requiresStringContent: e.target.checked },
                     }))}
                   />
-                  <span>要求消息 content 为字符串（不接受 null）</span>
+                  <span>{t('aiSettings.requiresStringContent')}</span>
                 </label>
               </div>
             </div>
@@ -754,7 +790,7 @@ export default function AiSettings() {
             {providerError && <p className="text-sm text-destructive">{providerError}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setProviderDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setProviderDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button
               onClick={handleSaveProvider}
               disabled={createProvider.isPending || updateProvider.isPending}
@@ -762,7 +798,7 @@ export default function AiSettings() {
               {(createProvider.isPending || updateProvider.isPending) && (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               )}
-              {editingProvider ? '保存' : '添加'}
+              {editingProvider ? t('common.save') : t('common.add')}
             </Button>
           </div>
       </Dialog>
@@ -771,15 +807,15 @@ export default function AiSettings() {
       <Dialog
         open={discoverDialogOpen}
         onClose={() => setDiscoverDialogOpen(false)}
-        title="发现模型"
-        description={`从 ${providers.find(p => p.id === discoverProviderId)?.name || ''} 的 API 自动获取可用模型列表`}
+        title={t('aiSettings.discoverTitle')}
+        description={t('aiSettings.discoverDesc', { name: providers.find(p => p.id === discoverProviderId)?.name || '' })}
         className="max-w-lg"
       >
         <div className="space-y-4 py-2">
           {discoverModels.isPending && (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              正在从 API 获取模型列表...
+              {t('aiSettings.discovering')}
             </div>
           )}
           {discoverError && (
@@ -787,14 +823,14 @@ export default function AiSettings() {
           )}
           {!discoverModels.isPending && discoveredModels.length === 0 && !discoverError && (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              未发现任何模型，请检查 API Key 和 Base URL
+              {t('aiSettings.discoverEmpty')}
             </p>
           )}
           {discoveredModels.length > 0 && (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  发现 {discoveredModels.length} 个模型，已选 {selectedModelIds.size} 个
+                  {t('aiSettings.discoverCount', { total: discoveredModels.length, selected: selectedModelIds.size })}
                 </span>
                 <Button
                   variant="ghost" size="sm"
@@ -806,7 +842,7 @@ export default function AiSettings() {
                     }
                   }}
                 >
-                  {selectedModelIds.size === discoveredModels.length ? '取消全选' : '全选'}
+                  {selectedModelIds.size === discoveredModels.length ? t('aiSettings.deselectAll') : t('aiSettings.selectAll')}
                 </Button>
               </div>
               <div className="max-h-80 space-y-1 overflow-y-auto">
@@ -834,7 +870,7 @@ export default function AiSettings() {
                         )}
                       </div>
                       {alreadyHas && (
-                        <span className="text-xs text-green-600">已有</span>
+                        <span className="text-xs text-green-600">{t('aiSettings.alreadyExists')}</span>
                       )}
                     </label>
                   );
@@ -844,14 +880,14 @@ export default function AiSettings() {
           )}
         </div>
         <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={() => setDiscoverDialogOpen(false)}>取消</Button>
+          <Button variant="outline" onClick={() => setDiscoverDialogOpen(false)}>{t('common.cancel')}</Button>
           <Button
             onClick={handleSaveDiscoveredModels}
             disabled={selectedModelIds.size === 0 || updateProvider.isPending}
           >
             {updateProvider.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
             <Download className="mr-1 h-4 w-4" />
-            保存选中模型 ({selectedModelIds.size})
+            {t('aiSettings.saveModels', { count: selectedModelIds.size })}
           </Button>
         </div>
       </Dialog>

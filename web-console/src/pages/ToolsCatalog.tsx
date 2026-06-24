@@ -1,5 +1,6 @@
 // 工具目录浏览页：按分组展示所有可用工具，支持搜索和风险级别筛选
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle, Wrench } from 'lucide-react';
 import { useToolsCatalog } from '@/hooks/useToolsCatalog';
 import type { ToolCatalogEntry } from '@/hooks/useToolsCatalog';
@@ -11,13 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type RiskFilter = 'all' | 'low' | 'medium' | 'high';
 
-const RISK_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'destructive' }> = {
-  low: { label: '低风险', variant: 'success' },
-  medium: { label: '中风险', variant: 'warning' },
-  high: { label: '高风险', variant: 'destructive' },
+const RISK_BADGE: Record<string, { labelKey: string; variant: 'success' | 'warning' | 'destructive' }> = {
+  low: { labelKey: 'tools.riskLow', variant: 'success' },
+  medium: { labelKey: 'tools.riskMedium', variant: 'warning' },
+  high: { labelKey: 'tools.riskHigh', variant: 'destructive' },
 };
 
 export default function ToolsCatalog() {
+  const { t } = useTranslation();
   const connect = useChatStore((s) => s.connect);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const { data, isLoading, error } = useToolsCatalog();
@@ -59,9 +61,9 @@ export default function ToolsCatalog() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">工具目录</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('tools.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            共 {totalTools} 个可用工具
+            {t('tools.total', { count: totalTools })}
           </p>
         </div>
       </div>
@@ -74,7 +76,7 @@ export default function ToolsCatalog() {
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="搜索工具名称或描述..."
+                  placeholder={t('tools.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-8"
@@ -86,10 +88,10 @@ export default function ToolsCatalog() {
               onChange={(e) => setRiskFilter(e.target.value as RiskFilter)}
               className="w-full sm:w-[140px]"
             >
-              <option value="all">全部风险级别</option>
-              <option value="low">低风险</option>
-              <option value="medium">中风险</option>
-              <option value="high">高风险</option>
+              <option value="all">{t('tools.allRisk')}</option>
+              <option value="low">{t('tools.riskLow')}</option>
+              <option value="medium">{t('tools.riskMedium')}</option>
+              <option value="high">{t('tools.riskHigh')}</option>
             </Select>
           </div>
         </CardContent>
@@ -99,7 +101,7 @@ export default function ToolsCatalog() {
       {connectionStatus !== 'connected' && (
         <div className="flex items-center gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
           <Loader2 className="h-4 w-4 animate-spin" />
-          正在连接服务（{connectionStatus}）...
+          {t('tools.connecting', { status: connectionStatus })}
         </div>
       )}
 
@@ -107,7 +109,7 @@ export default function ToolsCatalog() {
       {error && (
         <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          加载失败：{(error as Error).message}
+          {t('tools.loadFailed')}：{(error as Error).message}
         </div>
       )}
 
@@ -122,7 +124,7 @@ export default function ToolsCatalog() {
       {!isLoading && !error && filteredGroups.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Wrench className="h-10 w-10 mb-2 opacity-50" />
-          <p>暂无匹配的工具</p>
+          <p>{t('tools.noMatch')}</p>
         </div>
       )}
 
@@ -146,6 +148,7 @@ export default function ToolsCatalog() {
 
 /** 工具卡片：展示名称、描述、风险级别 */
 function ToolCard({ tool }: { tool: ToolCatalogEntry }) {
+  const { t } = useTranslation();
   const riskConfig = tool.risk ? RISK_BADGE[tool.risk] : null;
 
   return (
@@ -158,7 +161,7 @@ function ToolCard({ tool }: { tool: ToolCatalogEntry }) {
           </CardTitle>
           {riskConfig && (
             <Badge variant={riskConfig.variant} className="shrink-0">
-              {riskConfig.label}
+              {t(riskConfig.labelKey)}
             </Badge>
           )}
         </div>
