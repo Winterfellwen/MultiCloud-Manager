@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
   MiniMap,
@@ -34,6 +35,7 @@ interface TopologyCanvasProps {
 
 export function TopologyCanvas({ nodes, edges, view: _view, isLoading }: TopologyCanvasProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 
   // 使用 dagre 计算自动布局
@@ -97,6 +99,28 @@ export function TopologyCanvas({ nodes, edges, view: _view, isLoading }: Topolog
     setSelectedNode(null);
   }, []);
 
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      const topologyNode = node.data as unknown as TopologyNode;
+      const routeMap: Record<string, string> = {
+        instance: '/instances',
+        disk: '/resources',
+        database: '/resources',
+        cache: '/resources',
+        bucket: '/resources',
+        loadbalancer: '/resources',
+        vpc: '/resources',
+        securitygroup: '/resources',
+        cdn: '/resources',
+        cluster: '/resources',
+        aiservice: '/resources',
+      };
+      const baseRoute = routeMap[topologyNode.type] || '/resources';
+      navigate(baseRoute);
+    },
+    [navigate]
+  );
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -125,6 +149,7 @@ export function TopologyCanvas({ nodes, edges, view: _view, isLoading }: Topolog
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
+          onNodeDoubleClick={onNodeDoubleClick}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
