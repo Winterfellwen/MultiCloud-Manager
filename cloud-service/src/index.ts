@@ -71,7 +71,7 @@ await app.register(instanceRoutes, { prefix: "/cloud/instances" });
 await app.register(resourceRoutes, { prefix: "/cloud/resources" });
 await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
-await app.register(topologyRoutes, { prefix: "/topology" });
+await app.register(topologyRoutes, { prefix: "/cloud/topology" });
 
 // 首次访问云资源时触发同步
 app.addHook('onRequest', async (request) => {
