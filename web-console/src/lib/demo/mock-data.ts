@@ -556,7 +556,7 @@ export function getDemoAuditLogs(): DemoAuditLog[] {
 
 // ===== 拓扑模拟数据（250-350 nodes） =====
 const TOPOLOGY_PROVIDERS = ['aws', 'aliyun', 'azure', 'huawei', 'tencent'] as const;
-const TOPOLOGY_TEAMS = ['frontend', 'backend', 'data', 'devops', 'ml'] as const;
+const TOPOLOGY_TEAMS = ['frontend', 'backend', 'data', 'devops', 'ml'];
 
 let _topologyCache: { nodes: TopologyNode[]; edges: TopologyEdge[] } | null = null;
 
@@ -1020,7 +1020,7 @@ const LOG_MESSAGES = {
   ],
 };
 
-export function getDemoLogs(instanceId: string, count = 30): DemoLogEntry[] {
+export function getDemoLogs(_instanceId: string, count = 30): DemoLogEntry[] {
   const logs: DemoLogEntry[] = [];
   const now = Date.now();
   for (let i = 0; i < count; i++) {

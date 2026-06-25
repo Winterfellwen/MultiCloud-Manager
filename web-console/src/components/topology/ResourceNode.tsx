@@ -19,7 +19,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 type ResourceNodeData = Node<TopologyNode & Record<string, unknown>>;
 
-function ResourceNodeComponent({ data, selected, costScale = 1 }: NodeProps<ResourceNodeData> & { costScale?: number }) {
+function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) {
   const Icon = ICON_MAP[data.icon] || Server;
   const color = NODE_COLORS[data.category as TopologyCategory] || '#6b7280';
   const isRunning = data.status === 'running' || data.status === 'active';
@@ -137,9 +137,9 @@ function ResourceNodeComponent({ data, selected, costScale = 1 }: NodeProps<Reso
         </div>
 
         {/* Cost label (cost mode) */}
-        {costScale > 1 && (data.data as Record<string, unknown>)?.monthlyCost && (
+        {(nodeData.costBracket || (nodeData.monthlyCost as number) > 0) && (
           <div className="text-[9px] font-mono text-gray-500 mt-1">
-            ${(data.data as Record<string, unknown>).monthlyCost as number}/mo
+            ${(nodeData.monthlyCost as number || 0).toFixed(0)}/mo
           </div>
         )}
       </div>

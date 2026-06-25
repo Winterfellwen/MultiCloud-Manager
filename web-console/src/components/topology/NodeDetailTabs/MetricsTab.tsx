@@ -42,7 +42,7 @@ export function MetricsTab({ instanceId = 'demo-instance-0' }: Props) {
                 <YAxis hide />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                  formatter={(v: number) => [`${v.toFixed(1)} ${chart.unit}`, chart.label]}
+                  formatter={(v: unknown) => [`${Number(v).toFixed(1)} ${chart.unit}`, chart.label]}
                 />
                 <Line type="monotone" dataKey="value" stroke={chart.color} strokeWidth={1.5} dot={false} />
               </LineChart>
@@ -58,7 +58,7 @@ export function MetricsTab({ instanceId = 'demo-instance-0' }: Props) {
                 <YAxis hide />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                  formatter={(v: number) => [`${v.toFixed(1)} ${chart.unit}`, chart.label]}
+                  formatter={(v: unknown) => [`${Number(v).toFixed(1)} ${chart.unit}`, chart.label]}
                 />
                 <Area
                   type="monotone"

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getDemoLogs, type DemoLogEntry } from '@/lib/demo/mock-data';
+import { getDemoLogs } from '@/lib/demo/mock-data';
 import { AlertTriangle, Info, XCircle } from 'lucide-react';
 
 interface Props {
