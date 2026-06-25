@@ -13,6 +13,7 @@ import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailModal } from './NodeDetailModal';
 import { ClusterNode } from './ClusterNode';
+import { KeyboardShortcutOverlay } from './KeyboardShortcutOverlay';
 import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 import type { TreeNode } from '@/hooks/useTopologyTree';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,6 +30,7 @@ interface DrilldownViewProps {
   onPathClick: (index: number) => void;
   allEdges: TopologyEdge[];
   allNodes: TopologyNode[];
+  searchQuery?: string;
 }
 
 const NODE_W = 160;
@@ -38,14 +40,30 @@ const GRID_GAP_Y = 28;
 const GRID_COLS = 5;
 const PARENT_X = -200;
 
-export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, allEdges, allNodes }: DrilldownViewProps) {
+export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, allEdges, allNodes, searchQuery = '' }: DrilldownViewProps) {
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
+  const [focusedIdx, setFocusedIdx] = useState<number>(-1);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const isRoot = path.length === 0;
   const displayNodes = useMemo(() => currentNode.children.map(c => c.node), [currentNode]);
+
+  const filteredNodes = useMemo(() => {
+    if (!searchQuery) return displayNodes;
+    const q = searchQuery.toLowerCase();
+    return displayNodes.filter(n =>
+      n.label.toLowerCase().includes(q) ||
+      n.type.toLowerCase().includes(q) ||
+      n.provider.toLowerCase().includes(q)
+    );
+  }, [displayNodes, searchQuery]);
+
+  const matchedIds = useMemo(() => {
+    return new Set(filteredNodes.map(n => n.id));
+  }, [filteredNodes]);
 
   // All levels: horizontal grid
   useEffect(() => {
@@ -69,7 +87,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
   }, [layoutPositions, fitView]);
 
   const { flowNodes, flowEdges } = useMemo(() => {
-    const fn: Node[] = displayNodes.map((node) => {
+    const fn: Node[] = displayNodes.map((node, idx) => {
       const pos = layoutPositions[node.id];
       const treeNode = currentNode.children.find(c => c.id === node.id);
       return {
@@ -85,6 +103,13 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
             hasChildren: (treeNode?.children.length || 0) > 0,
           },
         } as unknown as Record<string, unknown>,
+        style: {
+          opacity: searchQuery && !matchedIds.has(node.id) ? 0.2 : 1,
+          outline: idx === focusedIdx ? '2px solid #3b82f6' : 'none',
+          outlineOffset: '2px',
+          borderRadius: '16px',
+          transition: 'opacity 0.2s, outline 0.1s',
+        },
       };
     });
 
@@ -119,7 +144,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
     }));
 
     return { flowNodes: fnWithParent, flowEdges: fe };
-  }, [displayNodes, layoutPositions, currentNode]);
+  }, [displayNodes, layoutPositions, currentNode, searchQuery, matchedIds, focusedIdx]);
 
   const [flowNodesState, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [flowEdgesState, setEdges, onEdgesChange] = useEdgesState(flowEdges);
@@ -147,6 +172,50 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
     },
     [currentNode, onDrilldown, navigate]
   );
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const cols = GRID_COLS;
+    const total = displayNodes.length;
+
+    switch (e.key) {
+      case 'ArrowRight':
+        e.preventDefault();
+        setFocusedIdx(prev => Math.min(prev + 1, total - 1));
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        setFocusedIdx(prev => Math.max(prev - 1, 0));
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setFocusedIdx(prev => Math.min(prev + cols, total - 1));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setFocusedIdx(prev => Math.max(prev - cols, 0));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (focusedIdx >= 0 && focusedIdx < total) {
+          const node = displayNodes[focusedIdx];
+          const treeNode = currentNode.children.find(c => c.id === node.id);
+          if (node.type === 'instance') {
+            setSelectedNode(node);
+          } else if (treeNode && treeNode.children.length > 0) {
+            onDrilldown(node.id);
+          }
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        if (path.length > 0) onPathClick(path.length - 1);
+        break;
+      case '?':
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+        break;
+    }
+  }, [displayNodes, focusedIdx, currentNode, path, onDrilldown, onPathClick]);
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -196,6 +265,10 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
         <motion.div
           key={currentNode.id}
           className="flex-1 h-full"
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          role="tree"
+          aria-label="Topology hierarchy"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -225,6 +298,9 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
         allNodes={allNodes}
         onClose={() => setSelectedNode(null)}
       />
+
+      {/* Keyboard shortcut overlay */}
+      <KeyboardShortcutOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, ChevronLeft, ChevronRight, Network, GitBranch } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, Network, GitBranch, Search, X } from 'lucide-react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
 import { useTopologyTree, getTreeChildren } from '@/hooks/useTopologyTree';
@@ -27,6 +27,7 @@ export default function Topology() {
   const [mode, setMode] = useState<TopologyMode>('tree');
   const [drillPath, setDrillPath] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useState<GroupMode>('hierarchy');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data, isLoading, error } = useTopology(filters);
 
@@ -154,6 +155,27 @@ export default function Topology() {
 
             {mode === 'graph' && <ViewSwitcher currentView={view} onChange={setView} />}
             {mode === 'graph' && <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />}
+
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('topology.search', 'Search...')}
+                className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+                aria-label={t('topology.search', 'Search topology')}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -174,6 +196,7 @@ export default function Topology() {
                 onPathClick={handlePathClick}
                 allEdges={data?.edges || []}
                 allNodes={data?.nodes || []}
+                searchQuery={searchQuery}
               />
             </ReactFlowProvider>
           ) : mode === 'tree' && tree.length > 0 ? (
@@ -191,6 +214,7 @@ export default function Topology() {
                 onPathClick={handlePathClick}
                 allEdges={data?.edges || []}
                 allNodes={data?.nodes || []}
+                searchQuery={searchQuery}
               />
             </ReactFlowProvider>
           ) : mode === 'graph' ? (
