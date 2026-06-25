@@ -76,26 +76,28 @@ export default function Costs() {
           ) : (summary || []).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">{t('costs.noCostData')}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.provider')}</TableHead>
-                  <TableHead>{t('costs.service')}</TableHead>
-                  <TableHead>{t('costs.amount')}</TableHead>
-                  <TableHead>{t('costs.currency')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(summary || []).map((item, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>{item.provider}</TableCell>
-                    <TableCell>{item.service}</TableCell>
-                    <TableCell className="font-medium">{item.totalAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.currency}</TableCell>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[400px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[140px]">{t('common.provider')}</TableHead>
+                    <TableHead className="w-[180px]">{t('costs.service')}</TableHead>
+                    <TableHead className="w-[100px]">{t('costs.amount')}</TableHead>
+                    <TableHead className="w-[100px]">{t('costs.currency')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {(summary || []).map((item, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{item.provider}</TableCell>
+                      <TableCell>{item.service}</TableCell>
+                      <TableCell className="font-medium">{item.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.currency}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -108,28 +110,30 @@ export default function Costs() {
           ) : (instanceCosts || []).length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">{t('costs.noInstanceCost')}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('costs.instanceName')}</TableHead>
-                  <TableHead>{t('common.provider')}</TableHead>
-                  <TableHead>{t('common.region')}</TableHead>
-                  <TableHead>{t('instances.monthlyCost')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(instanceCosts || []).map((inst) => (
-                  <TableRow key={inst.id}>
-                    <TableCell className="font-medium">{inst.name || inst.id.slice(0, 8)}</TableCell>
-                    <TableCell>{inst.provider}</TableCell>
-                    <TableCell className="text-muted-foreground">{inst.region}</TableCell>
-                    <TableCell>
-                      {inst.monthlyCost ? `¥${parseFloat(inst.monthlyCost).toFixed(2)}` : '-'}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[480px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[180px]">{t('costs.instanceName')}</TableHead>
+                    <TableHead className="w-[120px]">{t('common.provider')}</TableHead>
+                    <TableHead className="w-[120px]">{t('common.region')}</TableHead>
+                    <TableHead className="w-[120px]">{t('instances.monthlyCost')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {(instanceCosts || []).map((inst) => (
+                    <TableRow key={inst.id}>
+                      <TableCell className="font-medium">{inst.name || inst.id.slice(0, 8)}</TableCell>
+                      <TableCell>{inst.provider}</TableCell>
+                      <TableCell className="text-muted-foreground">{inst.region}</TableCell>
+                      <TableCell>
+                        {inst.monthlyCost ? `¥${parseFloat(inst.monthlyCost).toFixed(2)}` : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

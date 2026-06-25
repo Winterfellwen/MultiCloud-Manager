@@ -198,104 +198,106 @@ export default function Users() {
         </div>
       )}
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[150px]">{t('users.username')}</TableHead>
-              <TableHead className="w-[200px]">{t('users.email')}</TableHead>
-              <TableHead className="w-[150px]">{t('users.role')}</TableHead>
-              <TableHead className="w-[150px]">{t('users.team')}</TableHead>
-              <TableHead className="w-[180px]">{t('users.createdAt')}</TableHead>
-              <TableHead className="w-[180px]">{t('users.lastLogin')}</TableHead>
-              <TableHead className="w-[80px]">{t('users.actions')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      <div className="rounded-md border overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-                </TableCell>
+                <TableHead className="w-[150px]">{t('users.username')}</TableHead>
+                <TableHead className="w-[200px]">{t('users.email')}</TableHead>
+                <TableHead className="w-[120px]">{t('users.role')}</TableHead>
+                <TableHead className="w-[120px]">{t('users.team')}</TableHead>
+                <TableHead className="w-[160px]">{t('users.createdAt')}</TableHead>
+                <TableHead className="w-[160px]">{t('users.lastLogin')}</TableHead>
+                <TableHead className="w-[80px]">{t('users.actions')}</TableHead>
               </TableRow>
-            ) : users && users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  {t('users.noUsers')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              users?.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.email || '-'}</TableCell>
-                  <TableCell>
-                    {currentUser?.id === user.id ? (
-                      <Badge variant={ROLE_BADGE_VARIANT[user.role]}>
-                        {t(`roles.${user.role}`)}
-                      </Badge>
-                    ) : (
-                      <Select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                        className="h-8 w-[130px] py-1 text-xs"
-                        disabled={updateRole.isPending}
-                      >
-                        {ROLE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {t(`roles.${opt.value}`)}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {currentUser?.id === user.id ? (
-                      <span className="text-xs text-muted-foreground">
-                        {user.teamId ? teams?.find(t => t.id === user.teamId)?.name || user.team : '-'}
-                      </span>
-                    ) : (
-                      <Select
-                        value={user.teamId || ''}
-                        onChange={(e) => handleUserTeamChange(user.id, e.target.value)}
-                        className="h-8 w-[130px] py-1 text-xs"
-                        disabled={assignUserToTeam.isPending}
-                      >
-                        <option value="">{t('users.unassigned')}</option>
-                        {teams?.map((team) => (
-                          <option key={team.id} value={team.id}>
-                            {team.name}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {formatDate(user.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {formatDate(user.lastLoginAt)}
-                  </TableCell>
-                  <TableCell>
-                    {currentUser?.id === user.id ? (
-                      <span className="text-xs text-muted-foreground">{t('users.currentUser')}</span>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteTarget({ id: user.id, username: user.username })}
-                        disabled={deleteUser.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : users && users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    {t('users.noUsers')}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users?.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.username}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email || '-'}</TableCell>
+                    <TableCell>
+                      {currentUser?.id === user.id ? (
+                        <Badge variant={ROLE_BADGE_VARIANT[user.role]}>
+                          {t(`roles.${user.role}`)}
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                          className="h-8 w-[120px] py-1 text-xs"
+                          disabled={updateRole.isPending}
+                        >
+                          {ROLE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {t(`roles.${opt.value}`)}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {currentUser?.id === user.id ? (
+                        <span className="text-xs text-muted-foreground">
+                          {user.teamId ? teams?.find(t => t.id === user.teamId)?.name || user.team : '-'}
+                        </span>
+                      ) : (
+                        <Select
+                          value={user.teamId || ''}
+                          onChange={(e) => handleUserTeamChange(user.id, e.target.value)}
+                          className="h-8 w-[120px] py-1 text-xs"
+                          disabled={assignUserToTeam.isPending}
+                        >
+                          <option value="">{t('users.unassigned')}</option>
+                          {teams?.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {formatDate(user.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {formatDate(user.lastLoginAt)}
+                    </TableCell>
+                    <TableCell>
+                      {currentUser?.id === user.id ? (
+                        <span className="text-xs text-muted-foreground">{t('users.currentUser')}</span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteTarget({ id: user.id, username: user.username })}
+                          disabled={deleteUser.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
       </TabsContent>
 

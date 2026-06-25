@@ -86,45 +86,47 @@ function RulesTab() {
         ) : (rules || []).length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">{t('monitor.noRules')}</div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('common.name')}</TableHead>
-                <TableHead>{t('monitor.metric')}</TableHead>
-                <TableHead>{t('monitor.condition')}</TableHead>
-                <TableHead>{t('monitor.duration')}</TableHead>
-                <TableHead>{t('monitor.severity')}</TableHead>
-                <TableHead>{t('common.enabled')}</TableHead>
-                <TableHead>{t('common.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(rules || []).map((rule) => (
-                <TableRow key={rule.id}>
-                  <TableCell className="font-medium">{rule.name}</TableCell>
-                  <TableCell>{rule.metric}</TableCell>
-                  <TableCell className="text-muted-foreground">{rule.condition}</TableCell>
-                  <TableCell className="text-muted-foreground">{rule.duration}</TableCell>
-                  <TableCell><AlertSeverityBadge severity={rule.severity as AlertSeverity} /></TableCell>
-                  <TableCell>
-                    <span className={rule.enabled ? 'text-green-600' : 'text-muted-foreground'}>
-                      {rule.enabled ? t('common.enabled') : t('common.disabled')}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(rule.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                    </Tooltip>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[560px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[180px]">{t('common.name')}</TableHead>
+                  <TableHead className="w-[140px]">{t('monitor.metric')}</TableHead>
+                  <TableHead className="w-[120px]">{t('monitor.condition')}</TableHead>
+                  <TableHead className="w-[100px]">{t('monitor.duration')}</TableHead>
+                  <TableHead className="w-[100px]">{t('monitor.severity')}</TableHead>
+                  <TableHead className="w-[100px]">{t('common.enabled')}</TableHead>
+                  <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(rules || []).map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="font-medium">{rule.name}</TableCell>
+                    <TableCell>{rule.metric}</TableCell>
+                    <TableCell className="text-muted-foreground">{rule.condition}</TableCell>
+                    <TableCell className="text-muted-foreground">{rule.duration}</TableCell>
+                    <TableCell><AlertSeverityBadge severity={rule.severity as AlertSeverity} /></TableCell>
+                    <TableCell>
+                      <span className={rule.enabled ? 'text-green-600' : 'text-muted-foreground'}>
+                        {rule.enabled ? t('common.enabled') : t('common.disabled')}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(rule.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
       <CreateRuleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
@@ -235,36 +237,38 @@ function EventsTab() {
         ) : (events || []).length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">{t('monitor.noEvents')}</div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('monitor.severity')}</TableHead>
-                <TableHead>{t('monitor.message')}</TableHead>
-                <TableHead>{t('common.status')}</TableHead>
-                <TableHead>{t('monitor.firedAt')}</TableHead>
-                <TableHead>{t('common.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(events || []).map((evt) => (
-                <TableRow key={evt.id}>
-                  <TableCell><AlertSeverityBadge severity={evt.severity as AlertSeverity} /></TableCell>
-                  <TableCell className="max-w-md truncate">{evt.message}</TableCell>
-                  <TableCell><AlertStatusBadge status={evt.status as any} /></TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {new Date(evt.firedAt).toLocaleString('zh-CN')}
-                  </TableCell>
-                  <TableCell>
-                    {evt.status === 'firing' && (
-                      <Button variant="ghost" size="sm" onClick={() => handleResolve(evt.id)}>
-                        <CheckCircle className="h-4 w-4 mr-1" />{t('monitor.resolve')}
-                      </Button>
-                    )}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[500px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">{t('monitor.severity')}</TableHead>
+                  <TableHead className="w-[280px]">{t('monitor.message')}</TableHead>
+                  <TableHead className="w-[100px]">{t('common.status')}</TableHead>
+                  <TableHead className="w-[180px]">{t('monitor.firedAt')}</TableHead>
+                  <TableHead className="w-[100px]">{t('common.actions')}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(events || []).map((evt) => (
+                  <TableRow key={evt.id}>
+                    <TableCell><AlertSeverityBadge severity={evt.severity as AlertSeverity} /></TableCell>
+                    <TableCell className="max-w-xs sm:max-w-md truncate">{evt.message}</TableCell>
+                    <TableCell><AlertStatusBadge status={evt.status as any} /></TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {new Date(evt.firedAt).toLocaleString('zh-CN')}
+                    </TableCell>
+                    <TableCell>
+                      {evt.status === 'firing' && (
+                        <Button variant="ghost" size="sm" onClick={() => handleResolve(evt.id)}>
+                          <CheckCircle className="h-4 w-4 mr-1" />{t('monitor.resolve')}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -300,43 +304,45 @@ function ChannelsTab() {
         ) : (channels || []).length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">{t('monitor.noChannels')}</div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('common.name')}</TableHead>
-                <TableHead>{t('monitor.type')}</TableHead>
-                <TableHead>{t('monitor.config')}</TableHead>
-                <TableHead>{t('common.enabled')}</TableHead>
-                <TableHead>{t('common.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(channels || []).map((ch) => (
-                <TableRow key={ch.id}>
-                  <TableCell className="font-medium">{ch.name}</TableCell>
-                  <TableCell>{ch.type}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs max-w-xs truncate">
-                    {JSON.stringify(ch.config)}
-                  </TableCell>
-                  <TableCell>
-                    <span className={ch.enabled ? 'text-green-600' : 'text-muted-foreground'}>
-                      {ch.enabled ? t('common.enabled') : t('common.disabled')}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                    </Tooltip>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[520px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[160px]">{t('common.name')}</TableHead>
+                  <TableHead className="w-[100px]">{t('monitor.type')}</TableHead>
+                  <TableHead className="w-[200px]">{t('monitor.config')}</TableHead>
+                  <TableHead className="w-[100px]">{t('common.enabled')}</TableHead>
+                  <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(channels || []).map((ch) => (
+                  <TableRow key={ch.id}>
+                    <TableCell className="font-medium">{ch.name}</TableCell>
+                    <TableCell>{ch.type}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs max-w-xs truncate">
+                      {JSON.stringify(ch.config)}
+                    </TableCell>
+                    <TableCell>
+                      <span className={ch.enabled ? 'text-green-600' : 'text-muted-foreground'}>
+                        {ch.enabled ? t('common.enabled') : t('common.disabled')}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
       <CreateChannelDialog open={createOpen} onClose={() => setCreateOpen(false)} />

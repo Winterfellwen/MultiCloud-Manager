@@ -150,81 +150,83 @@ export default function Instances() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">{t('common.empty')}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('common.name')}</TableHead>
-                  <TableHead>{t('common.provider')}</TableHead>
-                  <TableHead>{t('common.region')}</TableHead>
-                  <TableHead>{t('common.status')}</TableHead>
-                  <TableHead>{t('instances.spec')}</TableHead>
-                  <TableHead>{t('instances.ip')}</TableHead>
-                  <TableHead>{t('instances.monthlyCost')}</TableHead>
-                  <TableHead>{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((inst) => (
-                  <TableRow key={inst.id}>
-                    <TableCell className="font-medium">
-                      {inst.name || inst.providerInstanceId.slice(0, 8)}
-                    </TableCell>
-                    <TableCell>{inst.provider}</TableCell>
-                    <TableCell>{inst.region}</TableCell>
-                    <TableCell><InstanceStatusBadge status={inst.status} /></TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {inst.cpu ? `${inst.cpu}C/${inst.memoryMb ? inst.memoryMb / 1024 : '?'}G` : '-'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {inst.publicIp || inst.privateIp || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {inst.monthlyCost ? `¥${parseFloat(inst.monthlyCost).toFixed(2)}` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {inst.status === 'stopped' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => handleAction(inst.id, 'start')}>
-                                <Play className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('tooltip.start')}</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {inst.status === 'running' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => handleAction(inst.id, 'stop')}>
-                                <Square className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('tooltip.stop')}</TooltipContent>
-                          </Tooltip>
-                        )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => handleAction(inst.id, 'reboot')}>
-                              <RotateCw className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('tooltip.reboot')}</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(inst.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[160px]">{t('common.name')}</TableHead>
+                    <TableHead className="w-[100px]">{t('common.provider')}</TableHead>
+                    <TableHead className="w-[100px]">{t('common.region')}</TableHead>
+                    <TableHead className="w-[100px]">{t('common.status')}</TableHead>
+                    <TableHead className="w-[100px]">{t('instances.spec')}</TableHead>
+                    <TableHead className="w-[140px]">{t('instances.ip')}</TableHead>
+                    <TableHead className="w-[120px]">{t('instances.monthlyCost')}</TableHead>
+                    <TableHead className="w-[100px]">{t('common.actions')}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((inst) => (
+                    <TableRow key={inst.id}>
+                      <TableCell className="font-medium">
+                        {inst.name || inst.providerInstanceId.slice(0, 8)}
+                      </TableCell>
+                      <TableCell>{inst.provider}</TableCell>
+                      <TableCell>{inst.region}</TableCell>
+                      <TableCell><InstanceStatusBadge status={inst.status} /></TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {inst.cpu ? `${inst.cpu}C/${inst.memoryMb ? inst.memoryMb / 1024 : '?'}G` : '-'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {inst.publicIp || inst.privateIp || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {inst.monthlyCost ? `¥${parseFloat(inst.monthlyCost).toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {inst.status === 'stopped' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={() => handleAction(inst.id, 'start')}>
+                                  <Play className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('tooltip.start')}</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {inst.status === 'running' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={() => handleAction(inst.id, 'stop')}>
+                                  <Square className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('tooltip.stop')}</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => handleAction(inst.id, 'reboot')}>
+                                <RotateCw className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('tooltip.reboot')}</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => setConfirmDelete(inst.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

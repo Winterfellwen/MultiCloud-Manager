@@ -121,102 +121,104 @@ export default function Audit() {
       )}
 
       {/* 日志表格 */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="w-[180px]">{t('audit.time')}</TableHead>
-              <TableHead className="w-[120px]">{t('audit.userId')}</TableHead>
-              <TableHead className="w-[160px]">{t('audit.action')}</TableHead>
-              <TableHead className="w-[100px]">{t('audit.resourceType')}</TableHead>
-              <TableHead className="w-[100px]">{t('audit.provider')}</TableHead>
-              <TableHead className="w-[100px]">{t('audit.region')}</TableHead>
-              <TableHead className="w-[80px]">{t('audit.result')}</TableHead>
-              <TableHead className="w-[120px]">{t('audit.ip')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      <div className="rounded-md border overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-                </TableCell>
+                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="w-[180px]">{t('audit.time')}</TableHead>
+                <TableHead className="w-[100px]">{t('audit.userId')}</TableHead>
+                <TableHead className="w-[160px]">{t('audit.action')}</TableHead>
+                <TableHead className="w-[100px]">{t('audit.resourceType')}</TableHead>
+                <TableHead className="w-[100px]">{t('audit.provider')}</TableHead>
+                <TableHead className="w-[100px]">{t('audit.region')}</TableHead>
+                <TableHead className="w-[80px]">{t('audit.result')}</TableHead>
+                <TableHead className="w-[120px]">{t('audit.ip')}</TableHead>
               </TableRow>
-            ) : logs && logs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                  {t('audit.noLogs')}
-                </TableCell>
-              </TableRow>
-            ) : (
-              logs?.map((log) => (
-                <>
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <button
-                        onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        {expandedId === log.id ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronR className="h-4 w-4" />
-                        )}
-                      </button>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDate(log.timestamp)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs truncate max-w-[120px]">
-                      {log.userId.slice(0, 8)}...
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{log.action}</TableCell>
-                    <TableCell className="text-xs">{log.resourceType || '-'}</TableCell>
-                    <TableCell className="text-xs">{log.provider || '-'}</TableCell>
-                    <TableCell className="text-xs">{log.region || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={log.result === 'success' ? 'success' : 'destructive'}>
-                        {RESULT_LABELS[log.result]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{log.ip || '-'}</TableCell>
-                  </TableRow>
-                  {expandedId === log.id && (
-                    <TableRow key={`${log.id}-detail`}>
-                      <TableCell colSpan={9} className="bg-muted/30">
-                        <div className="space-y-2 py-2">
-                          <div className="text-xs text-muted-foreground">{t('audit.fullUserId')}</div>
-                          <div className="font-mono text-xs">{log.userId}</div>
-                          {log.resourceId && (
-                            <>
-                              <div className="text-xs text-muted-foreground">{t('audit.resourceId')}</div>
-                              <div className="font-mono text-xs">{log.resourceId}</div>
-                            </>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              ) : logs && logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                    {t('audit.noLogs')}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                logs?.map((log) => (
+                  <>
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <button
+                          onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          {expandedId === log.id ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronR className="h-4 w-4" />
                           )}
-                          {log.traceId && (
-                            <>
-                              <div className="text-xs text-muted-foreground">{t('audit.traceId')}</div>
-                              <div className="font-mono text-xs">{log.traceId}</div>
-                            </>
-                          )}
-                          {log.params && (
-                            <>
-                              <div className="text-xs text-muted-foreground">{t('audit.params')}</div>
-                              <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-xs">
-                                {JSON.stringify(log.params, null, 2)}
-                              </pre>
-                            </>
-                          )}
-                        </div>
+                        </button>
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {formatDate(log.timestamp)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs truncate max-w-[100px]">
+                        {log.userId.slice(0, 8)}...
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{log.action}</TableCell>
+                      <TableCell className="text-xs">{log.resourceType || '-'}</TableCell>
+                      <TableCell className="text-xs">{log.provider || '-'}</TableCell>
+                      <TableCell className="text-xs">{log.region || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={log.result === 'success' ? 'success' : 'destructive'}>
+                          {RESULT_LABELS[log.result]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{log.ip || '-'}</TableCell>
                     </TableRow>
-                  )}
-                </>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                    {expandedId === log.id && (
+                      <TableRow key={`${log.id}-detail`}>
+                        <TableCell colSpan={9} className="bg-muted/30">
+                          <div className="space-y-2 py-2">
+                            <div className="text-xs text-muted-foreground">{t('audit.fullUserId')}</div>
+                            <div className="font-mono text-xs">{log.userId}</div>
+                            {log.resourceId && (
+                              <>
+                                <div className="text-xs text-muted-foreground">{t('audit.resourceId')}</div>
+                                <div className="font-mono text-xs">{log.resourceId}</div>
+                              </>
+                            )}
+                            {log.traceId && (
+                              <>
+                                <div className="text-xs text-muted-foreground">{t('audit.traceId')}</div>
+                                <div className="font-mono text-xs">{log.traceId}</div>
+                              </>
+                            )}
+                            {log.params && (
+                              <>
+                                <div className="text-xs text-muted-foreground">{t('audit.params')}</div>
+                                <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-xs">
+                                  {JSON.stringify(log.params, null, 2)}
+                                </pre>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* 分页 */}

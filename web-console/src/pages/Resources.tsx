@@ -197,53 +197,55 @@ export default function Resources() {
             ) : items.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">{t('resources.noResources')}</div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('common.name')}</TableHead>
-                    <TableHead>{t('common.providerShort')}</TableHead>
-                    <TableHead>{t('common.region')}</TableHead>
-                    <TableHead>{t('common.status')}</TableHead>
-                    {extraCols.map((c) => (
-                      <TableHead key={c.key}>{c.label}</TableHead>
-                    ))}
-                    <TableHead>{t('common.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">
-                        {r.name || r.id.slice(0, 8)}
-                      </TableCell>
-                      <TableCell>{r.provider}</TableCell>
-                      <TableCell>{r.region}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(r.status)}>{r.status}</Badge>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[180px]">{t('common.name')}</TableHead>
+                      <TableHead className="w-[100px]">{t('common.providerShort')}</TableHead>
+                      <TableHead className="w-[100px]">{t('common.region')}</TableHead>
+                      <TableHead className="w-[100px]">{t('common.status')}</TableHead>
                       {extraCols.map((c) => (
-                        <TableCell key={c.key} className="text-muted-foreground">
-                          {c.render(r.attributes || {})}
-                        </TableCell>
+                        <TableHead key={c.key} className="w-[120px]">{c.label}</TableHead>
                       ))}
-                      <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setConfirmDelete(r.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                        </Tooltip>
-                      </TableCell>
+                      <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">
+                          {r.name || r.id.slice(0, 8)}
+                        </TableCell>
+                        <TableCell>{r.provider}</TableCell>
+                        <TableCell>{r.region}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusColor(r.status)}>{r.status}</Badge>
+                        </TableCell>
+                        {extraCols.map((c) => (
+                          <TableCell key={c.key} className="text-muted-foreground">
+                            {c.render(r.attributes || {})}
+                          </TableCell>
+                        ))}
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setConfirmDelete(r.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
