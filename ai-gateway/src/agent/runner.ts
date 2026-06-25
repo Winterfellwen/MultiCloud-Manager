@@ -115,10 +115,9 @@ function getSystemPrompt(mode?: ModeType): string {
 工具使用优先级（必须遵守）：
 1. 优先使用 cloud_xxx_* 专用工具（如 cloud_delete_resource）。
 2. 如果专用工具不支持某操作，使用 cloud_service_call 调用 cloud-service API。
-3. 只有在所有 API 方案都失败后，才考虑使用 shell_execute。
-4. shell_execute 仅用于执行非云相关的系统命令（如 ls, cat, grep, find 等）。
-5. 禁止在 shell 中执行任何云 CLI 命令（az, aws, aliyun, kubectl, docker 等）。
-6. 禁止在 shell 中读取任何环境变量（env, printenv, echo $XXX）。
+3. shell_execute 用于执行非云相关的系统命令（如 ls, cat, grep, find 等）。
+4. 禁止在 shell 中执行任何云 CLI 命令（az, aws, aliyun, kubectl, docker 等）。
+5. 禁止在 shell 中读取任何环境变量（env, printenv, echo $XXX）。
 
 重要规则：
 1. Action模式下所有操作自动执行，请确认用户意图后再调用危险工具。
