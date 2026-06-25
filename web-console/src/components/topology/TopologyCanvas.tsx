@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,14 +12,16 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import dagre from 'dagre';
 import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
-import { NodeDetailPanel } from './NodeDetailPanel';
-import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
+import { ClusterNode } from './ClusterNode';
+import { NodeDetailModal } from './NodeDetailModal';
+import { useTopologyCluster } from '@/hooks/useTopologyCluster';
+import { type TopologyNode, type TopologyEdge, type GroupMode, type ClusterData, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 
 const nodeTypes = {
   resource: ResourceNode,
+  cluster: ClusterNode,
 };
 
 const edgeTypes = {
@@ -30,44 +32,71 @@ interface TopologyCanvasProps {
   nodes: TopologyNode[];
   edges: TopologyEdge[];
   isLoading?: boolean;
+  groupMode?: GroupMode;
 }
 
-export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps) {
+export function TopologyCanvas({ nodes, edges, isLoading, groupMode = 'hierarchy' }: TopologyCanvasProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
+  const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
+  const workerRef = useRef<Worker | null>(null);
 
-  // 使用 dagre 计算自动布局
-  const { layoutNodes, layoutEdges } = useMemo(() => {
-    const g = new dagre.graphlib.Graph();
-    g.setDefaultEdgeLabel(() => ({}));
-    g.setGraph({ rankdir: 'TB', nodesep: 50, ranksep: 80 });
+  const { visibleNodes, visibleEdges } = useTopologyCluster(
+    nodes, edges, groupMode, collapsedClusters
+  );
 
-    // 添加节点
-    for (const node of nodes) {
-      g.setNode(node.id, { width: 120, height: 80 });
-    }
+  useEffect(() => {
+    setCollapsedClusters(new Set());
+  }, [groupMode]);
 
-    // 添加边
-    for (const edge of edges) {
-      g.setEdge(edge.source, edge.target);
-    }
+  useEffect(() => {
+    workerRef.current = new Worker(
+      new URL('@/workers/dagre-layout.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
 
-    // 计算布局
-    dagre.layout(g);
+  const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
 
-    // 转换为 React Flow 格式
-    const layoutNodes: Node[] = nodes.map((node) => {
-      const pos = g.node(node.id);
+  useEffect(() => {
+    const worker = workerRef.current;
+    if (!worker || visibleNodes.length === 0) return;
+
+    const handler = (e: MessageEvent) => {
+      setLayoutPositions(e.data.positions);
+    };
+
+    worker.addEventListener('message', handler);
+    worker.postMessage({
+      nodes: visibleNodes.map(n => ({
+        id: n.id,
+        width: n.type === 'cluster' ? 180 : 120,
+        height: n.type === 'cluster' ? 80 : 80,
+      })),
+      edges: visibleEdges.map(e => ({ source: e.source, target: e.target })),
+    });
+
+    return () => worker.removeEventListener('message', handler);
+  }, [visibleNodes, visibleEdges]);
+
+  const { flowNodes, flowEdges } = useMemo(() => {
+    const fn: Node[] = visibleNodes.map((node) => {
+      const pos = layoutPositions[node.id];
       return {
         id: node.id,
-        type: 'resource',
-        position: { x: pos.x - 60, y: pos.y - 40 },
+        type: node.type === 'cluster' ? 'cluster' : 'resource',
+        position: pos
+          ? { x: pos.x - (node.type === 'cluster' ? 90 : 60), y: pos.y - 40 }
+          : { x: 0, y: 0 },
         data: node as unknown as Record<string, unknown>,
       };
     });
 
-    const layoutEdges: Edge[] = edges.map((edge) => ({
+    const fe: Edge[] = visibleEdges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
@@ -75,21 +104,33 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
       data: edge as unknown as Record<string, unknown>,
     }));
 
-    return { layoutNodes, layoutEdges };
-  }, [nodes, edges]);
+    return { flowNodes: fn, flowEdges: fe };
+  }, [visibleNodes, visibleEdges, layoutPositions]);
 
-  const [flowNodes, setNodes, onNodesChange] = useNodesState(layoutNodes);
-  const [flowEdges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
+  const [flowNodesState, setNodes, onNodesChange] = useNodesState(flowNodes);
+  const [flowEdgesState, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
-  // 更新节点和边当数据变化时
   useEffect(() => {
-    setNodes(layoutNodes);
-    setEdges(layoutEdges);
-  }, [layoutNodes, layoutEdges, setNodes, setEdges]);
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+  }, [flowNodes, flowEdges, setNodes, setEdges]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      setSelectedNode(node.data as unknown as TopologyNode);
+      if (node.type === 'cluster') {
+        const clusterData = node.data as unknown as ClusterData;
+        setCollapsedClusters(prev => {
+          const next = new Set(prev);
+          if (next.has(clusterData.id)) {
+            next.delete(clusterData.id);
+          } else {
+            next.add(clusterData.id);
+          }
+          return next;
+        });
+      } else {
+        setSelectedNode(node.data as unknown as TopologyNode);
+      }
     },
     []
   );
@@ -100,6 +141,7 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
 
   const onNodeDoubleClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (node.type === 'cluster') return;
       const topologyNode = node.data as unknown as TopologyNode;
       const baseRoute = RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources';
       navigate(baseRoute);
@@ -110,7 +152,7 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        {t('topology.loading')}
+        <div className="animate-pulse text-sm">{t('topology.loading')}</div>
       </div>
     );
   }
@@ -130,8 +172,8 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
     <div className="flex-1 flex h-full">
       <div className="flex-1 h-full">
         <ReactFlow
-          nodes={flowNodes}
-          edges={flowEdges}
+          nodes={flowNodesState}
+          edges={flowEdgesState}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
@@ -151,7 +193,13 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
           <Background gap={16} />
         </ReactFlow>
       </div>
-      <NodeDetailPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+
+      <NodeDetailModal
+        node={selectedNode}
+        allEdges={edges}
+        allNodes={nodes}
+        onClose={() => setSelectedNode(null)}
+      />
     </div>
   );
 }
