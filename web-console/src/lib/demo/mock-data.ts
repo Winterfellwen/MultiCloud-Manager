@@ -635,7 +635,7 @@ export function getDemoTopology(filters?: {
           status,
           category: 'compute',
           icon: 'server',
-          data: { cpu: pick([1, 2, 4, 8], rand), memoryMb: pick([2048, 4096, 8192, 16384], rand), cloudAccountId: subnet.cloudAccountId },
+          data: { cpu: pick([1, 2, 4, 8], rand), memoryMb: pick([2048, 4096, 8192, 16384], rand), cloudAccountId: subnet.cloudAccountId, monthlyCost: Math.floor(rand() * 500 + 50) },
         });
         edges.push({
           id: `edge-${id}-${subnet.id}`,
@@ -726,7 +726,7 @@ export function getDemoTopology(filters?: {
         status: 'active',
         category: 'database',
         icon: 'database',
-        data: { engine: pick(['mysql', 'postgresql', 'mongodb'], rand), engineVersion: '8.0', cloudAccountId },
+        data: { engine: pick(['mysql', 'postgresql', 'mongodb'], rand), engineVersion: '8.0', cloudAccountId, monthlyCost: Math.floor(rand() * 2000 + 200) },
       });
       edges.push({
         id: `edge-${id}-${vpc.id}`,
