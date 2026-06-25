@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
@@ -28,80 +28,36 @@ interface DrilldownViewProps {
 
 const NODE_W = 160;
 const NODE_H = 100;
-const GRID_GAP_X = 40;
-const GRID_GAP_Y = 30;
-const GRID_COLS = 4;
+const GRID_GAP_X = 36;
+const GRID_GAP_Y = 28;
+const GRID_COLS = 5;
 
 export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: DrilldownViewProps) {
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
-  const workerRef = useRef<Worker | null>(null);
 
   const isRoot = path.length === 0;
   const displayNodes = useMemo(() => currentNode.children.map(c => c.node), [currentNode]);
 
-  const virtualEdges = useMemo(() => {
-    return currentNode.children.map(child => ({
-      id: `tree-${currentNode.id}-${child.id}`,
-      source: currentNode.id,
-      target: child.id,
-    }));
-  }, [currentNode]);
-
+  // All levels: horizontal grid with wrapping
   useEffect(() => {
-    workerRef.current = new Worker(
-      new URL('@/workers/dagre-layout.worker.ts', import.meta.url),
-      { type: 'module' }
-    );
-    return () => workerRef.current?.terminate();
-  }, []);
-
-  // Layout
-  useEffect(() => {
-    setLayoutPositions({});
-
-    if (isRoot) {
-      const positions: Record<string, { x: number; y: number }> = {};
-      displayNodes.forEach((node, i) => {
-        const col = i % GRID_COLS;
-        const row = Math.floor(i / GRID_COLS);
-        positions[node.id] = {
-          x: col * (NODE_W + GRID_GAP_X),
-          y: row * (NODE_H + GRID_GAP_Y),
-        };
-      });
-      setLayoutPositions(positions);
-      return;
-    }
-
-    const worker = workerRef.current;
-    if (!worker || displayNodes.length === 0) return;
-
-    const allNodes = [
-      { id: currentNode.id, width: 120, height: 60 },
-      ...displayNodes.map(n => ({ id: n.id, width: NODE_W, height: NODE_H })),
-    ];
-
-    const handler = (e: MessageEvent) => {
-      const { [currentNode.id]: _rootPos, ...positions } = e.data.positions;
-      setLayoutPositions(positions);
-    };
-    worker.addEventListener('message', handler);
-    worker.postMessage({
-      nodes: allNodes,
-      edges: virtualEdges,
-      rankdir: 'LR',
-      nodesep: 50,
-      ranksep: 160,
+    const positions: Record<string, { x: number; y: number }> = {};
+    displayNodes.forEach((node, i) => {
+      const col = i % GRID_COLS;
+      const row = Math.floor(i / GRID_COLS);
+      positions[node.id] = {
+        x: col * (NODE_W + GRID_GAP_X),
+        y: row * (NODE_H + GRID_GAP_Y),
+      };
     });
-    return () => worker.removeEventListener('message', handler);
-  }, [displayNodes, virtualEdges, currentNode.id, isRoot]);
+    setLayoutPositions(positions);
+  }, [displayNodes]);
 
   // fitView after positions change
   useEffect(() => {
     if (Object.keys(layoutPositions).length > 0) {
-      const timer = setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
+      const timer = setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 80);
       return () => clearTimeout(timer);
     }
   }, [layoutPositions, fitView]);
@@ -126,18 +82,8 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       };
     });
 
-    const fe: Edge[] = !isRoot
-      ? virtualEdges.map(e => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          type: 'resource',
-          data: { type: 'contains', label: '' } as unknown as Record<string, unknown>,
-        }))
-      : [];
-
-    return { flowNodes: fn, flowEdges: fe };
-  }, [displayNodes, virtualEdges, layoutPositions, currentNode, isRoot]);
+    return { flowNodes: fn, flowEdges: [] as Edge[] };
+  }, [displayNodes, layoutPositions, currentNode]);
 
   const [flowNodesState, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [flowEdgesState, setEdges, onEdgesChange] = useEdgesState(flowEdges);
@@ -154,8 +100,6 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
 
       if (treeNode && treeNode.children.length > 0) {
         onDrilldown(topologyNode.id);
-      } else if (treeNode && treeNode.instanceCount > 0) {
-        navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');
       } else {
         navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');
       }

@@ -26,6 +26,8 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
   const isStopped = data.status === 'stopped';
   const isError = data.status === 'error';
   const isPending = data.status === 'pending';
+  const nodeData = (data.data || {}) as Record<string, unknown>;
+  const cidrBlock = (data.type === 'vpc' || data.type === 'subnet') ? nodeData.cidrBlock as string : undefined;
 
   return (
     <div
@@ -70,7 +72,7 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
         </div>
 
         {/* Instance count badge (summary view) */}
-        {((data.data as Record<string, unknown>)?.instanceCount as number) > 0 && (
+        {(nodeData.instanceCount as number) > 0 && (
           <div
             className="absolute -top-2 -right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-md border"
             style={{
@@ -78,10 +80,10 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
               borderColor: `${color}40`,
               color,
             }}
-            aria-label={`${(data.data as Record<string, unknown>)?.instanceCount} instances`}
+            aria-label={`${nodeData.instanceCount} instances`}
           >
             <Server className="w-2.5 h-2.5" aria-hidden="true" />
-            {String((data.data as Record<string, unknown>)?.instanceCount ?? '')}
+            {String(nodeData.instanceCount ?? '')}
           </div>
         )}
 
@@ -89,6 +91,15 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
         <div className="text-[11px] font-semibold text-gray-800 text-center truncate max-w-[90px] leading-tight">
           {data.label}
         </div>
+
+        {/* Network info (CIDR) */}
+        {cidrBlock && (
+          <div className="flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-gray-100/80 border border-gray-200/60">
+            <span className="text-[9px] font-mono text-gray-600 truncate max-w-[100px]">
+              {cidrBlock}
+            </span>
+          </div>
+        )}
 
         {/* Provider / Region */}
         <div className="text-[9px] text-gray-400 mt-1 truncate max-w-[90px]">
