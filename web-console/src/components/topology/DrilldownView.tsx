@@ -11,7 +11,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
-import { type TopologyNode, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
+import { NodeDetailModal } from './NodeDetailModal';
+import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 import type { TreeNode } from '@/hooks/useTopologyTree';
 import { ChevronRight, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,8 @@ interface DrilldownViewProps {
   path: Array<{ id: string; label: string; count: number }>;
   onDrilldown: (nodeId: string) => void;
   onPathClick: (index: number) => void;
+  allEdges: TopologyEdge[];
+  allNodes: TopologyNode[];
 }
 
 const NODE_W = 160;
@@ -32,15 +35,28 @@ const GRID_GAP_X = 36;
 const GRID_GAP_Y = 28;
 const GRID_COLS = 5;
 
-export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: DrilldownViewProps) {
+export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, allEdges, allNodes }: DrilldownViewProps) {
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 
   const isRoot = path.length === 0;
-  const displayNodes = useMemo(() => currentNode.children.map(c => c.node), [currentNode]);
 
-  // All levels: horizontal grid with wrapping
+  // Build display nodes: children of current node, or instances if current is a subnet
+  const displayNodes = useMemo(() => {
+    // If current node is a subnet, show its instances
+    if (currentNode.node.type === 'subnet') {
+      // Find instances connected to this subnet via 'contains' edges
+      return allEdges
+        .filter(e => e.type === 'contains' && e.target === currentNode.id)
+        .map(e => allNodes.find(n => n.id === e.source))
+        .filter((n): n is TopologyNode => !!n && n.type === 'instance');
+    }
+    return currentNode.children.map(c => c.node);
+  }, [currentNode, allEdges, allNodes]);
+
+  // All levels: horizontal grid
   useEffect(() => {
     const positions: Record<string, { x: number; y: number }> = {};
     displayNodes.forEach((node, i) => {
@@ -54,7 +70,6 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
     setLayoutPositions(positions);
   }, [displayNodes]);
 
-  // fitView after positions change
   useEffect(() => {
     if (Object.keys(layoutPositions).length > 0) {
       const timer = setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 80);
@@ -99,8 +114,13 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       const treeNode = currentNode.children.find(c => c.id === topologyNode.id);
 
       if (treeNode && treeNode.children.length > 0) {
+        // Has children → drilldown
         onDrilldown(topologyNode.id);
+      } else if (topologyNode.type === 'instance') {
+        // Instance → show detail modal
+        setSelectedNode(topologyNode);
       } else {
+        // Other leaf → navigate to resource page
         navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');
       }
     },
@@ -161,6 +181,14 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
           nodesDraggable={false}
         />
       </div>
+
+      {/* Instance detail modal */}
+      <NodeDetailModal
+        node={selectedNode}
+        allEdges={allEdges}
+        allNodes={allNodes}
+        onClose={() => setSelectedNode(null)}
+      />
     </div>
   );
 }

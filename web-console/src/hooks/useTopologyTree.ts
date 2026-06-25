@@ -9,10 +9,16 @@ export interface TreeNode {
   instanceCount: number;
 }
 
+const HIERARCHY = ['provider', 'vpc', 'subnet', 'instance'] as const;
+
+function getHierarchyLevel(type: string): number {
+  return HIERARCHY.indexOf(type as typeof HIERARCHY[number]);
+}
+
 /**
- * Build a tree from flat nodes/edges.
- * Hierarchy: provider → vpc → subnet → instance
- * Also: provider → lb/db/cache/bucket (leaf)
+ * Build a strict hierarchy tree:
+ * provider → vpc → subnet → instance
+ * Each level only shows its direct children in the next level.
  */
 export function useTopologyTree(
   nodes: TopologyNode[],
@@ -30,11 +36,11 @@ export function useTopologyTree(
       }
     }
 
-    // Find root nodes: nodes that are never a child in a 'contains' edge
+    // Find root nodes: never a child in 'contains' edge
     const childIds = new Set(edges.filter(e => e.type === 'contains').map(e => e.source));
     const rootNodes = nodes.filter(n => !childIds.has(n.id));
 
-    // Group roots by provider (cloudAccountId)
+    // Group roots by provider
     const providerGroups = new Map<string, TopologyNode[]>();
     for (const root of rootNodes) {
       const provider = String(root.data?.cloudAccountId || root.provider || 'unknown');
@@ -42,32 +48,43 @@ export function useTopologyTree(
       providerGroups.get(provider)!.push(root);
     }
 
-    // Build tree recursively
-    function buildTree(nodeId: string, visited = new Set<string>()): TreeNode | null {
+    // Build tree: each level only shows children at the NEXT hierarchy level
+    function buildTree(nodeId: string, parentLevel: number, visited = new Set<string>()): TreeNode | null {
       if (visited.has(nodeId)) return null;
       visited.add(nodeId);
 
       const node = nodeMap.get(nodeId);
       if (!node) return null;
 
-      const childIds = childrenOf.get(nodeId) || [];
+      const myLevel = getHierarchyLevel(node.type);
+      const nextLevel = parentLevel + 1;
+
+      const allChildIds = childrenOf.get(nodeId) || [];
       const children: TreeNode[] = [];
       let instanceCount = 0;
 
-      for (const childId of childIds) {
+      for (const childId of allChildIds) {
         const childNode = nodeMap.get(childId);
         if (!childNode) continue;
 
+        const childLevel = getHierarchyLevel(childNode.type);
+
+        // Count instances regardless of whether they appear as children
         if (childNode.type === 'instance') {
           instanceCount++;
-          // Don't recurse into instances
           continue;
         }
 
-        const childTree = buildTree(childId, visited);
-        if (childTree) {
-          children.push(childTree);
-          instanceCount += childTree.instanceCount;
+        // Only include children that match the next hierarchy level
+        if (childLevel === nextLevel) {
+          const childTree = buildTree(childId, myLevel, visited);
+          if (childTree) {
+            children.push(childTree);
+            instanceCount += childTree.instanceCount;
+          }
+        } else if (childLevel > nextLevel) {
+          // Skip: too deep for this level
+          continue;
         }
       }
 
@@ -87,14 +104,17 @@ export function useTopologyTree(
       let totalInstances = 0;
 
       for (const root of roots) {
-        const treeNode = buildTree(root.id);
+        // Provider level (parentLevel=-1) → children at level 0 (provider/vpc)
+        const treeNode = buildTree(root.id, -1);
         if (treeNode) {
-          childTrees.push(treeNode);
-          totalInstances += treeNode.instanceCount;
+          // Only include VPCs at provider level, not other resource types
+          if (treeNode.node.type === 'vpc') {
+            childTrees.push(treeNode);
+            totalInstances += treeNode.instanceCount;
+          }
         }
       }
 
-      // Create a virtual provider node
       const providerNode: TopologyNode = {
         id: `provider-${provider}`,
         type: 'provider',
@@ -129,7 +149,6 @@ export function getTreeChildren(
 ): TreeNode | null {
   let current: TreeNode | null = null;
 
-  // Find the root node matching the first path segment
   for (const treeNode of tree) {
     if (treeNode.id === currentPath[0]) {
       current = treeNode;
@@ -139,7 +158,6 @@ export function getTreeChildren(
 
   if (!current) return null;
 
-  // Traverse down the path
   for (let i = 1; i < currentPath.length; i++) {
     const next: TreeNode | undefined = current!.children.find((c: TreeNode) => c.id === currentPath[i]);
     if (!next) return null;

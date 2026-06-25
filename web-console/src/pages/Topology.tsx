@@ -169,6 +169,8 @@ export default function Topology() {
                 path={breadcrumbSegments}
                 onDrilldown={handleDrilldown}
                 onPathClick={handlePathClick}
+                allEdges={data?.edges || []}
+                allNodes={data?.nodes || []}
               />
             </ReactFlowProvider>
           ) : mode === 'tree' && tree.length > 0 ? (
@@ -184,6 +186,8 @@ export default function Topology() {
                 path={[]}
                 onDrilldown={handleDrilldown}
                 onPathClick={handlePathClick}
+                allEdges={data?.edges || []}
+                allNodes={data?.nodes || []}
               />
             </ReactFlowProvider>
           ) : mode === 'graph' ? (
