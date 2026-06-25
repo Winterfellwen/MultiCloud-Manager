@@ -69,6 +69,21 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
           <Icon className="w-4 h-4" style={{ color } as CSSProperties} />
         </div>
 
+        {/* Instance count badge (summary view) */}
+        {((data.data as Record<string, unknown>)?.instanceCount as number) > 0 && (
+          <div
+            className="absolute -top-2 -right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-md border"
+            style={{
+              background: `linear-gradient(135deg, ${color}20, ${color}10)`,
+              borderColor: `${color}40`,
+              color,
+            }}
+          >
+            <Server className="w-2.5 h-2.5" />
+            {String((data.data as Record<string, unknown>)?.instanceCount ?? '')}
+          </div>
+        )}
+
         {/* Label */}
         <div className="text-[11px] font-semibold text-gray-800 text-center truncate max-w-[90px] leading-tight">
           {data.label}

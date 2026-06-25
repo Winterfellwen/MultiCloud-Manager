@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { TopologyNode, TopologyEdge, TopologyCategory, GroupMode, ClusterData } from '@/types/topology';
+import type { TopologyNode, TopologyEdge, GroupMode, ClusterData } from '@/types/topology';
 
 interface ClusterResult {
   clusters: ClusterData[];
@@ -45,9 +45,7 @@ export function computeClusters(
 
   let clusterIdx = 0;
   for (const [key, groupNodes] of groups) {
-    if (groupNodes.length <= 3) {
-      continue;
-    }
+    if (groupNodes.length <= 3) continue;
 
     const clusterId = `cluster-${groupMode}-${clusterIdx++}`;
     const statusSummary: Record<string, number> = {};
@@ -60,12 +58,9 @@ export function computeClusters(
       categoryCounts.set(n.category, (categoryCounts.get(n.category) || 0) + 1);
     }
     let maxCount = 0;
-    let majorityCategory: TopologyCategory = 'compute';
+    let majorityCategory = 'compute';
     for (const [cat, count] of categoryCounts) {
-      if (count > maxCount) {
-        maxCount = count;
-        majorityCategory = cat as TopologyCategory;
-      }
+      if (count > maxCount) { maxCount = count; majorityCategory = cat; }
     }
 
     let label: string;
@@ -74,32 +69,19 @@ export function computeClusters(
         label = `${groupNodes[0].type} (${groupNodes.length})`;
         break;
       case 'semantic': {
-        const categoryLabels: Record<string, string> = {
-          compute: '计算', storage: '存储', database: '数据库',
-          network: '网络', security: '安全', cdn: 'CDN',
-          container: '容器', ai: 'AI 服务',
-        };
-        label = `${categoryLabels[majorityCategory] || majorityCategory} (${groupNodes.length})`;
+        const m: Record<string, string> = { compute: '计算', storage: '存储', database: '数据库', network: '网络', security: '安全', cdn: 'CDN', container: '容器', ai: 'AI 服务' };
+        label = `${m[majorityCategory] || majorityCategory} (${groupNodes.length})`;
         break;
       }
-      case 'team':
-        label = `${key} (${groupNodes.length})`;
-        break;
-      case 'cost':
-        label = `${key} (${groupNodes.length})`;
-        break;
       default:
         label = `${key} (${groupNodes.length})`;
     }
 
     clusters.push({
-      id: clusterId,
-      label,
-      groupMode,
+      id: clusterId, label, groupMode,
       childNodeIds: groupNodes.map(n => n.id),
-      collapsed: true,
-      statusSummary,
-      category: majorityCategory,
+      collapsed: true, statusSummary,
+      category: majorityCategory as any,
       icon: groupNodes[0].icon,
     });
 
@@ -146,46 +128,133 @@ export function useTopologyCluster(
       const clusterId = childToCluster.get(node.id);
       if (clusterId) {
         const cluster = clusters.find(c => c.id === clusterId);
-        if (cluster && cluster.collapsed) {
-          continue;
-        }
+        if (cluster && cluster.collapsed) continue;
       }
       visibleNodes.push(node);
       visibleNodeIds.add(node.id);
     }
 
-    // Build aggregation edges: when a cluster is collapsed,
-    // replace child node references with the cluster node ID
-    const clusterByChild = new Map<string, string>();
-    for (const cluster of clusters) {
-      if (cluster.collapsed) {
-        for (const childId of cluster.childNodeIds) {
-          clusterByChild.set(childId, cluster.id);
+    const visibleEdges = edges.filter(
+      e => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target)
+    );
+
+    return { visibleNodes, visibleEdges, clusters };
+  }, [nodes, edges, groupMode, collapsedClusters]);
+}
+
+/**
+ * Summarized view: show only infrastructure nodes (non-instance),
+ * annotate each with connected instance count.
+ */
+export function useTopologySummary(
+  nodes: TopologyNode[],
+  edges: TopologyEdge[],
+  expandedNodeId: string | null
+): { summaryNodes: TopologyNode[]; summaryEdges: TopologyEdge[]; expandedChildren: TopologyNode[]; expandedChildEdges: TopologyEdge[] } {
+  return useMemo(() => {
+    // Instance types that get summarized
+    const instanceTypes = new Set(['instance']);
+
+    // Find parent→children mapping via edges (source=child, target=parent for 'contains')
+    const childToParents = new Map<string, string[]>();
+    for (const e of edges) {
+      if (e.type === 'contains') {
+        if (!childToParents.has(e.source)) childToParents.set(e.source, []);
+        childToParents.get(e.source)!.push(e.target);
+      }
+    }
+
+    // Find which nodes are instances
+    const instanceNodes = new Set(nodes.filter(n => instanceTypes.has(n.type)).map(n => n.id));
+
+    // For each non-instance node, count connected instances
+    const instanceCountMap = new Map<string, number>();
+    for (const instId of instanceNodes) {
+      const parents = childToParents.get(instId) || [];
+      for (const parentId of parents) {
+        instanceCountMap.set(parentId, (instanceCountMap.get(parentId) || 0) + 1);
+      }
+      // Also count via edges (LB → instance, etc.)
+      for (const e of edges) {
+        if (e.source === instId && !instanceTypes.has(nodes.find(n => n.id === e.target)?.type || '')) {
+          instanceCountMap.set(e.target, (instanceCountMap.get(e.target) || 0) + 1);
+        }
+        if (e.target === instId && !instanceTypes.has(nodes.find(n => n.id === e.source)?.type || '')) {
+          instanceCountMap.set(e.source, (instanceCountMap.get(e.source) || 0) + 1);
         }
       }
     }
 
-    const edgeKeySet = new Set<string>();
-    const visibleEdges: TopologyEdge[] = [];
+    // Summary nodes: all non-instance nodes
+    const summaryNodes: TopologyNode[] = [];
+    const summaryNodeIds = new Set<string>();
 
-    for (const edge of edges) {
-      const src = clusterByChild.get(edge.source) || edge.source;
-      const tgt = clusterByChild.get(edge.target) || edge.target;
+    for (const node of nodes) {
+      if (instanceNodes.has(node.id)) continue;
 
-      if (!visibleNodeIds.has(src) || !visibleNodeIds.has(tgt)) continue;
-      if (src === tgt) continue; // skip self-loops within a cluster
-
-      const key = `${src}->${tgt}:${edge.type}`;
-      if (edgeKeySet.has(key)) continue;
-      edgeKeySet.add(key);
-
-      visibleEdges.push({
-        ...edge,
-        source: src,
-        target: tgt,
-      });
+      const count = instanceCountMap.get(node.id) || 0;
+      const enrichedNode: TopologyNode = {
+        ...node,
+        data: {
+          ...node.data,
+          instanceCount: count,
+        },
+      };
+      summaryNodes.push(enrichedNode);
+      summaryNodeIds.add(node.id);
     }
 
-    return { visibleNodes, visibleEdges, clusters };
-  }, [nodes, edges, groupMode, collapsedClusters]);
+    // Summary edges: only between summary nodes
+    const summaryEdges = edges.filter(
+      e => summaryNodeIds.has(e.source) && summaryNodeIds.has(e.target)
+    );
+
+    // Expanded children: instances connected to the expanded node
+    let expandedChildren: TopologyNode[] = [];
+    let expandedChildEdges: TopologyEdge[] = [];
+
+    if (expandedNodeId && summaryNodeIds.has(expandedNodeId)) {
+      // Find all instances that connect to this node (directly or via contains)
+      const connectedInstanceIds = new Set<string>();
+
+      // Direct contains edges
+      for (const e of edges) {
+        if (e.type === 'contains' && e.target === expandedNodeId && instanceNodes.has(e.source)) {
+          connectedInstanceIds.add(e.source);
+        }
+        if (e.type === 'contains' && e.source === expandedNodeId && instanceNodes.has(e.target)) {
+          connectedInstanceIds.add(e.target);
+        }
+      }
+
+      // Other edge types (routes-to, protected-by, etc.)
+      for (const e of edges) {
+        if (e.source === expandedNodeId && instanceNodes.has(e.target)) {
+          connectedInstanceIds.add(e.target);
+        }
+        if (e.target === expandedNodeId && instanceNodes.has(e.source)) {
+          connectedInstanceIds.add(e.source);
+        }
+      }
+
+      expandedChildren = nodes.filter(n => connectedInstanceIds.has(n.id));
+      expandedChildEdges = edges.filter(
+        e => (connectedInstanceIds.has(e.source) || connectedInstanceIds.has(e.target))
+          && e.source !== expandedNodeId && e.target !== expandedNodeId
+      );
+
+      // Also add edges from instances back to the parent
+      for (const instId of connectedInstanceIds) {
+        expandedChildEdges.push({
+          id: `expanded-${expandedNodeId}-${instId}`,
+          source: instId,
+          target: expandedNodeId,
+          type: 'contains',
+          label: '位于',
+        });
+      }
+    }
+
+    return { summaryNodes, summaryEdges, expandedChildren, expandedChildEdges };
+  }, [nodes, edges, expandedNodeId]);
 }

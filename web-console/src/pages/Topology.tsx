@@ -5,16 +5,14 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
 import { TopologyFilter } from '@/components/topology/TopologyFilter';
 import { ViewSwitcher } from '@/components/topology/ViewSwitcher';
-import { GroupModeSwitcher } from '@/components/topology/GroupModeSwitcher';
 import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
-import { VIEW_CONFIG, type TopologyView, type TopologyFilters, type TopologyCategory, type GroupMode } from '@/types/topology';
+import { VIEW_CONFIG, type TopologyView, type TopologyFilters, type TopologyCategory } from '@/types/topology';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 
 export default function Topology() {
   const { t } = useTranslation();
   const [view, setView] = useState<TopologyView>('network');
-  const [groupMode, setGroupMode] = useState<GroupMode>('hierarchy');
   const [filters, setFilters] = useState<TopologyFilters>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -73,10 +71,7 @@ export default function Topology() {
             )}
             <h1 className="text-lg md:text-xl font-bold">{t('topology.title')}</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />
-            <ViewSwitcher currentView={view} onChange={setView} />
-          </div>
+          <ViewSwitcher currentView={view} onChange={setView} />
         </div>
 
         <div className="flex-1 h-full min-h-0">
@@ -91,7 +86,6 @@ export default function Topology() {
               nodes={filteredNodes}
               edges={filteredEdges}
               isLoading={isLoading}
-              groupMode={groupMode}
             />
           </ReactFlowProvider>
         </div>
