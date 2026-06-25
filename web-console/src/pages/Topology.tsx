@@ -6,9 +6,10 @@ import { useTopology } from '@/hooks/useTopology';
 import { useTopologyTree, getTreeChildren } from '@/hooks/useTopologyTree';
 import { TopologyFilter } from '@/components/topology/TopologyFilter';
 import { ViewSwitcher } from '@/components/topology/ViewSwitcher';
+import { GroupModeSwitcher } from '@/components/topology/GroupModeSwitcher';
 import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
 import { DrilldownView } from '@/components/topology/DrilldownView';
-import { VIEW_CONFIG, type TopologyView, type TopologyFilters, type TopologyCategory } from '@/types/topology';
+import { VIEW_CONFIG, type TopologyView, type TopologyFilters, type TopologyCategory, type GroupMode } from '@/types/topology';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ export default function Topology() {
   // Tree drilldown state
   const [mode, setMode] = useState<TopologyMode>('tree');
   const [drillPath, setDrillPath] = useState<string[]>([]);
+  const [groupMode, setGroupMode] = useState<GroupMode>('hierarchy');
 
   const { data, isLoading, error } = useTopology(filters);
 
@@ -151,6 +153,7 @@ export default function Topology() {
             </div>
 
             {mode === 'graph' && <ViewSwitcher currentView={view} onChange={setView} />}
+            {mode === 'graph' && <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />}
           </div>
         </div>
 
@@ -196,6 +199,7 @@ export default function Topology() {
                 nodes={filteredNodes}
                 edges={filteredEdges}
                 isLoading={isLoading}
+                groupMode={groupMode}
               />
             </ReactFlowProvider>
           ) : null}

@@ -16,7 +16,8 @@ import '@xyflow/react/dist/style.css';
 import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailModal } from './NodeDetailModal';
-import { useTopologySummary } from '@/hooks/useTopologyCluster';
+import { ClusterNode } from './ClusterNode';
+import { useTopologySummary, useTopologyCluster } from '@/hooks/useTopologyCluster';
 import { type TopologyNode, type TopologyEdge, type GroupMode, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Server } from 'lucide-react';
@@ -24,6 +25,7 @@ import { Button } from '@/components/ui/button';
 
 const nodeTypes = {
   resource: ResourceNode,
+  cluster: ClusterNode,
 };
 
 const edgeTypes = {
@@ -37,18 +39,23 @@ interface TopologyCanvasProps {
   groupMode?: GroupMode;
 }
 
-export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps) {
+export function TopologyCanvas({ nodes, edges, isLoading, groupMode = 'hierarchy' }: TopologyCanvasProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
   const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
+  const [collapsedClusters, setCollapsedClusters] = useState<Set<string>>(new Set());
   const dagreWorkerRef = useRef<Worker | null>(null);
   const forceWorkerRef = useRef<Worker | null>(null);
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
 
   const { summaryNodes, summaryEdges, expandedChildren, expandedChildEdges } = useTopologySummary(
     nodes, edges, expandedNodeId
+  );
+
+  const { visibleNodes, visibleEdges } = useTopologyCluster(
+    nodes, edges, groupMode, collapsedClusters
   );
 
   const isExpandedView = !!expandedNodeId;
@@ -70,8 +77,11 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
 
       return { displayNodes: allNodes, displayEdges: allEdges };
     }
+    if (groupMode !== 'hierarchy') {
+      return { displayNodes: visibleNodes, displayEdges: visibleEdges };
+    }
     return { displayNodes: summaryNodes, displayEdges: summaryEdges };
-  }, [isExpandedView, expandedNodeId, expandedChildren, expandedChildEdges, summaryNodes, summaryEdges, edges]);
+  }, [isExpandedView, expandedNodeId, expandedChildren, expandedChildEdges, summaryNodes, summaryEdges, edges, groupMode, visibleNodes, visibleEdges]);
 
   // Initialize workers
   useEffect(() => {
@@ -132,7 +142,7 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
       const pos = layoutPositions[node.id];
       return {
         id: node.id,
-        type: 'resource',
+        type: node.type === 'cluster' ? 'cluster' : 'resource',
         position: pos ? { x: pos.x - 70, y: pos.y - 45 } : { x: 0, y: 0 },
         data: node as unknown as Record<string, unknown>,
       };
@@ -172,6 +182,21 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
       } else {
         // In overview, check if this node has instances to expand
         const topologyNode = node.data as unknown as TopologyNode;
+        
+        // Handle cluster node toggle
+        if (node.type === 'cluster') {
+          setCollapsedClusters(prev => {
+            const next = new Set(prev);
+            if (next.has(node.id)) {
+              next.delete(node.id);
+            } else {
+              next.add(node.id);
+            }
+            return next;
+          });
+          return;
+        }
+        
         const count = topologyNode.data?.instanceCount as number;
         if (count && count > 0) {
           setExpandedNodeId(topologyNode.id);

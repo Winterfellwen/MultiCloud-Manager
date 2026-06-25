@@ -12,13 +12,14 @@ import '@xyflow/react/dist/style.css';
 import { ResourceNode } from './ResourceNode';
 import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailModal } from './NodeDetailModal';
+import { ClusterNode } from './ClusterNode';
 import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 import type { TreeNode } from '@/hooks/useTopologyTree';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const nodeTypes = { resource: ResourceNode };
+const nodeTypes = { resource: ResourceNode, cluster: ClusterNode };
 const edgeTypes = { resource: ResourceEdge };
 
 interface DrilldownViewProps {
