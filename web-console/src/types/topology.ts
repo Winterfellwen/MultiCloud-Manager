@@ -11,6 +11,7 @@ export interface TopologyNode {
   category: string;
   icon: string;
   data: Record<string, unknown>;
+  parentId?: string;
 }
 
 /** 拓扑边 */
@@ -92,6 +93,29 @@ export const VIEW_CONFIG: Record<TopologyView, {
     categories: ['compute', 'storage', 'database'],
   },
 };
+
+/** 分组模式 */
+export type GroupMode = 'hierarchy' | 'semantic' | 'team' | 'cost';
+
+/** 分组模式标签 */
+export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
+  hierarchy: '层级',
+  semantic: '语义',
+  team: '团队',
+  cost: '成本',
+};
+
+/** 聚簇节点数据 */
+export interface ClusterData {
+  id: string;
+  label: string;
+  groupMode: GroupMode;
+  childNodeIds: string[];
+  collapsed: boolean;
+  statusSummary: Record<string, number>;
+  category: TopologyCategory;
+  icon: string;
+}
 
 /** 节点颜色配置（按分类） */
 export const NODE_COLORS: Record<TopologyCategory, string> = {
