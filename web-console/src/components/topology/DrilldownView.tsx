@@ -14,6 +14,7 @@ import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailModal } from './NodeDetailModal';
 import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 import type { TreeNode } from '@/hooks/useTopologyTree';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -160,7 +161,13 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
           </div>
         ) : (
           path.map((segment, i) => (
-            <div key={segment.id} className="flex items-center gap-1 shrink-0">
+            <motion.div
+              key={segment.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="flex items-center gap-1 shrink-0"
+            >
               {i > 0 && <ChevronRight className="h-3 w-3 text-gray-300" />}
               <button
                 onClick={() => onPathClick(i)}
@@ -178,28 +185,37 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
                   <span className="ml-1 text-[10px] text-gray-400">({segment.count})</span>
                 )}
               </button>
-            </div>
+            </motion.div>
           ))
         )}
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 h-full">
-        <ReactFlow
-          nodes={flowNodesState}
-          edges={flowEdgesState}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.15 }}
-          minZoom={0.3}
-          maxZoom={2}
-          nodesDraggable={false}
-        />
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentNode.id}
+          className="flex-1 h-full"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
+          <ReactFlow
+            nodes={flowNodesState}
+            edges={flowEdgesState}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.15 }}
+            minZoom={0.3}
+            maxZoom={2}
+            nodesDraggable={false}
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* Instance detail modal */}
       <NodeDetailModal
