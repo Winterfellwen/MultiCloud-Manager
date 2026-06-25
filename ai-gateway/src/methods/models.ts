@@ -81,9 +81,13 @@ export async function handleModelsDelete(
   respond: (ok: boolean, payload: unknown) => void
 ): Promise<void> {
   try {
-    const deleted = await deleteModelFromStore(params.providerId, params.modelId);
+    // 前端 modelId 格式为 "provider/model"，需要去掉 provider 前缀
+    const rawModelId = params.modelId.includes('/')
+      ? params.modelId.slice(params.modelId.indexOf('/') + 1)
+      : params.modelId;
+    const deleted = await deleteModelFromStore(params.providerId, rawModelId);
     if (!deleted) {
-      respond(false, { error: 'NOT_FOUND', message: `模型 "${params.modelId}" 不存在` });
+      respond(false, { error: 'NOT_FOUND', message: `模型 "${rawModelId}" 不存在` });
       return;
     }
     respond(true, { ok: true });

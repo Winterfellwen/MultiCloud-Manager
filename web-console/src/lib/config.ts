@@ -40,7 +40,7 @@ export function getApiBaseUrl(): string {
  * WebSocket 基址：根据当前页面 URL 动态生成
  * - https 页面 → wss://host/ws
  * - http 页面 → ws://host/ws
- * - 开发环境（localhost:5173）→ ws://localhost:3005/ws
+ * - 开发环境（localhost:5173）→ ws://localhost:80/ws（通过 vite 代理）
  */
 export function getWsBaseUrl(): string {
   // 优先使用环境变量（便于开发/测试时指定
@@ -48,7 +48,8 @@ export function getWsBaseUrl(): string {
     return import.meta.env.VITE_WS_BASE_URL;
   }
   if (import.meta.env.DEV) {
-    return 'ws://localhost:3005/ws';
+    // 开发环境：通过 vite 代理连接到 80 端口的 nginx
+    return 'ws://localhost:80/ws';
   }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;

@@ -43,10 +43,106 @@ interface ProviderFormState {
   compat: ProviderCompat;
 }
 
+interface ProviderPreset {
+  id: string;
+  name: string;
+  baseUrl: string;
+  thinkingFormat?: ThinkingFormat;
+  supportsReasoningEffort?: boolean;
+  maxTokensField?: 'max_tokens' | 'max_completion_tokens';
+  supportsTools?: boolean;
+  requiresStringContent?: boolean;
+  description?: string;
+}
+
+const PROVIDER_PRESETS: ProviderPreset[] = [
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    thinkingFormat: 'openai',
+    supportsReasoningEffort: true,
+    maxTokensField: 'max_completion_tokens',
+    supportsTools: true,
+    description: 'GPT-4o, GPT-4, GPT-3.5 等模型',
+  },
+  {
+    id: 'nvidia',
+    name: 'NVIDIA NIM',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    thinkingFormat: 'openai',
+    supportsTools: true,
+    description: 'Nemotron, Llama, Mistral, DeepSeek 等模型',
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com/v1',
+    thinkingFormat: 'deepseek',
+    supportsReasoningEffort: true,
+    supportsTools: true,
+    description: 'DeepSeek-V3, DeepSeek-R1 等模型',
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    thinkingFormat: 'openrouter',
+    supportsReasoningEffort: true,
+    supportsTools: true,
+    description: '聚合多家模型提供商',
+  },
+  {
+    id: 'together',
+    name: 'Together AI',
+    baseUrl: 'https://api.together.xyz/v1',
+    thinkingFormat: 'together',
+    supportsReasoningEffort: true,
+    supportsTools: true,
+    description: 'Llama, Mistral 等开源模型',
+  },
+  {
+    id: 'qwen',
+    name: '通义千问 (Qwen)',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    thinkingFormat: 'qwen',
+    supportsReasoningEffort: true,
+    supportsTools: true,
+    description: 'Qwen 系列模型',
+  },
+  {
+    id: 'zhipu',
+    name: '智谱 AI (Z.AI)',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    thinkingFormat: 'zai',
+    supportsTools: true,
+    description: 'GLM 系列模型',
+  },
+  {
+    id: 'siliconflow',
+    name: '硅基流动 (SiliconFlow)',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    thinkingFormat: 'openai',
+    supportsTools: true,
+    description: 'Qwen, DeepSeek, Llama 等模型',
+  },
+];
+
 const EMPTY_COMPAT: ProviderCompat = {};
 const EMPTY_FORM: ProviderFormState = {
   id: '', name: '', baseUrl: '', apiKey: '', compat: { ...EMPTY_COMPAT },
 };
+
+function detectModelReasoning(modelId: string): boolean {
+  return /reasoning|think|o1|o3|o4|r1|deepseek-r|nemotron.*reason|qwen.*reason/i.test(modelId);
+}
+
+function detectModelInputType(modelId: string): string[] {
+  if (/vision|omni|vl|image|multimodal|gpt-4o|gpt-4v|gemini|qwen-vl|llava|vila|neva|nemotron.*omni|cosmos/i.test(modelId)) {
+    return ['text', 'image'];
+  }
+  return ['text'];
+}
 
 export default function AiSettings() {
   const { t } = useTranslation();
@@ -215,7 +311,6 @@ export default function AiSettings() {
   const handleSaveDiscoveredModels = () => {
     const provider = providers.find(p => p.id === discoverProviderId);
     if (!provider) return;
-    // 合并：保留已有模型 + 新选中的模型（不去掉未勾选的已有模型）
     const existingModels = (provider.models || []).map(m => ({
       id: m.id,
       name: m.name,
@@ -227,12 +322,16 @@ export default function AiSettings() {
     }));
     const newModels = discoveredModels
       .filter(m => selectedModelIds.has(m.id) && !provider.models?.some(pm => pm.id === m.id))
-      .map(m => ({
-        id: m.id,
-        name: m.name,
-        reasoning: /reasoning|think|o1|o3|o4/i.test(m.id),
-        input: /vision|omni|vl|image/i.test(m.id) ? ['text', 'image'] : ['text'],
-      }));
+      .map(m => {
+        // 去掉 provider 前缀，只保存模型ID
+        const modelId = m.id.includes('/') ? m.id.split('/').slice(1).join('/') : m.id;
+        return {
+          id: modelId,
+          name: modelId,
+          reasoning: detectModelReasoning(modelId),
+          input: detectModelInputType(modelId),
+        };
+      });
     const merged = [...existingModels, ...newModels];
     updateProvider.mutate({
       id: discoverProviderId,
@@ -298,7 +397,7 @@ export default function AiSettings() {
                         </span>
                       )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -362,7 +461,7 @@ export default function AiSettings() {
                   {/* 测试结果 */}
                   {testResult[provider.id] && (
                     <div className={cn(
-                      'px-3 py-1.5 text-xs',
+                      'px-3 py-1.5 text-xs break-words',
                       testResult[provider.id].ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
                     )}>
                       {testResult[provider.id].ok ? '✓ ' : '✗ '}{testResult[provider.id].msg}
@@ -439,99 +538,104 @@ export default function AiSettings() {
                   <div
                     key={model.id}
                     className={cn(
-                      'flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors group',
+                      'flex cursor-pointer flex-col gap-2 rounded-md border p-3 transition-colors group',
                       isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent',
                       !model.available && 'cursor-not-allowed opacity-50'
                     )}
                     onClick={() => model.available !== false && setModel(model.id)}
                   >
-                    <div className={cn(
-                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
-                      isSelected ? 'border-primary bg-primary' : 'border-muted'
-                    )}>
-                      {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">{model.provider}</span>
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
+                        isSelected ? 'border-primary bg-primary' : 'border-muted'
+                      )}>
+                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                       </div>
-                      {model.contextWindow && (
-                        <span className="text-xs text-muted-foreground">
-                          {t('aiSettings.contextWindow', { value: (model.contextWindow / 1000).toFixed(0) })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground flex-wrap justify-end">
-                      {model.reasoning && (
-                        <span className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs">
-                          <Brain className="h-3 w-3" /> {t('aiSettings.reasoningBadge')}
-                        </span>
-                      )}
-                      {model.thinkingFormat && (
-                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600" title={t('aiSettings.thinkingLabel')}>
-                          {THINKING_FORMAT_LABELS[model.thinkingFormat] || model.thinkingFormat}
-                        </span>
-                      )}
-                      {model.input?.includes('image') && (
-                        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs">{t('aiSettings.visionBadge')}</span>
-                      )}
-                      {modelTestResult[model.id] && (
-                        <span className={cn(
-                          'text-xs',
-                          modelTestResult[model.id].ok ? 'text-green-600' : 'text-red-600'
-                        )}>
-                          {modelTestResult[model.id].ok ? '✓' : '✗'} {modelTestResult[model.id].msg}
-                        </span>
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            className="text-muted-foreground hover:text-green-600 transition-colors ml-1"
-                            disabled={testModel.isPending}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              testModel.mutate(
-                                { providerId: model.provider, modelId: model.id },
-                                {
-                                  onSuccess: (res) => {
-                                    setModelTestResult(prev => ({
-                                      ...prev,
-                                      [model.id]: { ok: res.ok, msg: res.message || (res.ok ? t('aiSettings.testModelSuccess') : t('aiSettings.testModelFailed')) },
-                                    }));
-                                  },
-                                  onError: (err) => {
-                                    setModelTestResult(prev => ({
-                                      ...prev,
-                                      [model.id]: { ok: false, msg: err.message },
-                                    }));
-                                  },
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{model.name}</span>
+                          <span className="text-xs text-muted-foreground">{model.provider}</span>
+                        </div>
+                        {model.contextWindow && (
+                          <span className="text-xs text-muted-foreground">
+                            {t('aiSettings.contextWindow', { value: (model.contextWindow / 1000).toFixed(0) })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground flex-wrap justify-end">
+                        {model.reasoning && (
+                          <span className="flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs">
+                            <Brain className="h-3 w-3" /> {t('aiSettings.reasoningBadge')}
+                          </span>
+                        )}
+                        {model.thinkingFormat && (
+                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-600" title={t('aiSettings.thinkingLabel')}>
+                            {THINKING_FORMAT_LABELS[model.thinkingFormat] || model.thinkingFormat}
+                          </span>
+                        )}
+                        {model.input?.includes('image') && (
+                          <span className="rounded bg-secondary px-1.5 py-0.5 text-xs">{t('aiSettings.visionBadge')}</span>
+                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              className="text-muted-foreground hover:text-green-600 transition-colors ml-1"
+                              disabled={testModel.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                testModel.mutate(
+                                  { providerId: model.provider, modelId: model.id },
+                                  {
+                                    onSuccess: (res) => {
+                                      setModelTestResult(prev => ({
+                                        ...prev,
+                                        [model.id]: { ok: res.ok, msg: res.message || (res.ok ? t('aiSettings.testModelSuccess') : t('aiSettings.testModelFailed')) },
+                                      }));
+                                    },
+                                    onError: (err) => {
+                                      setModelTestResult(prev => ({
+                                        ...prev,
+                                        [model.id]: { ok: false, msg: err.message },
+                                      }));
+                                    },
+                                  }
+                                );
+                              }}
+                            >
+                              <Zap className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.testModel')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(t('aiSettings.confirmDeleteModel', { id: model.id }))) {
+                                  deleteModel.mutate({ providerId: model.provider, modelId: model.id });
                                 }
-                              );
-                            }}
-                          >
-                            <Zap className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('tooltip.testModel')}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(t('aiSettings.confirmDeleteModel', { id: model.id }))) {
-                                deleteModel.mutate({ providerId: model.provider, modelId: model.id });
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('tooltip.deleteModel')}</TooltipContent>
-                      </Tooltip>
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.deleteModel')}</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
+                    {modelTestResult[model.id] && !modelTestResult[model.id].ok && (
+                      <div className="ml-8 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                        <div className="text-xs font-medium text-red-700">✗ {t('aiSettings.testModelFailed')}</div>
+                        <div className="text-xs text-red-600 mt-1 break-words whitespace-pre-wrap">{modelTestResult[model.id].msg}</div>
+                      </div>
+                    )}
+                    {modelTestResult[model.id] && modelTestResult[model.id].ok && (
+                      <div className="ml-8 text-xs text-green-600">
+                        ✓ {modelTestResult[model.id].msg}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -650,6 +754,44 @@ export default function AiSettings() {
         className="max-w-md"
       >
           <div className="space-y-4 py-2">
+            {!editingProvider && (
+              <div className="space-y-2">
+                <Label>{t('aiSettings.selectPreset')}</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value=""
+                  onChange={(e) => {
+                    const presetId = e.target.value;
+                    if (!presetId) return;
+                    const preset = PROVIDER_PRESETS.find(p => p.id === presetId);
+                    if (preset) {
+                      setProviderForm(f => ({
+                        ...f,
+                        id: preset.id,
+                        name: preset.name,
+                        baseUrl: preset.baseUrl,
+                        compat: {
+                          ...f.compat,
+                          ...(preset.thinkingFormat ? { thinkingFormat: preset.thinkingFormat } : {}),
+                          ...(preset.supportsReasoningEffort !== undefined ? { supportsReasoningEffort: preset.supportsReasoningEffort } : {}),
+                          ...(preset.maxTokensField ? { maxTokensField: preset.maxTokensField } : {}),
+                          ...(preset.supportsTools !== undefined ? { supportsTools: preset.supportsTools } : {}),
+                          ...(preset.requiresStringContent !== undefined ? { requiresStringContent: preset.requiresStringContent } : {}),
+                        },
+                      }));
+                    }
+                  }}
+                >
+                  <option value="">{t('aiSettings.customProvider')}</option>
+                  {PROVIDER_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">{t('aiSettings.presetHint')}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="provider-id">{t('aiSettings.providerId')}</Label>
               <Input
@@ -864,9 +1006,19 @@ export default function AiSettings() {
                         disabled={alreadyHas}
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="font-mono text-xs">{m.id}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs">{m.id}</span>
+                          {detectModelReasoning(m.id) && (
+                            <span className="flex items-center gap-0.5 rounded bg-secondary px-1 py-0.5 text-[10px]">
+                              <Brain className="h-2.5 w-2.5" /> {t('aiSettings.reasoningBadge')}
+                            </span>
+                          )}
+                          {detectModelInputType(m.id).includes('image') && (
+                            <span className="rounded bg-secondary px-1 py-0.5 text-[10px]">{t('aiSettings.visionBadge')}</span>
+                          )}
+                        </div>
                         {m.name !== m.id && (
-                          <span className="ml-2 text-xs text-muted-foreground">{m.name}</span>
+                          <span className="text-xs text-muted-foreground">{m.name}</span>
                         )}
                       </div>
                       {alreadyHas && (
