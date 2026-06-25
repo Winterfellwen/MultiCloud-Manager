@@ -513,6 +513,8 @@
     "loadFailed": "加载失败",
     "empty": "暂无拓扑数据",
     "emptyHint": "请添加云账号并同步资源以查看拓扑",
+    "backToOverview": "总览",
+    "instances": "个实例",
     "groupMode": {
       "hierarchy": "层级",
       "semantic": "语义",
@@ -524,7 +526,8 @@
       "metrics": "指标",
       "logs": "日志",
       "connections": "连接",
-      "viewDetails": "跳转详情"
+      "viewDetails": "跳转详情",
+      "close": "关闭"
     }
   }
 }

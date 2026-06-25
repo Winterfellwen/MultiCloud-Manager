@@ -54,8 +54,9 @@ export function NodeDetailModal({ node, allEdges, allNodes, onClose }: NodeDetai
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 backdrop-blur-sm"
-            style={{ background: `linear-gradient(135deg, ${color}10 0%, rgba(0,0,0,0.4) 100%)` }}
+            style={{ background: `linear-gradient(135deg, ${color}10 0%, rgba(0,0,0,0.4) 100%)`, overscrollBehavior: 'contain' }}
             onClick={onClose}
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
           />
 
           {/* Modal */}
@@ -116,16 +117,19 @@ export function NodeDetailModal({ node, allEdges, allNodes, onClose }: NodeDetai
                   size="icon"
                   onClick={onClose}
                   className="rounded-xl hover:bg-gray-100/80 transition-colors"
+                  aria-label={t('topology.detailModal.close', 'Close')}
                 >
-                  <X className="h-4 w-4 text-gray-400" />
+                  <X className="h-4 w-4 text-gray-400" aria-hidden="true" />
                 </Button>
               </div>
 
               {/* Tabs */}
-              <div className="flex border-b border-gray-100 px-7">
+              <div className="flex border-b border-gray-100 px-7" role="tablist">
                 {TABS.map((tab) => (
                   <button
                     key={tab.key}
+                    role="tab"
+                    aria-selected={activeTab === tab.key}
                     onClick={() => setActiveTab(tab.key)}
                     className={cn(
                       'relative px-5 py-3 text-sm font-medium transition-colors',

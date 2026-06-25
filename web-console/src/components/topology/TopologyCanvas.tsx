@@ -232,20 +232,21 @@ export function TopologyCanvas({ nodes, edges, isLoading }: TopologyCanvasProps)
             exit={{ opacity: 0, y: -10 }}
             className="absolute top-3 left-3 z-10 flex items-center gap-2"
           >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToOverview}
-              className="gap-1.5 bg-white/90 backdrop-blur-sm shadow-md border-white/40 hover:bg-white"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              总览
-            </Button>
-            <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm shadow-md border border-white/40 rounded-lg px-3 py-1.5 text-xs text-gray-600">
-              <Server className="h-3.5 w-3.5 text-gray-400" />
-              <span className="font-medium">{parentNode.label}</span>
-              <span className="text-gray-400">·</span>
-              <span>{expandedChildren.length} 个实例</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBackToOverview}
+                className="gap-1.5 bg-white/90 backdrop-blur-sm shadow-md border-white/40 hover:bg-white"
+                aria-label={t('topology.backToOverview', 'Back to overview')}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('topology.backToOverview', 'Back to overview')}
+              </Button>
+              <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm shadow-md border border-white/40 rounded-lg px-3 py-1.5 text-xs text-gray-600">
+                <Server className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
+                <span className="font-medium">{parentNode.label}</span>
+                <span className="text-gray-400">·</span>
+                <span>{expandedChildren.length} {t('topology.instances', 'instances')}</span>
             </div>
           </motion.div>
         )}

@@ -33,7 +33,7 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
         'relative group cursor-pointer transition-all duration-300'
       )}
     >
-      <Handle type="target" position={Position.Top} className="!bg-transparent !border-0 !w-0 !h-0" />
+      <Handle type="target" position={Position.Top} className="!bg-transparent !border-0 !w-0 !h-0 focus-visible:ring-2 focus-visible:ring-blue-500" />
 
       {/* Glow effect */}
       <div
@@ -78,8 +78,9 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
               borderColor: `${color}40`,
               color,
             }}
+            aria-label={`${(data.data as Record<string, unknown>)?.instanceCount} instances`}
           >
-            <Server className="w-2.5 h-2.5" />
+            <Server className="w-2.5 h-2.5" aria-hidden="true" />
             {String((data.data as Record<string, unknown>)?.instanceCount ?? '')}
           </div>
         )}
@@ -108,7 +109,7 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
               )}
             />
             {isRunning && (
-              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-30" />
+              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-30 motion-reduce:animate-none" />
             )}
           </div>
           <span
@@ -125,7 +126,7 @@ function ResourceNodeComponent({ data, selected }: NodeProps<ResourceNodeData>) 
         </div>
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0 !w-0 !h-0" />
+      <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0 !w-0 !h-0 focus-visible:ring-2 focus-visible:ring-blue-500" />
     </div>
   );
 }

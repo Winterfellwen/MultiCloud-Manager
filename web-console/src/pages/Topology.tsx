@@ -93,6 +93,8 @@ export default function Topology() {
               <div
                 className="fixed inset-0 z-40 bg-black/50"
                 onClick={() => setSidebarOpen(false)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setSidebarOpen(false); }}
+                style={{ overscrollBehavior: 'contain' }}
               />
               <div className="fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] animate-in slide-in-from-left duration-200">
                 <div className="h-full border-r bg-card p-4 overflow-y-auto">
@@ -126,8 +128,10 @@ export default function Topology() {
                     ? 'bg-white shadow-sm text-gray-900'
                     : 'text-gray-500 hover:text-gray-700'
                 )}
+                aria-label={t('topology.modeTree', 'Hierarchy')}
+                aria-pressed={mode === 'tree'}
               >
-                <GitBranch className="h-3 w-3" />
+                <GitBranch className="h-3 w-3" aria-hidden="true" />
                 {t('topology.modeTree', '层级')}
               </button>
               <button
@@ -138,8 +142,10 @@ export default function Topology() {
                     ? 'bg-white shadow-sm text-gray-900'
                     : 'text-gray-500 hover:text-gray-700'
                 )}
+                aria-label={t('topology.modeGraph', 'Graph')}
+                aria-pressed={mode === 'graph'}
               >
-                <Network className="h-3 w-3" />
+                <Network className="h-3 w-3" aria-hidden="true" />
                 {t('topology.modeGraph', '关系')}
               </button>
             </div>

@@ -513,6 +513,8 @@
     "loadFailed": "Load failed",
     "empty": "No topology data",
     "emptyHint": "Add cloud accounts and sync resources to view topology",
+    "backToOverview": "Back to overview",
+    "instances": "instances",
     "groupMode": {
       "hierarchy": "Hierarchy",
       "semantic": "Semantic",
@@ -524,7 +526,8 @@
       "metrics": "Metrics",
       "logs": "Logs",
       "connections": "Connections",
-      "viewDetails": "View Details"
+      "viewDetails": "View Details",
+      "close": "Close"
     }
   }
 }

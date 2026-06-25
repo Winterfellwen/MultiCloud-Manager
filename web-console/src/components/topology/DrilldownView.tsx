@@ -165,6 +165,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
                     ? 'text-gray-900 bg-white shadow-sm border border-gray-200'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 )}
+                aria-label={`Navigate to ${segment.label}`}
               >
                 {i === 0 && <Globe className="inline h-3 w-3 mr-1 -mt-0.5" />}
                 {segment.label}
