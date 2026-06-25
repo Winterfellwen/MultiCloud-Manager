@@ -482,6 +482,8 @@
   },
   "topology": {
     "title": "Topology View",
+    "modeTree": "Hierarchy",
+    "modeGraph": "Graph",
     "filters": {
       "title": "Filters",
       "reset": "Reset",
