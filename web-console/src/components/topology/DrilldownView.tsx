@@ -34,6 +34,7 @@ const NODE_H = 100;
 const GRID_GAP_X = 36;
 const GRID_GAP_Y = 28;
 const GRID_COLS = 5;
+const PARENT_X = -200;
 
 export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, allEdges, allNodes }: DrilldownViewProps) {
   const navigate = useNavigate();
@@ -85,7 +86,37 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
       };
     });
 
-    return { flowNodes: fn, flowEdges: [] as Edge[] };
+    // Virtual parent Y: center of all child nodes
+    const parentY = displayNodes.length > 0
+      ? Math.max(...displayNodes.map((_, i) => {
+          const row = Math.floor(i / GRID_COLS);
+          return row * (NODE_H + GRID_GAP_Y) + NODE_H / 2;
+        })) / 2
+      : 0;
+
+    // Virtual parent node (not rendered, just for edge anchor)
+    const virtualParentNode: Node = {
+      id: 'virtual-parent',
+      type: 'resource',
+      position: { x: PARENT_X, y: parentY },
+      data: { label: '', type: 'virtual' },
+      selectable: false,
+      draggable: false,
+    };
+
+    // Add virtual parent to nodes
+    const fnWithParent = [virtualParentNode, ...fn];
+
+    // Edge array: virtual parent → each child
+    const fe: Edge[] = displayNodes.map(node => ({
+      id: `edge-parent-${node.id}`,
+      source: 'virtual-parent',
+      target: node.id,
+      type: 'resource',
+      data: { type: 'contains', label: '' } as unknown as Record<string, unknown>,
+    }));
+
+    return { flowNodes: fnWithParent, flowEdges: fe };
   }, [displayNodes, layoutPositions, currentNode]);
 
   const [flowNodesState, setNodes, onNodesChange] = useNodesState(flowNodes);
