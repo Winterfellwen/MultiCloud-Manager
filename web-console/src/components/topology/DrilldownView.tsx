@@ -42,19 +42,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 
   const isRoot = path.length === 0;
-
-  // Build display nodes: children of current node, or instances if current is a subnet
-  const displayNodes = useMemo(() => {
-    // If current node is a subnet, show its instances
-    if (currentNode.node.type === 'subnet') {
-      // Find instances connected to this subnet via 'contains' edges
-      return allEdges
-        .filter(e => e.type === 'contains' && e.target === currentNode.id)
-        .map(e => allNodes.find(n => n.id === e.source))
-        .filter((n): n is TopologyNode => !!n && n.type === 'instance');
-    }
-    return currentNode.children.map(c => c.node);
-  }, [currentNode, allEdges, allNodes]);
+  const displayNodes = useMemo(() => currentNode.children.map(c => c.node), [currentNode]);
 
   // All levels: horizontal grid
   useEffect(() => {
@@ -113,12 +101,12 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
       const topologyNode = node.data as unknown as TopologyNode;
       const treeNode = currentNode.children.find(c => c.id === topologyNode.id);
 
-      if (treeNode && treeNode.children.length > 0) {
-        // Has children → drilldown
-        onDrilldown(topologyNode.id);
-      } else if (topologyNode.type === 'instance') {
+      if (topologyNode.type === 'instance') {
         // Instance → show detail modal
         setSelectedNode(topologyNode);
+      } else if (treeNode && treeNode.children.length > 0) {
+        // Has children → drilldown
+        onDrilldown(topologyNode.id);
       } else {
         // Other leaf → navigate to resource page
         navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');

@@ -19,8 +19,9 @@ function getHierarchyLevel(type: string): number {
  * Build a strict hierarchy tree:
  * provider → vpc → subnet → instance
  *
- * Each level only shows its direct children in the next hierarchy level.
- * Providers are virtual nodes that group VPCs.
+ * - Providers are virtual nodes grouping VPCs
+ * - Each level shows only children at the next hierarchy level
+ * - Instances are children of subnets (so subnet click drills down to instances)
  */
 export function useTopologyTree(
   nodes: TopologyNode[],
@@ -38,26 +39,15 @@ export function useTopologyTree(
       }
     }
 
-    // Group VPCs by provider (cloudAccountId)
-    const vpcNodes = nodes.filter(n => n.type === 'vpc');
-    const providerGroups = new Map<string, TopologyNode[]>();
-    for (const vpc of vpcNodes) {
-      const provider = String(vpc.data?.cloudAccountId || vpc.provider || 'unknown');
-      if (!providerGroups.has(provider)) providerGroups.set(provider, []);
-      providerGroups.get(provider)!.push(vpc);
-    }
-
-    // Build tree for a single VPC: vpc → subnet → instance
-    function buildSubtree(nodeId: string, visited: Set<string>): TreeNode | null {
+    // Build subtree recursively
+    function buildSubtree(nodeId: string, myLevel: number, visited: Set<string>): TreeNode | null {
       if (visited.has(nodeId)) return null;
       visited.add(nodeId);
 
       const node = nodeMap.get(nodeId);
       if (!node) return null;
 
-      const myLevel = getHierarchyLevel(node.type);
       const nextLevel = myLevel + 1;
-
       const allChildIds = childrenOf.get(nodeId) || [];
       const children: TreeNode[] = [];
       let instanceCount = 0;
@@ -69,13 +59,21 @@ export function useTopologyTree(
         const childLevel = getHierarchyLevel(childNode.type);
 
         if (childNode.type === 'instance') {
+          // Instances are always children of their parent subnet
           instanceCount++;
+          children.push({
+            id: childId,
+            node: childNode,
+            children: [],
+            descendantCount: 0,
+            instanceCount: 0,
+          });
           continue;
         }
 
         // Only include children at the next hierarchy level
         if (childLevel === nextLevel) {
-          const childTree = buildSubtree(childId, visited);
+          const childTree = buildSubtree(childId, myLevel + 1, visited);
           if (childTree) {
             children.push(childTree);
             instanceCount += childTree.instanceCount;
@@ -92,15 +90,25 @@ export function useTopologyTree(
       };
     }
 
+    // Group ALL nodes by provider (cloudAccountId) to find all providers
+    const providerGroups = new Map<string, TopologyNode[]>();
+    for (const node of nodes) {
+      const provider = String(node.data?.cloudAccountId || node.provider || 'unknown');
+      if (!providerGroups.has(provider)) providerGroups.set(provider, []);
+      providerGroups.get(provider)!.push(node);
+    }
+
     // Build provider-level tree: provider → vpc → subnet → instance
     const tree: TreeNode[] = [];
-    for (const [provider, vpcs] of providerGroups) {
+    for (const [provider, providerNodes] of providerGroups) {
+      // Find VPCs under this provider
+      const vpcNodes = providerNodes.filter(n => n.type === 'vpc');
       const vpcTrees: TreeNode[] = [];
       let totalInstances = 0;
       const visited = new Set<string>();
 
-      for (const vpc of vpcs) {
-        const vpcTree = buildSubtree(vpc.id, visited);
+      for (const vpc of vpcNodes) {
+        const vpcTree = buildSubtree(vpc.id, getHierarchyLevel('vpc'), visited);
         if (vpcTree) {
           vpcTrees.push(vpcTree);
           totalInstances += vpcTree.instanceCount;
