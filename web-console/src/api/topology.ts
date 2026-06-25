@@ -10,6 +10,6 @@ export const topologyApi = {
     if (filters?.status) params.set('status', filters.status);
     if (filters?.cloudAccountId) params.set('cloudAccountId', filters.cloudAccountId);
     const query = params.toString();
-    return api.get<TopologyData>(`/topology${query ? `?${query}` : ''}`);
+    return api.get<TopologyData>(`/cloud/topology${query ? `?${query}` : ''}`);
   },
 };

@@ -2,16 +2,10 @@
 # 优化：分层缓存 - package.json 优先复制便于缓存 npm install 层
 FROM node:22-alpine AS builder
 
-# 配置 Alpine 镜像源
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
 WORKDIR /app
 
 # 安装构建依赖
 RUN apk add --no-cache python3 make g++
-
-# 配置 npm 镜像源
-RUN npm config set registry https://registry.npmmirror.com
 
 # ========== 优化：分层复制以利用 Docker 缓存 ==========
 # 先复制 package.json，利用 Docker 层缓存避免重复 npm install
@@ -72,16 +66,12 @@ RUN cp -r auth-service/migrations auth-service/dist/migrations && \
 # 构建前端
 FROM node:22-alpine AS frontend-builder
 
-# 配置 Alpine 镜像源
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
 WORKDIR /app
 
 RUN apk add --no-cache python3 make g++
 
-# 配置 pnpm 镜像源
-RUN npm install -g pnpm --registry=https://registry.npmmirror.com && \
-    pnpm config set registry https://registry.npmmirror.com
+# 安装 pnpm
+RUN npm install -g pnpm && \
 
 # 复制 pnpm workspace 根配置
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
@@ -105,17 +95,11 @@ RUN pnpm --filter @cloudops/web-console build
 # 最终镜像
 FROM node:22-alpine
 
-# 配置 Alpine 镜像源
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
 WORKDIR /app
 
 # 安装运行时依赖
 RUN apk add --no-cache nginx supervisor && \
     npm install -g pm2
-
-# 配置 npm 镜像源
-RUN npm config set registry https://registry.npmmirror.com
 
 # 复制构建产物
 COPY --from=builder /app/shared/dist ./shared/dist
