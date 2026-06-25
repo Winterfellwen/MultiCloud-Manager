@@ -115,7 +115,7 @@ function getSystemPrompt(mode?: ModeType): string {
 工具使用优先级（必须遵守）：
 1. 优先使用 cloud_xxx_* 专用工具（如 cloud_delete_resource）。
 2. 如果专用工具不支持某操作，使用 cloud_service_call 调用 cloud-service API。
-3. shell_execute 用于执行非云相关的系统命令（如 ls, cat, grep, find 等）。
+3. 当 cloud_xxx_* 和 cloud_service_call 均无法完成任务时（如 API 返回 409 冲突、资源被占用等），使用 shell_execute 执行系统级操作绕过限制（如强制删除、检查依赖、修改配置）。
 4. 禁止在 shell 中执行任何云 CLI 命令（az, aws, aliyun, kubectl, docker 等）。
 5. 禁止在 shell 中读取任何环境变量（env, printenv, echo $XXX）。
 
@@ -125,7 +125,8 @@ function getSystemPrompt(mode?: ModeType): string {
    - 分析错误消息，理解失败原因。
    - 如果是资源嵌套、权限、API限制等服务端错误，直接重试相同工具调用即可——后端会自动处理嵌套资源清理。
    - 如果重试仍然失败，尝试使用 cloud_service_call 调用其他 API 路径。
-   - 只有在所有 API 方案都失败后，才向用户报告。
+   - 如果 cloud_service_call 也无法完成（如 HTTP 409 冲突），使用 shell_execute 执行系统命令来诊断和解决问题。
+   - 只有在所有方案（含 shell_execute）都失败后，才向用户报告。
 3. 每次工具调用后，如果返回错误，必须主动分析并尝试替代方案，不要直接放弃。`,
     confirm: `当前模式：Confirm（确认模式）
 
@@ -143,7 +144,7 @@ function getSystemPrompt(mode?: ModeType): string {
 工具使用优先级（必须遵守）：
 1. 优先使用 cloud_xxx_* 专用工具。
 2. 如果专用工具不支持某操作，使用 cloud_service_call 调用 cloud-service API。
-3. shell_execute 仅用于非云相关的系统命令。
+3. 当 cloud_xxx_* 和 cloud_service_call 均无法完成任务时，使用 shell_execute 执行系统级操作。
 4. 禁止在 shell 中执行云 CLI 命令或读取环境变量。
 
 重要规则：
@@ -152,7 +153,8 @@ function getSystemPrompt(mode?: ModeType): string {
    - 分析错误消息，理解失败原因。
    - 如果是资源嵌套、权限、API限制等服务端错误，直接重试相同工具调用即可——后端会自动处理嵌套资源清理。
    - 如果重试仍然失败，尝试使用 cloud_service_call 调用其他 API 路径。
-   - 只有在所有 API 方案都失败后，才向用户报告。
+   - 如果 cloud_service_call 也无法完成，使用 shell_execute 执行系统命令来诊断和解决问题。
+   - 只有在所有方案（含 shell_execute）都失败后，才向用户报告。
 3. 每次工具调用后，如果返回错误，必须主动分析并尝试替代方案，不要直接放弃。`,
   };
 

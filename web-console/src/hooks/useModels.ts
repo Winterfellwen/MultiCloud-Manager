@@ -22,11 +22,11 @@ export function useModels() {
 
 export function useDeleteModel() {
   const queryClient = useQueryClient();
-  const wsClient = useChatStore((s) => s.wsClient);
   return useMutation({
     mutationFn: async (params: { providerId: string; modelId: string }) => {
-      if (!wsClient) throw new Error('WebSocket 未连接');
-      return wsClient.request<{ ok: boolean }>('models.delete', params);
+      const client = useChatStore.getState().wsClient;
+      if (!client) throw new Error('WebSocket 未连接');
+      return client.request<{ ok: boolean }>('models.delete', params);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['models'] });
@@ -36,11 +36,11 @@ export function useDeleteModel() {
 }
 
 export function useTestModel() {
-  const wsClient = useChatStore((s) => s.wsClient);
   return useMutation({
     mutationFn: async (params: { providerId: string; modelId: string }) => {
-      if (!wsClient) throw new Error('WebSocket 未连接');
-      return wsClient.request<{ ok: boolean; message?: string }>('models.test', params);
+      const client = useChatStore.getState().wsClient;
+      if (!client) throw new Error('WebSocket 未连接');
+      return client.request<{ ok: boolean; message?: string }>('models.test', params);
     },
   });
 }

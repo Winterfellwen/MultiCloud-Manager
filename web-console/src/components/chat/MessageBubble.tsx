@@ -5,7 +5,8 @@
 import { useState, memo } from 'react';
 import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import type { ChatMessage, ContentBlock } from '../../types/chat';
-import { ToolCallCard } from './ToolCallCard';
+import { ToolCallCard, serializeValue } from './ToolCallCard';
+import { resolveToolDisplay } from '../../lib/openclaw/tool-display';
 import { cn } from '../../lib/utils';
 
 interface MessageBubbleProps {
@@ -155,8 +156,42 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
     });
   };
 
+  const buildCopyText = (): string => {
+    // 从 blocks 重建完整文本（包含工具调用信息）
+    if (message.blocks && message.blocks.length > 0) {
+      const parts: string[] = [];
+      for (const block of message.blocks) {
+        if (block.type === 'text' && block.content) {
+          parts.push(block.content);
+        } else if (block.type === 'tool_call') {
+          const display = resolveToolDisplay(block.toolCall.name);
+          parts.push(`[工具: ${display.label}]`);
+          if (block.toolCall.args) {
+            parts.push(`参数:\n${serializeValue(block.toolCall.args)}`);
+          }
+          if (block.toolCall.result) {
+            parts.push(`结果:\n${serializeValue(block.toolCall.result.content)}`);
+          }
+        }
+      }
+      if (parts.length > 0) return parts.join('\n\n');
+    }
+    // 旧路径：拼接 content + toolCalls
+    const lines: string[] = [];
+    if (message.content) lines.push(message.content);
+    if (!isUser && message.toolCalls.length > 0) {
+      for (const tc of message.toolCalls) {
+        const display = resolveToolDisplay(tc.name);
+        lines.push(`\n[工具: ${display.label}]`);
+        if (tc.args) lines.push(`参数:\n${serializeValue(tc.args)}`);
+        if (tc.result) lines.push(`结果:\n${serializeValue(tc.result.content)}`);
+      }
+    }
+    return lines.join('\n\n');
+  };
+
   const handleCopy = async () => {
-    const text = message.content || '';
+    const text = buildCopyText();
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);

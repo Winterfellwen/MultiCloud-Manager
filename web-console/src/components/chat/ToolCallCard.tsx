@@ -16,8 +16,11 @@ import {
   Activity,
   AlertTriangle,
   DollarSign,
+  Copy,
+  Check,
   type LucideIcon,
 } from 'lucide-react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveToolDisplay } from '../../lib/openclaw/tool-display';
 import {
@@ -75,7 +78,7 @@ function extractResultText(content: unknown): string | undefined {
 }
 
 /** 序列化参数/结果为可展示字符串（自动解析 JSON 字符串并格式化） */
-function serializeValue(value: unknown): string {
+export function serializeValue(value: unknown): string {
   if (typeof value === 'string') {
     const trimmed = value.trim();
     if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -97,6 +100,7 @@ function serializeValue(value: unknown): string {
 export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardProps) {
   const display = resolveToolDisplay(toolCall.name);
   const IconComp = TOOL_ICON_MAP[display.icon] ?? Wrench;
+  const [copied, setCopied] = useState(false);
 
   // 提取结果文本并判断是否出错
   const resultText = toolCall.result
@@ -106,10 +110,26 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
   const isCompleted = toolCall.status === 'completed';
   const summary = formatCollapsedToolPreviewText(resultText);
 
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const argsStr = serializeValue(toolCall.args);
+    const resultStr = toolCall.result
+      ? serializeValue(toolCall.result.content)
+      : '(等待执行结果)';
+    const text = `工具: ${display.label}\n参数:\n${argsStr}\n结果:\n${resultStr}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback
+    }
+  };
+
   return (
     <div
       className={cn(
-        'my-2 rounded-md border bg-muted/30 text-sm',
+        'group/card my-2 rounded-md border bg-muted/30 text-sm',
         isError ? 'border-destructive/60' : 'border-border'
       )}
     >
@@ -131,8 +151,20 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
             {summary}
           </span>
         )}
+        {/* 复制按钮 */}
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={cn(
+            'shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/card:opacity-100',
+            copied && 'text-green-600 opacity-100'
+          )}
+          title={copied ? '已复制' : '复制工具调用'}
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+        </button>
         {/* 状态图标 */}
-        <span className="ml-auto flex shrink-0 items-center">
+        <span className="flex shrink-0 items-center">
           {isCompleted ? (
             isError ? (
               <AlertCircle className="h-3.5 w-3.5 text-destructive" />
@@ -155,6 +187,20 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
             className="overflow-hidden"
           >
             <div className="space-y-2 border-t border-border px-3 py-2">
+              {/* 展开态复制按钮 */}
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={cn(
+                    'flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                    copied && 'text-green-600'
+                  )}
+                >
+                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  {copied ? '已复制' : '复制'}
+                </button>
+              </div>
               {/* 参数 */}
               <div>
                 <div className="mb-1 text-xs text-muted-foreground">参数</div>

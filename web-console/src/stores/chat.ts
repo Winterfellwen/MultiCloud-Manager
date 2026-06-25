@@ -946,7 +946,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (text, attachments) => {
-    const { wsClient, currentSessionKey, selectedModel, enableThinking, reasoningEffort, mode } = get();
+    const { wsClient, currentSessionKey, selectedModel, enableThinking, reasoningEffort, mode, isSending } = get();
+    // 如果正在发送中（包括其他会话有 in-flight run），阻止重复发送
+    if (isSending) {
+      console.warn('[chat] sendMessage blocked: isSending is already true');
+      return;
+    }
     const hasAttachments = attachments && attachments.length > 0;
     if (!wsClient || !currentSessionKey || (!text.trim() && !hasAttachments)) return;
 
@@ -1028,9 +1033,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         );
         return {
           messagesBySession: { ...state.messagesBySession, [sessionKey]: newMsgs },
-          isSending: false,
+          // 后端拒绝发送（如会话已有正在进行的生成），保持 isSending=true 阻止重复发送
+          isSending: errorMsg.includes('正在进行的生成'),
         };
       });
+      // 如果后端拒绝了发送（已有 in-flight run），立即重载历史同步状态
+      if (errorMsg.includes('正在进行的生成')) {
+        get().loadSessionHistory(sessionKey);
+      }
     }
   },
 
