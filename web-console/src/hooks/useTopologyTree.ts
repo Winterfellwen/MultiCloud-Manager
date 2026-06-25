@@ -1,5 +1,26 @@
 import { useMemo } from 'react';
-import type { TopologyNode, TopologyEdge } from '@/types/topology';
+import type { TopologyNode, TopologyEdge, GroupMode } from '@/types/topology';
+
+function getCostBracket(cost: number): string {
+  if (cost <= 0) return 'free';
+  if (cost <= 100) return 'low';
+  if (cost <= 300) return 'mid';
+  return 'high';
+}
+
+const COST_BRACKET_LABELS: Record<string, string> = {
+  free: 'Free ($0)',
+  low: 'Low ($1-100)',
+  mid: 'Mid ($101-300)',
+  high: 'High ($300+)',
+};
+
+const COST_BRACKET_COLORS: Record<string, string> = {
+  free: '#9ca3af',
+  low: '#10b981',
+  mid: '#f59e0b',
+  high: '#ef4444',
+};
 
 export interface TreeNode {
   id: string;
@@ -25,7 +46,8 @@ function getHierarchyLevel(type: string): number {
  */
 export function useTopologyTree(
   nodes: TopologyNode[],
-  edges: TopologyEdge[]
+  edges: TopologyEdge[],
+  groupMode: GroupMode = 'hierarchy'
 ): { tree: TreeNode[]; nodeMap: Map<string, TopologyNode> } {
   return useMemo(() => {
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -136,8 +158,114 @@ export function useTopologyTree(
       });
     }
 
+    if (groupMode === 'cost') {
+      const groups = new Map<string, TopologyNode[]>();
+      for (const node of nodes) {
+        if (node.type === 'instance') {
+          const cost = (node.data?.monthlyCost as number) || 0;
+          const bracket = getCostBracket(cost);
+          if (!groups.has(bracket)) groups.set(bracket, []);
+          groups.get(bracket)!.push(node);
+        }
+      }
+      const tree: TreeNode[] = [];
+      for (const [bracket, bracketNodes] of groups) {
+        const providerNode: TopologyNode = {
+          id: `cost-${bracket}`,
+          type: 'provider',
+          label: COST_BRACKET_LABELS[bracket],
+          provider: '',
+          region: '',
+          status: 'active',
+          category: 'network',
+          icon: 'globe',
+          data: { costBracket: bracket, color: COST_BRACKET_COLORS[bracket] },
+        };
+        tree.push({
+          id: `cost-${bracket}`,
+          node: providerNode,
+          children: bracketNodes.map(n => ({
+            id: n.id, node: n, children: [], descendantCount: 0, instanceCount: 0,
+          })),
+          descendantCount: bracketNodes.length,
+          instanceCount: bracketNodes.length,
+        });
+      }
+      return { tree, nodeMap };
+    }
+
+    if (groupMode === 'semantic') {
+      const groups = new Map<string, TopologyNode[]>();
+      for (const node of nodes) {
+        if (node.type === 'instance') {
+          const svc = (node.data?.service as string) || 'other';
+          if (!groups.has(svc)) groups.set(svc, []);
+          groups.get(svc)!.push(node);
+        }
+      }
+      const tree: TreeNode[] = [];
+      for (const [svc, svcNodes] of groups) {
+        const providerNode: TopologyNode = {
+          id: `svc-${svc}`,
+          type: 'provider',
+          label: svc,
+          provider: '',
+          region: '',
+          status: 'active',
+          category: 'network',
+          icon: 'layers',
+          data: {},
+        };
+        tree.push({
+          id: `svc-${svc}`,
+          node: providerNode,
+          children: svcNodes.map(n => ({
+            id: n.id, node: n, children: [], descendantCount: 0, instanceCount: 0,
+          })),
+          descendantCount: svcNodes.length,
+          instanceCount: svcNodes.length,
+        });
+      }
+      return { tree, nodeMap };
+    }
+
+    if (groupMode === 'team') {
+      const groups = new Map<string, TopologyNode[]>();
+      for (const node of nodes) {
+        if (node.type === 'instance') {
+          const team = (node.data?.team as string) || 'unassigned';
+          if (!groups.has(team)) groups.set(team, []);
+          groups.get(team)!.push(node);
+        }
+      }
+      const tree: TreeNode[] = [];
+      for (const [team, teamNodes] of groups) {
+        const providerNode: TopologyNode = {
+          id: `team-${team}`,
+          type: 'provider',
+          label: team,
+          provider: '',
+          region: '',
+          status: 'active',
+          category: 'network',
+          icon: 'users',
+          data: {},
+        };
+        tree.push({
+          id: `team-${team}`,
+          node: providerNode,
+          children: teamNodes.map(n => ({
+            id: n.id, node: n, children: [], descendantCount: 0, instanceCount: 0,
+          })),
+          descendantCount: teamNodes.length,
+          instanceCount: teamNodes.length,
+        });
+      }
+      return { tree, nodeMap };
+    }
+
     return { tree, nodeMap };
-  }, [nodes, edges]);
+  }, [nodes, edges, groupMode]);
 }
 
 /**
