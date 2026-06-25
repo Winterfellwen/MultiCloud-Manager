@@ -510,6 +510,19 @@
     "loading": "加载拓扑数据中...",
     "loadFailed": "加载失败",
     "empty": "暂无拓扑数据",
-    "emptyHint": "请添加云账号并同步资源以查看拓扑"
+    "emptyHint": "请添加云账号并同步资源以查看拓扑",
+    "groupMode": {
+      "hierarchy": "层级",
+      "semantic": "语义",
+      "team": "团队",
+      "cost": "成本"
+    },
+    "detailModal": {
+      "overview": "概览",
+      "metrics": "指标",
+      "logs": "日志",
+      "connections": "连接",
+      "viewDetails": "跳转详情"
+    }
   }
 }

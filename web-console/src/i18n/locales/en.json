@@ -510,6 +510,19 @@
     "loading": "Loading topology data...",
     "loadFailed": "Load failed",
     "empty": "No topology data",
-    "emptyHint": "Add cloud accounts and sync resources to view topology"
+    "emptyHint": "Add cloud accounts and sync resources to view topology",
+    "groupMode": {
+      "hierarchy": "Hierarchy",
+      "semantic": "Semantic",
+      "team": "Team",
+      "cost": "Cost"
+    },
+    "detailModal": {
+      "overview": "Overview",
+      "metrics": "Metrics",
+      "logs": "Logs",
+      "connections": "Connections",
+      "viewDetails": "View Details"
+    }
   }
 }
