@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
 import { TopologyFilter } from '@/components/topology/TopologyFilter';
 import { ViewSwitcher } from '@/components/topology/ViewSwitcher';
@@ -85,12 +86,14 @@ export default function Topology() {
               {t('topology.loadFailed')}：{(error as Error).message}
             </div>
           )}
-          <TopologyCanvas
-            nodes={filteredNodes}
-            edges={filteredEdges}
-            isLoading={isLoading}
-            groupMode={groupMode}
-          />
+          <ReactFlowProvider>
+            <TopologyCanvas
+              nodes={filteredNodes}
+              edges={filteredEdges}
+              isLoading={isLoading}
+              groupMode={groupMode}
+            />
+          </ReactFlowProvider>
         </div>
       </div>
     </div>

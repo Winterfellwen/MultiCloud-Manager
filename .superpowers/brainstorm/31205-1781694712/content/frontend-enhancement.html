@@ -1,0 +1,161 @@
+<h2>前端增强机制</h2>
+<p class="subtitle">复制按钮、状态高亮、计时、流式输出的实现方式</p>
+
+<div class="section">
+  <h3>① 复制按钮</h3>
+  <div class="mockup">
+    <div class="mockup-header">复制按钮位置与交互</div>
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8;">
+      
+      <!-- 调用开始 blockquote — 无复制按钮 -->
+      <div style="background:var(--bg);border-left:3px solid #f59e0b;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0;font-size:12px;">
+        <span style="color:#f59e0b;font-weight:600;">🔧 shell_exec</span>
+        <span style="color:var(--text-muted);margin-left:4px;font-size:11px;">(09:35:55)</span>
+        <span style="color:var(--text-secondary);margin-left:8px;">docker ps</span>
+      </div>
+      
+      <!-- 代码框 — 有复制按钮 -->
+      <div style="background:#1a1a2e;border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin:8px 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;position:relative;">
+        <div style="position:absolute;top:6px;right:8px;display:flex;gap:6px;">
+          <button style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--text-muted);cursor:pointer;">📋 复制</button>
+        </div>
+        <div style="color:var(--text-secondary);">NAMES            STATUS</div>
+        <div style="color:var(--text-secondary);">multicloud       Up 5 minutes</div>
+      </div>
+      
+      <!-- 完成 blockquote — 无复制按钮 -->
+      <div style="background:var(--bg);border-left:3px solid #22c55e;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0;font-size:12px;">
+        <span style="color:#22c55e;font-weight:600;">✅ shell_exec 完成</span>
+        <span style="color:var(--text-muted);margin-left:8px;">(2.3s)</span>
+      </div>
+      
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">复制逻辑</div>
+        <div style="color:var(--text-secondary);font-size:11px;line-height:1.6;">
+          <div>• <b>代码框</b> — 复制代码框内容（纯输出文本）</div>
+          <div>• <b>消息级复制</b> — 复制整条消息（AI 文本 + 所有工具调用完整信息）</div>
+          <div>• 复制按钮点击后显示 "✅ 已复制" 反馈，1.5s 后恢复</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>② 状态关键词高亮</h3>
+  <div class="mockup">
+    <div class="mockup-header">前端自动检测并增强状态关键词</div>
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8;">
+      
+      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);">
+            <th style="text-align:left;padding:8px;color:var(--text-muted);font-weight:600;">AI 输出</th>
+            <th style="text-align:left;padding:8px;color:var(--text-muted);font-weight:600;">前端增强</th>
+            <th style="text-align:left;padding:8px;color:var(--text-muted);font-weight:600;">样式</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;font-family:var(--font-mono);font-size:11px;">🔧 shell_exec</td>
+            <td style="padding:8px;">保持原样</td>
+            <td style="padding:8px;"><span style="color:#f59e0b;font-weight:600;">黄色左边框</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;font-family:var(--font-mono);font-size:11px;">✅ shell_exec 完成</td>
+            <td style="padding:8px;">保持原样</td>
+            <td style="padding:8px;"><span style="color:#22c55e;font-weight:600;">绿色左边框</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;font-family:var(--font-mono);font-size:11px;">❌ shell_exec 失败</td>
+            <td style="padding:8px;">保持原样</td>
+            <td style="padding:8px;"><span style="color:#ef4444;font-weight:600;">红色左边框</span></td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">检测规则</div>
+        <div style="color:var(--text-secondary);font-size:11px;line-height:1.6;">
+          <div>• 前端在 markdown 渲染后扫描 DOM</div>
+          <div>• 匹配 blockquote 内的 🔧/✅/❌ 图标</div>
+          <div>• 自动添加对应的左边框颜色和 subtle 背景色</div>
+          <div>• 不依赖 AI 输出精确文本，只依赖图标前缀</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>③ 计时显示</h3>
+  <div class="mockup">
+    <div class="mockup-header">双层计时：状态栏 + AI 文本</div>
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8;">
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <!-- 状态栏计时 -->
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;">
+          <div style="font-weight:600;font-size:12px;margin-bottom:8px;">底部状态栏（实时）</div>
+          <div style="background:#1a1a2e;border:1px solid #f59e0b;border-radius:4px;padding:8px 12px;font-size:11px;display:flex;align-items:center;gap:8px;">
+            <svg width="14" height="14" style="animation:spin 1s linear infinite;"><circle cx="7" cy="7" r="5" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="20 10"/></svg>
+            <span style="color:#f59e0b;">正在执行 shell_exec...</span>
+            <span style="color:var(--text-muted);margin-left:auto;font-family:var(--font-mono);">⏱ 2.3s</span>
+          </div>
+        </div>
+        
+        <!-- AI 文本计时 -->
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;">
+          <div style="font-weight:600;font-size:12px;margin-bottom:8px;">AI 文本（完成后）</div>
+          <div style="background:var(--bg);border-left:3px solid #22c55e;padding:8px 12px;border-radius:0 4px 4px 0;font-size:12px;">
+            <span style="color:#22c55e;font-weight:600;">✅ shell_exec 完成</span>
+            <span style="color:var(--text-muted);margin-left:8px;">(2.3s)</span>
+          </div>
+        </div>
+      </div>
+      
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">计时分工</div>
+        <div style="color:var(--text-secondary);font-size:11px;line-height:1.6;">
+          <div>• <b>状态栏</b> — 显示当前正在执行的工具的实时计时（每 100ms 更新）</div>
+          <div>• <b>AI 文本</b> — 工具完成后，AI 输出中包含最终耗时</div>
+          <div>• 两者不冲突：状态栏是实时的，AI 文本是最终的</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>④ 流式输出实时显示</h3>
+  <div class="mockup">
+    <div class="mockup-header">代码块随 token 流逐步显示</div>
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8;">
+      
+      <div style="background:var(--bg);border-left:3px solid #f59e0b;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0;font-size:12px;">
+        <span style="color:#f59e0b;font-weight:600;">🔧 shell_exec</span>
+        <span style="color:var(--text-muted);margin-left:4px;font-size:11px;">(09:35:55)</span>
+        <span style="color:var(--text-secondary);margin-left:8px;">docker logs multicloud --tail 20</span>
+      </div>
+      
+      <!-- 流式输出：代码块逐步填充 -->
+      <div style="background:#1a1a2e;border:1px solid #f59e0b;border-radius:6px;padding:10px 12px;margin:8px 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;max-height:120px;overflow-y:auto;">
+        <div style="color:var(--text-secondary);">2026/06/17 09:35:55 Starting server...</div>
+        <div style="color:var(--text-secondary);">2026/06/17 09:35:56 PostgreSQL connected</div>
+        <div style="color:var(--text-secondary);">2026/06/17 09:35:57 Redis connected</div>
+        <div style="color:#f59e0b;">█</div>
+      </div>
+      
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;margin-top:12px;">
+        <div style="font-weight:600;margin-bottom:6px;">流式输出机制</div>
+        <div style="color:var(--text-secondary);font-size:11px;line-height:1.6;">
+          <div>• AI 输出 <code>```output</code> 后，前端创建代码块容器</div>
+          <div>• 后续 tool_output 事件的文本追加到该代码块内</div>
+          <div>• 代码块自动滚动到底部</div>
+          <div>• 工具完成后，代码块边框从黄色变为默认色</div>
+          <div>• 代码块右上角显示复制按钮</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

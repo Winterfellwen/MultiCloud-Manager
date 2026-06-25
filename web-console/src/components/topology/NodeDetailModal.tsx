@@ -8,7 +8,7 @@ import { OverviewTab } from './NodeDetailTabs/OverviewTab';
 import { MetricsTab } from './NodeDetailTabs/MetricsTab';
 import { LogsTab } from './NodeDetailTabs/LogsTab';
 import { ConnectionsTab } from './NodeDetailTabs/ConnectionsTab';
-import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
+import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP, NODE_COLORS, type TopologyCategory } from '@/types/topology';
 import { cn } from '@/lib/utils';
 
 interface NodeDetailModalProps {
@@ -34,6 +34,9 @@ export function NodeDetailModal({ node, allEdges, allNodes, onClose }: NodeDetai
 
   if (!node) return null;
 
+  const color = NODE_COLORS[node.category as TopologyCategory] || '#6b7280';
+  const isRunning = node.status === 'running' || node.status === 'active';
+
   function handleViewDetails() {
     if (!node) return;
     const baseRoute = RESOURCE_TYPE_ROUTE_MAP[node.type] || '/resources';
@@ -44,56 +47,108 @@ export function NodeDetailModal({ node, allEdges, allNodes, onClose }: NodeDetai
     <AnimatePresence>
       {node && (
         <>
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 backdrop-blur-sm"
+            style={{ background: `linear-gradient(135deg, ${color}10 0%, rgba(0,0,0,0.4) 100%)` }}
             onClick={onClose}
           />
 
+          {/* Modal */}
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
           >
             <div
-              className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto"
+              className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-3xl border border-white/30 shadow-2xl pointer-events-auto overflow-hidden"
+              style={{
+                background: `linear-gradient(160deg, rgba(255,255,255,0.98) 0%, ${color}05 100%)`,
+                backdropFilter: 'blur(20px)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b">
-                <div>
-                  <h2 className="text-lg font-semibold">{node.label}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {node.provider} / {node.region}
-                  </p>
+              {/* Top accent */}
+              <div
+                className="absolute top-0 left-8 right-8 h-[2px] rounded-full"
+                style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
+              />
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="flex items-center justify-center w-11 h-11 rounded-2xl shadow-sm"
+                    style={{
+                      background: `linear-gradient(135deg, ${color}25 0%, ${color}10 100%)`,
+                      boxShadow: `0 2px 8px ${color}20`,
+                    }}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">{node.label}</h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-sm text-gray-500">
+                        {node.provider} / {node.region}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <div className={cn(
+                          'w-1.5 h-1.5 rounded-full',
+                          isRunning ? 'bg-emerald-400' : 'bg-gray-300'
+                        )} />
+                        <span className="text-xs text-gray-500">{node.status}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                  <X className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="rounded-xl hover:bg-gray-100/80 transition-colors"
+                >
+                  <X className="h-4 w-4 text-gray-400" />
                 </Button>
               </div>
 
-              <div className="flex border-b px-6">
+              {/* Tabs */}
+              <div className="flex border-b border-gray-100 px-7">
                 {TABS.map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
                     className={cn(
-                      'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+                      'relative px-5 py-3 text-sm font-medium transition-colors',
                       activeTab === tab.key
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                        ? 'text-gray-900'
+                        : 'text-gray-400 hover:text-gray-600'
                     )}
                   >
                     {t(tab.labelKey)}
+                    {activeTab === tab.key && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full"
+                        style={{ backgroundColor: color }}
+                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                      />
+                    )}
                   </button>
                 ))}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-6 py-4">
+              {/* Tab Content */}
+              <div className="flex-1 overflow-y-auto px-7 py-5">
                 {activeTab === 'overview' && <OverviewTab node={node} />}
                 {activeTab === 'metrics' && <MetricsTab />}
                 {activeTab === 'logs' && <LogsTab />}
@@ -102,8 +157,13 @@ export function NodeDetailModal({ node, allEdges, allNodes, onClose }: NodeDetai
                 )}
               </div>
 
-              <div className="border-t px-6 py-3 flex justify-end">
-                <Button variant="outline" onClick={handleViewDetails}>
+              {/* Footer */}
+              <div className="border-t border-gray-100 px-7 py-4 flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleViewDetails}
+                  className="rounded-xl border-gray-200 hover:bg-gray-50 transition-colors"
+                >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   {t('topology.detailModal.viewDetails')}
                 </Button>

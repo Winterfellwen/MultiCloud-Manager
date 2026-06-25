@@ -154,9 +154,37 @@ export function useTopologyCluster(
       visibleNodeIds.add(node.id);
     }
 
-    const visibleEdges = edges.filter(
-      e => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target)
-    );
+    // Build aggregation edges: when a cluster is collapsed,
+    // replace child node references with the cluster node ID
+    const clusterByChild = new Map<string, string>();
+    for (const cluster of clusters) {
+      if (cluster.collapsed) {
+        for (const childId of cluster.childNodeIds) {
+          clusterByChild.set(childId, cluster.id);
+        }
+      }
+    }
+
+    const edgeKeySet = new Set<string>();
+    const visibleEdges: TopologyEdge[] = [];
+
+    for (const edge of edges) {
+      const src = clusterByChild.get(edge.source) || edge.source;
+      const tgt = clusterByChild.get(edge.target) || edge.target;
+
+      if (!visibleNodeIds.has(src) || !visibleNodeIds.has(tgt)) continue;
+      if (src === tgt) continue; // skip self-loops within a cluster
+
+      const key = `${src}->${tgt}:${edge.type}`;
+      if (edgeKeySet.has(key)) continue;
+      edgeKeySet.add(key);
+
+      visibleEdges.push({
+        ...edge,
+        source: src,
+        target: tgt,
+      });
+    }
 
     return { visibleNodes, visibleEdges, clusters };
   }, [nodes, edges, groupMode, collapsedClusters]);

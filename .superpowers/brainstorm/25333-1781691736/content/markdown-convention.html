@@ -1,0 +1,79 @@
+<h2>Markdown 约定格式</h2>
+<p class="subtitle">AI 工具调用的 markdown 输出规范</p>
+
+<div class="section">
+  <h3>工具调用流程示例</h3>
+  <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">AI 在回复中按以下格式描述工具调用，前端识别后自动增强</p>
+  
+  <div class="mockup">
+    <div class="mockup-header">AI 回复 — 完整流程</div>
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8;">
+      <p>我来帮你查看当前运行的 Docker 容器。</p>
+      
+      <div style="background:var(--bg);border-left:3px solid var(--warning);padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0;font-size:12px;">
+        <span style="color:var(--warning);font-weight:600;">🔧 shell_exec</span>
+        <span style="color:var(--text-muted);margin-left:8px;">docker ps --format "table {{.Names}}\t{{.Status}}"</span>
+      </div>
+      
+      <div style="background:#1a1a2e;border:1px solid var(--border);border-radius:4px;padding:10px 12px;margin:8px 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;overflow-x:auto;">
+        <div style="color:var(--text-secondary);">NAMES            STATUS</div>
+        <div style="color:var(--text-secondary);">multicloud       Up 5 minutes (healthy)</div>
+        <div style="color:var(--text-secondary);">multicloud-db    Up 5 minutes (healthy)</div>
+        <div style="color:var(--text-secondary);">multicloud-redis Up 5 minutes</div>
+      </div>
+      
+      <div style="background:var(--bg);border-left:3px solid var(--success);padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0;font-size:12px;">
+        <span style="color:var(--success);font-weight:600;">✅ shell_exec 完成</span>
+        <span style="color:var(--text-muted);margin-left:8px;">(2.3s)</span>
+        <button style="float:right;background:transparent;border:1px solid var(--border);border-radius:10px;padding:2px 8px;font-size:11px;color:var(--text-muted);cursor:pointer;">📋 复制</button>
+      </div>
+      
+      <p>所有 3 个容器都在正常运行，状态健康。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>三种约定块格式</h3>
+  <div style="display:grid;gap:10px;">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;">
+      <div style="font-weight:600;font-size:12px;margin-bottom:6px;">① 工具调用开始</div>
+      <code style="font-size:11px;color:var(--text-secondary);">> 🔧 tool_name: 参数摘要</code>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">blockquote + 🔧 图标 + 工具名 + 冒号 + 参数</div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;">
+      <div style="font-weight:600;font-size:12px;margin-bottom:6px;">② 工具执行结果</div>
+      <code style="font-size:11px;color:var(--text-secondary);">> ✅ tool_name 完成 (2.3s)</code>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">blockquote + ✅ 图标 + 工具名 + 完成 + 耗时</div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;">
+      <div style="font-weight:600;font-size:12px;margin-bottom:6px;">③ 工具执行失败</div>
+      <code style="font-size:11px;color:var(--text-secondary);">> ❌ tool_name 失败: 错误信息</code>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">blockquote + ❌ 图标 + 工具名 + 失败 + 错误信息</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>流式输出（实时）</h3>
+  <div class="mockup">
+    <div class="mockup-header">流式输出过程</div>
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8;">
+      <p>我来查看容器日志。</p>
+      
+      <div style="background:var(--bg);border-left:3px solid var(--warning);padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0;font-size:12px;">
+        <span style="color:var(--warning);font-weight:600;">🔧 shell_exec</span>
+        <span style="color:var(--text-muted);margin-left:8px;">docker logs multicloud --tail 20</span>
+      </div>
+      
+      <div style="background:#1a1a2e;border:1px solid var(--warning);border-radius:4px;padding:10px 12px;margin:8px 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;max-height:120px;overflow-y:auto;">
+        <div style="color:var(--text-secondary);">2026/06/17 09:35:55 Starting server...</div>
+        <div style="color:var(--text-secondary);">2026/06/17 09:35:56 PostgreSQL connected</div>
+        <div style="color:var(--text-secondary);">2026/06/17 09:35:57 Redis connected</div>
+        <div style="color:var(--warning);">█</div>
+      </div>
+      
+      <div style="font-size:11px;color:var(--text-muted);font-style:italic;">底部状态栏: ⏱ 正在执行 shell_exec... 2.3s</div>
+    </div>
+  </div>
+</div>
