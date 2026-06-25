@@ -554,7 +554,10 @@ export function getDemoAuditLogs(): DemoAuditLog[] {
   return logs;
 }
 
-// ===== 拓扑模拟数据 =====
+// ===== 拓扑模拟数据（250-350 nodes） =====
+const TOPOLOGY_PROVIDERS = ['aws', 'aliyun', 'azure', 'huawei', 'tencent'] as const;
+const TOPOLOGY_TEAMS = ['frontend', 'backend', 'data', 'devops', 'ml'] as const;
+
 let _topologyCache: { nodes: TopologyNode[]; edges: TopologyEdge[] } | null = null;
 
 export function getDemoTopology(filters?: {
@@ -570,248 +573,415 @@ export function getDemoTopology(filters?: {
     const edges: TopologyEdge[] = [];
     let nodeIdx = 0;
 
-    // 创建 VPC（3个）
-    const vpcs = Array.from({ length: 3 }, (_, i) => {
-      const id = `demo-vpc-${i}`;
-      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
-      const region = pick(PROVIDER_REGIONS[provider], rand);
-      const cloudAccountId = `demo-${provider}-account`;
-      nodes.push({
-        id,
-        type: 'vpc',
-        label: `VPC-${i + 1}`,
-        provider,
-        region,
-        status: 'active',
-        category: 'network',
-        icon: 'git-branch',
-        data: { cidrBlock: `10.${i}.0.0/16`, subnetCount: 2 + Math.floor(rand() * 2), cloudAccountId },
-      });
-      return { id, provider, region, cloudAccountId };
-    });
+    // --- Per-provider scaffolding ---
+    const providerVpcs: Record<string, Array<{ id: string; region: string; cloudAccountId: string }>> = {};
+    const providerSubnets: Record<string, Array<{ id: string; region: string; vpcId: string; cloudAccountId: string }>> = {};
+    const providerInstances: Record<string, Array<{ id: string; region: string; cloudAccountId: string }>> = {};
 
-    // 创建子网（每个 VPC 2-3 个）
-    const subnets: Array<{ id: string; provider: string; region: string; vpcId: string; cloudAccountId: string }> = [];
-    for (const vpc of vpcs) {
-      const subnetCount = 2 + Math.floor(rand() * 2);
-      for (let i = 0; i < subnetCount; i++) {
-        const id = `demo-subnet-${nodeIdx++}`;
-        subnets.push({ id, provider: vpc.provider, region: vpc.region, vpcId: vpc.id, cloudAccountId: vpc.cloudAccountId });
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      providerVpcs[provider] = [];
+      providerSubnets[provider] = [];
+      providerInstances[provider] = [];
+    }
+
+    // --- VPCs (2-4 per provider, ~15 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const vpcCount = 2 + Math.floor(rand() * 3); // 2-4
+      for (let i = 0; i < vpcCount; i++) {
+        const id = `demo-vpc-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const cloudAccountId = `demo-${provider}-account`;
         nodes.push({
           id,
-          type: 'subnet',
-          label: `Subnet-${vpc.id.split('-').pop()}-${i + 1}`,
-          provider: vpc.provider,
-          region: vpc.region,
+          type: 'vpc',
+          label: `${provider.toUpperCase()}-VPC-${i + 1}`,
+          provider,
+          region,
           status: 'active',
           category: 'network',
           icon: 'git-branch',
-          data: { cidrBlock: `10.${vpc.id.split('-').pop()}.${i}.0/24`, cloudAccountId: vpc.cloudAccountId },
+          data: {
+            cidrBlock: `10.${TOPOLOGY_PROVIDERS.indexOf(provider) * 4 + i}.0.0/16`,
+            cloudAccountId,
+            team: pick(TOPOLOGY_TEAMS, rand),
+          },
         });
-        edges.push({
-          id: `edge-${id}-${vpc.id}`,
-          source: id,
-          target: vpc.id,
-          type: 'contains',
-          label: '位于',
-        });
+        providerVpcs[provider].push({ id, region, cloudAccountId });
       }
     }
 
-    // 创建实例（每个子网 5-10 个）
-    const instances: Array<{ id: string; provider: string; region: string; cloudAccountId: string }> = [];
-    for (const subnet of subnets) {
-      const instanceCount = 5 + Math.floor(rand() * 6);
-      for (let i = 0; i < instanceCount; i++) {
-        const id = `demo-instance-${nodeIdx++}`;
-        const status = weightedPick(['running', 'stopped', 'pending'], [0.7, 0.2, 0.1], rand);
-        instances.push({ id, provider: subnet.provider, region: subnet.region, cloudAccountId: subnet.cloudAccountId });
-        nodes.push({
-          id,
-          type: 'instance',
-          label: `Instance-${instances.length}`,
-          provider: subnet.provider,
-          region: subnet.region,
-          status,
-          category: 'compute',
-          icon: 'server',
-          data: { cpu: pick([1, 2, 4, 8], rand), memoryMb: pick([2048, 4096, 8192, 16384], rand), cloudAccountId: subnet.cloudAccountId, monthlyCost: Math.floor(rand() * 500 + 50) },
-        });
-        edges.push({
-          id: `edge-${id}-${subnet.id}`,
-          source: id,
-          target: subnet.id,
-          type: 'contains',
-          label: '位于',
-        });
-      }
-    }
-
-    // 创建安全组（每个 VPC 2 个）
-    for (const vpc of vpcs) {
-      for (let i = 0; i < 2; i++) {
-        const id = `demo-sg-${nodeIdx++}`;
-        nodes.push({
-          id,
-          type: 'securitygroup',
-          label: `SG-${vpc.id.split('-').pop()}-${i + 1}`,
-          provider: vpc.provider,
-          region: vpc.region,
-          status: 'active',
-          category: 'security',
-          icon: 'shield',
-          data: { ruleCount: 5 + Math.floor(rand() * 10), cloudAccountId: vpc.cloudAccountId },
-        });
-        // 随机选择一些实例关联此安全组
-        const relatedInstances = instances
-          .filter(inst => inst.region === vpc.region && rand() > 0.5)
-          .slice(0, 3);
-        for (const inst of relatedInstances) {
+    // --- Subnets (2-3 per VPC, ~35 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      for (const vpc of providerVpcs[provider]) {
+        const subnetCount = 2 + Math.floor(rand() * 2); // 2-3
+        for (let i = 0; i < subnetCount; i++) {
+          const id = `demo-subnet-${nodeIdx++}`;
+          nodes.push({
+            id,
+            type: 'subnet',
+            label: `Subnet-${vpc.id.split('-').pop()}-${i + 1}`,
+            provider,
+            region: vpc.region,
+            status: 'active',
+            category: 'network',
+            icon: 'git-branch',
+            data: {
+              cidrBlock: `10.${vpc.id.split('-').pop()}.${i}.0/24`,
+              cloudAccountId: vpc.cloudAccountId,
+              team: pick(TOPOLOGY_TEAMS, rand),
+            },
+          });
           edges.push({
-            id: `edge-${inst.id}-${id}`,
-            source: inst.id,
-            target: id,
-            type: 'protected-by',
-            label: '受保护',
+            id: `edge-${id}-${vpc.id}`,
+            source: id,
+            target: vpc.id,
+            type: 'contains',
+            label: '位于',
+          });
+          providerSubnets[provider].push({ id, region: vpc.region, vpcId: vpc.id, cloudAccountId: vpc.cloudAccountId });
+        }
+      }
+    }
+
+    // --- Instances (5-10 per subnet, ~250 total) ---
+    const INSTANCE_SPECS_TOPO = [
+      { cpu: 1, memoryMb: 2048, diskGb: 20, monthlyCostMin: 10, monthlyCostMax: 50 },
+      { cpu: 2, memoryMb: 4096, diskGb: 40, monthlyCostMin: 30, monthlyCostMax: 120 },
+      { cpu: 4, memoryMb: 8192, diskGb: 80, monthlyCostMin: 80, monthlyCostMax: 300 },
+      { cpu: 8, memoryMb: 16384, diskGb: 160, monthlyCostMin: 200, monthlyCostMax: 500 },
+    ];
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      for (const subnet of providerSubnets[provider]) {
+        const instanceCount = 4 + Math.floor(rand() * 5); // 4-8
+        for (let i = 0; i < instanceCount; i++) {
+          const id = `demo-instance-${nodeIdx++}`;
+          const status = weightedPick(['running', 'stopped', 'pending', 'error'], [0.6, 0.2, 0.15, 0.05], rand);
+          const spec = pick(INSTANCE_SPECS_TOPO, rand);
+          const cost = Math.floor(spec.monthlyCostMin + rand() * (spec.monthlyCostMax - spec.monthlyCostMin));
+          nodes.push({
+            id,
+            type: 'instance',
+            label: `${provider}-inst-${String(providerInstances[provider].length + 1).padStart(3, '0')}`,
+            provider,
+            region: subnet.region,
+            status,
+            category: 'compute',
+            icon: 'server',
+            data: {
+              cpu: spec.cpu,
+              memoryMb: spec.memoryMb,
+              diskGb: spec.diskGb,
+              cloudAccountId: subnet.cloudAccountId,
+              monthlyCost: cost,
+              team: pick(TOPOLOGY_TEAMS, rand),
+            },
+          });
+          edges.push({
+            id: `edge-${id}-${subnet.id}`,
+            source: id,
+            target: subnet.id,
+            type: 'contains',
+            label: '位于',
+          });
+          providerInstances[provider].push({ id, region: subnet.region, cloudAccountId: subnet.cloudAccountId });
+        }
+      }
+    }
+
+    // --- Security Groups (2 per VPC, ~30 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      for (const vpc of providerVpcs[provider]) {
+        for (let i = 0; i < 2; i++) {
+          const id = `demo-sg-${nodeIdx++}`;
+          nodes.push({
+            id,
+            type: 'securitygroup',
+            label: `SG-${provider}-${vpc.id.split('-').pop()}-${i + 1}`,
+            provider,
+            region: vpc.region,
+            status: 'active',
+            category: 'security',
+            icon: 'shield',
+            data: {
+              ruleCount: 5 + Math.floor(rand() * 10),
+              cloudAccountId: vpc.cloudAccountId,
+              team: pick(TOPOLOGY_TEAMS, rand),
+            },
+          });
+          edges.push({
+            id: `edge-${id}-${vpc.id}`,
+            source: id,
+            target: vpc.id,
+            type: 'contains',
+            label: '位于',
+          });
+          // Connect some instances to this SG
+          const regionInstances = providerInstances[provider].filter(inst => inst.region === vpc.region);
+          const sgInstances = regionInstances.filter(() => rand() > 0.6).slice(0, 4);
+          for (const inst of sgInstances) {
+            edges.push({
+              id: `edge-${inst.id}-${id}`,
+              source: inst.id,
+              target: id,
+              type: 'protected-by',
+              label: '受保护',
+            });
+          }
+        }
+      }
+    }
+
+    // --- Load Balancers (1-2 per provider, ~8 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const lbCount = 1 + Math.floor(rand() * 2); // 1-2
+      for (let i = 0; i < lbCount; i++) {
+        const id = `demo-lb-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const cloudAccountId = `demo-${provider}-account`;
+        nodes.push({
+          id,
+          type: 'loadbalancer',
+          label: `${provider.toUpperCase()}-LB-${i + 1}`,
+          provider,
+          region,
+          status: 'active',
+          category: 'network',
+          icon: 'share-2',
+          data: {
+            type: pick(['application', 'network'], rand),
+            scheme: pick(['internet-facing', 'internal'], rand),
+            cloudAccountId,
+            team: pick(TOPOLOGY_TEAMS, rand),
+            monthlyCost: Math.floor(50 + rand() * 200),
+          },
+        });
+        // Route to up to 5 instances in same region
+        const regionInstances = providerInstances[provider].filter(inst => inst.region === region);
+        const targets = regionInstances.filter(() => rand() > 0.5).slice(0, 5);
+        for (const inst of targets) {
+          edges.push({
+            id: `edge-${id}-${inst.id}`,
+            source: id,
+            target: inst.id,
+            type: 'routes-to',
+            label: '转发',
           });
         }
       }
     }
 
-    // 创建负载均衡器（2个）
-    for (let i = 0; i < 2; i++) {
-      const id = `demo-lb-${nodeIdx++}`;
-      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
-      const region = pick(PROVIDER_REGIONS[provider], rand);
-      const cloudAccountId = `demo-${provider}-account`;
-      nodes.push({
-        id,
-        type: 'loadbalancer',
-        label: `LB-${i + 1}`,
-        provider,
-        region,
-        status: 'active',
-        category: 'network',
-        icon: 'share-2',
-        data: { type: pick(['application', 'network'], rand), scheme: 'internet-facing', cloudAccountId },
-      });
-      // 关联一些实例
-      const targetInstances = instances
-        .filter(inst => inst.region === region)
-        .slice(0, 3);
-      for (const inst of targetInstances) {
-        edges.push({
-          id: `edge-${id}-${inst.id}`,
-          source: id,
-          target: inst.id,
-          type: 'routes-to',
-          label: '转发',
+    // --- Databases (1-2 per provider, ~8 total) ---
+    const DB_ENGINES = ['mysql', 'postgresql', 'mongodb', 'mariadb', 'oracle'];
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const dbCount = 1 + Math.floor(rand() * 2); // 1-2
+      for (let i = 0; i < dbCount; i++) {
+        const id = `demo-db-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const vpc = providerVpcs[provider].find(v => v.region === region) || providerVpcs[provider][0];
+        const cloudAccountId = `demo-${provider}-account`;
+        const cost = Math.floor(50 + rand() * 1950); // $50-$2000
+        nodes.push({
+          id,
+          type: 'database',
+          label: `${provider.toUpperCase()}-DB-${i + 1}`,
+          provider,
+          region,
+          status: weightedPick(['active', 'stopped', 'pending'], [0.8, 0.1, 0.1], rand),
+          category: 'database',
+          icon: 'database',
+          data: {
+            engine: pick(DB_ENGINES, rand),
+            engineVersion: pick(['8.0', '13.0', '5.7', '14.0'], rand),
+            cloudAccountId,
+            monthlyCost: cost,
+            team: pick(TOPOLOGY_TEAMS, rand),
+          },
+        });
+        if (vpc) {
+          edges.push({
+            id: `edge-${id}-${vpc.id}`,
+            source: id,
+            target: vpc.id,
+            type: 'contains',
+            label: '位于',
+          });
+        }
+      }
+    }
+
+    // --- Object Storage Buckets (2-3 per provider, ~12 total) ---
+    const STORAGE_CLASSES = ['standard', 'standard-ia', 'glacier', 'cold'];
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const bucketCount = 2 + Math.floor(rand() * 2); // 2-3
+      for (let i = 0; i < bucketCount; i++) {
+        const id = `demo-bucket-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const cloudAccountId = `demo-${provider}-account`;
+        nodes.push({
+          id,
+          type: 'bucket',
+          label: `${provider.toUpperCase()}-Bucket-${i + 1}`,
+          provider,
+          region,
+          status: 'active',
+          category: 'storage',
+          icon: 'database',
+          data: {
+            storageClass: pick(STORAGE_CLASSES, rand),
+            sizeBytes: Math.floor(rand() * 5000000000),
+            cloudAccountId,
+            team: pick(TOPOLOGY_TEAMS, rand),
+            monthlyCost: Math.floor(1 + rand() * 50),
+          },
         });
       }
     }
 
-    // 创建数据库（3个）
-    for (let i = 0; i < 3; i++) {
-      const id = `demo-db-${nodeIdx++}`;
-      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
-      const region = pick(PROVIDER_REGIONS[provider], rand);
-      const vpc = vpcs.find(v => v.region === region) || vpcs[0];
-      const cloudAccountId = `demo-${provider}-account`;
-      nodes.push({
-        id,
-        type: 'database',
-        label: `DB-${i + 1}`,
-        provider,
-        region,
-        status: 'active',
-        category: 'database',
-        icon: 'database',
-        data: { engine: pick(['mysql', 'postgresql', 'mongodb'], rand), engineVersion: '8.0', cloudAccountId, monthlyCost: Math.floor(rand() * 2000 + 200) },
-      });
-      edges.push({
-        id: `edge-${id}-${vpc.id}`,
-        source: id,
-        target: vpc.id,
-        type: 'contains',
-        label: '位于',
-      });
+    // --- Cache (1-2 per provider, ~6 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const cacheCount = 1 + Math.floor(rand() * 2); // 1-2
+      for (let i = 0; i < cacheCount; i++) {
+        const id = `demo-cache-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const cloudAccountId = `demo-${provider}-account`;
+        nodes.push({
+          id,
+          type: 'cache',
+          label: `${provider.toUpperCase()}-Redis-${i + 1}`,
+          provider,
+          region,
+          status: 'active',
+          category: 'database',
+          icon: 'zap',
+          data: {
+            engine: 'redis',
+            engineVersion: pick(['6.2', '7.0'], rand),
+            memoryMb: pick([256, 512, 1024, 2048, 4096], rand),
+            cloudAccountId,
+            team: pick(TOPOLOGY_TEAMS, rand),
+            monthlyCost: Math.floor(10 + rand() * 300),
+          },
+        });
+      }
     }
 
-    // 创建缓存（2个）
-    for (let i = 0; i < 2; i++) {
-      const id = `demo-cache-${nodeIdx++}`;
-      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
-      const region = pick(PROVIDER_REGIONS[provider], rand);
-      const cloudAccountId = `demo-${provider}-account`;
-      nodes.push({
-        id,
-        type: 'cache',
-        label: `Redis-${i + 1}`,
-        provider,
-        region,
-        status: 'active',
-        category: 'database',
-        icon: 'zap',
-        data: { engine: 'redis', engineVersion: '7.0', memoryMb: pick([256, 512, 1024], rand), cloudAccountId },
-      });
+    // --- CDN (1-2 per provider, ~6 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const cdnCount = 1 + Math.floor(rand() * 2); // 1-2
+      for (let i = 0; i < cdnCount; i++) {
+        const id = `demo-cdn-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const cloudAccountId = `demo-${provider}-account`;
+        nodes.push({
+          id,
+          type: 'cdn',
+          label: `${provider.toUpperCase()}-CDN-${i + 1}`,
+          provider,
+          region,
+          status: 'active',
+          category: 'cdn',
+          icon: 'globe',
+          data: {
+            domain: `${provider}-cdn-${i + 1}.example.com`,
+            protocol: pick(['http', 'https'], rand),
+            cloudAccountId,
+            team: pick(TOPOLOGY_TEAMS, rand),
+            monthlyCost: Math.floor(20 + rand() * 180),
+          },
+        });
+      }
     }
 
-    // 创建对象存储（3个）
-    for (let i = 0; i < 3; i++) {
-      const id = `demo-bucket-${nodeIdx++}`;
-      const provider = pick(Object.keys(PROVIDER_REGIONS), rand);
+    // --- Containers (1-2 per provider, ~6 total) ---
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const containerCount = 1 + Math.floor(rand() * 2); // 1-2
+      for (let i = 0; i < containerCount; i++) {
+        const id = `demo-container-${nodeIdx++}`;
+        const region = pick(PROVIDER_REGIONS[provider], rand);
+        const cloudAccountId = `demo-${provider}-account`;
+        nodes.push({
+          id,
+          type: 'cluster',
+          label: `${provider.toUpperCase()}-K8s-${i + 1}`,
+          provider,
+          region,
+          status: pick(['active', 'pending', 'error'], rand),
+          category: 'container',
+          icon: 'box',
+          data: {
+            runtime: pick(['kubernetes', 'docker', 'ecs'], rand),
+            nodeCount: 3 + Math.floor(rand() * 8),
+            cloudAccountId,
+            team: pick(TOPOLOGY_TEAMS, rand),
+            monthlyCost: Math.floor(100 + rand() * 900),
+          },
+        });
+      }
+    }
+
+    // --- AI Services (1 per provider, ~5 total) ---
+    const AI_SERVICES = ['NLP', 'Vision', 'Speech', 'Recommendation', 'Training', 'Inference'];
+    for (const provider of TOPOLOGY_PROVIDERS) {
+      const id = `demo-ai-${nodeIdx++}`;
       const region = pick(PROVIDER_REGIONS[provider], rand);
       const cloudAccountId = `demo-${provider}-account`;
       nodes.push({
         id,
-        type: 'bucket',
-        label: `Bucket-${i + 1}`,
+        type: 'aiservice',
+        label: `${provider.toUpperCase()}-AI-${pick(AI_SERVICES, rand)}`,
         provider,
         region,
-        status: 'active',
-        category: 'storage',
-        icon: 'database',
-        data: { storageClass: pick(['standard', 'standard-ia', 'glacier'], rand), sizeBytes: Math.floor(rand() * 1000000000), cloudAccountId },
+        status: pick(['active', 'pending'], rand),
+        category: 'ai',
+        icon: 'cpu',
+        data: {
+          serviceType: pick(AI_SERVICES, rand),
+          model: pick(['gpt-4', 'llama-3', 'bert', 'resnet', 'custom'], rand),
+          cloudAccountId,
+          team: 'ml',
+          monthlyCost: Math.floor(200 + rand() * 1800),
+        },
       });
     }
 
     _topologyCache = { nodes, edges };
   }
 
-  // 应用筛选
-  let { nodes, edges } = _topologyCache;
+  // Apply filters
+  let filteredNodes = _topologyCache.nodes;
+  let filteredEdges = _topologyCache.edges;
 
   if (filters?.provider) {
-    const nodeIds = new Set(nodes.filter(n => n.provider === filters.provider).map(n => n.id));
-    nodes = nodes.filter(n => nodeIds.has(n.id));
-    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    const nodeIds = new Set(filteredNodes.filter(n => n.provider === filters.provider).map(n => n.id));
+    filteredNodes = filteredNodes.filter(n => nodeIds.has(n.id));
+    filteredEdges = filteredEdges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
 
   if (filters?.region) {
-    const nodeIds = new Set(nodes.filter(n => n.region === filters.region).map(n => n.id));
-    nodes = nodes.filter(n => nodeIds.has(n.id));
-    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    const nodeIds = new Set(filteredNodes.filter(n => n.region === filters.region).map(n => n.id));
+    filteredNodes = filteredNodes.filter(n => nodeIds.has(n.id));
+    filteredEdges = filteredEdges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
 
   if (filters?.resourceType) {
-    const nodeIds = new Set(nodes.filter(n => n.type === filters.resourceType).map(n => n.id));
-    nodes = nodes.filter(n => nodeIds.has(n.id));
-    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    const nodeIds = new Set(filteredNodes.filter(n => n.type === filters.resourceType).map(n => n.id));
+    filteredNodes = filteredNodes.filter(n => nodeIds.has(n.id));
+    filteredEdges = filteredEdges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
 
   if (filters?.status) {
-    const nodeIds = new Set(nodes.filter(n => n.status === filters.status).map(n => n.id));
-    nodes = nodes.filter(n => nodeIds.has(n.id));
-    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    const nodeIds = new Set(filteredNodes.filter(n => n.status === filters.status).map(n => n.id));
+    filteredNodes = filteredNodes.filter(n => nodeIds.has(n.id));
+    filteredEdges = filteredEdges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
 
   if (filters?.cloudAccountId) {
-    const nodeIds = new Set(nodes.filter(n => n.data.cloudAccountId === filters.cloudAccountId).map(n => n.id));
-    nodes = nodes.filter(n => nodeIds.has(n.id));
-    edges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    const nodeIds = new Set(filteredNodes.filter(n => n.data.cloudAccountId === filters.cloudAccountId).map(n => n.id));
+    filteredNodes = filteredNodes.filter(n => nodeIds.has(n.id));
+    filteredEdges = filteredEdges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
   }
 
-  return { nodes, edges };
+  return { nodes: filteredNodes, edges: filteredEdges };
 }
 
 // ===== 实例日志 =====
