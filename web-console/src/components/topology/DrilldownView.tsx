@@ -4,6 +4,7 @@ import {
   ReactFlow,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge,
 } from '@xyflow/react';
@@ -25,17 +26,21 @@ interface DrilldownViewProps {
   onPathClick: (index: number) => void;
 }
 
+const NODE_W = 160;
+const NODE_H = 100;
+const GRID_GAP_X = 40;
+const GRID_GAP_Y = 30;
+const GRID_COLS = 4;
+
 export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: DrilldownViewProps) {
   const navigate = useNavigate();
+  const { fitView } = useReactFlow();
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
   const workerRef = useRef<Worker | null>(null);
 
-  // Display children
-  const displayNodes = useMemo(() => {
-    return currentNode.children.map(c => c.node);
-  }, [currentNode]);
+  const isRoot = path.length === 0;
+  const displayNodes = useMemo(() => currentNode.children.map(c => c.node), [currentNode]);
 
-  // Create virtual tree edges from parent to each child for dagre layout
   const virtualEdges = useMemo(() => {
     return currentNode.children.map(child => ({
       id: `tree-${currentNode.id}-${child.id}`,
@@ -44,7 +49,6 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
     }));
   }, [currentNode]);
 
-  // Initialize dagre worker
   useEffect(() => {
     workerRef.current = new Worker(
       new URL('@/workers/dagre-layout.worker.ts', import.meta.url),
@@ -53,16 +57,30 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
     return () => workerRef.current?.terminate();
   }, []);
 
-  // Layout: left-to-right tree
+  // Layout
   useEffect(() => {
     setLayoutPositions({});
+
+    if (isRoot) {
+      const positions: Record<string, { x: number; y: number }> = {};
+      displayNodes.forEach((node, i) => {
+        const col = i % GRID_COLS;
+        const row = Math.floor(i / GRID_COLS);
+        positions[node.id] = {
+          x: col * (NODE_W + GRID_GAP_X),
+          y: row * (NODE_H + GRID_GAP_Y),
+        };
+      });
+      setLayoutPositions(positions);
+      return;
+    }
+
     const worker = workerRef.current;
     if (!worker || displayNodes.length === 0) return;
 
-    // Add a virtual root node for layout purposes
     const allNodes = [
       { id: currentNode.id, width: 120, height: 60 },
-      ...displayNodes.map(n => ({ id: n.id, width: 160, height: 90 })),
+      ...displayNodes.map(n => ({ id: n.id, width: NODE_W, height: NODE_H })),
     ];
 
     const handler = (e: MessageEvent) => {
@@ -78,9 +96,16 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       ranksep: 160,
     });
     return () => worker.removeEventListener('message', handler);
-  }, [displayNodes, virtualEdges, currentNode.id]);
+  }, [displayNodes, virtualEdges, currentNode.id, isRoot]);
 
-  // Convert to React Flow format
+  // fitView after positions change
+  useEffect(() => {
+    if (Object.keys(layoutPositions).length > 0) {
+      const timer = setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [layoutPositions, fitView]);
+
   const { flowNodes, flowEdges } = useMemo(() => {
     const fn: Node[] = displayNodes.map((node) => {
       const pos = layoutPositions[node.id];
@@ -88,7 +113,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       return {
         id: node.id,
         type: 'resource',
-        position: pos ? { x: pos.x - 80, y: pos.y - 45 } : { x: 0, y: 0 },
+        position: pos ? { x: pos.x, y: pos.y } : { x: 0, y: 0 },
         data: {
           ...node,
           data: {
@@ -101,9 +126,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       };
     });
 
-    // Visual edges between siblings (through their common parent)
-    // Skip for root level - no visible parent
-    const fe: Edge[] = path.length > 0
+    const fe: Edge[] = !isRoot
       ? virtualEdges.map(e => ({
           id: e.id,
           source: e.source,
@@ -114,7 +137,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       : [];
 
     return { flowNodes: fn, flowEdges: fe };
-  }, [displayNodes, virtualEdges, layoutPositions, currentNode, path.length]);
+  }, [displayNodes, virtualEdges, layoutPositions, currentNode, isRoot]);
 
   const [flowNodesState, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [flowEdgesState, setEdges, onEdgesChange] = useEdgesState(flowEdges);
@@ -132,7 +155,6 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
       if (treeNode && treeNode.children.length > 0) {
         onDrilldown(topologyNode.id);
       } else if (treeNode && treeNode.instanceCount > 0) {
-        // Has instances - show instance detail page
         navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');
       } else {
         navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');
@@ -145,12 +167,12 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
     <div className="flex-1 flex flex-col h-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 px-4 py-2 border-b bg-gray-50/80 text-sm overflow-x-auto">
-        {path.length === 0 ? (
+        {isRoot ? (
           <div className="flex items-center gap-1.5 text-gray-900 font-medium">
             <Globe className="h-3.5 w-3.5 text-blue-500" />
             <span>{currentNode.node.label}</span>
             <span className="text-[10px] text-gray-400 font-normal">
-              ({currentNode.instanceCount} instances, {currentNode.children.length} children)
+              ({currentNode.children.length})
             </span>
           </div>
         ) : (
@@ -178,7 +200,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
         )}
       </div>
 
-      {/* Tree canvas */}
+      {/* Canvas */}
       <div className="flex-1 h-full">
         <ReactFlow
           nodes={flowNodesState}
@@ -189,7 +211,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick }: D
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
+          fitViewOptions={{ padding: 0.15 }}
           minZoom={0.3}
           maxZoom={2}
           nodesDraggable={false}

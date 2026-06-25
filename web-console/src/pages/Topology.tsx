@@ -163,25 +163,29 @@ export default function Topology() {
           )}
 
           {mode === 'tree' && currentNode ? (
-            <DrilldownView
-              currentNode={currentNode}
-              path={breadcrumbSegments}
-              onDrilldown={handleDrilldown}
-              onPathClick={handlePathClick}
-            />
+            <ReactFlowProvider>
+              <DrilldownView
+                currentNode={currentNode}
+                path={breadcrumbSegments}
+                onDrilldown={handleDrilldown}
+                onPathClick={handlePathClick}
+              />
+            </ReactFlowProvider>
           ) : mode === 'tree' && tree.length > 0 ? (
-            <DrilldownView
-              currentNode={{
-                id: 'root',
-                node: { id: 'root', type: 'provider', label: 'Cloud Providers', provider: '', region: '', status: 'active', category: 'network', icon: 'globe', data: {} },
-                children: tree,
-                descendantCount: tree.reduce((s, c) => s + 1 + c.descendantCount, 0),
-                instanceCount: tree.reduce((s, c) => s + c.instanceCount, 0),
-              }}
-              path={[]}
-              onDrilldown={handleDrilldown}
-              onPathClick={handlePathClick}
-            />
+            <ReactFlowProvider>
+              <DrilldownView
+                currentNode={{
+                  id: 'root',
+                  node: { id: 'root', type: 'provider', label: 'Cloud Providers', provider: '', region: '', status: 'active', category: 'network', icon: 'globe', data: {} },
+                  children: tree,
+                  descendantCount: tree.reduce((s, c) => s + 1 + c.descendantCount, 0),
+                  instanceCount: tree.reduce((s, c) => s + c.instanceCount, 0),
+                }}
+                path={[]}
+                onDrilldown={handleDrilldown}
+                onPathClick={handlePathClick}
+              />
+            </ReactFlowProvider>
           ) : mode === 'graph' ? (
             <ReactFlowProvider>
               <TopologyCanvas
