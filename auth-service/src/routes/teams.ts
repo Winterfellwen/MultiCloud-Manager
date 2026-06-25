@@ -7,7 +7,7 @@ export async function teamRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authenticate);
 
   // List all teams
-  app.get('/', async (request, reply) => {
+  app.get('/teams', async (request, reply) => {
     const user = request.user;
     
     // Admin sees all teams, others see only their own team
@@ -26,7 +26,7 @@ export async function teamRoutes(app: FastifyInstance) {
   });
 
   // Create team (admin only)
-  app.post('/', {
+  app.post('/teams', {
     preHandler: requirePermission('team', 'create')
   }, async (request, reply) => {
     const { name } = request.body as { name: string };
@@ -40,7 +40,7 @@ export async function teamRoutes(app: FastifyInstance) {
   });
 
   // Update team (admin only)
-  app.patch('/:id', {
+  app.patch('/teams/:id', {
     preHandler: requirePermission('team', 'update')
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -55,7 +55,7 @@ export async function teamRoutes(app: FastifyInstance) {
   });
 
   // Delete team (admin only)
-  app.delete('/:id', {
+  app.delete('/teams/:id', {
     preHandler: requirePermission('team', 'delete')
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -70,7 +70,7 @@ export async function teamRoutes(app: FastifyInstance) {
   });
 
   // Get team members (admin only)
-  app.get('/:id/members', {
+  app.get('/teams/:id/members', {
     preHandler: requirePermission('team', 'read')
   }, async (request, reply) => {
     const { id } = request.params as { id: string };

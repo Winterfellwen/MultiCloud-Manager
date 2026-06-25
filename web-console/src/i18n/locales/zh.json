@@ -455,6 +455,26 @@
     "cdn": "CDN",
     "cluster": "集群"
   },
+  "teams": {
+    "tab": "团队",
+    "create": "创建团队",
+    "editTitle": "编辑团队",
+    "createDialogTitle": "创建团队",
+    "name": "团队名称",
+    "namePlaceholder": "输入团队名称",
+    "createdAt": "创建时间",
+    "actions": "操作",
+    "noTeams": "暂无团队",
+    "noMembers": "暂无成员",
+    "membersTitle": "成员管理 - {{name}}",
+    "edit": "编辑"
+  },
+  "chat": {
+    "readonly": "只读",
+    "filterMine": "我的",
+    "filterTeam": "团队",
+    "filterAll": "全部"
+  },
   "topology": {
     "title": "拓扑视图",
     "filters": {

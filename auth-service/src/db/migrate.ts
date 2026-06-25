@@ -11,6 +11,9 @@ async function runFile(sql: ReturnType<typeof postgres>, sqlText: string): Promi
       // concurrent CREATE EXTENSION race — retry once after a short delay
       await new Promise(r => setTimeout(r, 200));
       await sql.unsafe(sqlText);
+    } else if (err?.code === '42P07' || err?.code === '42701' || err?.code === '42P16') {
+      // relation / column already exists — skip (idempotent migration)
+      console.log(`  ℹ️  Skipping (already exists): ${err.message}`);
     } else {
       throw err;
     }

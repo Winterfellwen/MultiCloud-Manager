@@ -6,6 +6,7 @@ export interface User {
   email: string | null;
   role: UserRole;
   team: string;
+  teamId: string | null;
   apiKey: string | null;
   createdAt: Date;
   lastLoginAt: Date | null;

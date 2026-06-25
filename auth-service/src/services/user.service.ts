@@ -12,6 +12,7 @@ export class UserService {
       email: users.email,
       role: users.role,
       team: users.team,
+      teamId: users.teamId,
       createdAt: users.createdAt,
       lastLoginAt: users.lastLoginAt,
     }).from(users);
@@ -25,6 +26,7 @@ export class UserService {
       email: users.email,
       role: users.role,
       team: users.team,
+      teamId: users.teamId,
       createdAt: users.createdAt,
       lastLoginAt: users.lastLoginAt,
     }).from(users).where(eq(users.id, id)).limit(1);

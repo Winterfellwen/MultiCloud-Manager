@@ -2,6 +2,7 @@
 // 组合 SessionList + MessageList + ChatInput，管理 WsClient 生命周期
 // 集成 ApprovalPrompt 审批弹窗（监听 exec.approval.requested 事件，轮询获取待审批列表）
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../stores/chat';
 import { useAuthStore } from '../stores/auth';
 import { SessionList } from '../components/chat/SessionList';
@@ -31,6 +32,7 @@ const STATUS_COLOR: Record<WsConnectionStatus, string> = {
 };
 
 export default function ChatReact() {
+  const { t } = useTranslation();
   const connect = useChatStore((s) => s.connect);
   const connectionStatus = useChatStore((s) => s.connectionStatus);
   const currentSessionKey = useChatStore((s) => s.currentSessionKey);
@@ -101,7 +103,7 @@ export default function ChatReact() {
           <span className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_COLOR[connectionStatus])} />
           <span className="text-xs text-muted-foreground truncate">{STATUS_TEXT[connectionStatus]}</span>
           {!canChat && currentSessionKey && (
-            <span className="text-xs text-muted-foreground ml-auto">只读</span>
+            <span className="text-xs text-muted-foreground ml-auto">{t('chat.readonly')}</span>
           )}
         </div>
 

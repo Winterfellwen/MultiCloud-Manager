@@ -25,6 +25,18 @@ import type {
   SessionsListResponse,
   SessionsDeleteBatchResponse,
 } from '../types/chat';
+
+export function canContinueSession(session: { userId?: string }, userId: string | undefined): boolean {
+  if (!userId) return false;
+  return session.userId === userId;
+}
+
+export function canDeleteSession(session: { userId?: string }, userId: string | undefined, isAdmin: boolean): boolean {
+  if (!userId) return false;
+  if (session.userId === userId) return true;
+  if (isAdmin) return true;
+  return false;
+}
 import {
   getChatAttachmentDataUrl,
   discardChatAttachmentDataUrls,

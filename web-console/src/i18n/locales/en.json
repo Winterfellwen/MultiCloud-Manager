@@ -455,6 +455,26 @@
     "cdn": "CDN",
     "cluster": "Cluster"
   },
+  "teams": {
+    "tab": "Teams",
+    "create": "Create Team",
+    "editTitle": "Edit Team",
+    "createDialogTitle": "Create Team",
+    "name": "Team Name",
+    "namePlaceholder": "Enter team name",
+    "createdAt": "Created At",
+    "actions": "Actions",
+    "noTeams": "No teams",
+    "noMembers": "No members",
+    "membersTitle": "Members - {{name}}",
+    "edit": "Edit"
+  },
+  "chat": {
+    "readonly": "Read only",
+    "filterMine": "Mine",
+    "filterTeam": "Team",
+    "filterAll": "All"
+  },
   "topology": {
     "title": "Topology View",
     "filters": {

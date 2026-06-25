@@ -78,6 +78,6 @@ export function useAssignUserToTeam() {
       const isDemoMode = useDemoStore.getState().isDemoMode;
       return isDemoMode ? demoAssignUserToTeam(userId, params) : teamsApi.assignUserToTeam(userId, params);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['teams', 'users'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }

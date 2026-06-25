@@ -2,8 +2,9 @@
 // 显示会话状态标识：正在运行 / 运行结束 / 提问审批 / AI错误
 // 编辑模式：批量选择和删除会话
 import { useState, useMemo, useCallback } from 'react';
-import { Plus, MessageSquare, Trash2, Loader2, CheckCircle2, AlertCircle, ShieldQuestion, Square, SquareCheck } from 'lucide-react';
-import { useChatStore } from '../../stores/chat';
+import { useTranslation } from 'react-i18next';
+import { Plus, MessageSquare, Trash2, Loader2, CheckCircle2, AlertCircle, ShieldQuestion, Square, SquareCheck, Filter } from 'lucide-react';
+import { useChatStore, canDeleteSession } from '../../stores/chat';
 import { useAuthStore } from '../../stores/auth';
 import { usePendingApprovals } from '../../hooks/useExecApproval';
 import { cn } from '../../lib/utils';
@@ -44,6 +45,7 @@ const STATUS_CONFIG: Record<SessionStatus, { icon: typeof Loader2; className: st
 };
 
 export function SessionList({ onClose }: { onClose?: () => void }) {
+  const { t } = useTranslation();
   const sessions = useChatStore((s) => s.sessions);
   const currentSessionKey = useChatStore((s) => s.currentSessionKey);
   const messagesBySession = useChatStore((s) => s.messagesBySession);
@@ -51,6 +53,8 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
   const selectSession = useChatStore((s) => s.selectSession);
   const deleteSessions = useChatStore((s) => s.deleteSessions);
   const seenSessions = useChatStore((s) => s.seenSessions);
+  const sessionsFilter = useChatStore((s) => s.sessionsFilter);
+  const fetchSessions = useChatStore((s) => s.fetchSessions);
   const currentUser = useAuthStore((s) => s.user);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -160,6 +164,45 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
+      {/* 会话过滤栏 */}
+      <div className="flex items-center gap-1 border-b border-border px-3 py-1.5">
+        <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => fetchSessions('mine')}
+            className={cn(
+              'rounded px-2 py-0.5 text-xs transition-colors',
+              sessionsFilter === 'mine' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t('chat.filterMine')}
+          </button>
+          <button
+            type="button"
+            onClick={() => fetchSessions('team')}
+            className={cn(
+              'rounded px-2 py-0.5 text-xs transition-colors',
+              sessionsFilter === 'team' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t('chat.filterTeam')}
+          </button>
+          {currentUser?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => fetchSessions('all')}
+              className={cn(
+                'rounded px-2 py-0.5 text-xs transition-colors',
+                sessionsFilter === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {t('chat.filterAll')}
+            </button>
+          )}
+        </div>
+      </div>
+
       <ScrollArea className="flex-1">
         <div className="space-y-1 p-2">
           {sessions.length === 0 && (
@@ -230,7 +273,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
                     {statusConfig.label}
                   </span>
                 )}
-                {!isEditing && (
+                {!isEditing && canDeleteSession(session, currentUser?.id, currentUser?.role === 'admin') && (
                   <button
                     type="button"
                     className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"

@@ -23,5 +23,6 @@ export const teamsApi = {
 
   // 分配用户到团队
   assignUserToTeam: (userId: string, params: AssignUserToTeamParams) =>
-    api.patch<{ success: boolean }>(`/auth/teams/users/${userId}/team`, params),
+    api.patch<{ success: boolean }>(`/auth/users/${userId}/team`, params), 
+
 };
