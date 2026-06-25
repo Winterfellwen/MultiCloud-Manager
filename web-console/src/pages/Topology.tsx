@@ -4,6 +4,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Network, GitBranch, Search, X }
 import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
 import { useTopologyTree, getTreeChildren } from '@/hooks/useTopologyTree';
+import { useSyncedState } from '@/hooks/useSyncedState';
 import { TopologyFilter } from '@/components/topology/TopologyFilter';
 import { ViewSwitcher } from '@/components/topology/ViewSwitcher';
 import { GroupModeSwitcher } from '@/components/topology/GroupModeSwitcher';
@@ -18,15 +19,15 @@ type TopologyMode = 'tree' | 'graph';
 
 export default function Topology() {
   const { t } = useTranslation();
-  const [view, setView] = useState<TopologyView>('network');
+  const [view, setView] = useSyncedState<TopologyView>('view', 'network');
   const [filters, setFilters] = useState<TopologyFilters>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
 
   // Tree drilldown state
-  const [mode, setMode] = useState<TopologyMode>('tree');
+  const [mode, setMode] = useSyncedState<TopologyMode>('mode', 'tree');
   const [drillPath, setDrillPath] = useState<string[]>([]);
-  const [groupMode, setGroupMode] = useState<GroupMode>('hierarchy');
+  const [groupMode, setGroupMode] = useSyncedState<GroupMode>('group', 'hierarchy');
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data, isLoading, error } = useTopology(filters);
@@ -48,7 +49,8 @@ export default function Topology() {
   // Build tree from ALL nodes (not filtered by view, so the hierarchy is complete)
   const { tree, nodeMap } = useTopologyTree(
     data?.nodes || [],
-    data?.edges || []
+    data?.edges || [],
+    groupMode
   );
 
   // Current node in drilldown
