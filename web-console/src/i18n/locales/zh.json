@@ -343,7 +343,9 @@
     "testConnecting": "测试中...",
     "testSuccess": "连接成功",
     "testModelSuccess": "成功",
-    "testModelFailed": "失败"
+    "testModelFailed": "失败",
+    "searchPlaceholder": "搜索模型名称...",
+    "searchPlaceholderDesc": "支持按模型 ID 或名称搜索"
   },
   "tools": {
     "title": "工具目录",

@@ -343,7 +343,9 @@
     "testConnecting": "Testing...",
     "testSuccess": "Connection successful",
     "testModelSuccess": "Success",
-    "testModelFailed": "Failed"
+    "testModelFailed": "Failed",
+    "searchPlaceholder": "Search models...",
+    "searchPlaceholderDesc": "Search by model ID or name"
   },
   "tools": {
     "title": "Tools Catalog",

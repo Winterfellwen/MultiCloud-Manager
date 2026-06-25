@@ -182,6 +182,7 @@ export default function AiSettings() {
   const [discoveredModels, setDiscoveredModels] = useState<Array<{ id: string; name: string; ownedBy?: string }>>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set());
   const [discoverError, setDiscoverError] = useState('');
+  const [discoverSearchQuery, setDiscoverSearchQuery] = useState('');
   useEffect(() => {
     const savedTemp = localStorage.getItem('ai-temperature');
     const savedTokens = localStorage.getItem('ai-maxTokens');
@@ -341,6 +342,14 @@ export default function AiSettings() {
       onSuccess: () => setDiscoverDialogOpen(false),
     });
   };
+
+  // 搜索过滤后的模型列表
+  const filteredDiscoveredModels = discoverSearchQuery
+    ? discoveredModels.filter(m =>
+        m.id.toLowerCase().includes(discoverSearchQuery.toLowerCase()) ||
+        (m.name || '').toLowerCase().includes(discoverSearchQuery.toLowerCase())
+      )
+    : discoveredModels;
 
   return (
     <div className="container mx-auto max-w-4xl space-y-6">
@@ -977,18 +986,32 @@ export default function AiSettings() {
                 <Button
                   variant="ghost" size="sm"
                   onClick={() => {
-                    if (selectedModelIds.size === discoveredModels.length) {
-                      setSelectedModelIds(new Set());
+                    if (selectedModelIds.size === filteredDiscoveredModels.length) {
+                      // 取消选择所有过滤后的模型
+                      filteredDiscoveredModels.forEach(m => selectedModelIds.delete(m.id));
+                      setSelectedModelIds(new Set(selectedModelIds));
                     } else {
-                      setSelectedModelIds(new Set(discoveredModels.map(m => m.id)));
+                      // 选择所有过滤后的模型
+                      filteredDiscoveredModels.forEach(m => selectedModelIds.add(m.id));
+                      setSelectedModelIds(new Set(selectedModelIds));
                     }
                   }}
                 >
-                  {selectedModelIds.size === discoveredModels.length ? t('aiSettings.deselectAll') : t('aiSettings.selectAll')}
+                  {selectedModelIds.size === filteredDiscoveredModels.length ? t('aiSettings.deselectAll') : t('aiSettings.selectAll')}
                 </Button>
               </div>
+              {/* 搜索框 */}
+              <div className="mt-2">
+                <input
+                  type="text"
+                  placeholder={t('aiSettings.searchPlaceholder')}
+                  value={discoverSearchQuery}
+                  onChange={(e) => setDiscoverSearchQuery(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
               <div className="max-h-80 space-y-1 overflow-y-auto">
-                {discoveredModels.map((m) => {
+                {filteredDiscoveredModels.map((m) => {
                   const alreadyHas = providers.find(p => p.id === discoverProviderId)?.models?.some(pm => pm.id === m.id);
                   return (
                     <label
