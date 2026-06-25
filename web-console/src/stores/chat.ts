@@ -14,6 +14,7 @@ import type {
   ChatMessage,
   ChatSession,
   ChatEventPayload,
+  ChatDonePayload,
   ChatHistoryResponse,
   ChatSendResponse,
   ChatToolResultPayload,
@@ -241,6 +242,7 @@ function acpEventsToMessages(sessionKey: string, events: AcpEvent[]): ChatMessag
       // 各 text_delta block 已按正确时序记录，保留原样即可
       msg.content = extractTextFromBlocks(msg.blocks) || evt.payload.finalText || '';
       msg.status = 'complete';
+      msg.truncated = !!(evt.payload as Record<string, unknown>).truncated;
     } else if (evt.type === 'tool_call') {
       const msg = getOrCreateAssistantMsg(runId, createdAt);
       if (evt.payload.toolCall) {
@@ -490,7 +492,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       case 'done': {
-        const finalText = (chatPayload as { finalText: string }).finalText;
+        const donePayload = chatPayload as ChatDonePayload;
+        const finalText = donePayload.finalText;
+        const truncated = donePayload.truncated;
         // 清除安全超时（done 事件已到达，无需兜底）
         if (isSendingSafetyTimer) { clearTimeout(isSendingSafetyTimer); isSendingSafetyTimer = null; }
         if (msgIndex >= 0) {
@@ -503,6 +507,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             blocks: newBlocks,
             content: extractTextFromBlocks(newBlocks) || finalText || '',
             status: 'complete',
+            truncated,
           };
           set({
             messagesBySession: { ...state.messagesBySession, [sessionKey]: newMessages },

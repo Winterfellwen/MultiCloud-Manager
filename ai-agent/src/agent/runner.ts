@@ -73,67 +73,76 @@ export async function runAgent(options: AgentRunOptions): Promise<AgentRunResult
       return { finalText, iterations, toolCalls: toolCallCount };
     }
 
-    for (const tc of toolCalls) {
-      toolCallCount++;
-      const descriptor = toolRegistry.getAllDescriptors().find((d) => d.name === tc.name);
-      const dangerLevel = descriptor?.dangerLevel || 'safe';
+    // 并行执行工具（参考 opencode FiberSet 模式）
+    const toolResults = await Promise.allSettled(
+      toolCalls.map(async (tc) => {
+        toolCallCount++;
+        const descriptor = toolRegistry.getAllDescriptors().find((d) => d.name === tc.name);
+        const dangerLevel = descriptor?.dangerLevel || 'safe';
 
-      const hookResult = await hookRunner.runBeforeToolCall({
-        userId,
-        sessionId,
-        toolName: tc.name,
-        args: tc.arguments,
-        dangerLevel,
-      });
-
-      if (hookResult.block) {
-        const blockMsg = `操作被阻止：${hookResult.blockReason}`;
-        await sessionManager.saveToolResult(sessionId, tc.id, tc.name, blockMsg, true);
-        onEvent?.({ type: 'tool_result', toolCallId: tc.id, toolName: tc.name, result: blockMsg, isError: true });
-        continue;
-      }
-
-      if (hookResult.requireApproval) {
-        onEvent?.({
-          type: 'approval_required',
-          toolCallId: tc.id,
+        const hookResult = await hookRunner.runBeforeToolCall({
+          userId,
+          sessionId,
           toolName: tc.name,
-          message: hookResult.approvalMessage || `操作 ${tc.name} 需要确认`,
+          args: tc.arguments,
+          dangerLevel,
         });
-        // MVP 阶段：自动批准。Phase 5 Web Console 会实现人工审批 UI
-      }
 
-      const startTime = Date.now();
-      let result: string;
-      let isError = false;
-      try {
-        result = await toolRegistry.execute(tc.name, tc.arguments, toolCtx);
-      } catch (err) {
-        const errorMsg = (err as Error).message || '未知错误';
-        result = JSON.stringify({
-          success: false,
-          error: true,
-          message: `工具执行失败: ${errorMsg}`,
-          tool: tc.name,
-          arguments: tc.arguments,
+        if (hookResult.block) {
+          return { tc, result: `操作被阻止：${hookResult.blockReason}`, isError: true };
+        }
+
+        if (hookResult.requireApproval) {
+          onEvent?.({
+            type: 'approval_required',
+            toolCallId: tc.id,
+            toolName: tc.name,
+            message: hookResult.approvalMessage || `操作 ${tc.name} 需要确认`,
+          });
+        }
+
+        const startTime = Date.now();
+        let result: string;
+        let isError = false;
+        try {
+          result = await toolRegistry.execute(tc.name, tc.arguments, toolCtx);
+        } catch (err) {
+          const errorMsg = (err as Error).message || '未知错误';
+          result = JSON.stringify({
+            success: false,
+            error: true,
+            message: `工具执行失败: ${errorMsg}`,
+            tool: tc.name,
+            arguments: tc.arguments,
+          });
+          isError = true;
+        }
+        const durationMs = Date.now() - startTime;
+
+        await hookRunner.runAfterToolCall({
+          userId,
+          sessionId,
+          toolName: tc.name,
+          args: tc.arguments,
+          dangerLevel,
+          result,
+          success: !isError,
+          durationMs,
         });
-        isError = true;
+
+        return { tc, result, isError };
+      })
+    );
+
+    for (const settled of toolResults) {
+      if (settled.status === 'fulfilled') {
+        const { tc, result, isError } = settled.value;
+        await sessionManager.saveToolResult(sessionId, tc.id, tc.name, result, isError);
+        onEvent?.({ type: 'tool_result', toolCallId: tc.id, toolName: tc.name, result, isError });
+      } else {
+        const errorMsg = settled.reason?.message || 'Tool execution failed';
+        onEvent?.({ type: 'error', error: errorMsg });
       }
-      const durationMs = Date.now() - startTime;
-
-      await hookRunner.runAfterToolCall({
-        userId,
-        sessionId,
-        toolName: tc.name,
-        args: tc.arguments,
-        dangerLevel,
-        result,
-        success: !isError,
-        durationMs,
-      });
-
-      await sessionManager.saveToolResult(sessionId, tc.id, tc.name, result, isError);
-      onEvent?.({ type: 'tool_result', toolCallId: tc.id, toolName: tc.name, result, isError });
     }
   }
 

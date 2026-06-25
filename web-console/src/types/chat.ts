@@ -181,6 +181,7 @@ export interface ChatDonePayload {
   runId: string;
   type: 'done';
   finalText: string;
+  truncated?: boolean;
 }
 
 export interface ChatErrorPayload {
@@ -281,6 +282,8 @@ export interface ChatMessage {
   blocks?: ContentBlock[];
   status: MessageStatus;
   error?: string;
+  /** 是否因达到最大迭代次数而提前终止 */
+  truncated?: boolean;
   createdAt: number;
 }
 

@@ -22,6 +22,9 @@ import {
   type ResolvedThinkingConfig,
 } from './thinking-format.js';
 
+// MAX_STEPS_PROMPT: 在最后一次迭代前注入，引导 LLM 结束思考并给出最终答案
+export const MAX_STEPS_PROMPT = `[系统提示] 这是本次对话的最后一步。请立即总结你的发现并给出最终回答。不要发起新的工具调用，不要请求更多信息。如果已有工具执行结果，请基于这些结果做出结论。直接输出最终回复。`;
+
 // ============ 类型定义 ============
 
 /** 附件（支持图片等多模态输入） */
@@ -41,7 +44,7 @@ export interface AgentTurnCallbacks {
   onReasoning: (delta: string) => void;
   onToolCall: (toolCall: ToolCall) => void;
   onToolResult: (result: { name: string; success: boolean; data: unknown; error?: string; toolCallId?: string }) => void;
-  onComplete: (finalText: string) => void;
+  onComplete: (finalText: string, truncated?: boolean) => void;
 }
 
 export interface AgentTurnParams {
@@ -232,15 +235,21 @@ export async function runAgentTurn(
       throw new Error('Run aborted');
     }
 
-  // 调用 LLM
-  const response = await callLLM(messages, params.signal, {
-    llmConfig,
-    temperature: params.temperature,
-    maxTokens: params.maxTokens,
-    tools,
-    enableThinking: params.enableThinking ?? true, // 默认启用深度思考
-    reasoningEffort: params.reasoningEffort,
-  });
+    // 在最后一步前注入 MAX_STEPS_PROMPT（参考 opencode isLastStep + toolChoice: "none" 模式）
+    const isLastStep = iterations >= config.agent.maxIterations - 1;
+    if (isLastStep) {
+      messages.push({ role: 'system', content: MAX_STEPS_PROMPT });
+    }
+
+    // 调用 LLM
+    const response = await callLLM(messages, params.signal, {
+      llmConfig,
+      temperature: params.temperature,
+      maxTokens: params.maxTokens,
+      tools,
+      enableThinking: params.enableThinking ?? true, // 默认启用深度思考
+      reasoningEffort: params.reasoningEffort,
+    });
 
     if (response.reasoning) {
       // 推理过程通过独立通道推送（前端可折叠显示）
@@ -267,68 +276,72 @@ export async function runAgentTurn(
       })),
     });
 
-    // 执行工具
-    for (const toolCall of response.toolCalls) {
-      callbacks.onToolCall(toolCall);
+    // 并行执行工具（参考 opencode FiberSet 模式）
+    const toolResults = await Promise.allSettled(
+      response.toolCalls.map(async (toolCall) => {
+        callbacks.onToolCall(toolCall);
 
-      const toolDef = findTool(toolCall.name);
+        const toolDef = findTool(toolCall.name);
 
-      // Plan 模式下立即拒绝非只读工具（不触发审批弹窗）
-      if (params.mode === 'plan' && toolDef && toolDef.dangerLevel !== 'safe') {
-        const rejectMsg = `${toolDef.label || toolCall.name} 在 Plan 模式下不可用，请切换到 Action 或 Confirm 模式`;
-        const result = { name: toolCall.name, success: false, data: null, error: rejectMsg, toolCallId: toolCall.id };
+        // Plan 模式下立即拒绝非只读工具
+        if (params.mode === 'plan' && toolDef && toolDef.dangerLevel !== 'safe') {
+          const rejectMsg = `${toolDef.label || toolCall.name} 在 Plan 模式下不可用，请切换到 Action 或 Confirm 模式`;
+          return { name: toolCall.name, success: false, data: null, error: rejectMsg, toolCallId: toolCall.id };
+        }
+
+        // dangerous 级别工具需要审批（仅 Confirm 模式）
+        if (toolDef && toolDef.dangerLevel === 'dangerous' && params.mode === 'confirm' && params.approvalContext) {
+          const approved = await requestApproval({
+            runId: params.runId,
+            sessionKey: params.sessionKey,
+            toolCall,
+            toolName: toolCall.name,
+            dangerLevel: toolDef.dangerLevel,
+            context: params.approvalContext,
+            signal: params.signal,
+          }).catch(() => false);
+
+          if (!approved) {
+            return { name: toolCall.name, success: false, data: null, error: `工具 ${toolCall.name} 的审批被拒绝，跳过执行`, toolCallId: toolCall.id };
+          }
+        }
+
+        const result = await executeTool(toolCall, params.authToken || '', params.mode);
+        return { ...result, toolCallId: toolCall.id };
+      })
+    );
+
+    for (const settled of toolResults) {
+      if (settled.status === 'fulfilled') {
+        const result = settled.value;
         callbacks.onToolResult(result);
         messages.push({
           role: 'tool',
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(result),
+          tool_call_id: result.toolCallId,
+          content: JSON.stringify(result.data),
         });
-        continue;
+      } else {
+        const errorResult = { name: 'unknown', success: false, data: null, error: settled.reason?.message || 'Tool execution failed', toolCallId: '' };
+        callbacks.onToolResult(errorResult);
+        messages.push({
+          role: 'tool',
+          tool_call_id: errorResult.toolCallId,
+          content: JSON.stringify(errorResult),
+        });
       }
-
-      // dangerous 级别工具需要审批（仅 Confirm 模式）
-      if (toolDef && toolDef.dangerLevel === 'dangerous' && params.mode === 'confirm' && params.approvalContext) {
-        const approved = await requestApproval({
-          runId: params.runId,
-          sessionKey: params.sessionKey,
-          toolCall,
-          toolName: toolCall.name,
-          dangerLevel: toolDef.dangerLevel,
-          context: params.approvalContext,
-          signal: params.signal,
-        }).catch(() => false); // 中止时视为拒绝
-
-        if (!approved) {
-          const rejectMsg = `工具 ${toolCall.name} 的审批被拒绝，跳过执行`;
-          const result = { name: toolCall.name, success: false, data: null, error: rejectMsg, toolCallId: toolCall.id };
-          callbacks.onToolResult(result);
-          messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(result),
-          });
-          continue;
-        }
-      }
-
-      const result = await executeTool(toolCall, params.authToken || '', params.mode);
-      callbacks.onToolResult({ ...result, toolCallId: toolCall.id });
-
-      messages.push({
-        role: 'tool',
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(result.data),
-      });
     }
   }
 
+  // 迭代耗尽标记
+  const truncated = iterations >= config.agent.maxIterations;
+
   // 如果 LLM 只返回了 reasoning 但没有 text，且没有 tool calls，补充一条提示
   if (!finalText) {
-    callbacks.onComplete('（AI 完成了思考，但未生成文字回复。请根据上方的思考内容查看分析结果，或尝试重新提问。）');
+    callbacks.onComplete('（AI 完成了思考，但未生成文字回复。请根据上方的思考内容查看分析结果，或尝试重新提问。）', truncated);
     return;
   }
 
-  callbacks.onComplete(finalText);
+  callbacks.onComplete(finalText, truncated);
 }
 
 // ============ 辅助函数 ============

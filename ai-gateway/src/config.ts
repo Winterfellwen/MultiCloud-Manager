@@ -185,7 +185,7 @@ export const config = {
 
   // Agent 配置
   agent: {
-    maxIterations: parseInt(process.env.AGENT_MAX_ITERATIONS || '10', 10),
+    maxIterations: parseInt(process.env.AGENT_MAX_ITERATIONS || '30', 10),
     timeoutMs: parseInt(process.env.AGENT_TIMEOUT_MS || '120000', 10),
     maxConcurrentSessions: parseInt(process.env.ACP_MAX_CONCURRENT_SESSIONS || '10', 10),
   },

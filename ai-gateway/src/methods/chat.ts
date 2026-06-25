@@ -198,12 +198,12 @@ export async function handleChatSend(
                 payload: { runId, type: 'tool_result', toolCallId: result.toolCallId, result },
               });
             },
-            onComplete: (finalText) => {
-              queuedRecordEvent(sessionKey, 'assistant_complete', { runId, finalText });
+            onComplete: (finalText, truncated) => {
+              queuedRecordEvent(sessionKey, 'assistant_complete', { runId, finalText, truncated });
               broadcastEvent(context.clients, {
                 event: 'chat',
                 targetSessionKey: sessionKey,
-                payload: { runId, type: 'done', finalText },
+                payload: { runId, type: 'done', finalText, truncated },
               });
             },
           }
