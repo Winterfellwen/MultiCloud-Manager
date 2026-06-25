@@ -813,3 +813,55 @@ export function getDemoTopology(filters?: {
 
   return { nodes, edges };
 }
+
+// ===== 实例日志 =====
+export interface DemoLogEntry {
+  timestamp: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+}
+
+const LOG_MESSAGES = {
+  info: [
+    'Health check passed',
+    'Instance started successfully',
+    'Configuration reloaded',
+    'Connection pool resized',
+    'Cache invalidated',
+    'Request processed successfully',
+    'TLS certificate renewed',
+    'Backup completed',
+  ],
+  warn: [
+    'CPU usage above 80%',
+    'Memory usage above 75%',
+    'Disk space below 20%',
+    'Connection pool nearing limit',
+    'Response time degraded',
+    'Rate limit approaching',
+  ],
+  error: [
+    'Connection refused',
+    'Out of memory',
+    'Disk full',
+    'Service unavailable',
+    'Authentication failed',
+    'Timeout exceeded',
+  ],
+};
+
+export function getDemoLogs(instanceId: string, count = 30): DemoLogEntry[] {
+  const logs: DemoLogEntry[] = [];
+  const now = Date.now();
+  for (let i = 0; i < count; i++) {
+    const r = Math.random();
+    const level = r < 0.7 ? 'info' : r < 0.9 ? 'warn' : 'error';
+    const msgs = LOG_MESSAGES[level];
+    logs.push({
+      timestamp: new Date(now - i * 30000 - Math.random() * 10000).toISOString(),
+      level,
+      message: msgs[Math.floor(Math.random() * msgs.length)],
+    });
+  }
+  return logs;
+}
