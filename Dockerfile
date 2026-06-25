@@ -71,7 +71,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 # 安装 pnpm
-RUN npm install -g pnpm && \
+RUN npm install -g pnpm
 
 # 复制 pnpm workspace 根配置
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
