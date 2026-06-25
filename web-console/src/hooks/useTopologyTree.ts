@@ -18,7 +18,9 @@ function getHierarchyLevel(type: string): number {
 /**
  * Build a strict hierarchy tree:
  * provider → vpc → subnet → instance
- * Each level only shows its direct children in the next level.
+ *
+ * Each level only shows its direct children in the next hierarchy level.
+ * Providers are virtual nodes that group VPCs.
  */
 export function useTopologyTree(
   nodes: TopologyNode[],
@@ -36,20 +38,17 @@ export function useTopologyTree(
       }
     }
 
-    // Find root nodes: never a child in 'contains' edge
-    const childIds = new Set(edges.filter(e => e.type === 'contains').map(e => e.source));
-    const rootNodes = nodes.filter(n => !childIds.has(n.id));
-
-    // Group roots by provider
+    // Group VPCs by provider (cloudAccountId)
+    const vpcNodes = nodes.filter(n => n.type === 'vpc');
     const providerGroups = new Map<string, TopologyNode[]>();
-    for (const root of rootNodes) {
-      const provider = String(root.data?.cloudAccountId || root.provider || 'unknown');
+    for (const vpc of vpcNodes) {
+      const provider = String(vpc.data?.cloudAccountId || vpc.provider || 'unknown');
       if (!providerGroups.has(provider)) providerGroups.set(provider, []);
-      providerGroups.get(provider)!.push(root);
+      providerGroups.get(provider)!.push(vpc);
     }
 
-    // Build tree: each level only shows children at the NEXT hierarchy level
-    function buildTree(nodeId: string, parentLevel: number, visited = new Set<string>()): TreeNode | null {
+    // Build tree for a single VPC: vpc → subnet → instance
+    function buildSubtree(nodeId: string, visited: Set<string>): TreeNode | null {
       if (visited.has(nodeId)) return null;
       visited.add(nodeId);
 
@@ -57,7 +56,7 @@ export function useTopologyTree(
       if (!node) return null;
 
       const myLevel = getHierarchyLevel(node.type);
-      const nextLevel = parentLevel + 1;
+      const nextLevel = myLevel + 1;
 
       const allChildIds = childrenOf.get(nodeId) || [];
       const children: TreeNode[] = [];
@@ -69,22 +68,18 @@ export function useTopologyTree(
 
         const childLevel = getHierarchyLevel(childNode.type);
 
-        // Count instances regardless of whether they appear as children
         if (childNode.type === 'instance') {
           instanceCount++;
           continue;
         }
 
-        // Only include children that match the next hierarchy level
+        // Only include children at the next hierarchy level
         if (childLevel === nextLevel) {
-          const childTree = buildTree(childId, myLevel, visited);
+          const childTree = buildSubtree(childId, visited);
           if (childTree) {
             children.push(childTree);
             instanceCount += childTree.instanceCount;
           }
-        } else if (childLevel > nextLevel) {
-          // Skip: too deep for this level
-          continue;
         }
       }
 
@@ -97,21 +92,18 @@ export function useTopologyTree(
       };
     }
 
-    // Build provider-level tree nodes
+    // Build provider-level tree: provider → vpc → subnet → instance
     const tree: TreeNode[] = [];
-    for (const [provider, roots] of providerGroups) {
-      const childTrees: TreeNode[] = [];
+    for (const [provider, vpcs] of providerGroups) {
+      const vpcTrees: TreeNode[] = [];
       let totalInstances = 0;
+      const visited = new Set<string>();
 
-      for (const root of roots) {
-        // Provider level (parentLevel=-1) → children at level 0 (provider/vpc)
-        const treeNode = buildTree(root.id, -1);
-        if (treeNode) {
-          // Only include VPCs at provider level, not other resource types
-          if (treeNode.node.type === 'vpc') {
-            childTrees.push(treeNode);
-            totalInstances += treeNode.instanceCount;
-          }
+      for (const vpc of vpcs) {
+        const vpcTree = buildSubtree(vpc.id, visited);
+        if (vpcTree) {
+          vpcTrees.push(vpcTree);
+          totalInstances += vpcTree.instanceCount;
         }
       }
 
@@ -130,8 +122,8 @@ export function useTopologyTree(
       tree.push({
         id: `provider-${provider}`,
         node: providerNode,
-        children: childTrees,
-        descendantCount: childTrees.reduce((sum, c) => sum + 1 + c.descendantCount, 0),
+        children: vpcTrees,
+        descendantCount: vpcTrees.reduce((sum, c) => sum + 1 + c.descendantCount, 0),
         instanceCount: totalInstances,
       });
     }
