@@ -1072,3 +1072,35 @@ export function getDemoLogs(_instanceId: string, count = 30): DemoLogEntry[] {
   }
   return logs;
 }
+
+// ===== 实例详情数据（扩展指标/日志/连接） =====
+export function getDemoInstanceDetail(id: string) {
+  const rand = seededRandom(id.charCodeAt(id.length - 1) * 13 + 97);
+
+  // Metrics: reuse existing getDemoMetrics, transform to {time, value} format
+  const rawMetrics = getDemoMetrics(id, 24);
+  const metrics = {
+    cpu: rawMetrics.map((p, i) => ({ time: i, value: p.value })),
+    memory: rawMetrics.map((p, i) => ({ time: i, value: p.value * 0.7 + 10 })),
+    network: rawMetrics.map((p, i) => ({ time: i, value: Math.max(0, p.value - 30 + Math.sin(i) * 20) })),
+    disk: rawMetrics.map((p, i) => ({ time: i, value: Math.max(0, p.value * 0.4 + Math.cos(i) * 10) })),
+  };
+
+  // Logs: reuse existing getDemoLogs
+  const logs = getDemoLogs(id, 30);
+
+  // Connections: generate fake upstream/downstream based on instance ID
+  const otherInstances = getAllDemoInstances().filter(i => i.id !== id);
+  const incomingCount = Math.floor(rand() * 3);
+  const outgoingCount = Math.floor(rand() * 3);
+  const incoming = Array.from({ length: incomingCount }, (_, i) => {
+    const src = otherInstances[Math.floor(rand() * otherInstances.length)];
+    return { id: `conn-in-${id}-${i}`, source: src?.name || src?.id || `unknown-${i}`, label: 'HTTP' };
+  });
+  const outgoing = Array.from({ length: outgoingCount }, (_, i) => {
+    const tgt = otherInstances[Math.floor(rand() * otherInstances.length)];
+    return { id: `conn-out-${id}-${i}`, target: tgt?.name || tgt?.id || `unknown-${i}`, label: 'TCP' };
+  });
+
+  return { metrics, logs, connections: { incoming, outgoing } };
+}
