@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
-  Server,
   Activity,
   DollarSign,
   MessageSquare,
@@ -39,12 +38,6 @@ export function Sidebar() {
       label: t('nav.chat'),
       to: '/chat/react',
       icon: MessageSquare,
-    },
-    {
-      label: t('nav.instances'),
-      to: '/instances',
-      icon: Server,
-      permission: { resource: 'instance', action: 'list' },
     },
     {
       label: t('nav.resources'),
