@@ -14,6 +14,7 @@ import {
   deleteDemoResource,
   getDemoAuditLogs,
   getDemoTopology,
+  getDemoInstanceDetail,
   getDemoTeams,
   getDemoTeamById,
   addDemoTeam,
@@ -41,7 +42,8 @@ export function demoListInstances(params?: ListInstancesParams): Promise<Instanc
 export function demoGetInstance(id: string): Promise<InstanceRow> {
   const inst = getAllDemoInstances().find((i) => i.id === id);
   if (!inst) throw new Error(`Instance ${id} not found`);
-  return Promise.resolve(inst);
+  const detail = getDemoInstanceDetail(id);
+  return Promise.resolve({ ...inst, ...detail });
 }
 
 export function demoListResources(filters: {
