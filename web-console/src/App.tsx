@@ -7,7 +7,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from 'sonner';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
-import Instances from '@/pages/Instances';
 import InstanceDetail from '@/pages/InstanceDetail';
 import Resources from '@/pages/Resources';
 import Monitor from '@/pages/Monitor';
@@ -50,14 +49,7 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route
-                path="/instances"
-                element={
-                  <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
-                    <Instances />
-                  </ProtectedRoute>
-                }
-              />
+
               <Route
                 path="/instances/:id"
                 element={
@@ -74,6 +66,7 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/instances" element={<Navigate to="/resources" replace />} />
               <Route
                 path="/topology"
                 element={
