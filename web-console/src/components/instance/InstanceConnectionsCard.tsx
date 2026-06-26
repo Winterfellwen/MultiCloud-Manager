@@ -7,7 +7,7 @@ interface Props {
   outgoing: Array<{ id: string; target: string; label?: string }>;
 }
 
-export function InstanceConnectionsCard({ instanceId, incoming, outgoing }: Props) {
+export function InstanceConnectionsCard({ instanceId: _instanceId, incoming, outgoing }: Props) {
   if (incoming.length === 0 && outgoing.length === 0) {
     return (
       <Card>
