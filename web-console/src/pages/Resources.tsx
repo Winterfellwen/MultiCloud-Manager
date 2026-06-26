@@ -8,7 +8,7 @@ import {
   useDeleteResource,
   useSyncResources,
 } from '@/hooks/useResources';
-import { useInstances, useInstanceAction, useSyncInstances } from '@/hooks/useInstances';
+import { useInstances, useInstanceAction, useSyncInstances, useCreateInstance, useProviders, useRegions, useInstanceTypes, useImages } from '@/hooks/useInstances';
 import { useDemoStore } from '@/stores/demo';
 import { demoResetAll } from '@/lib/demo/demo-api';
 import { ResourceTypeNav } from '@/components/ResourceTypeNav';
@@ -19,12 +19,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getStatusColor, type ResourceType } from '@/types/resource';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import { toast } from 'sonner';
-import { Search, RefreshCw, Trash2, RotateCcw, Play, Square, Server, LayoutGrid } from 'lucide-react';
+import { Search, RefreshCw, Trash2, RotateCcw, Play, Square, Server, LayoutGrid, Plus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
@@ -102,6 +103,7 @@ export default function Resources() {
   const [status, setStatus] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'all' | 'instances'>('all');
+  const [createOpen, setCreateOpen] = useState(false);
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const qc = useQueryClient();
 
@@ -169,6 +171,8 @@ export default function Resources() {
       await demoResetAll();
       qc.invalidateQueries({ queryKey: ['instances'] });
       qc.invalidateQueries({ queryKey: ['resources'] });
+      qc.invalidateQueries({ queryKey: ['cloud-accounts'] });
+      qc.invalidateQueries({ queryKey: ['audit'] });
       toast.success(t('instances.resetSuccess'));
     } catch (err) {
       toast.error(t('instances.resetFailed'));
@@ -300,6 +304,12 @@ export default function Resources() {
               />
               {viewMode === 'instances' ? t('instances.sync') : t('resources.sync')}
             </Button>
+            {viewMode === 'instances' && (
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                {t('instances.create')}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -577,6 +587,84 @@ export default function Resources() {
           </div>
         </Dialog>
       )}
+
+      <CreateInstanceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
+  );
+}
+
+function CreateInstanceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { data: providersData } = useProviders();
+  const [provider, setProvider] = useState('');
+  const [region, setRegion] = useState('');
+  const [name, setName] = useState('');
+  const [imageId, setImageId] = useState('');
+  const [instanceType, setInstanceType] = useState('');
+  const { data: regions } = useRegions(provider || undefined);
+  const { data: images } = useImages(provider || undefined);
+  const { data: types } = useInstanceTypes(provider || undefined, region || undefined);
+  const create = useCreateInstance();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await create.mutateAsync({ provider, region, name, imageId, instanceType });
+      onClose();
+      setProvider(''); setRegion(''); setName(''); setImageId(''); setInstanceType('');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('instances.createFailed'));
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} title={t('instances.createDialogTitle')} description={t('instances.createDialogDesc')}>
+      <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <div className="space-y-2">
+          <Label>{t('instances.providerLabel')}</Label>
+          <Select value={provider} onChange={(e) => { setProvider(e.target.value); setRegion(''); }} required>
+            <option value="">{t('instances.pleaseSelect')}</option>
+            {(providersData?.providers || []).map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>{t('instances.regionLabel')}</Label>
+          <Select value={region} onChange={(e) => setRegion(e.target.value)} required disabled={!provider}>
+            <option value="">{t('instances.pleaseSelect')}</option>
+            {(regions || []).map((r) => (
+              <option key={r.id} value={r.id}>{r.displayName}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>{t('instances.nameLabel')}</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="my-instance" required />
+        </div>
+        <div className="space-y-2">
+          <Label>{t('instances.imageLabel')}</Label>
+          <Select value={imageId} onChange={(e) => setImageId(e.target.value)} required disabled={!provider}>
+            <option value="">{t('instances.pleaseSelect')}</option>
+            {(images || []).map((img) => (
+              <option key={img.id} value={img.id}>{img.name}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>{t('instances.typeLabel')}</Label>
+          <Select value={instanceType} onChange={(e) => setInstanceType(e.target.value)} required disabled={!provider || !region}>
+            <option value="">{t('instances.pleaseSelect')}</option>
+            {(types || []).map((ty) => (
+              <option key={ty.id} value={ty.id}>{ty.name} ({ty.cpu}C/{ty.memoryMb}MB)</option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="submit" disabled={create.isPending}>{create.isPending ? t('common.creating') : t('common.create')}</Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
