@@ -164,21 +164,58 @@ export function getDemoResources(): CloudResource[] {
     const rand = seededRandom(42);
     const resources: CloudResource[] = [];
     let idx = 0;
+
+    // For instance-type resources, use the actual instance IDs so navigation works
+    const allInstances = getAllDemoInstances();
+    const instancesByProvider: Record<string, typeof allInstances> = {};
+    for (const inst of allInstances) {
+      if (!instancesByProvider[inst.provider]) instancesByProvider[inst.provider] = [];
+      instancesByProvider[inst.provider].push(inst);
+    }
+
     for (const [provider, { count, type }] of Object.entries(RESOURCE_COUNTS)) {
       const regions = PROVIDER_REGIONS[provider] || ['us-east-1'];
-      for (let i = 0; i < count; i++) {
-        resources.push({
-          id: `demo-res-${idx++}`,
-          provider,
-          resourceType: type,
-          name: `${provider}-${type}-${i.toString().padStart(3, '0')}`,
-          region: pick(regions, rand),
-          status: pick(['active', 'stopped', 'pending'], rand),
-          attributes: {},
-          tags: { env: pick(ENVS, rand), team: pick(TEAMS, rand) },
-          createdAt: randomDate(90, rand),
-          lastSyncedAt: new Date().toISOString(),
-        });
+
+      if (type === 'instance' && instancesByProvider[provider]) {
+        // Use actual instance data for instance-type resources
+        const providerInstances = instancesByProvider[provider];
+        for (let i = 0; i < Math.min(count, providerInstances.length); i++) {
+          const inst = providerInstances[i];
+          resources.push({
+            id: inst.id,  // Use actual instance ID
+            provider,
+            resourceType: type,
+            name: inst.name || `${provider}-instance-${i.toString().padStart(3, '0')}`,
+            region: inst.region,
+            status: inst.status,
+            attributes: {
+              cpu: inst.cpu,
+              memoryMb: inst.memoryMb,
+              diskGb: inst.diskGb,
+              publicIp: inst.publicIp,
+              privateIp: inst.privateIp,
+            },
+            tags: inst.tags,
+            createdAt: inst.createdAt,
+            lastSyncedAt: inst.lastSyncedAt,
+          });
+        }
+      } else {
+        // Non-instance resources: generate as before
+        for (let i = 0; i < count; i++) {
+          resources.push({
+            id: `demo-res-${idx++}`,
+            provider,
+            resourceType: type,
+            name: `${provider}-${type}-${i.toString().padStart(3, '0')}`,
+            region: pick(regions, rand),
+            status: pick(['active', 'stopped', 'pending'], rand),
+            attributes: {},
+            tags: { env: pick(ENVS, rand), team: pick(TEAMS, rand) },
+            createdAt: randomDate(90, rand),
+            lastSyncedAt: new Date().toISOString(),
+          });
+        }
       }
     }
     _resourcesCache = resources;

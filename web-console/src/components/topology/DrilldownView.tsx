@@ -228,33 +228,49 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
             </span>
           </div>
         ) : (
-          path.map((segment, i) => (
+          <>
+            {/* Root breadcrumb */}
             <motion.div
-              key={segment.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
               className="flex items-center gap-1 shrink-0"
             >
-              {i > 0 && <ChevronRight className="h-3 w-3 text-gray-300" />}
               <button
-                onClick={() => onPathClick(i)}
-                className={cn(
-                  'px-2 py-0.5 rounded-md transition-colors font-medium',
-                  i === path.length - 1
-                    ? 'text-gray-900 bg-white shadow-sm border border-gray-200'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                )}
-                aria-label={`Navigate to ${segment.label}`}
+                onClick={() => onPathClick(-1)}
+                className="px-2 py-0.5 rounded-md transition-colors font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                aria-label="Navigate to root"
               >
-                {i === 0 && <Globe className="inline h-3 w-3 mr-1 -mt-0.5" />}
-                {segment.label}
-                {segment.count > 0 && (
-                  <span className="ml-1 text-[10px] text-gray-400">({segment.count})</span>
-                )}
+                <Globe className="inline h-3 w-3 mr-1 -mt-0.5" />
+                Cloud Providers
               </button>
             </motion.div>
-          ))
+            {path.map((segment, i) => (
+              <motion.div
+                key={segment.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: (i + 1) * 0.05 }}
+                className="flex items-center gap-1 shrink-0"
+              >
+                <ChevronRight className="h-3 w-3 text-gray-300" />
+                <button
+                  onClick={() => onPathClick(i)}
+                  className={cn(
+                    'px-2 py-0.5 rounded-md transition-colors font-medium',
+                    i === path.length - 1
+                      ? 'text-gray-900 bg-white shadow-sm border border-gray-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  )}
+                  aria-label={`Navigate to ${segment.label}`}
+                >
+                  {segment.label}
+                  {segment.count > 0 && (
+                    <span className="ml-1 text-[10px] text-gray-400">({segment.count})</span>
+                  )}
+                </button>
+              </motion.div>
+            ))}
+          </>
         )}
       </div>
 
