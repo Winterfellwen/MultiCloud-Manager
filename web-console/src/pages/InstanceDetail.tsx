@@ -41,7 +41,7 @@ export default function InstanceDetail() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <div className="text-destructive">{t('common.error')}</div>
-        <Button variant="outline" onClick={() => navigate('/instances')}>
+        <Button variant="outline" onClick={() => navigate('/resources')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t('common.back')}
         </Button>
