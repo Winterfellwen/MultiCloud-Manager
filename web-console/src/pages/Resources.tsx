@@ -1,6 +1,5 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import {
   useResources,
   useResourceTypes,
@@ -89,7 +88,6 @@ function formatBytes(bytes: number): string {
 
 export default function Resources() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<ResourceType | 'all'>('all');
   const [search, setSearch] = useState('');
   const [provider, setProvider] = useState('');
@@ -215,11 +213,7 @@ export default function Resources() {
                   </TableHeader>
                   <TableBody>
                     {items.map((r) => (
-                      <TableRow
-                        key={r.id}
-                        className={r.resourceType === 'instance' ? 'cursor-pointer hover:bg-muted/50' : ''}
-                        onClick={r.resourceType === 'instance' ? () => navigate(`/instances/${r.id}`) : undefined}
-                      >
+                      <TableRow key={r.id}>
                         <TableCell className="font-medium">
                           {r.name || r.id.slice(0, 8)}
                         </TableCell>

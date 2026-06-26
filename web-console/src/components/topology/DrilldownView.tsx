@@ -53,9 +53,9 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
     if (!searchQuery) return displayNodes;
     const q = searchQuery.toLowerCase();
     return displayNodes.filter(n =>
-      n.label.toLowerCase().includes(q) ||
-      n.type.toLowerCase().includes(q) ||
-      n.provider.toLowerCase().includes(q)
+      (n.label || '').toLowerCase().includes(q) ||
+      (n.type || '').toLowerCase().includes(q) ||
+      (n.provider || '').toLowerCase().includes(q)
     );
   }, [displayNodes, searchQuery]);
 
