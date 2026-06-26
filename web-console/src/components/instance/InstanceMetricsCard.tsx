@@ -53,7 +53,7 @@ export function InstanceMetricsCard({ instanceId }: Props) {
                 ) : (
                   <AreaChart data={metrics[chart.key as keyof typeof metrics]}>
                     <defs>
-                      <linearGradient id={`inst-grad-${chart.key}`} x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id={`inst-grad-${instanceId}-${chart.key}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={chart.gradient[0]} stopOpacity={0.3} />
                         <stop offset="100%" stopColor={chart.gradient[1]} stopOpacity={0.05} />
                       </linearGradient>
@@ -69,7 +69,7 @@ export function InstanceMetricsCard({ instanceId }: Props) {
                       dataKey="value"
                       stroke={chart.color}
                       strokeWidth={1.5}
-                      fill={`url(#inst-grad-${chart.key})`}
+                      fill={`url(#inst-grad-${instanceId}-${chart.key})`}
                     />
                   </AreaChart>
                 )}
