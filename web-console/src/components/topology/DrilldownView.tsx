@@ -154,7 +154,10 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      if (node.id === 'virtual-parent') return;
+      if (node.id === 'virtual-parent') {
+        onPathClick(-1);
+        return;
+      }
       const topologyNode = node.data as unknown as TopologyNode;
       const treeNode = currentNode?.children.find(c => c.id === topologyNode.id);
 
@@ -166,7 +169,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
         setSelectedNode(topologyNode);
       }
     },
-    [currentNode, onDrilldown]
+    [currentNode, onDrilldown, onPathClick]
   );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
