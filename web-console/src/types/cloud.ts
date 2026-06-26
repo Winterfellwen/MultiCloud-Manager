@@ -18,6 +18,19 @@ export interface InstanceRow {
   lastSyncedAt: string | null;
   createdAt: string | null;
   cloudAccountId: string | null;
+
+  /** Optional extended fields (populated by detail API / demo mode) */
+  metrics?: {
+    cpu: Array<{ time: number; value: number }>;
+    memory: Array<{ time: number; value: number }>;
+    network: Array<{ time: number; value: number }>;
+    disk: Array<{ time: number; value: number }>;
+  };
+  logs?: Array<{ timestamp: string; level: 'info' | 'warn' | 'error'; message: string }>;
+  connections?: {
+    incoming: Array<{ id: string; source: string; label?: string }>;
+    outgoing: Array<{ id: string; target: string; label?: string }>;
+  };
 }
 
 export interface CreateInstanceParams {
