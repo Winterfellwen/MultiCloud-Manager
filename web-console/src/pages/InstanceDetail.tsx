@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { ApiError } from '@/api/client';
 import { ArrowLeft, Play, Square, RotateCw, Trash2, Server, Cpu, Globe, Tag, Clock } from 'lucide-react';
+import { InstanceMetricsCard, InstanceLogsCard, InstanceConnectionsCard } from '@/components/instance';
 
 export default function InstanceDetail() {
   const { t } = useTranslation();
@@ -22,7 +23,7 @@ export default function InstanceDetail() {
     try {
       await action.mutateAsync({ id: instance.id, action: act });
       toast.success(t(`instances.${act}Success`));
-      if (act === 'delete') navigate('/instances');
+      if (act === 'delete') navigate('/resources');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('instances.opFailed'));
     }
@@ -54,7 +55,7 @@ export default function InstanceDetail() {
     <div className="space-y-6 p-3 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/instances')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/resources')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -187,6 +188,19 @@ export default function InstanceDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Metrics Card */}
+      <InstanceMetricsCard instanceId={instance.id} />
+
+      {/* Logs Card */}
+      <InstanceLogsCard instanceId={instance.id} />
+
+      {/* Connections Card */}
+      <InstanceConnectionsCard
+        instanceId={instance.id}
+        incoming={instance.connections?.incoming || []}
+        outgoing={instance.connections?.outgoing || []}
+      />
     </div>
   );
 }
