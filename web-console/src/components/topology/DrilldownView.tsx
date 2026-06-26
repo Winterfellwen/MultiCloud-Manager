@@ -154,17 +154,15 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (node.id === 'virtual-parent') return;
       const topologyNode = node.data as unknown as TopologyNode;
       const treeNode = currentNode?.children.find(c => c.id === topologyNode.id);
 
       if (topologyNode.type === 'instance') {
-        // Instance → show detail modal
         setSelectedNode(topologyNode);
       } else if (treeNode && treeNode.children.length > 0) {
-        // Has children → drilldown
         onDrilldown(topologyNode.id);
       } else {
-        // Leaf node → show detail modal
         setSelectedNode(topologyNode);
       }
     },

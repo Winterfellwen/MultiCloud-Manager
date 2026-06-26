@@ -109,7 +109,8 @@ export type StatusColor =
  * 根据资源状态字符串映射 Badge 颜色变体。
  * 与 components/ui/badge 的 variant 保持一致。
  */
-export function getStatusColor(status: string): StatusColor {
+export function getStatusColor(status?: string | null): StatusColor {
+  if (!status) return 'outline';
   const s = status.toLowerCase();
   if (
     ['running', 'active', 'available', 'in-use', 'ok', 'normal', 'healthy'].includes(s)
