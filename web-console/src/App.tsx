@@ -8,6 +8,7 @@ import { Toaster } from 'sonner';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Instances from '@/pages/Instances';
+import InstanceDetail from '@/pages/InstanceDetail';
 import Resources from '@/pages/Resources';
 import Monitor from '@/pages/Monitor';
 import Costs from '@/pages/Costs';
@@ -54,6 +55,14 @@ export default function App() {
                 element={
                   <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
                     <Instances />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/instances/:id"
+                element={
+                  <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
+                    <InstanceDetail />
                   </ProtectedRoute>
                 }
               />

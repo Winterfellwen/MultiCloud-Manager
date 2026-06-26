@@ -78,7 +78,7 @@ export default function Topology() {
   }, []);
 
   const handlePathClick = useCallback((index: number) => {
-    setDrillPath((prev) => prev.slice(0, index));
+    setDrillPath((prev) => prev.slice(0, index + 1));
   }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);

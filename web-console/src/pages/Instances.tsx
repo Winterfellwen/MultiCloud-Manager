@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useInstances, useInstanceAction, useSyncInstances, useProviders, useRegions, useInstanceTypes, useImages, useCreateInstance } from '@/hooks/useInstances';
 import { useDemoStore } from '@/stores/demo';
 import { demoResetAll } from '@/lib/demo/demo-api';
@@ -20,6 +21,7 @@ import { Plus, RefreshCw, Search, Play, Square, RotateCw, Trash2, RotateCcw } fr
 
 export default function Instances() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<{ provider?: string; status?: InstanceStatus }>({});
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -166,7 +168,11 @@ export default function Instances() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((inst) => (
-                    <TableRow key={inst.id}>
+                    <TableRow
+                      key={inst.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/instances/${inst.id}`)}
+                    >
                       <TableCell className="font-medium">
                         {inst.name || inst.providerInstanceId.slice(0, 8)}
                       </TableCell>

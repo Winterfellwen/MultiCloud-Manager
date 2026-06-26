@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
   useNodesState,
@@ -14,7 +13,7 @@ import { ResourceEdge } from './ResourceEdge';
 import { NodeDetailModal } from './NodeDetailModal';
 import { ClusterNode } from './ClusterNode';
 import { KeyboardShortcutOverlay } from './KeyboardShortcutOverlay';
-import { type TopologyNode, type TopologyEdge, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
+import { type TopologyNode, type TopologyEdge } from '@/types/topology';
 import type { TreeNode } from '@/hooks/useTopologyTree';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Globe } from 'lucide-react';
@@ -41,7 +40,6 @@ const GRID_COLS = 5;
 const PARENT_X = -200;
 
 export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, allEdges, allNodes, searchQuery = '' }: DrilldownViewProps) {
-  const navigate = useNavigate();
   const { fitView } = useReactFlow();
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
@@ -49,7 +47,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   const isRoot = path.length === 0;
-  const displayNodes = useMemo(() => currentNode.children.map(c => c.node), [currentNode]);
+  const displayNodes = useMemo(() => currentNode?.children.map(c => c.node) ?? [], [currentNode]);
 
   const filteredNodes = useMemo(() => {
     if (!searchQuery) return displayNodes;
@@ -89,7 +87,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
   const { flowNodes, flowEdges } = useMemo(() => {
     const fn: Node[] = displayNodes.map((node, idx) => {
       const pos = layoutPositions[node.id];
-      const treeNode = currentNode.children.find(c => c.id === node.id);
+      const treeNode = currentNode?.children.find(c => c.id === node.id);
       return {
         id: node.id,
         type: 'resource',
@@ -157,7 +155,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const topologyNode = node.data as unknown as TopologyNode;
-      const treeNode = currentNode.children.find(c => c.id === topologyNode.id);
+      const treeNode = currentNode?.children.find(c => c.id === topologyNode.id);
 
       if (topologyNode.type === 'instance') {
         // Instance → show detail modal
@@ -166,11 +164,11 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
         // Has children → drilldown
         onDrilldown(topologyNode.id);
       } else {
-        // Other leaf → navigate to resource page
-        navigate(RESOURCE_TYPE_ROUTE_MAP[topologyNode.type] || '/resources');
+        // Leaf node → show detail modal
+        setSelectedNode(topologyNode);
       }
     },
-    [currentNode, onDrilldown, navigate]
+    [currentNode, onDrilldown]
   );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -198,7 +196,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
         e.preventDefault();
         if (focusedIdx >= 0 && focusedIdx < total) {
           const node = displayNodes[focusedIdx];
-          const treeNode = currentNode.children.find(c => c.id === node.id);
+          const treeNode = currentNode?.children.find(c => c.id === node.id);
           if (node.type === 'instance') {
             setSelectedNode(node);
           } else if (treeNode && treeNode.children.length > 0) {
@@ -226,7 +224,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
             <Globe className="h-3.5 w-3.5 text-blue-500" />
             <span>{currentNode.node.label}</span>
             <span className="text-[10px] text-gray-400 font-normal">
-              ({currentNode.children.length})
+              ({currentNode?.children.length ?? 0})
             </span>
           </div>
         ) : (
