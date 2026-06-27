@@ -22,7 +22,8 @@
     "close": "关闭",
     "creating": "创建中...",
     "deleting": "删除中...",
-    "confirmDelete": "确认删除"
+    "confirmDelete": "确认删除",
+    "downloading": "下载中..."
   },
   "nav": {
     "dashboard": "总览",
@@ -546,6 +547,7 @@
       "connections": "连接",
       "viewDetails": "跳转详情",
       "close": "关闭"
-    }
+    },
+    "download": "下载"
   }
 }

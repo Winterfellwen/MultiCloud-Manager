@@ -22,7 +22,8 @@
     "close": "Close",
     "creating": "Creating...",
     "deleting": "Deleting...",
-    "confirmDelete": "Confirm Delete"
+    "confirmDelete": "Confirm Delete",
+    "downloading": "Downloading..."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -546,6 +547,7 @@
       "connections": "Connections",
       "viewDetails": "View Details",
       "close": "Close"
-    }
+    },
+    "download": "Download"
   }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { toPng } from 'html-to-image';
 import {
   ReactFlow,
   MiniMap,
@@ -20,7 +21,7 @@ import { ClusterNode } from './ClusterNode';
 import { useTopologySummary, useTopologyCluster } from '@/hooks/useTopologyCluster';
 import { type TopologyNode, type TopologyEdge, type GroupMode, RESOURCE_TYPE_ROUTE_MAP } from '@/types/topology';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Server } from 'lucide-react';
+import { ArrowLeft, Server, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const nodeTypes = {
@@ -49,6 +50,28 @@ export function TopologyCanvas({ nodes, edges, isLoading, groupMode = 'hierarchy
   const dagreWorkerRef = useRef<Worker | null>(null);
   const forceWorkerRef = useRef<Worker | null>(null);
   const [layoutPositions, setLayoutPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = useCallback(async () => {
+    if (!reactFlowWrapper.current || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toPng(reactFlowWrapper.current, {
+        backgroundColor: '#ffffff',
+        quality: 0.95,
+        pixelRatio: 2,
+      });
+      const link = document.createElement('a');
+      link.download = `topology-${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [isDownloading]);
 
   const { summaryNodes, summaryEdges, expandedChildren, expandedChildEdges } = useTopologySummary(
     nodes, edges, expandedNodeId
@@ -247,7 +270,19 @@ export function TopologyCanvas({ nodes, edges, isLoading, groupMode = 'hierarchy
   const parentNode = expandedNodeId ? summaryNodes.find(n => n.id === expandedNodeId) : null;
 
   return (
-    <div className="flex-1 flex h-full relative">
+    <div ref={reactFlowWrapper} className="flex-1 flex h-full relative">
+      {/* Download button */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownload}
+        disabled={isDownloading}
+        className="absolute top-3 right-3 z-10 gap-1.5 bg-background/90 backdrop-blur-sm shadow-md border-border/40 hover:bg-background"
+      >
+        <Download className="h-3.5 w-3.5" />
+        {isDownloading ? t('common.downloading') : t('topology.download')}
+      </Button>
+
       {/* Back button + breadcrumb */}
       <AnimatePresence>
         {isExpandedView && parentNode && (
