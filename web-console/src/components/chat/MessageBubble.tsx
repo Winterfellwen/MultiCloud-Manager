@@ -3,6 +3,7 @@
 // 支持深度思考（reasoning）独立折叠展示
 // 支持按时间顺序渲染 blocks（reasoning / text / tool_call 按实际输出顺序）
 import { useState, useEffect, useRef, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import type { ChatMessage, ContentBlock } from '../../types/chat';
 import { ToolCallCard, serializeValue } from './ToolCallCard';
@@ -15,6 +16,7 @@ interface MessageBubbleProps {
 
 /** 深度思考区块：折叠态显示标题 + 预览；展开态显示完整推理过程 */
 function ReasoningBlock({ reasoning, isStreaming }: { reasoning: string; isStreaming: boolean }) {
+  const { t } = useTranslation();
   // 默认折叠（用户可手动展开查看推理过程）
   const [expanded, setExpanded] = useState(false);
   const previewLines = reasoning.split('\n').slice(0, 2).join('\n');
@@ -31,7 +33,7 @@ function ReasoningBlock({ reasoning, isStreaming }: { reasoning: string; isStrea
         ) : (
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         )}
-        <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">思考</span>
+        <span className="shrink-0 whitespace-nowrap text-xs font-medium text-muted-foreground">{t('chat.thinking')}</span>
         {isStreaming && (
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
         )}
@@ -90,6 +92,7 @@ function BlocksRenderer({
   expandedTools: Set<string>;
   onToggleTool: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       {blocks.map((block) => {
@@ -128,7 +131,7 @@ function BlocksRenderer({
       {isStreaming && blocks.length === 0 && (
         <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>思考中...</span>
+          <span>{t('chat.thinking')}</span>
         </div>
       )}
     </>
@@ -136,6 +139,7 @@ function BlocksRenderer({
 }
 
 function MessageBubbleInner({ message }: MessageBubbleProps) {
+  const { t } = useTranslation();
   const isUser = message.role === 'user';
   const isError = message.status === 'error';
   const isStreaming = message.status === 'streaming';
@@ -253,7 +257,7 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
           // assistant 消息刚创建（blocks 为空、无内容），显示"思考中"提示
           <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>思考中...</span>
+            <span>{t('chat.thinking')}</span>
           </div>
         ) : (
           <>

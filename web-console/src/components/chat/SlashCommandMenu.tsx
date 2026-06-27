@@ -1,4 +1,5 @@
 // 斜杠命令菜单：显示匹配的命令列表，支持键盘导航和分类颜色标签
+import { useTranslation } from 'react-i18next';
 import type { SlashCommand } from '../../hooks/useSlashCommands';
 import { cn } from '../../lib/utils';
 
@@ -17,9 +18,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  session: '会话',
-  model: '模型',
-  tools: '工具',
+  session: 'chat.category.session',
+  model: 'chat.category.model',
+  tools: 'chat.category.tools',
 };
 
 export function SlashCommandMenu({
@@ -28,12 +29,13 @@ export function SlashCommandMenu({
   onSelect,
   onHoverIndex,
 }: SlashCommandMenuProps) {
+  const { t } = useTranslation();
   if (commands.length === 0) return null;
 
   return (
     <div className="absolute bottom-full left-0 z-50 mb-1 w-80 overflow-hidden rounded-md border border-border bg-white shadow-lg dark:bg-slate-800">
       <div className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
-        斜杠命令
+        {t('chat.slashCommands')}
       </div>
       <div className="max-h-60 overflow-auto p-1">
         {commands.map((cmd, idx) => {
@@ -61,7 +63,7 @@ export function SlashCommandMenu({
                   CATEGORY_COLORS[category]
                 )}
               >
-                {CATEGORY_LABELS[category]}
+                {t(CATEGORY_LABELS[category])}
               </span>
             </div>
           );

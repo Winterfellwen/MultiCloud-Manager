@@ -20,7 +20,9 @@
     "create": "Create",
     "add": "Add",
     "close": "Close",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "deleting": "Deleting...",
+    "confirmDelete": "Confirm Delete"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -476,7 +478,22 @@
     "edit": "Edit"
   },
   "chat": {
-    "readonly": "Read only",
+    "status.running": "Running",
+    "status.completed": "Completed",
+    "status.error": "Error",
+    "status.approval": "Pending Approval",
+    "newSession": "New Chat",
+    "noSessions": "No conversations",
+    "deleteSession": "Delete chat",
+    "confirmDeleteSession": "Confirm delete chat",
+    "confirmDeleteSessionDesc": "This cannot be undone. All messages and history will be permanently deleted.",
+    "thinking": "Thinking...",
+    "slashCommands": "Slash commands",
+    "category.session": "Session",
+    "category.model": "Model",
+    "category.tools": "Tools",
+    "truncatedWarning": "AI has reached the maximum thinking rounds. The response may be incomplete. Try narrowing your question or asking in steps.",
+    "startNewSession": "Start a new conversation",
     "filterMine": "Mine",
     "filterTeam": "Team",
     "filterAll": "All"

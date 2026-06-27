@@ -36,12 +36,12 @@ function deriveSessionStatus(
   return 'completed';
 }
 
-const STATUS_CONFIG: Record<SessionStatus, { icon: typeof Loader2; className: string; label: string }> = {
-  running: { icon: Loader2, className: 'text-blue-500', label: '运行中' },
-  completed: { icon: CheckCircle2, className: 'text-green-500', label: '已完成' },
-  error: { icon: AlertCircle, className: 'text-red-500', label: '错误' },
-  approval: { icon: ShieldQuestion, className: 'text-yellow-500', label: '待审批' },
-  idle: { icon: MessageSquare, className: 'text-muted-foreground', label: '' },
+const STATUS_CONFIG: Record<SessionStatus, { icon: typeof Loader2; className: string; labelKey: string }> = {
+  running: { icon: Loader2, className: 'text-blue-500', labelKey: 'chat.status.running' },
+  completed: { icon: CheckCircle2, className: 'text-green-500', labelKey: 'chat.status.completed' },
+  error: { icon: AlertCircle, className: 'text-red-500', labelKey: 'chat.status.error' },
+  approval: { icon: ShieldQuestion, className: 'text-yellow-500', labelKey: 'chat.status.approval' },
+  idle: { icon: MessageSquare, className: 'text-muted-foreground', labelKey: '' },
 };
 
 export function SessionList({ onClose }: { onClose?: () => void }) {
@@ -152,11 +152,11 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
             <>
               <Button onClick={createSession} className="flex-1" size="sm">
                 <Plus className="mr-1.5 h-4 w-4" />
-                新建对话
+                {t('chat.newSession')}
               </Button>
               {currentUser?.role === 'admin' && sessions.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                  编辑
+                  {t('common.edit')}
                 </Button>
               )}
             </>
@@ -207,7 +207,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
         <div className="space-y-1 p-2">
           {sessions.length === 0 && (
             <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-              暂无对话
+              {t('chat.noSessions')}
             </div>
           )}
           {sessions.map((session) => {
@@ -270,7 +270,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
                 </div>
                 {status !== 'idle' && (
                   <span className={cn('shrink-0 text-xs', statusConfig.className)}>
-                    {statusConfig.label}
+                    {statusConfig.labelKey ? t(statusConfig.labelKey) : ''}
                   </span>
                 )}
                 {!isEditing && canDeleteSession(session, currentUser?.id, currentUser?.role === 'admin') && (
@@ -281,7 +281,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
                       e.stopPropagation();
                       setDeleteTarget(session.sessionKey);
                     }}
-                    title="删除对话"
+                    title={t('chat.deleteSession')}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -296,15 +296,15 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
       <Dialog
         open={!!deleteTarget}
         onClose={() => !isDeleting && setDeleteTarget(null)}
-        title="确认删除对话"
-        description="删除后无法恢复，该对话的所有消息和历史记录将被永久清除。"
+        title={t('chat.confirmDeleteSession')}
+        description={t('chat.confirmDeleteSessionDesc')}
       >
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
-            取消
+            {t('common.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
-            {isDeleting ? '删除中...' : '确认删除'}
+            {isDeleting ? t('common.deleting') : t('common.confirmDelete')}
           </Button>
         </div>
       </Dialog>

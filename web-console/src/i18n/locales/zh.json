@@ -20,7 +20,9 @@
     "create": "创建",
     "add": "添加",
     "close": "关闭",
-    "creating": "创建中..."
+    "creating": "创建中...",
+    "deleting": "删除中...",
+    "confirmDelete": "确认删除"
   },
   "nav": {
     "dashboard": "总览",
@@ -476,7 +478,22 @@
     "edit": "编辑"
   },
   "chat": {
-    "readonly": "只读",
+    "status.running": "运行中",
+    "status.completed": "已完成",
+    "status.error": "错误",
+    "status.approval": "待审批",
+    "newSession": "新建对话",
+    "noSessions": "暂无对话",
+    "deleteSession": "删除对话",
+    "confirmDeleteSession": "确认删除对话",
+    "confirmDeleteSessionDesc": "删除后无法恢复，该对话的所有消息和历史记录将被永久清除。",
+    "thinking": "思考中...",
+    "slashCommands": "斜杠命令",
+    "category.session": "会话",
+    "category.model": "模型",
+    "category.tools": "工具",
+    "truncatedWarning": "AI 已达到最大思考轮次，当前回答可能不完整。建议缩小问题范围或分步骤提问。",
+    "startNewSession": "开始新的对话",
     "filterMine": "我的",
     "filterTeam": "团队",
     "filterAll": "全部"

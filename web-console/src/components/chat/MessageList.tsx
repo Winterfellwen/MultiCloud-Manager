@@ -1,5 +1,6 @@
 // 消息列表：消息按顺序排列，自动滚动到底部
 import { useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import type { ChatMessage } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
@@ -10,15 +11,17 @@ interface MessageListProps {
 }
 
 function TruncatedWarning() {
+  const { t } = useTranslation();
   return (
     <div className="mx-4 mb-2 flex items-start gap-2 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-200">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500" />
-      <span>AI 已达到最大思考轮次，当前回答可能不完整。建议缩小问题范围或分步骤提问。</span>
+      <span>{t('chat.truncatedWarning')}</span>
     </div>
   );
 }
 
 export function MessageList({ messages }: MessageListProps) {
+  const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -32,7 +35,7 @@ export function MessageList({ messages }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        开始新的对话
+        {t('chat.startNewSession')}
       </div>
     );
   }
