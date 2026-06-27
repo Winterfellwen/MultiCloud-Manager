@@ -64,23 +64,11 @@ export default function Topology() {
   }, []);
 
   function handleSearchResultClick(node: TopologyNode) {
-    // Stay on topology page and highlight the resource
+    // Set search query to highlight the resource in current view
     setSearchQuery(node.label);
     setShowResults(false);
-    // If in tree mode, try to find the path to this node
-    if (mode === 'tree' && data) {
-      // Find the path from root to this node
-      const path: string[] = [];
-      let currentId = node.id;
-      while (currentId) {
-        path.unshift(currentId);
-        const edge = data.edges.find(e => e.type === 'contains' && e.source === currentId);
-        currentId = edge?.target || '';
-      }
-      if (path.length > 1) {
-        setDrillPath(path.slice(0, -1));
-      }
-    }
+    // Reset drill path to show from root
+    setDrillPath([]);
   }
 
   const filteredNodes = useMemo(() => {
