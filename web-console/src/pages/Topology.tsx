@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, ChevronLeft, ChevronRight, Network, Search, X, FolderOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, ChevronLeft, ChevronRight, Network, Search, X, FolderOpen, Server, ExternalLink } from 'lucide-react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
 import { useTopologyTree, getTreeChildren } from '@/hooks/useTopologyTree';
@@ -10,7 +11,7 @@ import { ViewSwitcher } from '@/components/topology/ViewSwitcher';
 import { GroupModeSwitcher } from '@/components/topology/GroupModeSwitcher';
 import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
 import { DrilldownView } from '@/components/topology/DrilldownView';
-import { VIEW_CONFIG, type TopologyView, type TopologyFilters, type TopologyCategory, type GroupMode } from '@/types/topology';
+import { VIEW_CONFIG, RESOURCE_TYPE_ROUTE_MAP, type TopologyView, type TopologyFilters, type TopologyCategory, type GroupMode, type TopologyNode } from '@/types/topology';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,8 +30,46 @@ export default function Topology() {
   const [drillPath, setDrillPath] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useSyncedState<GroupMode>('group', 'hierarchy');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<TopologyNode[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const { data, isLoading, error } = useTopology(filters);
+
+  // Global search across all nodes
+  useEffect(() => {
+    if (!searchQuery || !data) {
+      setSearchResults([]);
+      return;
+    }
+    const q = searchQuery.toLowerCase();
+    const results = data.nodes.filter((node) =>
+      node.label.toLowerCase().includes(q) ||
+      node.provider.toLowerCase().includes(q) ||
+      node.region.toLowerCase().includes(q) ||
+      node.type.toLowerCase().includes(q)
+    ).slice(0, 10);
+    setSearchResults(results);
+  }, [searchQuery, data]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function handleSearchResultClick(node: TopologyNode) {
+    const route = RESOURCE_TYPE_ROUTE_MAP[node.type] || '/resources';
+    navigate(route);
+    setSearchQuery('');
+    setShowResults(false);
+  }
 
   const filteredNodes = useMemo(() => {
     if (!data) return [];
@@ -126,24 +165,54 @@ export default function Topology() {
             )}
             <h1 className="text-lg md:text-xl font-bold whitespace-nowrap">{t('topology.title')}</h1>
           </div>
-          <div className="relative">
+          <div className="relative" ref={searchRef}>
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('topology.search', 'Search...')}
-              className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
-              aria-label={t('topology.search', 'Search topology')}
+              onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
+              onFocus={() => searchQuery && setShowResults(true)}
+              placeholder={t('topology.searchPlaceholder', '搜索所有资源...')}
+              className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring w-48"
+              aria-label={t('topology.search', 'Search resources')}
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => { setSearchQuery(''); setShowResults(false); }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label="Clear search"
               >
                 <X className="h-3 w-3" />
               </button>
+            )}
+            {/* Search results dropdown */}
+            {showResults && searchResults.length > 0 && (
+              <div className="absolute top-full right-0 mt-1 w-72 bg-background border rounded-lg shadow-lg z-50 max-h-64 overflow-auto">
+                <div className="px-3 py-1.5 text-[10px] text-muted-foreground border-b">
+                  {t('topology.searchResults', { count: searchResults.length })}
+                </div>
+                {searchResults.map((node) => (
+                  <button
+                    key={node.id}
+                    onClick={() => handleSearchResultClick(node)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left"
+                  >
+                    <Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{node.label}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {node.provider} · {node.region} · {node.type}
+                      </div>
+                    </div>
+                    <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {showResults && searchQuery && searchResults.length === 0 && (
+              <div className="absolute top-full right-0 mt-1 w-72 bg-background border rounded-lg shadow-lg z-50 p-3 text-center text-sm text-muted-foreground">
+                {t('topology.noResults')}
+              </div>
             )}
           </div>
         </div>

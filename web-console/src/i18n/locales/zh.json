@@ -548,6 +548,9 @@
       "viewDetails": "跳转详情",
       "close": "关闭"
     },
-    "download": "下载"
+    "download": "下载",
+    "searchPlaceholder": "搜索所有资源...",
+    "searchResults": "找到 {count} 个结果",
+    "noResults": "未找到结果"
   }
 }

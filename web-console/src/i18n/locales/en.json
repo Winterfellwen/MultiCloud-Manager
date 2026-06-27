@@ -548,6 +548,9 @@
       "viewDetails": "View Details",
       "close": "Close"
     },
-    "download": "Download"
+    "download": "Download",
+    "searchPlaceholder": "Search all resources...",
+    "searchResults": "{count} results found",
+    "noResults": "No results found"
   }
 }
