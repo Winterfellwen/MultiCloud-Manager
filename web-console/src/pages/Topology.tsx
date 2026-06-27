@@ -55,39 +55,23 @@ export default function Topology() {
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowResults(false);
-      }
+      // Use setTimeout to let click event fire first on dropdown buttons
+      setTimeout(() => {
+        const target = e.target as Node;
+        if (searchRef.current && !searchRef.current.contains(target)) {
+          setShowResults(false);
+        }
+      }, 0);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   function handleSearchResultClick(node: TopologyNode) {
+    console.log('SEARCH CLICK:', node.label, node.id);
     setShowResults(false);
-    // Find the path from root to this node using contains edges
-    if (data) {
-      const path: string[] = [];
-      let currentId = node.id;
-      // Walk up the hierarchy: find parent via 'contains' edges (source=child, target=parent)
-      while (currentId) {
-        const parentEdge = data.edges.find(e => e.type === 'contains' && e.source === currentId);
-        if (parentEdge) {
-          path.unshift(parentEdge.target);
-          currentId = parentEdge.target;
-        } else {
-          break;
-        }
-      }
-      // Set drill path to navigate to this node's parent level
-      if (path.length > 0) {
-        setDrillPath(path);
-      } else {
-        setDrillPath([]);
-      }
-    }
-    // Also set search query to highlight the node
     setSearchQuery(node.label);
+    setMode('graph');
   }
 
   const filteredNodes = useMemo(() => {
@@ -124,10 +108,13 @@ export default function Topology() {
   );
 
   // Current node in drilldown
-  const currentNode = useMemo(
-    () => getTreeChildren(tree, drillPath),
-    [tree, drillPath]
-  );
+  const currentNode = useMemo(() => {
+    const result = getTreeChildren(tree, drillPath);
+    if (drillPath.length > 0) {
+      console.log('[search-debug] drillPath:', drillPath, 'treeIds:', tree.map(t => t.id), 'result:', result?.id ?? 'null');
+    }
+    return result;
+  }, [tree, drillPath]);
 
   // Breadcrumb segments
   const breadcrumbSegments = useMemo(() => {
@@ -244,14 +231,19 @@ export default function Topology() {
             )}
             {/* Search results dropdown */}
             {showResults && searchResults.length > 0 && (
-              <div className="absolute top-full right-0 mt-1 w-72 bg-background border rounded-lg shadow-lg z-50 max-h-64 overflow-auto">
+              <div
+                className="absolute top-full right-0 mt-1 w-72 bg-background border rounded-lg shadow-lg z-50 max-h-64 overflow-auto"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
                 <div className="px-3 py-1.5 text-[10px] text-muted-foreground border-b">
                   {t('topology.searchResults', { count: searchResults.length })}
                 </div>
                 {searchResults.map((node) => (
                   <button
                     key={node.id}
+                    data-search-result={node.id}
                     onClick={() => handleSearchResultClick(node)}
+                    onMouseDown={(e) => e.stopPropagation()}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left"
                   >
                     <Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

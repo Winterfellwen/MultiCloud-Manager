@@ -112,11 +112,11 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-60 border-r bg-card flex flex-col h-full shadow-lg">
+    <aside className="w-60 border-r bg-muted/50 flex flex-col h-full">
       <div className="h-14 flex items-center px-6 border-b">
         <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
       </div>
-      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive = isItemActive(item);
           return (
@@ -127,15 +127,15 @@ export function Sidebar() {
                 'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
                 'transition-all duration-150',
                 isActive
-                  ? 'bg-background shadow-sm text-foreground font-semibold'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'bg-background shadow-md text-foreground font-semibold ring-1 ring-border'
+                  : 'text-muted-foreground hover:bg-background/80 hover:text-foreground'
               )}
             >
               <item.icon className="h-4 w-4" />
               {item.label}
             </NavLink>
               {item.children && (
-                <div className="ml-6 mt-1 space-y-0.5">
+                <div className="ml-6 mt-1 space-y-1">
                   {item.children.map((child) => {
                     const childActive = location.pathname === child.to;
                     return (
@@ -146,8 +146,8 @@ export function Sidebar() {
                           'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm',
                           'transition-all duration-150',
                           childActive
-                            ? 'bg-background shadow-sm text-foreground font-semibold'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            ? 'bg-background shadow-md text-foreground font-semibold ring-1 ring-border'
+                            : 'text-muted-foreground hover:bg-background/80 hover:text-foreground'
                         )}
                       >
                         {child.label}
