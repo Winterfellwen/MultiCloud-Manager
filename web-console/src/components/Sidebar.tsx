@@ -116,7 +116,7 @@ export function Sidebar() {
       <div className="h-14 flex items-center px-6 border-b">
         <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive = isItemActive(item);
           return (
@@ -124,19 +124,18 @@ export function Sidebar() {
             <NavLink
               to={item.children ? item.children[0].to : item.to}
               className={cn(
-                'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                'transition-[background-color,color,transform] duration-150',
-                'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
+                'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                'transition-all duration-150',
                 isActive
-                  ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/15'
-                  : 'text-muted-foreground'
+                  ? 'bg-background shadow-sm text-foreground font-semibold'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
             >
               <item.icon className="h-4 w-4" />
               {item.label}
             </NavLink>
               {item.children && (
-                <div className="ml-6 mt-1 space-y-1">
+                <div className="ml-6 mt-1 space-y-0.5">
                   {item.children.map((child) => {
                     const childActive = location.pathname === child.to;
                     return (
@@ -144,12 +143,11 @@ export function Sidebar() {
                         key={child.to}
                         to={child.to}
                         className={cn(
-                          'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
-                          'transition-[background-color,color,transform] duration-150',
-                          'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
+                          'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm',
+                          'transition-all duration-150',
                           childActive
-                            ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/15'
-                            : 'text-muted-foreground'
+                            ? 'bg-background shadow-sm text-foreground font-semibold'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                         )}
                       >
                         {child.label}

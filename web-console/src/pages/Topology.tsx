@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+
 import { AlertCircle, ChevronLeft, ChevronRight, Network, Search, X, FolderOpen, Server, ExternalLink } from 'lucide-react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
@@ -11,7 +11,7 @@ import { ViewSwitcher } from '@/components/topology/ViewSwitcher';
 import { GroupModeSwitcher } from '@/components/topology/GroupModeSwitcher';
 import { TopologyCanvas } from '@/components/topology/TopologyCanvas';
 import { DrilldownView } from '@/components/topology/DrilldownView';
-import { VIEW_CONFIG, RESOURCE_TYPE_ROUTE_MAP, type TopologyView, type TopologyFilters, type TopologyCategory, type GroupMode, type TopologyNode } from '@/types/topology';
+import { VIEW_CONFIG, type TopologyView, type TopologyFilters, type TopologyCategory, type GroupMode, type TopologyNode } from '@/types/topology';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,6 @@ export default function Topology() {
   const [searchResults, setSearchResults] = useState<TopologyNode[]>([]);
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   const { data, isLoading, error } = useTopology(filters);
 
@@ -65,10 +64,23 @@ export default function Topology() {
   }, []);
 
   function handleSearchResultClick(node: TopologyNode) {
-    const route = RESOURCE_TYPE_ROUTE_MAP[node.type] || '/resources';
-    navigate(route);
-    setSearchQuery('');
+    // Stay on topology page and highlight the resource
+    setSearchQuery(node.label);
     setShowResults(false);
+    // If in tree mode, try to find the path to this node
+    if (mode === 'tree' && data) {
+      // Find the path from root to this node
+      const path: string[] = [];
+      let currentId = node.id;
+      while (currentId) {
+        path.unshift(currentId);
+        const edge = data.edges.find(e => e.type === 'contains' && e.source === currentId);
+        currentId = edge?.target || '';
+      }
+      if (path.length > 1) {
+        setDrillPath(path.slice(0, -1));
+      }
+    }
   }
 
   const filteredNodes = useMemo(() => {
@@ -167,15 +179,41 @@ export default function Topology() {
       )}
 
       <div className="flex-1 flex flex-col h-full">
-        {/* Header: title + search */}
+        {/* Header: title + mode toggle + search */}
         <div className="flex items-center justify-between p-3 md:p-4 border-b gap-2">
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             {isMobile && (
               <Button variant="ghost" size="icon" onClick={toggleSidebar} className="shrink-0">
                 {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
             )}
             <h1 className="text-lg md:text-xl font-bold whitespace-nowrap">{t('topology.title')}</h1>
+            <div className="hidden sm:flex items-center gap-1 bg-muted rounded-lg p-0.5">
+              <button
+                onClick={() => { setMode('tree'); setDrillPath([]); }}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs',
+                  mode === 'tree'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                {t('topology.modeTree', '浏览')}
+              </button>
+              <button
+                onClick={() => setMode('graph')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium text-xs',
+                  mode === 'graph'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Network className="h-3.5 w-3.5" />
+                {t('topology.modeGraph', '关系图')}
+              </button>
+            </div>
           </div>
           <div className="relative" ref={searchRef}>
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -229,32 +267,8 @@ export default function Topology() {
           </div>
         </div>
 
-        {/* Mode toggle: big buttons */}
-        <div className="flex items-center gap-3 px-3 md:px-4 py-3 border-b">
-          <button
-            onClick={() => { setMode('tree'); setDrillPath([]); }}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm',
-              mode === 'tree'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            <FolderOpen className="h-4 w-4" />
-            {t('topology.modeTree', '浏览')}
-          </button>
-          <button
-            onClick={() => setMode('graph')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm',
-              mode === 'graph'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            <Network className="h-4 w-4" />
-            {t('topology.modeGraph', '关系图')}
-          </button>
+        {/* Controls: view + group mode */}
+        <div className="flex items-center gap-3 px-3 md:px-4 py-2 border-b bg-muted/30">
         </div>
 
         {/* Mode-specific controls */}
