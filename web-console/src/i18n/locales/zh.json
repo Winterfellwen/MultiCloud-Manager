@@ -500,8 +500,8 @@
   },
   "topology": {
     "title": "拓扑视图",
-    "modeTree": "层级",
-    "modeGraph": "关系",
+    "modeTree": "树形",
+    "modeGraph": "关系图",
     "filters": {
       "title": "筛选",
       "reset": "重置",
