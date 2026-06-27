@@ -74,9 +74,21 @@ export default function Topology() {
   const filteredNodes = useMemo(() => {
     if (!data) return [];
     const config = VIEW_CONFIG[view];
-    return data.nodes.filter((node) =>
+    // First pass: get nodes matching the view categories
+    const matchingNodes = data.nodes.filter((node) =>
       config.categories.includes(node.category as TopologyCategory)
     );
+    // Second pass: include parent nodes (vpc, subnet) needed for hierarchy
+    const matchingIds = new Set(matchingNodes.map(n => n.id));
+    const parentIds = new Set<string>();
+    for (const edge of data.edges) {
+      if (edge.type === 'contains' && matchingIds.has(edge.source)) {
+        parentIds.add(edge.target);
+      }
+    }
+    // Include all parent nodes in the hierarchy chain
+    const allNeededIds = new Set([...matchingIds, ...parentIds]);
+    return data.nodes.filter((node) => allNeededIds.has(node.id));
   }, [data, view]);
 
   const filteredEdges = useMemo(() => {
