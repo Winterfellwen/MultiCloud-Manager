@@ -46,10 +46,10 @@ export default function Topology() {
     return data.edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
   }, [data, filteredNodes]);
 
-  // Build tree from ALL nodes (not filtered by view, so the hierarchy is complete)
+  // Build tree from view-filtered nodes (so view toggle affects tree mode too)
   const { tree, nodeMap } = useTopologyTree(
-    data?.nodes || [],
-    data?.edges || [],
+    mode === 'tree' ? filteredNodes : (data?.nodes || []),
+    mode === 'tree' ? filteredEdges : (data?.edges || []),
     groupMode
   );
 
@@ -159,9 +159,12 @@ export default function Topology() {
               </button>
             </div>
 
-            {mode === 'graph' && <ViewSwitcher currentView={view} onChange={setView} />}
-            {mode === 'graph' && <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />}
+            <div className="hidden md:block w-px h-6 bg-border" />
+            <ViewSwitcher currentView={view} onChange={setView} />
+            <div className="hidden md:block w-px h-6 bg-border" />
+            <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />
 
+            <div className="hidden md:block w-px h-6 bg-border" />
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
@@ -175,7 +178,7 @@ export default function Topology() {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   aria-label="Clear search"
                 >
                   <X className="h-3 w-3" />
