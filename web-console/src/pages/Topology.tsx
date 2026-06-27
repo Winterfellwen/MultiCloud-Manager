@@ -64,11 +64,30 @@ export default function Topology() {
   }, []);
 
   function handleSearchResultClick(node: TopologyNode) {
-    // Set search query to highlight the resource in current view
-    setSearchQuery(node.label);
     setShowResults(false);
-    // Reset drill path to show from root
-    setDrillPath([]);
+    // Find the path from root to this node using contains edges
+    if (data) {
+      const path: string[] = [];
+      let currentId = node.id;
+      // Walk up the hierarchy: find parent via 'contains' edges (source=child, target=parent)
+      while (currentId) {
+        const parentEdge = data.edges.find(e => e.type === 'contains' && e.source === currentId);
+        if (parentEdge) {
+          path.unshift(parentEdge.target);
+          currentId = parentEdge.target;
+        } else {
+          break;
+        }
+      }
+      // Set drill path to navigate to this node's parent level
+      if (path.length > 0) {
+        setDrillPath(path);
+      } else {
+        setDrillPath([]);
+      }
+    }
+    // Also set search query to highlight the node
+    setSearchQuery(node.label);
   }
 
   const filteredNodes = useMemo(() => {
