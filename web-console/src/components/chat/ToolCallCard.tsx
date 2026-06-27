@@ -20,7 +20,7 @@ import {
   Check,
   type LucideIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveToolDisplay } from '../../lib/openclaw/tool-display';
 import {
@@ -110,6 +110,14 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
   const isCompleted = toolCall.status === 'completed';
   const summary = formatCollapsedToolPreviewText(resultText);
 
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
+
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const argsStr = serializeValue(toolCall.args);
@@ -120,7 +128,8 @@ export function ToolCallCard({ toolCall, isExpanded, onToggle }: ToolCallCardPro
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       // fallback
     }

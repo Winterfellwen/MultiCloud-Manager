@@ -194,7 +194,7 @@ export function useTopologyTree(
       return { tree, nodeMap };
     }
 
-    if (groupMode === 'semantic') {
+    if (groupMode === 'resourceType') {
       const groups = new Map<string, TopologyNode[]>();
       for (const node of nodes) {
         if (node.type === 'instance') {

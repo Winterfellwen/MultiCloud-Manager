@@ -12,12 +12,13 @@ import {
 } from '@/lib/demo/demo-api';
 import type { ListInstancesParams, CreateInstanceParams } from '@/types/cloud';
 
-export function useInstances(params?: ListInstancesParams) {
+export function useInstances(params?: ListInstancesParams, options?: { enabled?: boolean }) {
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
     queryKey: ['instances', params, isDemoMode],
     queryFn: () => isDemoMode ? demoListInstances(params) : cloudApi.listInstances(params),
     gcTime: 5 * 60_000,
+    enabled: options?.enabled,
   });
 }
 

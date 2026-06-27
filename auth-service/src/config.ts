@@ -14,11 +14,12 @@ export const config = {
   port: parseInt(process.env.PORT || '3004', 10),
   databaseUrl: requireEnv('DATABASE_URL', 'postgresql://postgres:postgres@127.0.0.1:5432/cloudops'),
   jwtSecret: requireEnv('JWT_SECRET', 'render-development-jwt-secret-change-me'),
+  jwtRefreshSecret: requireEnv('JWT_REFRESH_SECRET', 'render-development-jwt-refresh-secret-change-me'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   admin: {
     username: process.env.ADMIN_USERNAME || 'admin',
-    // 空字符串与未设置都视为“未指定”，启动时将随机生成一次
+    // 空字符串与未设置都视为"未指定"，启动时将随机生成一次
     password: process.env.ADMIN_PASSWORD || '',
   },
 };

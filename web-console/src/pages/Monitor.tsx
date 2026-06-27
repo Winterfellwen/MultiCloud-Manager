@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useAlertRules, useCreateAlertRule, useDeleteAlertRule, useAlertEvents, useResolveAlertEvent } from '@/hooks/useAlerts';
+import { useAlertRules, useCreateAlertRule, useUpdateAlertRule, useDeleteAlertRule, useAlertEvents, useResolveAlertEvent } from '@/hooks/useAlerts';
 import { useChannels, useCreateChannel, useDeleteChannel } from '@/hooks/useChannels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { AlertSeverityBadge, AlertStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
-import { Plus, Trash2, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Tab = 'rules' | 'events' | 'channels';
@@ -61,7 +61,9 @@ function RulesTab() {
   const { t } = useTranslation();
   const { data: rules, isLoading } = useAlertRules();
   const del = useDeleteAlertRule();
+  const updateRule = useUpdateAlertRule();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<any>(null);
 
   async function handleDelete(id: string) {
     if (!confirm(t('monitor.confirmDeleteRule'))) return;
@@ -69,6 +71,17 @@ function RulesTab() {
       await del.mutateAsync(id);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('monitor.deleteFailed'));
+    }
+  }
+
+  async function handleToggleEnabled(rule: any) {
+    try {
+      await updateRule.mutateAsync({
+        id: rule.id,
+        params: { enabled: !rule.enabled },
+      });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('monitor.updateFailed'));
     }
   }
 
@@ -96,7 +109,7 @@ function RulesTab() {
                   <TableHead className="w-[100px]">{t('monitor.duration')}</TableHead>
                   <TableHead className="w-[100px]">{t('monitor.severity')}</TableHead>
                   <TableHead className="w-[100px]">{t('common.enabled')}</TableHead>
-                  <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
+                  <TableHead className="w-[100px]">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,19 +121,38 @@ function RulesTab() {
                     <TableCell className="text-muted-foreground">{rule.duration}</TableCell>
                     <TableCell><AlertSeverityBadge severity={rule.severity as AlertSeverity} /></TableCell>
                     <TableCell>
-                      <span className={rule.enabled ? 'text-green-600' : 'text-muted-foreground'}>
-                        {rule.enabled ? t('common.enabled') : t('common.disabled')}
-                      </span>
+                      <button
+                        onClick={() => handleToggleEnabled(rule)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          rule.enabled ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            rule.enabled ? 'translate-x-4.5' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </button>
                     </TableCell>
                     <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(rule.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                      </Tooltip>
+                      <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => setEditingRule(rule)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.edit')}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(rule.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -130,38 +162,58 @@ function RulesTab() {
         )}
       </CardContent>
       <CreateRuleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      {editingRule && (
+        <CreateRuleDialog
+          open={!!editingRule}
+          onClose={() => setEditingRule(null)}
+          editingRule={editingRule}
+        />
+      )}
     </Card>
   );
 }
 
-function CreateRuleDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateRuleDialog({ open, onClose, editingRule }: { open: boolean; onClose: () => void; editingRule?: any }) {
   const { t } = useTranslation();
   const create = useCreateAlertRule();
-  const [name, setName] = useState('');
-  const [metric, setMetric] = useState('cpu_usage');
-  const [condition, setCondition] = useState('> 80');
-  const [duration, setDuration] = useState('5m');
-  const [severity, setSeverity] = useState<AlertSeverity>('warning');
-  const [actionType, setActionType] = useState<AlertActionType>('notify');
-  const [actionTargets, setActionTargets] = useState('');
+  const updateRule = useUpdateAlertRule();
+  const [name, setName] = useState(editingRule?.name || '');
+  const [metric, setMetric] = useState(editingRule?.metric || 'cpu_usage');
+  const [condition, setCondition] = useState(editingRule?.condition || '> 80');
+  const [duration, setDuration] = useState(editingRule?.duration || '5m');
+  const [severity, setSeverity] = useState<AlertSeverity>(editingRule?.severity || 'warning');
+  const [actionType, setActionType] = useState<AlertActionType>(editingRule?.actions?.[0]?.type || 'notify');
+  const [actionTargets, setActionTargets] = useState(editingRule?.actions?.[0]?.targets?.join(', ') || '');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await create.mutateAsync({
-        name, metric, condition, duration, severity,
-        actions: [{ type: actionType, targets: actionTargets.split(',').map((s) => s.trim()).filter(Boolean) }],
-      });
+      if (editingRule) {
+        await updateRule.mutateAsync({
+          id: editingRule.id,
+          params: {
+            name, metric, condition, duration, severity,
+            actions: [{ type: actionType, targets: actionTargets.split(',').map((s: string) => s.trim()).filter(Boolean) }],
+          },
+        });
+      } else {
+        await create.mutateAsync({
+          name, metric, condition, duration, severity,
+          actions: [{ type: actionType, targets: actionTargets.split(',').map((s: string) => s.trim()).filter(Boolean) }],
+        });
+      }
       onClose();
-      setName(''); setMetric('cpu_usage'); setCondition('> 80'); setDuration('5m');
-      setSeverity('warning'); setActionType('notify'); setActionTargets('');
+      if (!editingRule) {
+        setName(''); setMetric('cpu_usage'); setCondition('> 80'); setDuration('5m');
+        setSeverity('warning'); setActionType('notify'); setActionTargets('');
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('monitor.createFailed'));
     }
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={t('monitor.createRuleTitle')}>
+    <Dialog open={open} onClose={onClose} title={editingRule ? t('monitor.editRuleTitle') : t('monitor.createRuleTitle')}>
       <form onSubmit={handleSubmit} className="space-y-4 mt-2">
         <div className="space-y-2">
           <Label>{t('monitor.ruleName')}</Label>

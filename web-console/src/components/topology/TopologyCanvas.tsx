@@ -261,16 +261,16 @@ export function TopologyCanvas({ nodes, edges, isLoading, groupMode = 'hierarchy
                 variant="outline"
                 size="sm"
                 onClick={handleBackToOverview}
-                className="gap-1.5 bg-white/90 backdrop-blur-sm shadow-md border-white/40 hover:bg-white"
+                className="gap-1.5 bg-background/90 backdrop-blur-sm shadow-md border-border/40 hover:bg-background"
                 aria-label={t('topology.backToOverview', 'Back to overview')}
               >
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 {t('topology.backToOverview', 'Back to overview')}
               </Button>
-              <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-sm shadow-md border border-white/40 rounded-lg px-3 py-1.5 text-xs text-gray-600">
-                <Server className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
+              <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm shadow-md border border-border/40 rounded-lg px-3 py-1.5 text-xs text-muted-foreground">
+                <Server className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                 <span className="font-medium">{parentNode.label}</span>
-                <span className="text-gray-400">·</span>
+                <span className="text-muted-foreground">·</span>
                 <span>{expandedChildren.length} {t('topology.instances', 'instances')}</span>
             </div>
           </motion.div>

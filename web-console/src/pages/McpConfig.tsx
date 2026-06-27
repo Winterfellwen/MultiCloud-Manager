@@ -50,23 +50,43 @@ const DEFAULT_SERVERS: McpServer[] = [
   },
 ];
 
+const STORAGE_KEY = 'mcp-servers';
+
+function loadServers(): McpServer[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return DEFAULT_SERVERS;
+}
+
+function saveServers(servers: McpServer[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(servers));
+}
+
 export default function McpConfig() {
   const { t } = useTranslation();
-  const [servers, setServers] = useState<McpServer[]>(DEFAULT_SERVERS);
+  const [servers, setServers] = useState<McpServer[]>(loadServers);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<McpServer | null>(null);
 
   // 切换服务器启用/禁用状态
   const handleToggle = (id: string) => {
-    setServers((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s))
-    );
+    setServers((prev) => {
+      const next = prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s));
+      saveServers(next);
+      return next;
+    });
   };
 
   // 删除服务器
   const handleDelete = () => {
     if (!deleteTarget) return;
-    setServers((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+    setServers((prev) => {
+      const next = prev.filter((s) => s.id !== deleteTarget.id);
+      saveServers(next);
+      return next;
+    });
     setDeleteTarget(null);
   };
 
@@ -77,7 +97,11 @@ export default function McpConfig() {
       id: `mcp-${Date.now()}`,
       enabled: true,
     };
-    setServers((prev) => [...prev, newServer]);
+    setServers((prev) => {
+      const next = [...prev, newServer];
+      saveServers(next);
+      return next;
+    });
     setAddDialogOpen(false);
   };
 

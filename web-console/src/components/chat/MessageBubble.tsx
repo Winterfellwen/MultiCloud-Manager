@@ -2,7 +2,7 @@
 // 支持复制：hover 显示复制按钮，点击复制消息内容
 // 支持深度思考（reasoning）独立折叠展示
 // 支持按时间顺序渲染 blocks（reasoning / text / tool_call 按实际输出顺序）
-import { useState, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import type { ChatMessage, ContentBlock } from '../../types/chat';
 import { ToolCallCard, serializeValue } from './ToolCallCard';
@@ -190,13 +190,22 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
     return lines.join('\n\n');
   };
 
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
+
   const handleCopy = async () => {
     const text = buildCopyText();
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       // fallback
     }

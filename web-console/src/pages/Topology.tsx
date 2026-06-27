@@ -68,7 +68,7 @@ export default function Topology() {
       return {
         id,
         label: node?.label || id,
-        count: treeNode?.children.length || 0,
+        count: treeNode?.children?.length || 0,
       };
     });
   }, [drillPath, nodeMap, tree]);
@@ -117,25 +117,25 @@ export default function Topology() {
 
       <div className="flex-1 flex flex-col h-full">
         <div className="flex items-center justify-between p-3 md:p-4 border-b gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {isMobile && (
               <Button variant="ghost" size="icon" onClick={toggleSidebar} className="shrink-0">
                 {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
             )}
-            <h1 className="text-lg md:text-xl font-bold">{t('topology.title')}</h1>
+            <h1 className="text-lg md:text-xl font-bold whitespace-nowrap">{t('topology.title')}</h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto">
             {/* Mode toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs">
+            <div className="flex bg-muted rounded-lg p-0.5 text-xs">
               <button
                 onClick={() => { setMode('tree'); setDrillPath([]); }}
                 className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-md transition-all font-medium',
                   mode === 'tree'
-                    ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
                 aria-label={t('topology.modeTree', 'Hierarchy')}
                 aria-pressed={mode === 'tree'}
@@ -148,8 +148,8 @@ export default function Topology() {
                 className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-md transition-all font-medium',
                   mode === 'graph'
-                    ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
                 aria-label={t('topology.modeGraph', 'Graph')}
                 aria-pressed={mode === 'graph'}
@@ -163,13 +163,13 @@ export default function Topology() {
             {mode === 'graph' && <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />}
 
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('topology.search', 'Search...')}
-                className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+                className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
                 aria-label={t('topology.search', 'Search topology')}
               />
               {searchQuery && (

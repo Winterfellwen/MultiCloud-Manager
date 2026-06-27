@@ -121,23 +121,20 @@ export function Sidebar() {
           const isActive = isItemActive(item);
           return (
             <div key={item.to}>
-              <NavLink
-                to={item.children ? item.children[0].to : item.to}
-                className={cn(
-                  'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                  'transition-[background-color,color,box-shadow,transform] duration-150',
-                  'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
-                  isActive
-                    ? 'bg-foreground text-background shadow-sm hover:bg-foreground hover:text-background'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {isActive && (
-                  <span className="absolute inset-y-1 left-0 w-0.5 rounded-r bg-background" />
-                )}
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
+            <NavLink
+              to={item.children ? item.children[0].to : item.to}
+              className={cn(
+                'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
+                'transition-[background-color,color,transform] duration-150',
+                'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
+                isActive
+                  ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/15'
+                  : 'text-muted-foreground'
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </NavLink>
               {item.children && (
                 <div className="ml-6 mt-1 space-y-1">
                   {item.children.map((child) => {
@@ -151,7 +148,7 @@ export function Sidebar() {
                           'transition-[background-color,color,transform] duration-150',
                           'hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground',
                           childActive
-                            ? 'bg-foreground text-background font-semibold hover:bg-foreground hover:text-background'
+                            ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/15'
                             : 'text-muted-foreground'
                         )}
                       >

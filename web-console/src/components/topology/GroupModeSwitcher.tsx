@@ -1,8 +1,7 @@
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { GROUP_MODE_LABELS, type GroupMode } from '@/types/topology';
-import { Network, Tag, Users, DollarSign } from 'lucide-react';
+import { Network, Layers, Cloud, Users, DollarSign } from 'lucide-react';
 
 interface GroupModeSwitcherProps {
   currentMode: GroupMode;
@@ -11,14 +10,13 @@ interface GroupModeSwitcherProps {
 
 const GROUP_MODE_ICONS: Record<GroupMode, React.ComponentType<{ className?: string }>> = {
   hierarchy: Network,
-  semantic: Tag,
+  resourceType: Layers,
+  provider: Cloud,
   team: Users,
   cost: DollarSign,
 };
 
 export function GroupModeSwitcher({ currentMode, onChange }: GroupModeSwitcherProps) {
-  const { t } = useTranslation();
-
   return (
     <div className="flex items-center gap-1">
       {(Object.keys(GROUP_MODE_LABELS) as GroupMode[]).map((mode) => {
@@ -37,7 +35,7 @@ export function GroupModeSwitcher({ currentMode, onChange }: GroupModeSwitcherPr
             )}
           >
             <Icon className="h-3.5 w-3.5" />
-            {t(`topology.groupMode.${mode}`)}
+            {GROUP_MODE_LABELS[mode]}
           </Button>
         );
       })}

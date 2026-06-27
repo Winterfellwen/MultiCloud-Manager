@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useCostSummary, useInstanceCosts, useCollectCosts } from '@/hooks/useCosts';
@@ -10,7 +10,16 @@ import { RefreshCw } from 'lucide-react';
 
 export default function Costs() {
   const { t } = useTranslation();
-  const { data: summary, isLoading: summaryLoading } = useCostSummary();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const [startDate, setStartDate] = useState(monthStart.toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(monthEnd.toISOString().slice(0, 10));
+
+  const { data: summary, isLoading: summaryLoading } = useCostSummary({
+    start: new Date(startDate).toISOString(),
+    end: new Date(endDate + 'T23:59:59').toISOString(),
+  });
   const { data: instanceCosts, isLoading: instLoading } = useInstanceCosts();
   const collect = useCollectCosts();
 
@@ -41,10 +50,25 @@ export default function Costs() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">{t('costs.title')}</h1>
-        <Button variant="outline" size="sm" onClick={handleCollect} disabled={collect.isPending}>
-          <RefreshCw className={`h-4 w-4 mr-1 ${collect.isPending ? 'animate-spin' : ''}`} />
-          {t('costs.collect')}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          />
+          <span className="text-muted-foreground">-</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          />
+          <Button variant="outline" size="sm" onClick={handleCollect} disabled={collect.isPending}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${collect.isPending ? 'animate-spin' : ''}`} />
+            {t('costs.collect')}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

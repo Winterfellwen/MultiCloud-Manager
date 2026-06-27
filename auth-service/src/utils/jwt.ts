@@ -16,11 +16,15 @@ export function signAccessToken(payload: JwtPayload): string {
 }
 
 export function signRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, config.jwtSecret, {
+  return jwt.sign(payload, config.jwtRefreshSecret, {
     expiresIn: '7d' as jwt.SignOptions['expiresIn'],
   });
 }
 
 export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, config.jwtSecret) as JwtPayload;
+}
+
+export function verifyRefreshToken(token: string): JwtPayload {
+  return jwt.verify(token, config.jwtRefreshSecret) as JwtPayload;
 }

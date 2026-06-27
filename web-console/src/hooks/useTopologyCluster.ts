@@ -1,6 +1,14 @@
 import { useMemo } from 'react';
 import type { TopologyNode, TopologyEdge, GroupMode, ClusterData } from '@/types/topology';
 
+function getCostBracket(monthlyCost: unknown): string {
+  const cost = parseFloat(String(monthlyCost || '0'));
+  if (cost === 0) return 'free';
+  if (cost <= 10) return 'low';
+  if (cost <= 100) return 'medium';
+  return 'high';
+}
+
 interface ClusterResult {
   clusters: ClusterData[];
   childToCluster: Map<string, string>;
@@ -23,15 +31,23 @@ export function computeClusters(
       case 'hierarchy':
         key = `${node.type}:${node.parentId || 'root'}`;
         break;
-      case 'semantic':
+      case 'resourceType':
         key = node.category;
         break;
-      case 'team':
-        key = String(node.data.cloudAccountId || 'unknown');
+      case 'provider':
+        key = node.provider || 'unknown';
         break;
-      case 'cost':
-        key = node.region;
+      case 'team': {
+        const d = node.data as Record<string, unknown>;
+        const tags = d?.tags as Record<string, unknown> | undefined;
+        key = String(tags?.team || d?.cloudAccountId || 'unknown');
         break;
+      }
+      case 'cost': {
+        const d = node.data as Record<string, unknown>;
+        key = getCostBracket(d?.monthlyCost);
+        break;
+      }
       default:
         key = node.type;
     }
@@ -68,9 +84,14 @@ export function computeClusters(
       case 'hierarchy':
         label = `${groupNodes[0].type} (${groupNodes.length})`;
         break;
-      case 'semantic': {
+      case 'resourceType': {
         const m: Record<string, string> = { compute: '计算', storage: '存储', database: '数据库', network: '网络', security: '安全', cdn: 'CDN', container: '容器', ai: 'AI 服务' };
         label = `${m[majorityCategory] || majorityCategory} (${groupNodes.length})`;
+        break;
+      }
+      case 'cost': {
+        const costLabels: Record<string, string> = { free: '免费', low: '低 ≤$10', medium: '中 $10-100', high: '高 >$100' };
+        label = `${costLabels[key] || key} (${groupNodes.length})`;
         break;
       }
       default:

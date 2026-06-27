@@ -198,7 +198,8 @@
     "delete": "Delete",
     "loadFailed": "Load failed",
     "noUsers": "No users",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "tab": "Users"
   },
   "audit": {
     "title": "Audit Logs",

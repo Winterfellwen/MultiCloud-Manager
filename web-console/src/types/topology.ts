@@ -95,14 +95,15 @@ export const VIEW_CONFIG: Record<TopologyView, {
 };
 
 /** 分组模式 */
-export type GroupMode = 'hierarchy' | 'semantic' | 'team' | 'cost';
+export type GroupMode = 'hierarchy' | 'resourceType' | 'provider' | 'team' | 'cost';
 
 /** 分组模式标签 */
 export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
   hierarchy: '层级',
-  semantic: '语义',
+  resourceType: '资源类型',
+  provider: '云厂商',
   team: '团队',
-  cost: '成本',
+  cost: '费用',
 };
 
 /** 聚簇节点数据 */

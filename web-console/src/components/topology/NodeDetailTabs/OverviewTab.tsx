@@ -32,7 +32,7 @@ export function OverviewTab({ node }: OverviewTabProps) {
           <span className="text-muted-foreground">区域</span>
           <div className="font-medium">{node.region}</div>
         </div>
-        {Object.keys(node.data).length > 0 && (
+        {node.data && Object.keys(node.data).length > 0 && (
           <div className="col-span-2">
             <span className="text-muted-foreground">属性</span>
             <div className="mt-1 space-y-1">

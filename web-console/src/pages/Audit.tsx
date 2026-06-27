@@ -1,5 +1,5 @@
 // 审计日志页：筛选栏 + 日志表格 + 分页
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { useAuditLogs } from '@/hooks/useAudit';
@@ -152,8 +152,8 @@ export default function Audit() {
                 </TableRow>
               ) : (
                 logs?.map((log) => (
-                  <>
-                    <TableRow key={log.id}>
+                  <React.Fragment key={log.id}>
+                    <TableRow>
                       <TableCell>
                         <button
                           onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
@@ -213,7 +213,7 @@ export default function Audit() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 ))
               )}
             </TableBody>

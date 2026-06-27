@@ -55,7 +55,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
           </div>
         </div>
 
-        {Object.keys(node.data).length > 0 && (
+        {node.data && Object.keys(node.data).length > 0 && (
           <div>
             <div className="text-xs font-medium text-muted-foreground mb-2">
               {t('topology.nodeDetail.attributes')}

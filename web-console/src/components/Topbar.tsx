@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LogOut, User as UserIcon, Menu } from 'lucide-react';
+import { LogOut, User as UserIcon, Menu, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/stores/auth';
 import { useDemoStore } from '@/stores/demo';
+import { useTheme } from '@/hooks/useTheme';
 
 interface TopbarProps {
   onToggleSidebar?: () => void;
@@ -17,6 +18,7 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const exitDemo = useDemoStore((s) => s.exitDemo);
+  const { resolvedTheme, toggleTheme } = useTheme();
 
   function handleLogout() {
     logout();
@@ -52,6 +54,14 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
           )}
         </div>
         <LanguageSwitcher />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="shrink-0">
+              {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleLogout} className="shrink-0">

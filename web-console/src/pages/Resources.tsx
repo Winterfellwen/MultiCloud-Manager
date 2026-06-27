@@ -115,11 +115,11 @@ export default function Resources() {
     status: status || undefined,
     search: search || undefined,
     limit: 100,
-  });
+  }, { enabled: viewMode === 'all' });
   const del = useDeleteResource();
   const sync = useSyncResources();
 
-  const { data: instances, isLoading: instancesLoading } = useInstances({});
+  const { data: instances, isLoading: instancesLoading } = useInstances({}, { enabled: viewMode === 'instances' });
   const instanceAction = useInstanceAction();
   const syncInstances = useSyncInstances();
 

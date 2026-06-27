@@ -23,8 +23,8 @@ function ClusterNodeComponent({ data, selected }: NodeProps<ClusterNodeData>) {
   const clusterData = data as unknown as ClusterData;
   const Icon = ICON_MAP[clusterData.icon] || Layers;
   const color = NODE_COLORS[clusterData.category as TopologyCategory] || '#6b7280';
-  const totalChildren = clusterData.childNodeIds.length;
-  const statusEntries = Object.entries(clusterData.statusSummary);
+  const totalChildren = clusterData.childNodeIds?.length || 0;
+  const statusEntries = Object.entries(clusterData.statusSummary || {});
 
   const runningCount = statusEntries.find(([s]) => s === 'running' || s === 'active')?.[1] || 0;
   const stoppedCount = statusEntries.find(([s]) => s === 'stopped')?.[1] || 0;
@@ -134,8 +134,8 @@ function ClusterNodeComponent({ data, selected }: NodeProps<ClusterNodeData>) {
 
           {/* Mini bar chart */}
           <div className="flex items-end gap-[2px] mt-2 h-3">
-            {statusEntries.map(([status, count]) => {
-              const height = Math.max(4, (count / totalChildren) * 12);
+              {statusEntries.map(([status, count]) => {
+                const height = Math.max(4, totalChildren > 0 ? (count / totalChildren) * 12 : 4);
               const barColor = status === 'running' || status === 'active'
                 ? 'bg-emerald-400'
                 : status === 'stopped'

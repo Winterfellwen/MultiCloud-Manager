@@ -40,4 +40,14 @@ export const cloudApi = {
   deleteAccount: (id: string) => api.delete<{ ok: true; id: string }>(`/cloud/accounts/${id}`),
   /** 测试云账号连通性 */
   testAccount: (id: string) => api.post<TestConnectionResult>(`/cloud/accounts/${id}/test`, {}),
+  /** 获取实例指标 */
+  getMetrics: (id: string, params?: { metric?: string; start?: string; end?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.metric) query.set('metric', params.metric);
+    if (params?.start) query.set('start', params.start);
+    if (params?.end) query.set('end', params.end);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return api.get(`/cloud/instances/${id}/metrics${qs ? '?' + qs : ''}`);
+  },
 };

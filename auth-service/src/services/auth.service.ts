@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { signAccessToken, signRefreshToken, verifyToken } from '../utils/jwt.js';
+import { signAccessToken, signRefreshToken, verifyToken, verifyRefreshToken } from '../utils/jwt.js';
 import { UnauthorizedError, ConflictError, NotFoundError } from '@cloudops/shared';
 import type { CreateUserInput, LoginInput, AuthTokens, UserRole } from '@cloudops/shared';
 
@@ -57,7 +57,7 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
-    const payload = verifyToken(refreshToken);
+    const payload = verifyRefreshToken(refreshToken);
     const result = await db.select().from(users).where(eq(users.id, payload.sub)).limit(1);
     if (result.length === 0) {
       throw new NotFoundError('User', payload.sub);

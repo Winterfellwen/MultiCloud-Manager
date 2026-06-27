@@ -198,7 +198,8 @@
     "delete": "删除",
     "loadFailed": "加载失败",
     "noUsers": "暂无用户",
-    "unassigned": "未分配"
+    "unassigned": "未分配",
+    "tab": "用户"
   },
   "audit": {
     "title": "审计日志",

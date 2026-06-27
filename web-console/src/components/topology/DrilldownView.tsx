@@ -98,7 +98,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
             ...node.data,
             instanceCount: treeNode?.instanceCount || 0,
             descendantCount: treeNode?.descendantCount || 0,
-            hasChildren: (treeNode?.children.length || 0) > 0,
+            hasChildren: (treeNode?.children?.length || 0) > 0,
           },
         } as unknown as Record<string, unknown>,
         style: {
@@ -163,7 +163,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
 
       if (topologyNode.type === 'instance') {
         setSelectedNode(topologyNode);
-      } else if (treeNode && treeNode.children.length > 0) {
+      } else if (treeNode && (treeNode.children?.length || 0) > 0) {
         onDrilldown(topologyNode.id);
       } else {
         setSelectedNode(topologyNode);
@@ -200,7 +200,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
           const treeNode = currentNode?.children.find(c => c.id === node.id);
           if (node.type === 'instance') {
             setSelectedNode(node);
-          } else if (treeNode && treeNode.children.length > 0) {
+          } else if (treeNode && (treeNode.children?.length || 0) > 0) {
             onDrilldown(node.id);
           }
         }
@@ -225,7 +225,7 @@ export function DrilldownView({ currentNode, path, onDrilldown, onPathClick, all
             <Globe className="h-3.5 w-3.5 text-blue-500" />
             <span>{currentNode.node.label}</span>
             <span className="text-[10px] text-gray-400 font-normal">
-              ({currentNode?.children.length ?? 0})
+              ({currentNode?.children?.length ?? 0})
             </span>
           </div>
         ) : (

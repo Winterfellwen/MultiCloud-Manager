@@ -14,7 +14,7 @@ export function useResourceTypes() {
 }
 
 /** 获取资源列表 */
-export function useResources(filters: ResourceFilters) {
+export function useResources(filters: ResourceFilters, options?: { enabled?: boolean }) {
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
     queryKey: ['resources', filters, isDemoMode],
@@ -22,6 +22,7 @@ export function useResources(filters: ResourceFilters) {
       ? demoListResources(filters as any).then(items => ({ items, total: items.length }))
       : resourceApi.list(filters),
     gcTime: 5 * 60_000,
+    enabled: options?.enabled,
   });
 }
 
