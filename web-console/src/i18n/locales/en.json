@@ -500,7 +500,7 @@
   },
   "topology": {
     "title": "Topology View",
-    "modeTree": "Tree",
+    "modeTree": "Browse",
     "modeGraph": "Graph",
     "filters": {
       "title": "Filters",

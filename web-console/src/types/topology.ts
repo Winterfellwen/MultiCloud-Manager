@@ -99,11 +99,11 @@ export type GroupMode = 'hierarchy' | 'resourceType' | 'provider' | 'team' | 'co
 
 /** 分组模式标签 */
 export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
-  hierarchy: '层级',
-  resourceType: '资源类型',
-  provider: '云厂商',
-  team: '团队',
-  cost: '费用',
+  hierarchy: '按结构',
+  resourceType: '按类型',
+  provider: '按厂商',
+  team: '按团队',
+  cost: '按费用',
 };
 
 /** 聚簇节点数据 */

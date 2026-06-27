@@ -500,7 +500,7 @@
   },
   "topology": {
     "title": "拓扑视图",
-    "modeTree": "树形",
+    "modeTree": "浏览",
     "modeGraph": "关系图",
     "filters": {
       "title": "筛选",

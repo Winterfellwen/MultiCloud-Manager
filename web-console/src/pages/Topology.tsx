@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, ChevronLeft, ChevronRight, Network, GitBranch, Search, X } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, Network, Search, X, FolderOpen } from 'lucide-react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useTopology } from '@/hooks/useTopology';
 import { useTopologyTree, getTreeChildren } from '@/hooks/useTopologyTree';
@@ -116,6 +116,7 @@ export default function Topology() {
       )}
 
       <div className="flex-1 flex flex-col h-full">
+        {/* Header: title + search */}
         <div className="flex items-center justify-between p-3 md:p-4 border-b gap-2">
           <div className="flex items-center gap-2 shrink-0">
             {isMobile && (
@@ -125,66 +126,65 @@ export default function Topology() {
             )}
             <h1 className="text-lg md:text-xl font-bold whitespace-nowrap">{t('topology.title')}</h1>
           </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto">
-            {/* Mode toggle */}
-            <div className="flex bg-muted rounded-lg p-0.5 text-xs">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('topology.search', 'Search...')}
+              className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
+              aria-label={t('topology.search', 'Search topology')}
+            />
+            {searchQuery && (
               <button
-                onClick={() => { setMode('tree'); setDrillPath([]); }}
-                className={cn(
-                  'flex items-center gap-1 px-2 py-1 rounded-md transition-all font-medium',
-                  mode === 'tree'
-                    ? 'bg-background shadow-sm text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                aria-label={t('topology.modeTree', 'Tree view')}
-                aria-pressed={mode === 'tree'}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
               >
-                <GitBranch className="h-3 w-3" aria-hidden="true" />
-                {t('topology.modeTree', '树形')}
+                <X className="h-3 w-3" />
               </button>
-              <button
-                onClick={() => setMode('graph')}
-                className={cn(
-                  'flex items-center gap-1 px-2 py-1 rounded-md transition-all font-medium',
-                  mode === 'graph'
-                    ? 'bg-background shadow-sm text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                aria-label={t('topology.modeGraph', 'Graph view')}
-                aria-pressed={mode === 'graph'}
-              >
-                <Network className="h-3 w-3" aria-hidden="true" />
-                {t('topology.modeGraph', '关系图')}
-              </button>
-            </div>
-
-            <div className="hidden md:block w-px h-6 bg-border" />
-            <ViewSwitcher currentView={view} onChange={setView} />
-            <div className="hidden md:block w-px h-6 bg-border" />
-            {mode === 'graph' && <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />}
-            {mode === 'graph' && <div className="hidden md:block w-px h-6 bg-border" />}
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('topology.search', 'Search...')}
-                className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
-                aria-label={t('topology.search', 'Search topology')}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+            )}
           </div>
+        </div>
+
+        {/* Mode toggle: big buttons */}
+        <div className="flex items-center gap-3 px-3 md:px-4 py-3 border-b">
+          <button
+            onClick={() => { setMode('tree'); setDrillPath([]); }}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm',
+              mode === 'tree'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            <FolderOpen className="h-4 w-4" />
+            {t('topology.modeTree', '浏览')}
+          </button>
+          <button
+            onClick={() => setMode('graph')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm',
+              mode === 'graph'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            <Network className="h-4 w-4" />
+            {t('topology.modeGraph', '关系图')}
+          </button>
+        </div>
+
+        {/* Mode-specific controls */}
+        <div className="flex items-center gap-3 px-3 md:px-4 py-2 border-b bg-muted/30">
+          <ViewSwitcher currentView={view} onChange={setView} />
+          {mode === 'graph' && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />
+            </>
+          )}
         </div>
 
         <div className="flex-1 h-full min-h-0">
