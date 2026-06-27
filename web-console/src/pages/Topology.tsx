@@ -137,11 +137,11 @@ export default function Topology() {
                     ? 'bg-background shadow-sm text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
-                aria-label={t('topology.modeTree', 'Hierarchy')}
+                aria-label={t('topology.modeTree', 'Tree view')}
                 aria-pressed={mode === 'tree'}
               >
                 <GitBranch className="h-3 w-3" aria-hidden="true" />
-                {t('topology.modeTree', '层级')}
+                {t('topology.modeTree', '树形')}
               </button>
               <button
                 onClick={() => setMode('graph')}
@@ -151,20 +151,19 @@ export default function Topology() {
                     ? 'bg-background shadow-sm text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
-                aria-label={t('topology.modeGraph', 'Graph')}
+                aria-label={t('topology.modeGraph', 'Graph view')}
                 aria-pressed={mode === 'graph'}
               >
                 <Network className="h-3 w-3" aria-hidden="true" />
-                {t('topology.modeGraph', '关系')}
+                {t('topology.modeGraph', '关系图')}
               </button>
             </div>
 
             <div className="hidden md:block w-px h-6 bg-border" />
             <ViewSwitcher currentView={view} onChange={setView} />
             <div className="hidden md:block w-px h-6 bg-border" />
-            <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />
-
-            <div className="hidden md:block w-px h-6 bg-border" />
+            {mode === 'graph' && <GroupModeSwitcher currentMode={groupMode} onChange={setGroupMode} />}
+            {mode === 'graph' && <div className="hidden md:block w-px h-6 bg-border" />}
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
