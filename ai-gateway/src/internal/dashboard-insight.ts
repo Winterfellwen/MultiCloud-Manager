@@ -46,19 +46,65 @@ ${req.abnormalInstances.map(i => `- ${i.name} (${i.provider}): ${i.status}`).joi
   "suggestions": ["建议1", "建议2"]
 }`;
 
-  const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 600 });
+  const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 800 });
 
-  // 解析 JSON（LLM 可能包含 markdown 代码块）
-  const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  // 解析 JSON（兼容 reasoning 模型的思考过程输出）
+  const parsed = extractJsonFromText(raw);
+  return {
+    healthScore: parsed.healthScore ?? 0,
+    risks: parsed.risks || [],
+    suggestions: parsed.suggestions || [],
+    raw,
+  };
+}
+
+/**
+ * 从 LLM 输出文本中提取 JSON 对象。
+ * 兼容三种输出格式：
+ * 1. 纯 JSON（理想情况）
+ * 2. markdown 代码块包裹的 JSON
+ * 3. reasoning 模型先输出思考过程，最后才输出 JSON（如 nemotron）
+ */
+function extractJsonFromText(text: string): { healthScore?: number; risks?: string[]; suggestions?: string[] } {
+  // 策略 1：直接解析
   try {
-    const parsed = JSON.parse(jsonStr);
-    return {
-      healthScore: parsed.healthScore ?? 0,
-      risks: parsed.risks || [],
-      suggestions: parsed.suggestions || [],
-      raw,
-    };
-  } catch {
-    return { healthScore: 0, risks: [], suggestions: [], raw };
+    return JSON.parse(text.trim());
+  } catch {}
+
+  // 策略 2：提取 markdown 代码块
+  const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (codeBlockMatch) {
+    try {
+      return JSON.parse(codeBlockMatch[1].trim());
+    } catch {}
   }
+
+  // 策略 3：从文本中提取最后一个 JSON 对象（reasoning 模型最后才输出 JSON）
+  const jsonMatches = text.match(/\{[\s\S]*?"healthScore"[\s\S]*?"suggestions"[\s\S]*?\}/g);
+  if (jsonMatches && jsonMatches.length > 0) {
+    try {
+      return JSON.parse(jsonMatches[jsonMatches.length - 1].trim());
+    } catch {}
+  }
+
+  // 策略 4：正则提取各字段
+  const healthScoreMatch = text.match(/"healthScore"\s*:\s*(\d+)/);
+  const risksMatch = text.match(/"risks"\s*:\s*\[([\s\S]*?)\]/);
+  const suggestionsMatch = text.match(/"suggestions"\s*:\s*\[([\s\S]*?)\]/);
+
+  if (healthScoreMatch || risksMatch || suggestionsMatch) {
+    const risks = risksMatch
+      ? risksMatch[1].match(/"([^"]+)"/g)?.map(s => s.replace(/"/g, '')) || []
+      : [];
+    const suggestions = suggestionsMatch
+      ? suggestionsMatch[1].match(/"([^"]+)"/g)?.map(s => s.replace(/"/g, '')) || []
+      : [];
+    return {
+      healthScore: healthScoreMatch ? parseInt(healthScoreMatch[1], 10) : 0,
+      risks,
+      suggestions,
+    };
+  }
+
+  return {};
 }
