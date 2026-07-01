@@ -19,6 +19,9 @@ export const config = {
   // cloud-service 内部地址（docker 网络内服务间调用，不走 gateway）
   cloudServiceUrl: process.env.CLOUD_SERVICE_URL || 'http://cloud-service:3001',
 
+  // auth-service 内部地址（审计写入）
+  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3004',
+
   // 采集间隔（秒）
   metricCollectIntervalSec: parseInt(process.env.METRIC_COLLECT_INTERVAL || '300', 10),
   // 告警检查间隔（秒）

@@ -1,9 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
+import { recordAudit } from '@cloudops/shared';
 import { alertService } from '../services/alert.service.js';
 import { db } from '../db/index.js';
 import { notificationChannels } from '../db/schema.js';
+import { config } from '../config.js';
+
+function getUserId(request: any): string {
+  return (request.headers['x-user-id'] as string) || 'unknown';
+}
+function getTraceId(request: any): string | undefined {
+  return request.headers['x-trace-id'] as string | undefined;
+}
+function getIp(request: any): string {
+  return (request.headers['x-forwarded-for'] as string) || request.ip;
+}
 
 const createRuleSchema = z.object({
   name: z.string().min(1).max(128),
@@ -57,9 +69,21 @@ export async function alertRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/events/:id/resolve', async (request) => {
+  app.post('/events/:id/resolve', async (request, reply) => {
     const { id } = request.params as { id: string };
     await alertService.resolveAlert(id);
+
+    // 审计：手动解决告警
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'alert.resolve',
+      resourceType: 'alert_event',
+      resourceId: id,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
+
     return { ok: true, id, status: 'resolved' };
   });
 
