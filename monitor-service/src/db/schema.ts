@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, jsonb, boolean, integer, decimal, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, jsonb, boolean, integer, decimal, serial, uniqueIndex, index } from 'drizzle-orm/pg-core';
 
 // 复用 Phase 2 已有表（与 cloud-service/schema.ts 一致，供本服务查询）
 export const instances = pgTable('instances', {
@@ -93,7 +93,7 @@ export const tokenUsage = pgTable('token_usage', {
 
 // Phase 4 新增：预测表（线性回归预测引擎写入）
 export const metricPredictions = pgTable('metric_predictions', {
-  id: integer('id').primaryKey(),
+  id: serial('id').primaryKey(),
   instanceId: uuid('instance_id').references(() => instances.id, { onDelete: 'cascade' }).notNull(),
   metricName: varchar('metric_name', { length: 64 }).notNull(),
   currentValue: decimal('current_value', { precision: 12, scale: 4 }).notNull(),

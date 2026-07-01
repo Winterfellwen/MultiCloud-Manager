@@ -40,4 +40,10 @@ export const config = {
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || 'cloudops@noreply.com',
   },
+
+  // 预测引擎配置
+  predictionIntervalSec: parseInt(process.env.PREDICTION_INTERVAL || '600', 10), // 默认 10 分钟
+  predictionHistoryHours: parseInt(process.env.PREDICTION_HISTORY_HOURS || '24', 10),
+  predictionThreshold: parseFloat(process.env.PREDICTION_THRESHOLD || '90'), // 磁盘/内存 90% 预警
+  predictionMinConfidence: parseFloat(process.env.PREDICTION_MIN_CONFIDENCE || '0.7'), // R² 最低置信度
 };
