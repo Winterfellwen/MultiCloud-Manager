@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { costRecords, instances } from '../db/schema.js';
+import { scopedDb, PUBLIC_SCOPE, type RequestScope } from '@cloudops/shared';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { eventPublisher } from '../events/publisher.js';
@@ -24,7 +24,7 @@ export class CostService {
 
   start() {
     const intervalMs = config.costCollectIntervalSec * 1000;
-    this.timer = setInterval(() => this.collect().catch(console.error), intervalMs);
+    this.timer = setInterval(() => this.collect(PUBLIC_SCOPE).catch(console.error), intervalMs);
     console.log(`Cost collector started (interval: ${config.costCollectIntervalSec}s)`);
   }
 
@@ -35,7 +35,8 @@ export class CostService {
   /**
    * 从 cloud-service 拉取各 provider 的成本汇总，写入 cost_records
    */
-  async collect() {
+  async collect(scope: RequestScope) {
+    const t = scopedDb(scope);
     const providers = await this.getRegisteredProviders();
     const end = new Date();
     const start = new Date(end.getTime() - 24 * 60 * 60 * 1000); // 最近 24 小时
@@ -44,7 +45,7 @@ export class CostService {
       try {
         const summary = await this.fetchCostFromCloud(provider, start, end);
         for (const item of summary.breakdown) {
-          await db.insert(costRecords).values({
+          await db.insert(t.costRecords).values({
             provider: summary.provider,
             region: 'all',
             service: item.service,
@@ -68,24 +69,25 @@ export class CostService {
   /**
    * 查询成本汇总（从 cost_records 聚合）
    */
-  async getSummary(query: CostQuery) {
+  async getSummary(scope: RequestScope, query: CostQuery) {
+    const t = scopedDb(scope);
     const conditions = [];
-    if (query.provider) conditions.push(eq(costRecords.provider, query.provider));
-    if (query.start) conditions.push(gte(costRecords.periodStart, query.start));
-    if (query.end) conditions.push(lte(costRecords.periodEnd, query.end));
+    if (query.provider) conditions.push(eq(t.costRecords.provider, query.provider));
+    if (query.start) conditions.push(gte(t.costRecords.periodStart, query.start));
+    if (query.end) conditions.push(lte(t.costRecords.periodEnd, query.end));
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const rows = await db
       .select({
-        provider: costRecords.provider,
-        service: costRecords.service,
-        totalAmount: sql<number>`sum(${costRecords.amount}::numeric)`,
-        currency: costRecords.currency,
+        provider: t.costRecords.provider,
+        service: t.costRecords.service,
+        totalAmount: sql<number>`sum(${t.costRecords.amount}::numeric)`,
+        currency: t.costRecords.currency,
       })
-      .from(costRecords)
+      .from(t.costRecords)
       .where(where)
-      .groupBy(costRecords.provider, costRecords.service, costRecords.currency);
+      .groupBy(t.costRecords.provider, t.costRecords.service, t.costRecords.currency);
 
     return rows;
   }
@@ -93,16 +95,17 @@ export class CostService {
   /**
    * 查询所有实例的月度成本估算（从 instances.monthlyCost 汇总）
    */
-  async getInstanceCosts() {
+  async getInstanceCosts(scope: RequestScope) {
+    const t = scopedDb(scope);
     return db
       .select({
-        id: instances.id,
-        name: instances.name,
-        provider: instances.provider,
-        region: instances.region,
-        monthlyCost: instances.monthlyCost,
+        id: t.instances.id,
+        name: t.instances.name,
+        provider: t.instances.provider,
+        region: t.instances.region,
+        monthlyCost: t.instances.monthlyCost,
       })
-      .from(instances);
+      .from(t.instances);
   }
 
   private async getRegisteredProviders(): Promise<string[]> {

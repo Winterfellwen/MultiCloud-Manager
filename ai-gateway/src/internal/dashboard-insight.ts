@@ -9,6 +9,8 @@ export interface DashboardInsightRequest {
   providerBreakdown: { provider: string; count: number }[];
   recentAlerts: { severity: string; message: string }[];
   abnormalInstances: { name: string; provider: string; status: string }[];
+  /** 请求作用域：'demo' 走 demo schema，其他走 public。由调用方（monitor-service）透传 */
+  scope?: string;
 }
 
 export interface DashboardInsightResponse {

@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { metrics } from '../db/schema.js';
+import { scopedDb, type RequestScope } from '@cloudops/shared';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { NotFoundError } from '@cloudops/shared';
 
@@ -12,29 +12,31 @@ export interface MetricQuery {
 }
 
 export class MetricService {
-  async query(query: MetricQuery) {
-    const conditions = [eq(metrics.instanceId, query.instanceId)];
-    if (query.metricName) conditions.push(eq(metrics.metricName, query.metricName));
-    if (query.start) conditions.push(gte(metrics.recordedAt, query.start));
-    if (query.end) conditions.push(lte(metrics.recordedAt, query.end));
+  async query(scope: RequestScope, query: MetricQuery) {
+    const t = scopedDb(scope);
+    const conditions = [eq(t.metrics.instanceId, query.instanceId)];
+    if (query.metricName) conditions.push(eq(t.metrics.metricName, query.metricName));
+    if (query.start) conditions.push(gte(t.metrics.recordedAt, query.start));
+    if (query.end) conditions.push(lte(t.metrics.recordedAt, query.end));
 
     const limit = query.limit || 1000;
     return db
       .select()
-      .from(metrics)
+      .from(t.metrics)
       .where(and(...conditions))
-      .orderBy(desc(metrics.recordedAt))
+      .orderBy(desc(t.metrics.recordedAt))
       .limit(limit);
   }
 
-  async insert(data: {
+  async insert(scope: RequestScope, data: {
     instanceId: string;
     metricName: string;
     value: number;
     unit?: string;
     recordedAt: Date;
   }) {
-    await db.insert(metrics).values({
+    const t = scopedDb(scope);
+    await db.insert(t.metrics).values({
       instanceId: data.instanceId,
       metricName: data.metricName,
       value: data.value.toString(),

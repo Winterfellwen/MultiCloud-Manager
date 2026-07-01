@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
-import { alertRules, alerts } from '../db/schema.js';
-import { eq, and, desc, ne } from 'drizzle-orm';
+import { scopedDb, type RequestScope } from '@cloudops/shared';
+import { eq, and, desc } from 'drizzle-orm';
 import { NotFoundError } from '@cloudops/shared';
 import type { AlertSeverity, AlertStatus } from '@cloudops/shared';
 
@@ -17,19 +17,22 @@ export interface CreateRuleInput {
 export class AlertService {
   // ---- 告警规则 CRUD ----
 
-  async listRules() {
-    return db.select().from(alertRules).orderBy(desc(alertRules.createdAt));
+  async listRules(scope: RequestScope) {
+    const t = scopedDb(scope);
+    return db.select().from(t.alertRules).orderBy(desc(t.alertRules.createdAt));
   }
 
-  async getRule(id: string) {
-    const result = await db.select().from(alertRules).where(eq(alertRules.id, id)).limit(1);
+  async getRule(scope: RequestScope, id: string) {
+    const t = scopedDb(scope);
+    const result = await db.select().from(t.alertRules).where(eq(t.alertRules.id, id)).limit(1);
     if (result.length === 0) throw new NotFoundError('AlertRule', id);
     return result[0];
   }
 
-  async createRule(input: CreateRuleInput) {
+  async createRule(scope: RequestScope, input: CreateRuleInput) {
+    const t = scopedDb(scope);
     const result = await db
-      .insert(alertRules)
+      .insert(t.alertRules)
       .values({
         name: input.name,
         metric: input.metric,
@@ -43,40 +46,44 @@ export class AlertService {
     return result[0];
   }
 
-  async updateRule(id: string, input: Partial<CreateRuleInput>) {
-    await this.getRule(id);
+  async updateRule(scope: RequestScope, id: string, input: Partial<CreateRuleInput>) {
+    await this.getRule(scope, id);
+    const t = scopedDb(scope);
     const result = await db
-      .update(alertRules)
+      .update(t.alertRules)
       .set(input)
-      .where(eq(alertRules.id, id))
+      .where(eq(t.alertRules.id, id))
       .returning();
     return result[0];
   }
 
-  async deleteRule(id: string) {
-    await this.getRule(id);
-    await db.delete(alertRules).where(eq(alertRules.id, id));
+  async deleteRule(scope: RequestScope, id: string) {
+    await this.getRule(scope, id);
+    const t = scopedDb(scope);
+    await db.delete(t.alertRules).where(eq(t.alertRules.id, id));
   }
 
   // ---- 告警事件管理 ----
 
-  async listAlerts(filters: { status?: AlertStatus; severity?: AlertSeverity; limit?: number } = {}) {
+  async listAlerts(scope: RequestScope, filters: { status?: AlertStatus; severity?: AlertSeverity; limit?: number } = {}) {
+    const t = scopedDb(scope);
     const conditions = [];
-    if (filters.status) conditions.push(eq(alerts.status, filters.status));
-    if (filters.severity) conditions.push(eq(alerts.severity, filters.severity));
+    if (filters.status) conditions.push(eq(t.alerts.status, filters.status));
+    if (filters.severity) conditions.push(eq(t.alerts.severity, filters.severity));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     const limit = filters.limit || 100;
-    return db.select().from(alerts).where(where).orderBy(desc(alerts.firedAt)).limit(limit);
+    return db.select().from(t.alerts).where(where).orderBy(desc(t.alerts.firedAt)).limit(limit);
   }
 
-  async createAlert(input: {
+  async createAlert(scope: RequestScope, input: {
     ruleId: string;
     instanceId: string | null;
     severity: AlertSeverity;
     message: string;
   }) {
+    const t = scopedDb(scope);
     const result = await db
-      .insert(alerts)
+      .insert(t.alerts)
       .values({
         ruleId: input.ruleId,
         instanceId: input.instanceId,
@@ -88,30 +95,33 @@ export class AlertService {
     return result[0];
   }
 
-  async resolveAlert(id: string) {
+  async resolveAlert(scope: RequestScope, id: string) {
+    const t = scopedDb(scope);
     await db
-      .update(alerts)
+      .update(t.alerts)
       .set({ status: 'resolved', resolvedAt: new Date() })
-      .where(eq(alerts.id, id));
+      .where(eq(t.alerts.id, id));
   }
 
   /**
    * 查询某规则某实例是否已有 firing 状态的告警（避免重复触发）
    */
-  async findFiringAlert(ruleId: string, instanceId: string | null) {
-    const conditions = [eq(alerts.ruleId, ruleId), eq(alerts.status, 'firing')];
+  async findFiringAlert(scope: RequestScope, ruleId: string, instanceId: string | null) {
+    const t = scopedDb(scope);
+    const conditions = [eq(t.alerts.ruleId, ruleId), eq(t.alerts.status, 'firing')];
     if (instanceId) {
-      conditions.push(eq(alerts.instanceId, instanceId));
+      conditions.push(eq(t.alerts.instanceId, instanceId));
     }
-    const result = await db.select().from(alerts).where(and(...conditions)).limit(1);
+    const result = await db.select().from(t.alerts).where(and(...conditions)).limit(1);
     return result[0] || null;
   }
 
-  async updateAiAnalysis(id: string, analysis: string): Promise<void> {
+  async updateAiAnalysis(scope: RequestScope, id: string, analysis: string): Promise<void> {
+    const t = scopedDb(scope);
     await db
-      .update(alerts)
+      .update(t.alerts)
       .set({ aiAnalysis: analysis, aiAnalyzedAt: new Date() })
-      .where(eq(alerts.id, id));
+      .where(eq(t.alerts.id, id));
   }
 }
 

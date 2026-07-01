@@ -1,6 +1,6 @@
 import { db } from "../db/index.js";
-import { cloudResources, instances } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
+import { scopedDb, type RequestScope } from "@cloudops/shared";
 import { listProviders, getProvider } from "../providers/registry.js";
 import { instanceService } from "./instance.service.js";
 import { resourceService } from "./resource.service.js";
@@ -21,12 +21,16 @@ const ALL_RESOURCE_TYPES: ResourceType[] = [
 export class SyncService {
   /**
    * 同步所有 Provider 的所有资源类型
+   * demo 模式下跳过同步（demo 数据是静态快照）
    */
-  async syncAll(): Promise<SyncResult[]> {
+  async syncAll(scope: RequestScope): Promise<SyncResult[]> {
+    if (scope.isDemo) {
+      return [{ provider: 'demo', resourceType: 'instance', synced: 0, errors: ['demo mode: sync skipped'] }];
+    }
     const results: SyncResult[] = [];
     for (const providerName of listProviders()) {
       for (const resourceType of ALL_RESOURCE_TYPES) {
-        results.push(await this.syncResourceType(providerName, resourceType));
+        results.push(await this.syncResourceType(providerName, resourceType, scope));
       }
     }
     return results;
@@ -35,7 +39,7 @@ export class SyncService {
   /**
    * 同步指定 Provider 的指定资源类型
    */
-  async syncResourceType(providerName: string, resourceType: ResourceType): Promise<SyncResult> {
+  async syncResourceType(providerName: string, resourceType: ResourceType, scope: RequestScope): Promise<SyncResult> {
     const result: SyncResult = { provider: providerName, resourceType, synced: 0, errors: [] };
 
     try {
@@ -49,7 +53,7 @@ export class SyncService {
 
       // instance 类型走原有逻辑（向后兼容，同时写两张表）
       if (resourceType === 'instance') {
-        return await this.syncInstances(providerName);
+        return await this.syncInstances(providerName, scope);
       }
 
       // 通用资源同步
@@ -57,7 +61,7 @@ export class SyncService {
 
       for (const resource of remoteResources) {
         try {
-          await resourceService.upsertResource(resource);
+          await resourceService.upsertResource(scope, resource);
           result.synced++;
         } catch (err) {
           result.errors.push(
@@ -67,7 +71,7 @@ export class SyncService {
       }
 
       // 标记远端已不存在的为 terminated
-      await this.markResourceTerminated(providerName, resourceType, remoteResources.map(r => r.providerResourceId));
+      await this.markResourceTerminated(providerName, resourceType, remoteResources.map(r => r.providerResourceId), scope);
     } catch (err) {
       result.errors.push(`Provider sync failed: ${(err as Error).message}`);
     }
@@ -78,11 +82,11 @@ export class SyncService {
   /**
    * 向后兼容：同步指定 Provider 的实例
    */
-  async syncProvider(providerName: string): Promise<SyncResult> {
-    return await this.syncInstances(providerName);
+  async syncProvider(providerName: string, scope: RequestScope): Promise<SyncResult> {
+    return await this.syncInstances(providerName, scope);
   }
 
-  private async syncInstances(providerName: string): Promise<SyncResult> {
+  private async syncInstances(providerName: string, scope: RequestScope): Promise<SyncResult> {
     const result: SyncResult = { provider: providerName, resourceType: 'instance', synced: 0, errors: [] };
     try {
       const provider = getProvider(providerName);
@@ -90,9 +94,9 @@ export class SyncService {
 
       for (const instance of remoteInstances) {
         try {
-          await instanceService.upsertInstance(instance);
+          await instanceService.upsertInstance(scope, instance);
           // 同时写入 cloud_resources 表
-          await resourceService.upsertResource({
+          await resourceService.upsertResource(scope, {
             id: '',
             provider: instance.provider,
             resourceType: 'instance',
@@ -117,39 +121,41 @@ export class SyncService {
         }
       }
 
-      await this.markTerminated(providerName, remoteInstances.map(i => i.providerInstanceId));
+      await this.markTerminated(providerName, remoteInstances.map(i => i.providerInstanceId), scope);
     } catch (err) {
       result.errors.push(`Provider sync failed: ${(err as Error).message}`);
     }
     return result;
   }
 
-  private async markTerminated(providerName: string, remoteIds: string[]): Promise<void> {
-    const localRows = await db.select().from(instances).where(eq(instances.provider, providerName));
+  private async markTerminated(providerName: string, remoteIds: string[], scope: RequestScope): Promise<void> {
+    const t = scopedDb(scope);
+    const localRows = await db.select().from(t.instances).where(eq(t.instances.provider, providerName));
     const remoteSet = new Set(remoteIds);
     for (const row of localRows) {
       if (!remoteSet.has(row.providerInstanceId) && row.status !== 'terminated') {
-        await db.update(instances).set({ status: 'terminated', lastSyncedAt: new Date() }).where(eq(instances.id, row.id));
+        await db.update(t.instances).set({ status: 'terminated', lastSyncedAt: new Date() }).where(eq(t.instances.id, row.id));
       }
     }
   }
 
-  private async markResourceTerminated(providerName: string, resourceType: ResourceType, remoteIds: string[]): Promise<void> {
+  private async markResourceTerminated(providerName: string, resourceType: ResourceType, remoteIds: string[], scope: RequestScope): Promise<void> {
+    const t = scopedDb(scope);
     const localRows = await db
       .select()
-      .from(cloudResources)
+      .from(t.cloudResources)
       .where(and(
-        eq(cloudResources.provider, providerName),
-        eq(cloudResources.resourceType, resourceType)
+        eq(t.cloudResources.provider, providerName),
+        eq(t.cloudResources.resourceType, resourceType)
       ));
 
     const remoteSet = new Set(remoteIds);
     for (const row of localRows) {
       if (!remoteSet.has(row.providerResourceId) && row.status !== 'terminated') {
         await db
-          .update(cloudResources)
+          .update(t.cloudResources)
           .set({ status: 'terminated', lastSyncedAt: new Date() })
-          .where(eq(cloudResources.id, row.id));
+          .where(eq(t.cloudResources.id, row.id));
       }
     }
   }

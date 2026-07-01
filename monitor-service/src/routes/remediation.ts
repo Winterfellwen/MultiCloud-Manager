@@ -1,42 +1,44 @@
 // monitor-service/src/routes/remediation.ts
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
-import { remediationRuns, remediationPolicies, alerts, instances } from '../db/schema.js';
+import { scopedDb } from '@cloudops/shared';
 import { eq, desc } from 'drizzle-orm';
 import { remediationEngine } from '../services/remediation-engine.js';
 
 export async function remediationRoutes(app: FastifyInstance) {
   // 列出自愈记录
   app.get('/', async (request) => {
+    const scope = request.scope;
+    const t = scopedDb(scope);
     const { status, limit } = request.query as { status?: string; limit?: string };
 
     const baseQuery = db.select({
-      id: remediationRuns.id,
-      alertId: remediationRuns.alertId,
-      instanceId: remediationRuns.instanceId,
-      instanceName: instances.name,
-      instanceProvider: instances.provider,
-      rootCause: remediationRuns.rootCause,
-      actionPlan: remediationRuns.actionPlan,
-      actionExecuted: remediationRuns.actionExecuted,
-      status: remediationRuns.status,
-      env: remediationRuns.env,
-      triggeredAt: remediationRuns.triggeredAt,
-      approvedAt: remediationRuns.approvedAt,
-      executedAt: remediationRuns.executedAt,
-      verifiedAt: remediationRuns.verifiedAt,
-      verificationResult: remediationRuns.verificationResult,
-      errorMessage: remediationRuns.errorMessage,
-      alertMessage: alerts.message,
+      id: t.remediationRuns.id,
+      alertId: t.remediationRuns.alertId,
+      instanceId: t.remediationRuns.instanceId,
+      instanceName: t.instances.name,
+      instanceProvider: t.instances.provider,
+      rootCause: t.remediationRuns.rootCause,
+      actionPlan: t.remediationRuns.actionPlan,
+      actionExecuted: t.remediationRuns.actionExecuted,
+      status: t.remediationRuns.status,
+      env: t.remediationRuns.env,
+      triggeredAt: t.remediationRuns.triggeredAt,
+      approvedAt: t.remediationRuns.approvedAt,
+      executedAt: t.remediationRuns.executedAt,
+      verifiedAt: t.remediationRuns.verifiedAt,
+      verificationResult: t.remediationRuns.verificationResult,
+      errorMessage: t.remediationRuns.errorMessage,
+      alertMessage: t.alerts.message,
     })
-      .from(remediationRuns)
-      .leftJoin(instances, eq(remediationRuns.instanceId, instances.id))
-      .leftJoin(alerts, eq(remediationRuns.alertId, alerts.id))
-      .orderBy(desc(remediationRuns.triggeredAt));
+      .from(t.remediationRuns)
+      .leftJoin(t.instances, eq(t.remediationRuns.instanceId, t.instances.id))
+      .leftJoin(t.alerts, eq(t.remediationRuns.alertId, t.alerts.id))
+      .orderBy(desc(t.remediationRuns.triggeredAt));
 
     const maxLimit = parseInt(limit || '50', 10);
     const runs = status
-      ? await baseQuery.where(eq(remediationRuns.status, status)).limit(maxLimit)
+      ? await baseQuery.where(eq(t.remediationRuns.status, status)).limit(maxLimit)
       : await baseQuery.limit(maxLimit);
 
     return runs;
@@ -44,8 +46,10 @@ export async function remediationRoutes(app: FastifyInstance) {
 
   // 批准并执行自愈
   app.post('/:id/approve', async (request, reply) => {
+    const scope = request.scope;
+    const t = scopedDb(scope);
     const { id } = request.params as { id: string };
-    const run = await db.select().from(remediationRuns).where(eq(remediationRuns.id, id)).limit(1);
+    const run = await db.select().from(t.remediationRuns).where(eq(t.remediationRuns.id, id)).limit(1);
     if (run.length === 0) {
       return reply.status(404).send({ error: 'NOT_FOUND', message: '自愈记录不存在' });
     }
@@ -53,17 +57,19 @@ export async function remediationRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'INVALID_STATUS', message: `当前状态 ${run[0].status}，无法批准` });
     }
 
-    await remediationEngine.executeRun(id);
+    await remediationEngine.executeRun(scope, id);
     return { ok: true, message: '自愈已批准并开始执行' };
   });
 
   // 列出自愈策略
-  app.get('/policies', async () => {
-    return await db.select().from(remediationPolicies).orderBy(desc(remediationPolicies.createdAt));
+  app.get('/policies', async (request) => {
+    const t = scopedDb(request.scope);
+    return await db.select().from(t.remediationPolicies).orderBy(desc(t.remediationPolicies.createdAt));
   });
 
   // 更新策略
   app.put('/policies/:id', async (request, reply) => {
+    const t = scopedDb(request.scope);
     const { id } = request.params as { id: string };
     const { autoExecute, enabled } = request.body as { autoExecute?: Record<string, boolean>; enabled?: boolean };
 
@@ -71,7 +77,7 @@ export async function remediationRoutes(app: FastifyInstance) {
     if (autoExecute !== undefined) updates.autoExecute = autoExecute;
     if (enabled !== undefined) updates.enabled = enabled;
 
-    await db.update(remediationPolicies).set(updates).where(eq(remediationPolicies.id, id));
+    await db.update(t.remediationPolicies).set(updates).where(eq(t.remediationPolicies.id, id));
     return { ok: true };
   });
 }

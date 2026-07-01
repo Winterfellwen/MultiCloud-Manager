@@ -1,6 +1,6 @@
 // monitor-service/src/services/knowledge-base.service.ts
 import { db } from '../db/index.js';
-import { knowledgeBase, remediationRuns, alerts, instances } from '../db/schema.js';
+import { scopedDb, type RequestScope } from '@cloudops/shared';
 import { eq, desc, sql, and } from 'drizzle-orm';
 import { config } from '../config.js';
 
@@ -30,16 +30,17 @@ export class KnowledgeBaseService {
   /**
    * 自愈完成后，将经验写入知识库
    */
-  async recordExperience(runId: string): Promise<void> {
-    const run = await db.select().from(remediationRuns).where(eq(remediationRuns.id, runId)).limit(1);
+  async recordExperience(scope: RequestScope, runId: string): Promise<void> {
+    const t = scopedDb(scope);
+    const run = await db.select().from(t.remediationRuns).where(eq(t.remediationRuns.id, runId)).limit(1);
     if (run.length === 0) return;
 
     const remediation = run[0];
     if (!remediation.alertId || !remediation.instanceId) return;
 
     // 获取告警和实例信息
-    const alert = await db.select().from(alerts).where(eq(alerts.id, remediation.alertId)).limit(1);
-    const inst = await db.select().from(instances).where(eq(instances.id, remediation.instanceId)).limit(1);
+    const alert = await db.select().from(t.alerts).where(eq(t.alerts.id, remediation.alertId)).limit(1);
+    const inst = await db.select().from(t.instances).where(eq(t.instances.id, remediation.instanceId)).limit(1);
     if (alert.length === 0) return;
 
     const instance = inst[0];
@@ -55,10 +56,10 @@ export class KnowledgeBaseService {
     }
 
     // 生成 embedding（调用 ai-gateway）
-    const embedding = await this.generateEmbedding(symptom);
+    const embedding = await this.generateEmbedding(scope, symptom);
 
     // 写入知识库
-    await db.insert(knowledgeBase).values({
+    await db.insert(t.knowledgeBase).values({
       alertId: remediation.alertId,
       remediationRunId: runId,
       symptom,
@@ -74,16 +75,18 @@ export class KnowledgeBaseService {
     // 如果有 embedding，用原生 SQL 更新
     if (embedding) {
       const embeddingStr = `[${embedding.join(',')}]`;
-      await db.execute(sql`UPDATE knowledge_base SET embedding = ${sql.raw(`'${embeddingStr}'::vector`)} WHERE id = (SELECT id FROM knowledge_base WHERE remediation_run_id = ${runId} ORDER BY created_at DESC LIMIT 1)`);
+      const schemaName = sql.raw(scope.schema);
+      await db.execute(sql`UPDATE ${schemaName}.knowledge_base SET embedding = ${sql.raw(`'${embeddingStr}'::vector`)} WHERE id = (SELECT id FROM ${schemaName}.knowledge_base WHERE remediation_run_id = ${runId} ORDER BY created_at DESC LIMIT 1)`);
     }
   }
 
   /**
    * RAG 检索相似案例
    */
-  async searchSimilarCases(symptom: string, metricName: string, topK = 5): Promise<SimilarCase[]> {
+  async searchSimilarCases(scope: RequestScope, symptom: string, metricName: string, topK = 5): Promise<SimilarCase[]> {
+    const schemaName = sql.raw(scope.schema);
     // 策略 1：向量检索（如果 pgvector 可用）
-    const embedding = await this.generateEmbedding(symptom);
+    const embedding = await this.generateEmbedding(scope, symptom);
     let vectorResults: any[] = [];
 
     if (embedding) {
@@ -92,7 +95,7 @@ export class KnowledgeBaseService {
         const rows = await db.execute(sql`
           SELECT symptom, root_cause, action_taken, outcome, resolution_time_minutes,
                  1 - (embedding <=> ${sql.raw(`'${embeddingStr}'::vector`)}) as similarity
-          FROM knowledge_base
+          FROM ${schemaName}.knowledge_base
           WHERE embedding IS NOT NULL AND metric_name = ${metricName}
           ORDER BY embedding <=> ${sql.raw(`'${embeddingStr}'::vector`)}
           LIMIT ${topK}
@@ -108,7 +111,7 @@ export class KnowledgeBaseService {
     try {
       const keywordRows = await db.execute(sql`
         SELECT symptom, root_cause, action_taken, outcome, resolution_time_minutes
-        FROM knowledge_base
+        FROM ${schemaName}.knowledge_base
         WHERE metric_name = ${metricName}
           AND (to_tsvector('chinese', symptom) @@ plainto_tsquery('chinese', ${symptom})
                OR symptom ILIKE ${'%' + symptom + '%'})
@@ -121,7 +124,7 @@ export class KnowledgeBaseService {
       console.warn('Keyword tsvector search failed, falling back to ILIKE:', (err as Error).message);
       const ilikeRows = await db.execute(sql`
         SELECT symptom, root_cause, action_taken, outcome, resolution_time_minutes
-        FROM knowledge_base
+        FROM ${schemaName}.knowledge_base
         WHERE metric_name = ${metricName}
           AND symptom ILIKE ${'%' + symptom + '%'}
         ORDER BY created_at DESC
@@ -151,9 +154,10 @@ export class KnowledgeBaseService {
   /**
    * 列出知识库条目
    */
-  async list(limit = 50): Promise<KnowledgeEntry[]> {
-    const entries = await db.select().from(knowledgeBase)
-      .orderBy(desc(knowledgeBase.createdAt))
+  async list(scope: RequestScope, limit = 50): Promise<KnowledgeEntry[]> {
+    const t = scopedDb(scope);
+    const entries = await db.select().from(t.knowledgeBase)
+      .orderBy(desc(t.knowledgeBase.createdAt))
       .limit(limit);
     return entries as KnowledgeEntry[];
   }
@@ -161,12 +165,15 @@ export class KnowledgeBaseService {
   /**
    * 调用 ai-gateway 生成 embedding
    */
-  private async generateEmbedding(text: string): Promise<number[] | null> {
+  private async generateEmbedding(scope: RequestScope, text: string): Promise<number[] | null> {
     try {
       const res = await fetch(`${config.aiGatewayUrl}/internal/embedding`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Demo-Mode': scope.isDemo ? 'true' : 'false',
+        },
+        body: JSON.stringify({ text, scope: scope.schema }),
       });
       if (!res.ok) return null;
       const data = await res.json() as { embedding: number[] | null };

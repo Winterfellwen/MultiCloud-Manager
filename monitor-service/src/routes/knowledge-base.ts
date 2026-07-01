@@ -6,7 +6,7 @@ export async function knowledgeBaseRoutes(app: FastifyInstance) {
   // 列出知识库条目
   app.get('/', async (request) => {
     const { limit } = request.query as { limit?: string };
-    return knowledgeBaseService.list(limit ? parseInt(limit, 10) : 50);
+    return knowledgeBaseService.list(request.scope, limit ? parseInt(limit, 10) : 50);
   });
 
   // 语义检索相似案例
@@ -15,7 +15,7 @@ export async function knowledgeBaseRoutes(app: FastifyInstance) {
     if (!symptom || !metric) {
       return { error: 'MISSING_PARAMS', message: 'symptom and metric are required' };
     }
-    const cases = await knowledgeBaseService.searchSimilarCases(symptom, metric);
+    const cases = await knowledgeBaseService.searchSimilarCases(request.scope, symptom, metric);
     return { cases };
   });
 }

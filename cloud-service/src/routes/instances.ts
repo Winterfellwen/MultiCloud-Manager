@@ -31,7 +31,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   // 列出实例（从本地缓存）
   app.get("/", async (request) => {
     const query = request.query as Record<string, string | undefined>;
-    return instanceService.list({
+    return instanceService.list(request.scope, {
       provider: query.provider,
       region: query.region,
       status: query.status,
@@ -43,14 +43,14 @@ export async function instanceRoutes(app: FastifyInstance) {
   // 获取实例详情
   app.get("/:id", async (request) => {
     const { id } = request.params as { id: string };
-    return instanceService.getById(id);
+    return instanceService.getById(request.scope, id);
   });
 
   // 创建实例
   app.post("/", async (request, reply) => {
     try {
       const input = createInstanceSchema.parse(request.body);
-      const instance = await instanceService.create(input);
+      const instance = await instanceService.create(request.scope, input);
       await recordAudit(config.authServiceUrl, {
         userId: getUserId(request),
         action: 'instance.create',
@@ -93,7 +93,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   app.post("/:id/start", async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      await instanceService.start(id);
+      await instanceService.start(request.scope, id);
       await recordAudit(config.authServiceUrl, {
         userId: getUserId(request),
         action: 'instance.start',
@@ -123,7 +123,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   app.post("/:id/stop", async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      await instanceService.stop(id);
+      await instanceService.stop(request.scope, id);
       await recordAudit(config.authServiceUrl, {
         userId: getUserId(request),
         action: 'instance.stop',
@@ -153,7 +153,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   app.post("/:id/reboot", async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      await instanceService.reboot(id);
+      await instanceService.reboot(request.scope, id);
       await recordAudit(config.authServiceUrl, {
         userId: getUserId(request),
         action: 'instance.reboot',
@@ -183,7 +183,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   app.delete("/:id", async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      await instanceService.delete(id);
+      await instanceService.delete(request.scope, id);
       await recordAudit(config.authServiceUrl, {
         userId: getUserId(request),
         action: 'instance.delete',
@@ -213,7 +213,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   app.get("/:id/metrics", async (request) => {
     const { id } = request.params as { id: string };
     const query = request.query as { start?: string; end?: string };
-    const row = await instanceService.getById(id);
+    const row = await instanceService.getById(request.scope, id);
     const provider = getProvider(row.provider);
 
     const end = query.end ? new Date(query.end) : new Date();
@@ -228,8 +228,8 @@ export async function instanceRoutes(app: FastifyInstance) {
   app.post("/sync", async (request) => {
     const query = request.query as { provider?: string };
     if (query.provider) {
-      return [await syncService.syncProvider(query.provider)];
+      return [await syncService.syncProvider(query.provider, request.scope)];
     }
-    return syncService.syncAll();
+    return syncService.syncAll(request.scope);
   });
 }

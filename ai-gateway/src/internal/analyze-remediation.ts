@@ -11,6 +11,8 @@ export interface AnalyzeRemediationRequest {
   instanceStatus: string;
   metricName: string;
   metricValue: string;
+  /** 请求作用域：'demo' 走 demo schema，其他走 public。由调用方（monitor-service）透传 */
+  scope?: string;
   historicalCases?: Array<{
     outcome: string;
     symptom: string;

@@ -6,7 +6,7 @@ export async function metricRoutes(app: FastifyInstance) {
   app.get('/:instanceId', async (request) => {
     const { instanceId } = request.params as { instanceId: string };
     const query = request.query as { metric?: string; start?: string; end?: string; limit?: string };
-    return metricService.query({
+    return metricService.query(request.scope, {
       instanceId,
       metricName: query.metric,
       start: query.start ? new Date(query.start) : undefined,

@@ -1,6 +1,6 @@
 // monitor-service/src/services/remediation-engine.ts
 import { db } from '../db/index.js';
-import { alerts, instances, remediationPolicies, remediationRuns } from '../db/schema.js';
+import { scopedDb, type RequestScope } from '@cloudops/shared';
 import { eq, and, desc } from 'drizzle-orm';
 import { config } from '../config.js';
 import { knowledgeBaseService } from './knowledge-base.service.js';
@@ -19,9 +19,10 @@ export class RemediationEngine {
   /**
    * 告警触发时调用：分析根因 → 创建自愈记录
    */
-  async onAlertFired(alertId: string, instanceId: string, metricName: string, metricValue: string): Promise<void> {
+  async onAlertFired(scope: RequestScope, alertId: string, instanceId: string, metricName: string, metricValue: string): Promise<void> {
+    const t = scopedDb(scope);
     // 获取实例信息
-    const inst = await db.select().from(instances).where(eq(instances.id, instanceId)).limit(1);
+    const inst = await db.select().from(t.instances).where(eq(t.instances.id, instanceId)).limit(1);
     if (inst.length === 0) return;
     const instance = inst[0];
 
@@ -30,22 +31,22 @@ export class RemediationEngine {
     const env = tags.env || 'prod'; // 默认 prod（最严格策略）
 
     // 检查是否已有该告警的自愈记录
-    const existing = await db.select().from(remediationRuns)
-      .where(eq(remediationRuns.alertId, alertId)).limit(1);
+    const existing = await db.select().from(t.remediationRuns)
+      .where(eq(t.remediationRuns.alertId, alertId)).limit(1);
     if (existing.length > 0) return;
 
     // 查询历史相似案例（RAG 检索）
     let historicalCases: any[] = [];
     try {
       const symptom = `${instance.name || instanceId} ${metricName} = ${metricValue}`;
-      const cases = await knowledgeBaseService.searchSimilarCases(symptom, metricName);
+      const cases = await knowledgeBaseService.searchSimilarCases(scope, symptom, metricName);
       historicalCases = cases;
     } catch (err) {
       console.warn('RAG retrieval failed, continuing without historical context:', (err as Error).message);
     }
 
     // 获取告警信息
-    const alertRows = await db.select().from(alerts).where(eq(alerts.id, alertId)).limit(1);
+    const alertRows = await db.select().from(t.alerts).where(eq(t.alerts.id, alertId)).limit(1);
     const alert = alertRows[0];
 
     // 调用 ai-gateway 分析根因
@@ -53,7 +54,10 @@ export class RemediationEngine {
     try {
       const res = await fetch(`${config.aiGatewayUrl}/internal/analyze-remediation`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Demo-Mode': scope.isDemo ? 'true' : 'false',
+        },
         body: JSON.stringify({
           alertId,
           alertMessage: alert?.message || '',
@@ -65,6 +69,7 @@ export class RemediationEngine {
           metricName,
           metricValue,
           historicalCases,
+          scope: scope.schema,
         }),
       });
 
@@ -77,10 +82,10 @@ export class RemediationEngine {
     }
 
     // 决策：自动执行 or 需确认
-    const decision = await this.decideExecution(plan.recommendedAction, env);
+    const decision = await this.decideExecution(scope, plan.recommendedAction, env);
 
     // 创建自愈记录
-    const run = await db.insert(remediationRuns).values({
+    const run = await db.insert(t.remediationRuns).values({
       alertId,
       instanceId,
       rootCause: plan.rootCause,
@@ -92,7 +97,7 @@ export class RemediationEngine {
 
     // 如果策略是自动执行，立即执行
     if (decision === 'auto') {
-      await this.executeRun(run[0].id).catch((err) =>
+      await this.executeRun(scope, run[0].id).catch((err) =>
         console.error(`Auto-remediation ${run[0].id} failed:`, err)
       );
     }
@@ -101,9 +106,10 @@ export class RemediationEngine {
   /**
    * 策略决策
    */
-  private async decideExecution(action: string, env: string): Promise<'auto' | 'confirm' | 'skip'> {
-    const policies = await db.select().from(remediationPolicies)
-      .where(eq(remediationPolicies.actionType, action)).limit(1);
+  private async decideExecution(scope: RequestScope, action: string, env: string): Promise<'auto' | 'confirm' | 'skip'> {
+    const t = scopedDb(scope);
+    const policies = await db.select().from(t.remediationPolicies)
+      .where(eq(t.remediationPolicies.actionType, action)).limit(1);
 
     if (policies.length === 0 || !policies[0].enabled) return 'skip';
 
@@ -118,15 +124,16 @@ export class RemediationEngine {
   /**
    * 执行自愈（手动批准 or 自动）
    */
-  async executeRun(runId: string): Promise<void> {
-    const run = await db.select().from(remediationRuns).where(eq(remediationRuns.id, runId)).limit(1);
+  async executeRun(scope: RequestScope, runId: string): Promise<void> {
+    const t = scopedDb(scope);
+    const run = await db.select().from(t.remediationRuns).where(eq(t.remediationRuns.id, runId)).limit(1);
     if (run.length === 0) return;
 
     // 更新状态为执行中
-    await db.update(remediationRuns).set({
+    await db.update(t.remediationRuns).set({
       status: 'executing',
       approvedAt: new Date(),
-    }).where(eq(remediationRuns.id, runId));
+    }).where(eq(t.remediationRuns.id, runId));
 
     try {
       const action = run[0].actionExecuted || '';
@@ -142,25 +149,25 @@ export class RemediationEngine {
       if (!res.ok) throw new Error(`cloud-service responded ${res.status}`);
 
       // 更新状态为已执行
-      await db.update(remediationRuns).set({
+      await db.update(t.remediationRuns).set({
         status: 'executing',
         executedAt: new Date(),
-      }).where(eq(remediationRuns.id, runId));
+      }).where(eq(t.remediationRuns.id, runId));
 
       // 延迟验证（等待 60 秒）
       const plan = run[0].actionPlan as RemediationPlan;
       const timeout = plan?.verificationTimeout || 60;
       setTimeout(() => {
-        this.verifyRun(runId, instanceId, plan?.verificationMetric || '').catch((err) =>
+        this.verifyRun(scope, runId, instanceId, plan?.verificationMetric || '').catch((err) =>
           console.error(`Verification for ${runId} failed:`, err)
         );
       }, timeout * 1000);
 
     } catch (err) {
-      await db.update(remediationRuns).set({
+      await db.update(t.remediationRuns).set({
         status: 'failed',
         errorMessage: (err as Error).message,
-      }).where(eq(remediationRuns.id, runId));
+      }).where(eq(t.remediationRuns.id, runId));
     }
   }
 
@@ -176,12 +183,12 @@ export class RemediationEngine {
   /**
    * 验证修复效果
    */
-  private async verifyRun(runId: string, instanceId: string, metricName: string): Promise<void> {
-    const { metrics } = await import('../db/schema.js');
+  private async verifyRun(scope: RequestScope, runId: string, instanceId: string, metricName: string): Promise<void> {
+    const t = scopedDb(scope);
     const since = new Date(Date.now() - 2 * 60 * 1000); // 最近 2 分钟
-    const recentMetrics = await db.select().from(metrics)
-      .where(and(eq(metrics.instanceId, instanceId), eq(metrics.metricName, metricName)))
-      .orderBy(desc(metrics.recordedAt))
+    const recentMetrics = await db.select().from(t.metrics)
+      .where(and(eq(t.metrics.instanceId, instanceId), eq(t.metrics.metricName, metricName)))
+      .orderBy(desc(t.metrics.recordedAt))
       .limit(1);
 
     let result: string;
@@ -201,14 +208,14 @@ export class RemediationEngine {
       }
     }
 
-    await db.update(remediationRuns).set({
+    await db.update(t.remediationRuns).set({
       status,
       verifiedAt: new Date(),
       verificationResult: result,
-    }).where(eq(remediationRuns.id, runId));
+    }).where(eq(t.remediationRuns.id, runId));
 
     // 写入知识库
-    knowledgeBaseService.recordExperience(runId).catch((err) =>
+    knowledgeBaseService.recordExperience(scope, runId).catch((err) =>
       console.error(`Knowledge base recording for ${runId} failed:`, err)
     );
   }

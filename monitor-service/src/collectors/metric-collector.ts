@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { instances } from '../db/schema.js';
+import { scopedDb, PUBLIC_SCOPE } from '@cloudops/shared';
 import { eq } from 'drizzle-orm';
 import { config } from '../config.js';
 import { metricService } from '../services/metric.service.js';
@@ -35,11 +35,12 @@ export class MetricCollector {
   }
 
   async collect() {
-    // 从共享 DB 读取所有 running 实例
+    // 从共享 DB 读取所有 running 实例（定时任务用 PUBLIC_SCOPE，Phase 4 再改为双跑）
+    const t = scopedDb(PUBLIC_SCOPE);
     const runningInstances = await db
       .select()
-      .from(instances)
-      .where(eq(instances.status, 'running'));
+      .from(t.instances)
+      .where(eq(t.instances.status, 'running'));
 
     const end = new Date();
     const start = new Date(end.getTime() - 5 * 60 * 1000);
@@ -49,7 +50,7 @@ export class MetricCollector {
       try {
         const points = await this.fetchMetricsFromCloud(inst.id, start, end);
         for (const point of points) {
-          await metricService.insert({
+          await metricService.insert(PUBLIC_SCOPE, {
             instanceId: inst.id,
             metricName: 'cpu_usage_percent',
             value: point.value,

@@ -1,27 +1,32 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
-import { instances, alerts, costRecords, tokenUsage } from '../db/schema.js';
+import { scopedDb } from '@cloudops/shared';
 import { eq, gte, sql, desc } from 'drizzle-orm';
 import { config } from '../config.js';
 
-// AI 洞察缓存（5 分钟）
-let insightCache: { data: any; expiresAt: number } | null = null;
+// AI 洞察缓存（5 分钟）—— 按 schema 隔离，避免 demo/生产缓存串读
+const insightCache = new Map<string, { data: any; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export async function dashboardRoutes(app: FastifyInstance) {
-  app.get('/ai-insight', async (_request, reply) => {
+  app.get('/ai-insight', async (request, reply) => {
+    const scope = request.scope;
+    const cacheKey = scope.schema;
+
     // 检查缓存
-    if (insightCache && Date.now() < insightCache.expiresAt) {
-      return reply.send(insightCache.data);
+    const cached = insightCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return reply.send(cached.data);
     }
 
     // 收集上下文数据
-    const allInstances = await db.select().from(instances);
+    const t = scopedDb(scope);
+    const allInstances = await db.select().from(t.instances);
     const totalInstances = allInstances.length;
     const runningInstances = allInstances.filter(i => i.status === 'running').length;
     const stoppedInstances = allInstances.filter(i => i.status === 'stopped').length;
 
-    const firingAlertsList = await db.select().from(alerts).where(eq(alerts.status, 'firing')).limit(10);
+    const firingAlertsList = await db.select().from(t.alerts).where(eq(t.alerts.status, 'firing')).limit(10);
     const recentAlerts = firingAlertsList.map(a => ({ severity: a.severity, message: a.message }));
 
     const providerMap = new Map<string, number>();
@@ -37,13 +42,16 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const costRows = await db.select().from(costRecords).where(gte(costRecords.periodStart, monthStart));
+    const costRows = await db.select().from(t.costRecords).where(gte(t.costRecords.periodStart, monthStart));
     const totalCost = costRows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
 
     // 调用 ai-gateway 内部端点
     const res = await fetch(`${config.aiGatewayUrl}/internal/insight`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Demo-Mode': scope.isDemo ? 'true' : 'false',
+      },
       body: JSON.stringify({
         totalInstances,
         runningInstances,
@@ -53,6 +61,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         providerBreakdown,
         recentAlerts,
         abnormalInstances,
+        scope: scope.schema,
       }),
     });
 
@@ -63,36 +72,38 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const data = await res.json();
 
     // 更新缓存
-    insightCache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+    insightCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
 
     return reply.send(data);
   });
 
-  app.get('/token-stats', async (_request) => {
+  app.get('/token-stats', async (request) => {
+    const scope = request.scope;
+    const t = scopedDb(scope);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
 
     const todayRows = await db.select({
-      total: sql<number>`COALESCE(SUM(${tokenUsage.totalTokens}), 0)`,
-      prompt: sql<number>`COALESCE(SUM(${tokenUsage.promptTokens}), 0)`,
-      completion: sql<number>`COALESCE(SUM(${tokenUsage.completionTokens}), 0)`,
+      total: sql<number>`COALESCE(SUM(${t.tokenUsage.totalTokens}), 0)`,
+      prompt: sql<number>`COALESCE(SUM(${t.tokenUsage.promptTokens}), 0)`,
+      completion: sql<number>`COALESCE(SUM(${t.tokenUsage.completionTokens}), 0)`,
       calls: sql<number>`COUNT(*)`,
-    }).from(tokenUsage).where(gte(tokenUsage.createdAt, todayStart));
+    }).from(t.tokenUsage).where(gte(t.tokenUsage.createdAt, todayStart));
 
     const weekRows = await db.select({
-      total: sql<number>`COALESCE(SUM(${tokenUsage.totalTokens}), 0)`,
+      total: sql<number>`COALESCE(SUM(${t.tokenUsage.totalTokens}), 0)`,
       calls: sql<number>`COUNT(*)`,
-    }).from(tokenUsage).where(gte(tokenUsage.createdAt, weekStart));
+    }).from(t.tokenUsage).where(gte(t.tokenUsage.createdAt, weekStart));
 
     const trendRows = await db.select({
-      date: sql<string>`DATE(${tokenUsage.createdAt})`,
-      tokens: sql<number>`COALESCE(SUM(${tokenUsage.totalTokens}), 0)`,
-    }).from(tokenUsage)
-      .where(gte(tokenUsage.createdAt, weekStart))
-      .groupBy(sql`DATE(${tokenUsage.createdAt})`)
-      .orderBy(desc(sql`DATE(${tokenUsage.createdAt})`));
+      date: sql<string>`DATE(${t.tokenUsage.createdAt})`,
+      tokens: sql<number>`COALESCE(SUM(${t.tokenUsage.totalTokens}), 0)`,
+    }).from(t.tokenUsage)
+      .where(gte(t.tokenUsage.createdAt, weekStart))
+      .groupBy(sql`DATE(${t.tokenUsage.createdAt})`)
+      .orderBy(desc(sql`DATE(${t.tokenUsage.createdAt})`));
 
     return {
       today: {

@@ -1,6 +1,6 @@
 import { db } from "../db/index.js";
-import { cloudResources } from "../db/schema.js";
 import { eq, and, like, desc, sql } from "drizzle-orm";
+import { scopedDb, type RequestScope } from "@cloudops/shared";
 import type { CloudResource, ResourceType } from "../providers/types.js";
 import { RESOURCE_TYPE_META } from "../providers/types.js";
 
@@ -40,14 +40,15 @@ export interface TopologyEdge {
 }
 
 export class ResourceService {
-  async list(filters: ResourceFilters = {}): Promise<ResourceListResult> {
+  async list(scope: RequestScope, filters: ResourceFilters = {}): Promise<ResourceListResult> {
+    const t = scopedDb(scope);
     const conditions = [];
-    if (filters.provider) conditions.push(eq(cloudResources.provider, filters.provider));
-    if (filters.resourceType) conditions.push(eq(cloudResources.resourceType, filters.resourceType));
-    if (filters.region && filters.region !== 'all') conditions.push(eq(cloudResources.region, filters.region));
-    if (filters.status && filters.status !== 'all') conditions.push(eq(cloudResources.status, filters.status));
+    if (filters.provider) conditions.push(eq(t.cloudResources.provider, filters.provider));
+    if (filters.resourceType) conditions.push(eq(t.cloudResources.resourceType, filters.resourceType));
+    if (filters.region && filters.region !== 'all') conditions.push(eq(t.cloudResources.region, filters.region));
+    if (filters.status && filters.status !== 'all') conditions.push(eq(t.cloudResources.status, filters.status));
     if (filters.search) {
-      conditions.push(like(cloudResources.name, `%${filters.search}%`));
+      conditions.push(like(t.cloudResources.name, `%${filters.search}%`));
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -56,15 +57,15 @@ export class ResourceService {
 
     const items = await db
       .select()
-      .from(cloudResources)
+      .from(t.cloudResources)
       .where(where)
       .limit(limit)
       .offset(offset)
-      .orderBy(desc(cloudResources.createdAt));
+      .orderBy(desc(t.cloudResources.createdAt));
 
     const countResult = await db
       .select({ count: sql<number>`count(*)::int` })
-      .from(cloudResources)
+      .from(t.cloudResources)
       .where(where);
 
     return {
@@ -73,11 +74,12 @@ export class ResourceService {
     };
   }
 
-  async getById(id: string): Promise<CloudResource> {
+  async getById(scope: RequestScope, id: string): Promise<CloudResource> {
+    const t = scopedDb(scope);
     const result = await db
       .select()
-      .from(cloudResources)
-      .where(eq(cloudResources.id, id))
+      .from(t.cloudResources)
+      .where(eq(t.cloudResources.id, id))
       .limit(1);
     if (result.length === 0) {
       throw new Error(`Resource ${id} not found`);
@@ -85,15 +87,16 @@ export class ResourceService {
     return result[0] as unknown as CloudResource;
   }
 
-  async upsertResource(resource: CloudResource): Promise<void> {
+  async upsertResource(scope: RequestScope, resource: CloudResource): Promise<void> {
+    const t = scopedDb(scope);
     const existing = await db
       .select()
-      .from(cloudResources)
+      .from(t.cloudResources)
       .where(
         and(
-          eq(cloudResources.provider, resource.provider),
-          eq(cloudResources.resourceType, resource.resourceType),
-          eq(cloudResources.providerResourceId, resource.providerResourceId)
+          eq(t.cloudResources.provider, resource.provider),
+          eq(t.cloudResources.resourceType, resource.resourceType),
+          eq(t.cloudResources.providerResourceId, resource.providerResourceId)
         )
       )
       .limit(1);
@@ -113,45 +116,48 @@ export class ResourceService {
 
     if (existing.length > 0) {
       await db
-        .update(cloudResources)
+        .update(t.cloudResources)
         .set(row)
-        .where(eq(cloudResources.id, existing[0].id));
+        .where(eq(t.cloudResources.id, existing[0].id));
     } else {
-      await db.insert(cloudResources).values(row);
+      await db.insert(t.cloudResources).values(row);
     }
   }
 
-  async delete(id: string): Promise<void> {
-    await db.delete(cloudResources).where(eq(cloudResources.id, id));
+  async delete(scope: RequestScope, id: string): Promise<void> {
+    const t = scopedDb(scope);
+    await db.delete(t.cloudResources).where(eq(t.cloudResources.id, id));
   }
 
   /** 按资源类型统计数量 */
-  async statsByType(): Promise<Array<{ resourceType: string; provider: string; count: number }>> {
+  async statsByType(scope: RequestScope): Promise<Array<{ resourceType: string; provider: string; count: number }>> {
+    const t = scopedDb(scope);
     const result = await db
       .select({
-        resourceType: cloudResources.resourceType,
-        provider: cloudResources.provider,
+        resourceType: t.cloudResources.resourceType,
+        provider: t.cloudResources.provider,
         count: sql<number>`count(*)::int`,
       })
-      .from(cloudResources)
-      .groupBy(cloudResources.resourceType, cloudResources.provider);
+      .from(t.cloudResources)
+      .groupBy(t.cloudResources.resourceType, t.cloudResources.provider);
     return result;
   }
 
   /** 按状态统计 */
-  async statsByStatus(): Promise<Array<{ status: string; count: number }>> {
+  async statsByStatus(scope: RequestScope): Promise<Array<{ status: string; count: number }>> {
+    const t = scopedDb(scope);
     const result = await db
       .select({
-        status: cloudResources.status,
+        status: t.cloudResources.status,
         count: sql<number>`count(*)::int`,
       })
-      .from(cloudResources)
-      .groupBy(cloudResources.status);
+      .from(t.cloudResources)
+      .groupBy(t.cloudResources.status);
     return result;
   }
 
   /** 获取拓扑数据 */
-  async getTopology(filters: {
+  async getTopology(scope: RequestScope, filters: {
     provider?: string;
     region?: string;
     resourceType?: ResourceType;
@@ -161,7 +167,7 @@ export class ResourceService {
   }): Promise<{ nodes: TopologyNode[]; edges: TopologyEdge[] }> {
     // NOTE: limit 1000 is a tradeoff between completeness and performance.
     // For deployments with >1000 resources, consider paginating or accepting a limit parameter.
-    const resources = await this.list({
+    const resources = await this.list(scope, {
       ...filters,
       limit: 1000,
     });

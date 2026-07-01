@@ -8,7 +8,7 @@ import { resourceRoutes } from "./routes/resources.js";
 import { providerRoutes, accountRoutes } from "./routes/providers.js";
 import { topologyRoutes } from "./routes/topology.js";
 import { AppError } from "@cloudops/shared";
-import { scopeFromDemoFlag, type RequestScope } from "@cloudops/shared";
+import { scopeFromDemoFlag, PUBLIC_SCOPE, type RequestScope } from "@cloudops/shared";
 import { runMigrations } from "./db/migrate.js";
 
 declare module 'fastify' {
@@ -120,7 +120,7 @@ async function ensureInitialSync() {
   if (initialSyncDone) return;
   initialSyncDone = true;
   try {
-    const results = await syncService.syncAll();
+    const results = await syncService.syncAll(PUBLIC_SCOPE);
     for (const r of results) {
       app.log.info(
         `Sync ${r.provider}: ${r.synced} instances, ${r.errors.length} errors`
@@ -136,7 +136,7 @@ const syncInterval = setInterval(
   () => {
     if (!initialSyncDone) return;
     syncService
-      .syncAll()
+      .syncAll(PUBLIC_SCOPE)
       .then((results) => {
         for (const r of results) {
           if (r.errors.length > 0) {

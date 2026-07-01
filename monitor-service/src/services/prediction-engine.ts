@@ -1,6 +1,6 @@
 // monitor-service/src/services/prediction-engine.ts
 import { db } from '../db/index.js';
-import { metrics, instances, metricPredictions, alerts, alertRules } from '../db/schema.js';
+import { scopedDb, PUBLIC_SCOPE, type RequestScope } from '@cloudops/shared';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { config } from '../config.js';
 
@@ -25,7 +25,7 @@ export class PredictionEngine {
 
   start() {
     const intervalMs = config.predictionIntervalSec * 1000;
-    this.timer = setInterval(() => this.runAll().catch(console.error), intervalMs);
+    this.timer = setInterval(() => this.runAll(PUBLIC_SCOPE).catch(console.error), intervalMs);
     console.log(`Prediction engine started (interval: ${config.predictionIntervalSec}s)`);
   }
 
@@ -33,25 +33,27 @@ export class PredictionEngine {
     if (this.timer) clearInterval(this.timer);
   }
 
-  async runAll(): Promise<void> {
-    const allInstances = await db.select().from(instances).where(eq(instances.status, 'running'));
+  async runAll(scope: RequestScope): Promise<void> {
+    const t = scopedDb(scope);
+    const allInstances = await db.select().from(t.instances).where(eq(t.instances.status, 'running'));
     const predictionMetrics = ['disk_utilization', 'memory_utilization'];
 
     for (const inst of allInstances) {
       for (const metricName of predictionMetrics) {
-        await this.predictForInstance(inst.id, inst.name || inst.id, metricName)
+        await this.predictForInstance(scope, inst.id, inst.name || inst.id, metricName)
           .catch((err) => console.error(`Prediction for ${inst.id}/${metricName} failed:`, err));
       }
     }
   }
 
-  async predictForInstance(instanceId: string, instanceName: string, metricName: string): Promise<PredictionResult | null> {
+  async predictForInstance(scope: RequestScope, instanceId: string, instanceName: string, metricName: string): Promise<PredictionResult | null> {
+    const t = scopedDb(scope);
     const since = new Date(Date.now() - config.predictionHistoryHours * 60 * 60 * 1000);
     const points = await db
       .select()
-      .from(metrics)
-      .where(and(eq(metrics.instanceId, instanceId), eq(metrics.metricName, metricName), gte(metrics.recordedAt, since)))
-      .orderBy(desc(metrics.recordedAt));
+      .from(t.metrics)
+      .where(and(eq(t.metrics.instanceId, instanceId), eq(t.metrics.metricName, metricName), gte(t.metrics.recordedAt, since)))
+      .orderBy(desc(t.metrics.recordedAt));
 
     if (points.length < 10) return null; // 数据点不足
 
@@ -92,7 +94,7 @@ export class PredictionEngine {
     };
 
     // 保存预测记录
-    await db.insert(metricPredictions).values({
+    await db.insert(t.metricPredictions).values({
       instanceId,
       metricName,
       currentValue: currentValue.toString(),
@@ -105,19 +107,20 @@ export class PredictionEngine {
 
     // 生成预测告警（severity=info）
     if (hoursToThreshold < 48) { // 48 小时内才生成告警
-      await this.createPredictiveAlert(result, instanceName);
+      await this.createPredictiveAlert(scope, result, instanceName);
     }
 
     return result;
   }
 
-  private async createPredictiveAlert(result: PredictionResult, instanceName: string): Promise<void> {
+  private async createPredictiveAlert(scope: RequestScope, result: PredictionResult, instanceName: string): Promise<void> {
+    const t = scopedDb(scope);
     // 检查是否已有相同预测告警
-    const existing = await db.select().from(alerts).where(
+    const existing = await db.select().from(t.alerts).where(
       and(
-        eq(alerts.instanceId, result.instanceId),
-        eq(alerts.status, 'firing'),
-        eq(alerts.severity, 'info')
+        eq(t.alerts.instanceId, result.instanceId),
+        eq(t.alerts.status, 'firing'),
+        eq(t.alerts.severity, 'info')
       )
     ).limit(1);
 
@@ -126,7 +129,7 @@ export class PredictionEngine {
     const metricLabel = result.metricName === 'disk_utilization' ? '磁盘使用率' : '内存使用率';
     const message = `预测：${instanceName} ${metricLabel}将在约 ${Math.round(result.hoursToThreshold)} 小时后达到 ${result.threshold}%（当前 ${result.currentValue.toFixed(1)}%，趋势 +${result.slope.toFixed(2)}%/h，置信度 ${result.confidence.toFixed(0)}%）`;
 
-    await db.insert(alerts).values({
+    await db.insert(t.alerts).values({
       severity: 'info',
       message,
       status: 'firing',

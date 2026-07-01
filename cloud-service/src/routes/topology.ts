@@ -22,6 +22,6 @@ export async function topologyRoutes(app: FastifyInstance) {
     if (query.status) filters.status = query.status;
     if (query.cloudAccountId) filters.cloudAccountId = query.cloudAccountId;
 
-    return resourceService.getTopology(filters);
+    return resourceService.getTopology(request.scope, filters);
   });
 }

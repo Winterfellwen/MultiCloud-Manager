@@ -1,14 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
-import { instances, alerts, tokenUsage } from '../db/schema.js';
+import { scopedDb } from '@cloudops/shared';
 import { eq, sql } from 'drizzle-orm';
 
 export async function metricsExportRoutes(app: FastifyInstance) {
-  app.get('/metrics', async (_request, reply) => {
+  app.get('/metrics', async (request, reply) => {
+    const scope = request.scope;
+    const t = scopedDb(scope);
     const lines: string[] = [];
 
     // 1. 实例总数（按 provider + status）
-    const instanceRows = await db.select().from(instances);
+    const instanceRows = await db.select().from(t.instances);
     const instanceMap = new Map<string, number>();
     for (const inst of instanceRows) {
       const key = `provider="${inst.provider}",status="${inst.status}"`;
@@ -21,7 +23,7 @@ export async function metricsExportRoutes(app: FastifyInstance) {
     }
 
     // 2. 当前 firing 告警（按 severity）
-    const firingAlerts = await db.select().from(alerts).where(eq(alerts.status, 'firing'));
+    const firingAlerts = await db.select().from(t.alerts).where(eq(t.alerts.status, 'firing'));
     const alertMap = new Map<string, number>();
     for (const a of firingAlerts) {
       const key = `severity="${a.severity}"`;
@@ -41,9 +43,9 @@ export async function metricsExportRoutes(app: FastifyInstance) {
 
     // 3. AI Token 消耗总计（按 provider）
     const tokenRows = await db.select({
-      provider: tokenUsage.provider,
-      total: sql<number>`COALESCE(SUM(${tokenUsage.totalTokens}), 0)`,
-    }).from(tokenUsage).groupBy(tokenUsage.provider);
+      provider: t.tokenUsage.provider,
+      total: sql<number>`COALESCE(SUM(${t.tokenUsage.totalTokens}), 0)`,
+    }).from(t.tokenUsage).groupBy(t.tokenUsage.provider);
     lines.push('');
     lines.push('# HELP cloudops_ai_tokens_total Total AI tokens consumed by provider');
     lines.push('# TYPE cloudops_ai_tokens_total counter');

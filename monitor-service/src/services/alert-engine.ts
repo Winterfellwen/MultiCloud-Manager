@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { alertRules, alerts, metrics, instances } from '../db/schema.js';
+import { scopedDb, PUBLIC_SCOPE, type RequestScope } from '@cloudops/shared';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { config } from '../config.js';
 import { alertService } from './alert.service.js';
@@ -24,7 +24,7 @@ export class AlertEngine {
 
   start() {
     const intervalMs = config.alertCheckIntervalSec * 1000;
-    this.timer = setInterval(() => this.checkAll().catch(console.error), intervalMs);
+    this.timer = setInterval(() => this.checkAll(PUBLIC_SCOPE).catch(console.error), intervalMs);
     console.log(`Alert engine started (interval: ${config.alertCheckIntervalSec}s)`);
   }
 
@@ -32,25 +32,27 @@ export class AlertEngine {
     if (this.timer) clearInterval(this.timer);
   }
 
-  async checkAll() {
-    const rules = await db.select().from(alertRules).where(eq(alertRules.enabled, true));
+  async checkAll(scope: RequestScope) {
+    const t = scopedDb(scope);
+    const rules = await db.select().from(t.alertRules).where(eq(t.alertRules.enabled, true));
     for (const rule of rules) {
-      await this.evaluateRule(rule as RuleRow).catch((err) =>
+      await this.evaluateRule(scope, rule as RuleRow).catch((err) =>
         console.error(`Rule ${rule.name} evaluation failed:`, err)
       );
     }
   }
 
-  private async evaluateRule(rule: RuleRow) {
+  private async evaluateRule(scope: RequestScope, rule: RuleRow) {
+    const t = scopedDb(scope);
     const durationMs = this.parseDuration(rule.duration);
     const since = new Date(Date.now() - durationMs);
 
     // 查询该 metric 在 duration 窗口内的所有数据点
     const points = await db
       .select()
-      .from(metrics)
-      .where(and(eq(metrics.metricName, rule.metric), gte(metrics.recordedAt, since)))
-      .orderBy(desc(metrics.recordedAt));
+      .from(t.metrics)
+      .where(and(eq(t.metrics.metricName, rule.metric), gte(t.metrics.recordedAt, since)))
+      .orderBy(desc(t.metrics.recordedAt));
 
     if (points.length === 0) return;
 
@@ -65,13 +67,13 @@ export class AlertEngine {
 
     for (const [instanceId, instancePoints] of byInstance) {
       const triggered = instancePoints.some((p) => this.evaluateCondition(rule.condition, parseFloat(p.value)));
-      const existing = await alertService.findFiringAlert(rule.id, instanceId);
+      const existing = await alertService.findFiringAlert(scope, rule.id, instanceId);
 
       if (triggered && !existing) {
         // 触发新告警
-        const inst = await db.select().from(instances).where(eq(instances.id, instanceId)).limit(1);
+        const inst = await db.select().from(t.instances).where(eq(t.instances.id, instanceId)).limit(1);
         const instName = inst[0]?.name || instanceId;
-        const alert = await alertService.createAlert({
+        const alert = await alertService.createAlert(scope, {
           ruleId: rule.id,
           instanceId,
           severity: rule.severity as AlertSeverity,
@@ -85,7 +87,7 @@ export class AlertEngine {
         await eventPublisher.publish('alert.fired', { alertId: alert.id, ruleId: rule.id, instanceId, severity: rule.severity });
 
         // 异步调用 AI 根因分析（不阻断告警流程）
-        this.requestAiAnalysis(alert.id, {
+        this.requestAiAnalysis(scope, alert.id, {
           ruleName: rule.name,
           metric: rule.metric,
           condition: rule.condition,
@@ -97,11 +99,11 @@ export class AlertEngine {
         }).catch((err) => console.error(`AI analysis for alert ${alert.id} failed:`, err));
 
         // 触发自愈引擎（异步，不阻断告警流程）
-        remediationEngine.onAlertFired(alert.id, instanceId, rule.metric, String(instancePoints[0].value))
+        remediationEngine.onAlertFired(scope, alert.id, instanceId, rule.metric, String(instancePoints[0].value))
           .catch((err) => console.error(`Remediation for alert ${alert.id} failed:`, err));
       } else if (!triggered && existing) {
         // 条件恢复，自动解决
-        await alertService.resolveAlert(existing.id);
+        await alertService.resolveAlert(scope, existing.id);
         await eventPublisher.publish('alert.resolved', { alertId: existing.id, ruleId: rule.id, instanceId });
       }
     }
@@ -110,7 +112,7 @@ export class AlertEngine {
   /**
    * 异步请求 ai-gateway 进行告警根因分析
    */
-  private async requestAiAnalysis(alertId: string, params: {
+  private async requestAiAnalysis(scope: RequestScope, alertId: string, params: {
     ruleName: string;
     metric: string;
     condition: string;
@@ -122,14 +124,17 @@ export class AlertEngine {
   }): Promise<void> {
     const res = await fetch(`${config.aiGatewayUrl}/internal/analyze-alert`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alertId, ...params }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Demo-Mode': scope.isDemo ? 'true' : 'false',
+      },
+      body: JSON.stringify({ alertId, ...params, scope: scope.schema }),
     });
     if (!res.ok) {
       throw new Error(`ai-gateway responded ${res.status}`);
     }
     const data = await res.json() as { analysis: string };
-    await alertService.updateAiAnalysis(alertId, data.analysis);
+    await alertService.updateAiAnalysis(scope, alertId, data.analysis);
   }
 
   /**

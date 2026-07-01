@@ -36,33 +36,33 @@ const createChannelSchema = z.object({
 
 export async function alertRoutes(app: FastifyInstance) {
   // ---- 告警规则 ----
-  app.get('/rules', async () => alertService.listRules());
+  app.get('/rules', async (request) => alertService.listRules(request.scope));
 
   app.get('/rules/:id', async (request) => {
     const { id } = request.params as { id: string };
-    return alertService.getRule(id);
+    return alertService.getRule(request.scope, id);
   });
 
   app.post('/rules', async (request, reply) => {
     const input = createRuleSchema.parse(request.body);
-    return reply.status(201).send(await alertService.createRule(input));
+    return reply.status(201).send(await alertService.createRule(request.scope, input));
   });
 
   app.put('/rules/:id', async (request) => {
     const { id } = request.params as { id: string };
-    return alertService.updateRule(id, request.body as any);
+    return alertService.updateRule(request.scope, id, request.body as any);
   });
 
   app.delete('/rules/:id', async (request) => {
     const { id } = request.params as { id: string };
-    await alertService.deleteRule(id);
+    await alertService.deleteRule(request.scope, id);
     return { ok: true, id };
   });
 
   // ---- 告警事件 ----
   app.get('/events', async (request) => {
     const query = request.query as { status?: string; severity?: string; limit?: string };
-    return alertService.listAlerts({
+    return alertService.listAlerts(request.scope, {
       status: query.status as any,
       severity: query.severity as any,
       limit: query.limit ? parseInt(query.limit) : undefined,
@@ -71,7 +71,7 @@ export async function alertRoutes(app: FastifyInstance) {
 
   app.post('/events/:id/resolve', async (request, reply) => {
     const { id } = request.params as { id: string };
-    await alertService.resolveAlert(id);
+    await alertService.resolveAlert(request.scope, id);
 
     // 审计：手动解决告警
     await recordAudit(config.authServiceUrl, {
