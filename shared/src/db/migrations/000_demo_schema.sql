@@ -11,6 +11,7 @@
 CREATE SCHEMA IF NOT EXISTS demo;
 
 -- ========== 用 LIKE 复制 public 表结构 ==========
+CREATE TABLE IF NOT EXISTS demo.cloud_accounts (LIKE public.cloud_accounts INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.instances (LIKE public.instances INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.metrics (LIKE public.metrics INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.cost_records (LIKE public.cost_records INCLUDING ALL);

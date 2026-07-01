@@ -62,7 +62,9 @@ echo ""
 if [ "$DEMO_AUTO_SEED" = "true" ] && [ -f /app/scripts/demo-data.sql ]; then
     echo "--- Seeding demo data ---"
     if [ -n "$DATABASE_URL" ]; then
-        psql "$DATABASE_URL" -f /app/scripts/demo-data.sql 2>&1 || echo "WARNING: demo seed failed"
+        # 添加 sslmode=require 以支持 Render 等云数据库
+        DB_URL_SSL="${DATABASE_URL}?sslmode=require"
+        psql "$DB_URL_SSL" -f /app/scripts/demo-data.sql 2>&1 || echo "WARNING: demo seed failed"
     else
         echo "WARNING: DATABASE_URL not set, skip demo seed"
     fi
