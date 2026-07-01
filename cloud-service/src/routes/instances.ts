@@ -1,8 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { recordAudit } from "@cloudops/shared";
 import { instanceService } from "../services/instance.service.js";
 import { syncService } from "../services/sync.service.js";
 import { getProvider } from "../providers/registry.js";
+import { config } from "../config.js";
+
+function getUserId(request: any): string {
+  return (request.headers['x-user-id'] as string) || 'unknown';
+}
+function getTraceId(request: any): string | undefined {
+  return request.headers['x-trace-id'] as string | undefined;
+}
+function getIp(request: any): string {
+  return (request.headers['x-forwarded-for'] as string) || request.ip;
+}
 
 const createInstanceSchema = z.object({
   provider: z.string(),
@@ -39,6 +51,17 @@ export async function instanceRoutes(app: FastifyInstance) {
     try {
       const input = createInstanceSchema.parse(request.body);
       const instance = await instanceService.create(input);
+      await recordAudit(config.authServiceUrl, {
+        userId: getUserId(request),
+        action: 'instance.create',
+        resourceType: 'instance',
+        resourceId: instance.id,
+        provider: input.provider,
+        region: input.region,
+        result: 'success',
+        ip: getIp(request),
+        traceId: getTraceId(request),
+      });
       return reply.status(201).send(instance);
     } catch (err: any) {
       // 处理 ZodError（参数验证错误）
@@ -71,6 +94,15 @@ export async function instanceRoutes(app: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       await instanceService.start(id);
+      await recordAudit(config.authServiceUrl, {
+        userId: getUserId(request),
+        action: 'instance.start',
+        resourceType: 'instance',
+        resourceId: id,
+        result: 'success',
+        ip: getIp(request),
+        traceId: getTraceId(request),
+      });
       return { ok: true, id, status: "running" };
     } catch (err: any) {
       if (err.statusCode && err.message) {
@@ -92,6 +124,15 @@ export async function instanceRoutes(app: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       await instanceService.stop(id);
+      await recordAudit(config.authServiceUrl, {
+        userId: getUserId(request),
+        action: 'instance.stop',
+        resourceType: 'instance',
+        resourceId: id,
+        result: 'success',
+        ip: getIp(request),
+        traceId: getTraceId(request),
+      });
       return { ok: true, id, status: "stopped" };
     } catch (err: any) {
       if (err.statusCode && err.message) {
@@ -113,6 +154,15 @@ export async function instanceRoutes(app: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       await instanceService.reboot(id);
+      await recordAudit(config.authServiceUrl, {
+        userId: getUserId(request),
+        action: 'instance.reboot',
+        resourceType: 'instance',
+        resourceId: id,
+        result: 'success',
+        ip: getIp(request),
+        traceId: getTraceId(request),
+      });
       return { ok: true, id, status: "running" };
     } catch (err: any) {
       if (err.statusCode && err.message) {
@@ -134,6 +184,15 @@ export async function instanceRoutes(app: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       await instanceService.delete(id);
+      await recordAudit(config.authServiceUrl, {
+        userId: getUserId(request),
+        action: 'instance.delete',
+        resourceType: 'instance',
+        resourceId: id,
+        result: 'success',
+        ip: getIp(request),
+        traceId: getTraceId(request),
+      });
       return { ok: true, id };
     } catch (err: any) {
       if (err.statusCode && err.message) {

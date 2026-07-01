@@ -2,8 +2,18 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { accountService } from "../services/account.service.js";
 import { getProvider, listProviders } from "../providers/registry.js";
-import { NotFoundError } from "@cloudops/shared";
-import { CLOUD_PROVIDERS, CLOUD_GUIDES } from "@cloudops/shared";
+import { recordAudit, NotFoundError, CLOUD_PROVIDERS, CLOUD_GUIDES } from "@cloudops/shared";
+import { config } from "../config.js";
+
+function getUserId(request: any): string {
+  return (request.headers['x-user-id'] as string) || 'unknown';
+}
+function getTraceId(request: any): string | undefined {
+  return request.headers['x-trace-id'] as string | undefined;
+}
+function getIp(request: any): string {
+  return (request.headers['x-forwarded-for'] as string) || request.ip;
+}
 
 const createAccountSchema = z.object({
   name: z.string().min(1).max(128),
@@ -77,6 +87,16 @@ export async function accountRoutes(app: FastifyInstance) {
   app.post("/", async (request, reply) => {
     const input = createAccountSchema.parse(request.body);
     const account = await accountService.create(input);
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'account.create',
+      resourceType: 'cloud_account',
+      resourceId: account.id,
+      provider: input.provider,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
     return reply.status(201).send(account);
   });
 
@@ -84,6 +104,15 @@ export async function accountRoutes(app: FastifyInstance) {
   app.delete("/:id", async (request) => {
     const { id } = request.params as { id: string };
     await accountService.delete(id);
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'account.delete',
+      resourceType: 'cloud_account',
+      resourceId: id,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
     return { ok: true, id };
   });
 
@@ -91,14 +120,34 @@ export async function accountRoutes(app: FastifyInstance) {
   app.put("/:id", async (request) => {
     const { id } = request.params as { id: string };
     const input = updateAccountSchema.parse(request.body);
-    return accountService.update(id, input);
+    const account = await accountService.update(id, input);
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'account.update',
+      resourceType: 'cloud_account',
+      resourceId: id,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
+    return account;
   });
 
   // PATCH 别名（同 PUT）
   app.patch("/:id", async (request) => {
     const { id } = request.params as { id: string };
     const input = updateAccountSchema.parse(request.body);
-    return accountService.update(id, input);
+    const account = await accountService.update(id, input);
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'account.update',
+      resourceType: 'cloud_account',
+      resourceId: id,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
+    return account;
   });
 
   // 测试云账号连通性

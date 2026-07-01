@@ -15,7 +15,10 @@ export const config = {
   databaseUrl: requireEnv('DATABASE_URL', 'postgresql://postgres:postgres@127.0.0.1:5432/cloudops'),
   redisUrl: requireEnv('REDIS_URL', 'redis://127.0.0.1:6379'),
   corsOrigin: process.env.CORS_ORIGIN || '*',
-  
+
+  // auth-service 内部地址（docker 网络内服务间调用）
+  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3004',
+
   // Cloud provider configs
   aws: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,

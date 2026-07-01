@@ -1,9 +1,21 @@
 import type { FastifyInstance } from "fastify";
+import { recordAudit } from "@cloudops/shared";
 import { resourceService } from "../services/resource.service.js";
 import { syncService } from "../services/sync.service.js";
 import { getProvider } from "../providers/registry.js";
 import { RESOURCE_TYPE_META } from "../providers/types.js";
 import type { ResourceType } from "../providers/types.js";
+import { config } from "../config.js";
+
+function getUserId(request: any): string {
+  return (request.headers['x-user-id'] as string) || 'unknown';
+}
+function getTraceId(request: any): string | undefined {
+  return request.headers['x-trace-id'] as string | undefined;
+}
+function getIp(request: any): string {
+  return (request.headers['x-forwarded-for'] as string) || request.ip;
+}
 
 export async function resourceRoutes(app: FastifyInstance) {
   // 获取资源类型元数据
@@ -47,6 +59,16 @@ export async function resourceRoutes(app: FastifyInstance) {
     const provider = getProvider(resource.provider);
     await provider.deleteResource(resource.resourceType, resource.providerResourceId);
     await resourceService.delete(id);
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'resource.delete',
+      resourceType: resource.resourceType,
+      resourceId: id,
+      provider: resource.provider,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
     return { ok: true, id };
   });
 
