@@ -15,12 +15,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import {
   Brain, Check, Settings2, Plus, Pencil, Trash2, Zap, Loader2, Server, ChevronDown, ChevronUp,
   Search, Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useRemediationPolicies, useUpdateRemediationPolicy } from '@/hooks/useRemediation';
+import type { RemediationPolicy } from '@/types/monitor';
 
 type ReasoningEffort = 'low' | 'medium' | 'high';
 
@@ -754,6 +757,9 @@ export default function AiSettings() {
         </CardContent>
       </Card>
 
+      {/* 自愈策略配置 */}
+      <RemediationPolicySection />
+
       {/* Provider 添加/编辑对话框 */}
       <Dialog
         open={providerDialogOpen}
@@ -1067,5 +1073,65 @@ export default function AiSettings() {
         </div>
       </Dialog>
     </div>
+  );
+}
+
+function RemediationPolicySection() {
+  const { data: policies, isLoading } = useRemediationPolicies();
+  const updateMutation = useUpdateRemediationPolicy();
+
+  const handleToggle = (policy: RemediationPolicy, env: string) => {
+    const newAutoExecute = { ...policy.autoExecute, [env]: !policy.autoExecute[env] };
+    updateMutation.mutate({ id: policy.id, params: { autoExecute: newAutoExecute } });
+  };
+
+  const ACTION_LABELS: Record<string, string> = {
+    reboot_instance: '重启实例',
+    stop_instance: '停止实例',
+    scale_up: '扩容实例',
+  };
+
+  if (isLoading) return null;
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <h2 className="text-lg font-semibold mb-4">自愈策略配置</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          配置每个动作在不同环境下的执行策略。勾选=自动执行，未勾选=需人工确认。
+        </p>
+        {policies && policies.length > 0 && (
+          <div className="overflow-x-auto">
+            <Table className="min-w-[400px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>动作</TableHead>
+                  <TableHead className="text-center">dev</TableHead>
+                  <TableHead className="text-center">uat</TableHead>
+                  <TableHead className="text-center">prod</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {policies.map((policy) => (
+                  <TableRow key={policy.id}>
+                    <TableCell className="font-medium">{ACTION_LABELS[policy.actionType] || policy.actionType}</TableCell>
+                    {['dev', 'uat', 'prod'].map((env) => (
+                      <TableCell key={env} className="text-center">
+                        <input
+                          type="checkbox"
+                          checked={policy.autoExecute[env] || false}
+                          onChange={() => handleToggle(policy, env)}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
