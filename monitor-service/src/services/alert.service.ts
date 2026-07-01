@@ -106,6 +106,13 @@ export class AlertService {
     const result = await db.select().from(alerts).where(and(...conditions)).limit(1);
     return result[0] || null;
   }
+
+  async updateAiAnalysis(id: string, analysis: string): Promise<void> {
+    await db
+      .update(alerts)
+      .set({ aiAnalysis: analysis, aiAnalyzedAt: new Date() })
+      .where(eq(alerts.id, id));
+  }
 }
 
 export const alertService = new AlertService();
