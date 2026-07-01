@@ -226,6 +226,13 @@ export async function handleChatSend(
                 payload: { runId, type: 'done', finalText, truncated },
               });
             },
+            onUsage: (usage) => {
+              // fire-and-forget 写入 token_usage 表
+              db.execute(sql`
+                INSERT INTO token_usage (user_id, session_key, provider, model, prompt_tokens, completion_tokens, total_tokens)
+                VALUES (${client.userId}, ${sessionKey}, ${config.llm.baseUrl}, ${config.llm.model}, ${usage.promptTokens}, ${usage.completionTokens}, ${usage.totalTokens})
+              `).catch(() => {});
+            },
           }
         );
       } catch (error) {

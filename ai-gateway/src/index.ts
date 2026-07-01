@@ -45,6 +45,7 @@ import {
   type ExecApprovalContext,
 } from './methods/exec-approval.js';
 import { analyzeAlert } from './internal/analyze-alert.js';
+import { generateDashboardInsight } from './internal/dashboard-insight.js';
 
 // 全局状态
 const clients = new Map<string, ClientConnection>();
@@ -78,6 +79,16 @@ app.post('/internal/analyze-alert', async (request, reply) => {
   } catch (err) {
     app.log.error({ err }, 'analyze-alert failed');
     return reply.status(500).send({ error: 'ANALYSIS_FAILED', message: (err as Error).message });
+  }
+});
+
+app.post('/internal/insight', async (request, reply) => {
+  try {
+    const result = await generateDashboardInsight(request.body as any);
+    return reply.send(result);
+  } catch (err) {
+    app.log.error({ err }, 'dashboard insight failed');
+    return reply.status(500).send({ error: 'INSIGHT_FAILED', message: (err as Error).message });
   }
 });
 
