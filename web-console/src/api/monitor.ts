@@ -4,6 +4,7 @@ import type {
   AlertEvent, ListAlertEventsParams,
   NotificationChannel, CreateChannelParams,
   CostSummaryItem, CostSummaryParams, InstanceCost, MetricData,
+  PredictionItem,
 } from '@/types/monitor';
 
 export const monitorApi = {
@@ -42,4 +43,6 @@ export const monitorApi = {
     const qs = query.toString();
     return api.get<MetricData[]>(`/monitor/metrics/${instanceId}${qs ? '?' + qs : ''}`);
   },
+  getPredictions: () => api.get<PredictionItem[]>('/monitor/predictions'),
+  runPrediction: () => api.post<{ ok: true; message: string }>('/monitor/predictions/run'),
 };

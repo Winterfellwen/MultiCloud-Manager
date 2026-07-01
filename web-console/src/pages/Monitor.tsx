@@ -16,8 +16,9 @@ import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
 import { Plus, Trash2, CheckCircle, Pencil, Brain, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import PredictionsTab from '@/components/monitor/PredictionsTab';
 
-type Tab = 'rules' | 'events' | 'channels';
+type Tab = 'rules' | 'events' | 'channels' | 'predictions' | 'remediation' | 'knowledge';
 
 export default function Monitor() {
   const { t } = useTranslation();
@@ -33,6 +34,7 @@ export default function Monitor() {
             { key: 'rules' as const, label: t('monitor.tabRules') },
             { key: 'events' as const, label: t('monitor.tabEvents') },
             { key: 'channels' as const, label: t('monitor.tabChannels') },
+            { key: 'predictions' as const, label: '预测' },
           ]).map((tabItem) => (
             <button
               key={tabItem.key}
@@ -53,6 +55,7 @@ export default function Monitor() {
       {tab === 'rules' && <RulesTab />}
       {tab === 'events' && <EventsTab />}
       {tab === 'channels' && <ChannelsTab />}
+      {tab === 'predictions' && <PredictionsTab />}
     </div>
   );
 }

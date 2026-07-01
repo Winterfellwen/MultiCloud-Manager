@@ -97,3 +97,18 @@ export interface MetricData {
   recordedAt: string;
   createdAt: string;
 }
+
+export interface PredictionItem {
+  id: number;
+  instanceId: string;
+  instanceName: string | null;
+  instanceProvider: string;
+  metricName: string;
+  currentValue: string;
+  predictedValue: string;
+  threshold: string;
+  hoursToThreshold: string;
+  slope: string;
+  confidence: string;
+  createdAt: string;
+}
