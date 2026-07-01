@@ -6,6 +6,7 @@ import type {
   CostSummaryItem, CostSummaryParams, InstanceCost, MetricData,
   PredictionItem,
   RemediationRun, RemediationPolicy,
+  KnowledgeEntry,
 } from '@/types/monitor';
 
 export const monitorApi = {
@@ -56,4 +57,7 @@ export const monitorApi = {
   getRemediationPolicies: () => api.get<RemediationPolicy[]>('/monitor/remediation/policies'),
   updateRemediationPolicy: (id: string, params: { autoExecute?: Record<string, boolean>; enabled?: boolean }) =>
     api.put<{ ok: true }>(`/monitor/remediation/policies/${id}`, params),
+  getKnowledgeBase: () => api.get<KnowledgeEntry[]>('/monitor/knowledge-base'),
+  searchKnowledgeBase: (symptom: string, metric: string) =>
+    api.get<{ cases: any[] }>(`/monitor/knowledge-base/search?symptom=${encodeURIComponent(symptom)}&metric=${encodeURIComponent(metric)}`),
 };

@@ -149,3 +149,17 @@ export interface RemediationPolicy {
   autoExecute: Record<string, boolean>;
   enabled: boolean;
 }
+
+export interface KnowledgeEntry {
+  id: string;
+  symptom: string;
+  metricName: string;
+  instanceProvider: string | null;
+  instanceEnv: string | null;
+  rootCause: string | null;
+  actionTaken: string | null;
+  outcome: string;
+  resolutionTimeMinutes: number | null;
+  helpfulCount: number;
+  createdAt: string;
+}
