@@ -59,12 +59,10 @@ done
 echo ""
 
 # Demo 数据自动初始化（仅本地开发环境，DEMO_AUTO_SEED=true 时执行）
-if [ "$DEMO_AUTO_SEED" = "true" ] && [ -f /app/scripts/demo-data.sql ]; then
+if [ "$DEMO_AUTO_SEED" = "true" ] && [ -f /app/scripts/seed-demo.js ]; then
     echo "--- Seeding demo data ---"
     if [ -n "$DATABASE_URL" ]; then
-        # 添加 sslmode=require 以支持 Render 等云数据库
-        DB_URL_SSL="${DATABASE_URL}?sslmode=require"
-        psql "$DB_URL_SSL" -f /app/scripts/demo-data.sql 2>&1 || echo "WARNING: demo seed failed"
+        node /app/scripts/seed-demo.js 2>&1 || echo "WARNING: demo seed failed"
     else
         echo "WARNING: DATABASE_URL not set, skip demo seed"
     fi
