@@ -77,3 +77,16 @@ export const notificationChannels = pgTable('notification_channels', {
   enabled: boolean('enabled').default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// Phase 4 新增：Token 使用统计表（由 ai-gateway 写入，monitor-service 共享查询）
+export const tokenUsage = pgTable('token_usage', {
+  id: integer('id').primaryKey(),
+  userId: varchar('user_id', { length: 64 }).notNull(),
+  sessionKey: varchar('session_key', { length: 128 }),
+  provider: varchar('provider', { length: 256 }),
+  model: varchar('model', { length: 128 }),
+  promptTokens: integer('prompt_tokens').notNull(),
+  completionTokens: integer('completion_tokens').notNull(),
+  totalTokens: integer('total_tokens').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
