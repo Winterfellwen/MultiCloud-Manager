@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import { callLlmChat } from './llm-resolver.js';
 
 export interface DashboardInsightRequest {
   totalInstances: number;
@@ -20,6 +20,7 @@ export interface DashboardInsightResponse {
 
 /**
  * 调用 LLM 生成 Dashboard 健康洞察（结构化 JSON 输出）
+ * 使用用户在「AI 设置」页面配置的默认 provider
  */
 export async function generateDashboardInsight(req: DashboardInsightRequest): Promise<DashboardInsightResponse> {
   const prompt = `你是云运维专家。请分析以下云资源概况，给出健康评估和建议。
@@ -45,26 +46,7 @@ ${req.abnormalInstances.map(i => `- ${i.name} (${i.provider}): ${i.status}`).joi
   "suggestions": ["建议1", "建议2"]
 }`;
 
-  const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.llm.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.llm.model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 600,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`LLM API error ${res.status}`);
-  }
-
-  const data: any = await res.json();
-  const raw = data.choices?.[0]?.message?.content || '';
+  const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 600 });
 
   // 解析 JSON（LLM 可能包含 markdown 代码块）
   const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

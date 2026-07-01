@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import { callLlmChat } from './llm-resolver.js';
 
 export interface AnalyzeAlertRequest {
   alertId: string;
@@ -18,6 +18,7 @@ export interface AnalyzeAlertResponse {
 
 /**
  * 调用 LLM 分析告警根因（Plan 模式，只读分析，不执行工具）
+ * 使用用户在「AI 设置」页面配置的默认 provider
  */
 export async function analyzeAlert(req: AnalyzeAlertRequest): Promise<AnalyzeAlertResponse> {
   const prompt = `你是云运维专家。请分析以下告警的根因，并给出修复建议。
@@ -38,27 +39,6 @@ export async function analyzeAlert(req: AnalyzeAlertRequest): Promise<AnalyzeAle
 
 请用中文回复，简洁专业。`;
 
-  const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.llm.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.llm.model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      max_tokens: 800,
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`LLM API error ${res.status}: ${errText.slice(0, 200)}`);
-  }
-
-  const data: any = await res.json();
-  const analysis = data.choices?.[0]?.message?.content || '';
-
+  const analysis = await callLlmChat(prompt, { temperature: 0.2, maxTokens: 800 });
   return { analysis };
 }
