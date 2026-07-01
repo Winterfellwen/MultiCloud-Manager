@@ -7,6 +7,7 @@ import { runMigrations } from './db/migrate.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { auditRoutes } from './routes/audit.js';
+import { internalAuditRoutes } from './routes/internal-audit.js';
 import { teamRoutes } from './routes/teams.js';
 import { db } from './db/index.js';
 import { users } from './db/schema.js';
@@ -138,6 +139,7 @@ await app.register(authRoutes, { prefix: '/auth' });
 await app.register(userRoutes, { prefix: '/users' });
 await app.register(auditRoutes, { prefix: '/audit' });
 await app.register(teamRoutes, { prefix: '/auth' });
+await app.register(internalAuditRoutes, { prefix: '/internal' });
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' });
