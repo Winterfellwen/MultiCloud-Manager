@@ -46,6 +46,7 @@ import {
 } from './methods/exec-approval.js';
 import { analyzeAlert } from './internal/analyze-alert.js';
 import { generateDashboardInsight } from './internal/dashboard-insight.js';
+import { analyzeRemediation } from './internal/analyze-remediation.js';
 
 // 全局状态
 const clients = new Map<string, ClientConnection>();
@@ -89,6 +90,16 @@ app.post('/internal/insight', async (request, reply) => {
   } catch (err) {
     app.log.error({ err }, 'dashboard insight failed');
     return reply.status(500).send({ error: 'INSIGHT_FAILED', message: (err as Error).message });
+  }
+});
+
+app.post('/internal/analyze-remediation', async (request, reply) => {
+  try {
+    const result = await analyzeRemediation(request.body as any);
+    return reply.send(result);
+  } catch (err) {
+    app.log.error({ err }, 'analyze-remediation failed');
+    return reply.status(500).send({ error: 'ANALYZE_REMEDIATION_FAILED', message: (err as Error).message });
   }
 });
 
