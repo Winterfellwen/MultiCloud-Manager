@@ -159,7 +159,8 @@
     "confirmDeleteChannel": "确定删除此渠道？",
     "noRules": "暂无规则",
     "noEvents": "暂无告警事件",
-    "noChannels": "暂无渠道"
+    "noChannels": "暂无渠道",
+    "aiAnalysis": "AI 根因分析"
   },
   "costs": {
     "title": "成本分析",

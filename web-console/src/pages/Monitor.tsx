@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAlertRules, useCreateAlertRule, useUpdateAlertRule, useDeleteAlertRule, useAlertEvents, useResolveAlertEvent } from '@/hooks/useAlerts';
@@ -14,7 +14,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { AlertSeverityBadge, AlertStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
-import { Plus, Trash2, CheckCircle, Pencil } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Pencil, Brain, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Tab = 'rules' | 'events' | 'channels';
@@ -271,6 +271,7 @@ function EventsTab() {
   const { t } = useTranslation();
   const { data: events, isLoading } = useAlertEvents();
   const resolve = useResolveAlertEvent();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function handleResolve(id: string) {
     try {
@@ -290,33 +291,78 @@ function EventsTab() {
           <div className="text-center py-8 text-muted-foreground">{t('monitor.noEvents')}</div>
         ) : (
           <div className="overflow-x-auto">
-            <Table className="min-w-[500px]">
+            <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]"></TableHead>
                   <TableHead className="w-[100px]">{t('monitor.severity')}</TableHead>
-                  <TableHead className="w-[280px]">{t('monitor.message')}</TableHead>
+                  <TableHead className="w-[200px]">{t('monitor.message')}</TableHead>
                   <TableHead className="w-[100px]">{t('common.status')}</TableHead>
-                  <TableHead className="w-[180px]">{t('monitor.firedAt')}</TableHead>
-                  <TableHead className="w-[100px]">{t('common.actions')}</TableHead>
+                  <TableHead className="w-[160px]">{t('monitor.firedAt')}</TableHead>
+                  <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(events || []).map((evt) => (
-                  <TableRow key={evt.id}>
-                    <TableCell><AlertSeverityBadge severity={evt.severity as AlertSeverity} /></TableCell>
-                    <TableCell className="max-w-xs sm:max-w-md truncate">{evt.message}</TableCell>
-                    <TableCell><AlertStatusBadge status={evt.status as any} /></TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {new Date(evt.firedAt).toLocaleString('zh-CN')}
-                    </TableCell>
-                    <TableCell>
-                      {evt.status === 'firing' && (
-                        <Button variant="ghost" size="sm" onClick={() => handleResolve(evt.id)}>
-                          <CheckCircle className="h-4 w-4 mr-1" />{t('monitor.resolve')}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                  <React.Fragment key={evt.id}>
+                    <TableRow>
+                      <TableCell>
+                        {evt.aiAnalysis && (
+                          <button
+                            onClick={() => setExpandedId(expandedId === evt.id ? null : evt.id)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            {expandedId === evt.id ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronR className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+                      </TableCell>
+                      <TableCell><AlertSeverityBadge severity={evt.severity as AlertSeverity} /></TableCell>
+                      <TableCell className="text-sm">{evt.message}</TableCell>
+                      <TableCell><AlertStatusBadge status={evt.status as any} /></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(evt.firedAt).toLocaleString('zh-CN')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {evt.aiAnalysis && (
+                            <span className="inline-flex items-center gap-1 rounded bg-purple-500/10 px-1.5 py-0.5 text-xs text-purple-600">
+                              <Brain className="h-3 w-3" />
+                              AI
+                            </span>
+                          )}
+                          {evt.status === 'firing' && (
+                            <Button variant="ghost" size="sm" onClick={() => handleResolve(evt.id)}>
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expandedId === evt.id && evt.aiAnalysis && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="bg-muted/30">
+                          <div className="space-y-2 py-3">
+                            <div className="flex items-center gap-1.5 text-sm font-medium">
+                              <Brain className="h-4 w-4 text-purple-600" />
+                              {t('monitor.aiAnalysis')}
+                              {evt.aiAnalyzedAt && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  {new Date(evt.aiAnalyzedAt).toLocaleString('zh-CN')}
+                                </span>
+                              )}
+                            </div>
+                            <pre className="whitespace-pre-wrap rounded bg-background p-3 text-xs font-mono">
+                              {evt.aiAnalysis}
+                            </pre>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>

@@ -159,7 +159,8 @@
     "confirmDeleteChannel": "Delete this channel?",
     "noRules": "No rules",
     "noEvents": "No alert events",
-    "noChannels": "No channels"
+    "noChannels": "No channels",
+    "aiAnalysis": "AI Root Cause Analysis"
   },
   "costs": {
     "title": "Cost Analysis",

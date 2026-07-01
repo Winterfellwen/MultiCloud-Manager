@@ -41,6 +41,8 @@ export interface AlertEvent {
   status: AlertStatus;
   firedAt: string;
   resolvedAt: string | null;
+  aiAnalysis?: string | null;
+  aiAnalyzedAt?: string | null;
 }
 
 export interface ListAlertEventsParams {
