@@ -90,3 +90,17 @@ export const tokenUsage = pgTable('token_usage', {
   totalTokens: integer('total_tokens').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// Phase 4 新增：预测表（线性回归预测引擎写入）
+export const metricPredictions = pgTable('metric_predictions', {
+  id: integer('id').primaryKey(),
+  instanceId: uuid('instance_id').references(() => instances.id, { onDelete: 'cascade' }).notNull(),
+  metricName: varchar('metric_name', { length: 64 }).notNull(),
+  currentValue: decimal('current_value', { precision: 12, scale: 4 }).notNull(),
+  predictedValue: decimal('predicted_value', { precision: 12, scale: 4 }).notNull(),
+  threshold: decimal('threshold', { precision: 12, scale: 4 }).notNull(),
+  hoursToThreshold: decimal('hours_to_threshold', { precision: 8, scale: 2 }).notNull(),
+  slope: decimal('slope', { precision: 12, scale: 6 }).notNull(),
+  confidence: decimal('confidence', { precision: 5, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
