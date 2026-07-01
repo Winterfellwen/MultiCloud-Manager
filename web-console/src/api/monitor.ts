@@ -5,6 +5,7 @@ import type {
   NotificationChannel, CreateChannelParams,
   CostSummaryItem, CostSummaryParams, InstanceCost, MetricData,
   PredictionItem,
+  RemediationRun, RemediationPolicy,
 } from '@/types/monitor';
 
 export const monitorApi = {
@@ -45,4 +46,14 @@ export const monitorApi = {
   },
   getPredictions: () => api.get<PredictionItem[]>('/monitor/predictions'),
   runPrediction: () => api.post<{ ok: true; message: string }>('/monitor/predictions/run'),
+  getRemediationRuns: (params?: { status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    const qs = query.toString();
+    return api.get<RemediationRun[]>(`/monitor/remediation${qs ? '?' + qs : ''}`);
+  },
+  approveRemediation: (id: string) => api.post<{ ok: true; message: string }>(`/monitor/remediation/${id}/approve`),
+  getRemediationPolicies: () => api.get<RemediationPolicy[]>('/monitor/remediation/policies'),
+  updateRemediationPolicy: (id: string, params: { autoExecute?: Record<string, boolean>; enabled?: boolean }) =>
+    api.put<{ ok: true }>(`/monitor/remediation/policies/${id}`, params),
 };

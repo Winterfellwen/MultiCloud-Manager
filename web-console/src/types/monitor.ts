@@ -112,3 +112,40 @@ export interface PredictionItem {
   confidence: string;
   createdAt: string;
 }
+
+export interface RemediationRun {
+  id: string;
+  alertId: string | null;
+  instanceId: string | null;
+  instanceName: string | null;
+  instanceProvider: string | null;
+  rootCause: string | null;
+  actionPlan: {
+    rootCause: string;
+    recommendedAction: string;
+    reasoning: string;
+    riskLevel: string;
+    expectedEffect: string;
+    verificationMetric: string;
+    verificationTimeout: number;
+  } | null;
+  actionExecuted: string | null;
+  status: 'pending' | 'approved' | 'executing' | 'success' | 'failed' | 'skipped';
+  env: string | null;
+  triggeredAt: string;
+  approvedAt: string | null;
+  executedAt: string | null;
+  verifiedAt: string | null;
+  verificationResult: string | null;
+  errorMessage: string | null;
+  alertMessage: string | null;
+}
+
+export interface RemediationPolicy {
+  id: string;
+  name: string;
+  actionType: string;
+  envTags: string[];
+  autoExecute: Record<string, boolean>;
+  enabled: boolean;
+}
