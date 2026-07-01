@@ -72,8 +72,24 @@ export async function authRoutes(app: FastifyInstance) {
     
     const input = loginSchema.parse(request.body);
     const ip = request.ip;
-    const tokens = await authService.login(input, ip);
-    return reply.send(tokens);
+    try {
+      const tokens = await authService.login(input, ip);
+      await auditService.log({
+        userId: input.username,
+        action: 'auth.login',
+        result: 'success',
+        ip,
+      }).catch(() => {});
+      return reply.send(tokens);
+    } catch (err) {
+      await auditService.log({
+        userId: input.username,
+        action: 'auth.login_failed',
+        result: 'failure',
+        ip,
+      }).catch(() => {});
+      throw err;
+    }
   });
 
   app.post('/refresh', async (request, reply) => {
