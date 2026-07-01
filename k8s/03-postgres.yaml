@@ -39,7 +39,17 @@ spec:
             - name: POSTGRES_USER
               value: "cloudops"
             - name: POSTGRES_PASSWORD
-              value: "cloudops123"  # 生产环境请用 Secret
+              valueFrom:
+                secretKeyRef:
+                  name: cloudops-secrets
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
