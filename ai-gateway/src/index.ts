@@ -47,6 +47,7 @@ import {
 import { analyzeAlert } from './internal/analyze-alert.js';
 import { generateDashboardInsight } from './internal/dashboard-insight.js';
 import { analyzeRemediation } from './internal/analyze-remediation.js';
+import { generateEmbedding } from './internal/embedding.js';
 
 // 全局状态
 const clients = new Map<string, ClientConnection>();
@@ -100,6 +101,17 @@ app.post('/internal/analyze-remediation', async (request, reply) => {
   } catch (err) {
     app.log.error({ err }, 'analyze-remediation failed');
     return reply.status(500).send({ error: 'ANALYZE_REMEDIATION_FAILED', message: (err as Error).message });
+  }
+});
+
+app.post('/internal/embedding', async (request, reply) => {
+  try {
+    const { text } = request.body as { text: string };
+    const embedding = await generateEmbedding(text);
+    return reply.send({ embedding });
+  } catch (err) {
+    app.log.error({ err }, 'embedding failed');
+    return reply.status(500).send({ error: 'EMBEDDING_FAILED', message: (err as Error).message });
   }
 });
 
