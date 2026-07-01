@@ -134,3 +134,22 @@ export const remediationRuns = pgTable('remediation_runs', {
   verificationResult: text('verification_result'),
   errorMessage: text('error_message'),
 });
+
+// Phase 6 新增：运维知识库表（pgvector 向量检索）
+// pgvector 类型支持（如果扩展不存在，查询会降级为纯关键词检索）
+export const knowledgeBase = pgTable('knowledge_base', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  alertId: uuid('alert_id').references(() => alerts.id, { onDelete: 'set null' }),
+  remediationRunId: uuid('remediation_run_id').references(() => remediationRuns.id, { onDelete: 'set null' }),
+  symptom: text('symptom').notNull(),
+  metricName: varchar('metric_name', { length: 64 }).notNull(),
+  instanceProvider: varchar('instance_provider', { length: 32 }),
+  instanceEnv: varchar('instance_env', { length: 32 }),
+  rootCause: text('root_cause'),
+  actionTaken: varchar('action_taken', { length: 64 }),
+  outcome: varchar('outcome', { length: 32 }).notNull(),
+  resolutionTimeMinutes: integer('resolution_time_minutes'),
+  // embedding 列通过原生 SQL 管理（drizzle 不原生支持 vector 类型）
+  helpfulCount: integer('helpful_count').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
