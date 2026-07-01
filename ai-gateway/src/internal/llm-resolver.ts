@@ -26,10 +26,14 @@ export async function resolveOpsLlm(): Promise<ResolvedOpsLlm> {
   const defaultProvider = providers.find((p) => p.isDefault) || providers[0];
 
   if (defaultProvider && defaultProvider.apiKey && defaultProvider.models.length > 0) {
+    const modelId = defaultProvider.models[0].id;
+    // OpenAI 兼容 API（NVIDIA NIM、OpenRouter 等）通常需要 "provider/model" 格式
+    // OpenAI 自己的 API 接受纯 model 名（如 gpt-4o）
+    const fullModelId = modelId.includes('/') ? modelId : `${defaultProvider.id}/${modelId}`;
     return {
       baseUrl: defaultProvider.baseUrl,
       apiKey: defaultProvider.apiKey,
-      model: defaultProvider.models[0].id,
+      model: fullModelId,
     };
   }
 

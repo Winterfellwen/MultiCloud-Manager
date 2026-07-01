@@ -4,6 +4,10 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# 国内镜像源加速（apk + npm）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    npm config set registry https://registry.npmmirror.com
+
 # 安装构建依赖
 RUN apk add --no-cache python3 make g++
 
@@ -56,6 +60,11 @@ RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent a
       echo "Built $svc"; \
     done
 
+# 剪枝 devDependencies，保留生产依赖（含已编译的原生模块）
+RUN for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
+      cd /app/$svc && npm prune --omit=dev; \
+    done
+
 # 复制数据库迁移文件
 RUN cp -r auth-service/migrations auth-service/dist/migrations && \
     cp -r ai-gateway/migrations ai-gateway/dist/migrations && \
@@ -68,10 +77,13 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
+# 国内镜像源加速
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 RUN apk add --no-cache python3 make g++
 
 # 安装 pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm && pnpm config set registry https://registry.npmmirror.com
 
 # 复制 pnpm workspace 根配置
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
@@ -97,18 +109,43 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# 安装运行时依赖
-RUN apk add --no-cache nginx supervisor && \
+# 国内镜像源加速
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# 安装运行时依赖（无需 g++/python，原生模块已在 builder 编译好）
+RUN apk add --no-cache nginx supervisor curl && \
     npm install -g pm2
 
-# 复制构建产物
+# 复制构建产物 + node_modules（从 builder 直接复制，避免重复编译原生模块）
 COPY --from=builder /app/shared/dist ./shared/dist
+COPY --from=builder /app/shared/node_modules ./shared/node_modules
+COPY --from=builder /app/shared/package.json ./shared/package.json
+
 COPY --from=builder /app/auth-service/dist ./auth-service/dist
+COPY --from=builder /app/auth-service/node_modules ./auth-service/node_modules
+COPY --from=builder /app/auth-service/package.json ./auth-service/package.json
+
 COPY --from=builder /app/api-gateway/dist ./api-gateway/dist
+COPY --from=builder /app/api-gateway/node_modules ./api-gateway/node_modules
+COPY --from=builder /app/api-gateway/package.json ./api-gateway/package.json
+
 COPY --from=builder /app/cloud-service/dist ./cloud-service/dist
+COPY --from=builder /app/cloud-service/node_modules ./cloud-service/node_modules
+COPY --from=builder /app/cloud-service/package.json ./cloud-service/package.json
+
 COPY --from=builder /app/monitor-service/dist ./monitor-service/dist
+COPY --from=builder /app/monitor-service/node_modules ./monitor-service/node_modules
+COPY --from=builder /app/monitor-service/package.json ./monitor-service/package.json
+
 COPY --from=builder /app/ai-agent/dist ./ai-agent/dist
+COPY --from=builder /app/ai-agent/node_modules ./ai-agent/node_modules
+COPY --from=builder /app/ai-agent/package.json ./ai-agent/package.json
+
 COPY --from=builder /app/ai-gateway/dist ./ai-gateway/dist
+COPY --from=builder /app/ai-gateway/node_modules ./ai-gateway/node_modules
+COPY --from=builder /app/ai-gateway/package.json ./ai-gateway/package.json
+
+# migrations
 COPY --from=builder /app/auth-service/dist/migrations ./auth-service/migrations
 COPY --from=builder /app/ai-gateway/dist/migrations ./ai-gateway/migrations
 COPY --from=builder /app/ai-agent/dist/migrations ./ai-agent/migrations
@@ -126,23 +163,6 @@ RUN rm -f /etc/nginx/http.d/default.conf /etc/nginx/conf.d/default.conf 2>/dev/n
     mkdir -p /etc/nginx/http.d /etc/nginx/conf.d; \
     find /etc/nginx/http.d /etc/nginx/conf.d -name "*.conf" -delete 2>/dev/null; \
     echo "nginx config prepared"
-
-# 复制 shared 包和各服务 package.json
-COPY shared/package.json ./shared/
-COPY auth-service/package.json ./auth-service/
-COPY api-gateway/package.json ./api-gateway/
-COPY cloud-service/package.json ./cloud-service/
-COPY monitor-service/package.json ./monitor-service/
-COPY ai-agent/package.json ./ai-agent/
-COPY ai-gateway/package.json ./ai-gateway/
-
-# 安装运行时依赖（包括 bcrypt 等原生模块需要构建工具）
-RUN apk add --no-cache python3 make g++ curl && \
-    for svc in auth-service api-gateway cloud-service monitor-service ai-agent ai-gateway; do \
-      sed -i 's|"workspace:\*"|"file:../shared"|g' "$svc/package.json" && \
-      cd "$svc" && npm install --omit=dev && \
-      cd /app && echo "Installed runtime deps for $svc"; \
-    done
 
 # 创建沙箱用户和沙箱脚本（用于 shell_execute 安全隔离）
 RUN addgroup -S sandbox && adduser -S sandbox -G sandbox && \
