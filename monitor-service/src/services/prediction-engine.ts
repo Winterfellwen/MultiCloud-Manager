@@ -1,6 +1,6 @@
 // monitor-service/src/services/prediction-engine.ts
 import { db } from '../db/index.js';
-import { scopedDb, PUBLIC_SCOPE, type RequestScope } from '@cloudops/shared';
+import { scopedDb, PUBLIC_SCOPE, DEMO_SCOPE, type RequestScope } from '@cloudops/shared';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { config } from '../config.js';
 
@@ -25,8 +25,26 @@ export class PredictionEngine {
 
   start() {
     const intervalMs = config.predictionIntervalSec * 1000;
-    this.timer = setInterval(() => this.runAll(PUBLIC_SCOPE).catch(console.error), intervalMs);
+    this.timer = setInterval(() => this.runCycle().catch(console.error), intervalMs);
     console.log(`Prediction engine started (interval: ${config.predictionIntervalSec}s)`);
+  }
+
+  /**
+   * 双跑：对 public 和 demo 两个 schema 各跑一遍预测
+   */
+  private async runCycle(): Promise<void> {
+    // 真实数据
+    try {
+      await this.runAll(PUBLIC_SCOPE);
+    } catch (err) {
+      console.error('Prediction public failed:', (err as Error).message);
+    }
+    // demo 数据（数据量小，开销可忽略）
+    try {
+      await this.runAll(DEMO_SCOPE);
+    } catch (err) {
+      console.error('Prediction demo failed:', (err as Error).message);
+    }
   }
 
   stop() {

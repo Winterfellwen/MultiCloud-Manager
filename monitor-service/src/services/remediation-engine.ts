@@ -84,6 +84,25 @@ export class RemediationEngine {
     // 决策：自动执行 or 需确认
     const decision = await this.decideExecution(scope, plan.recommendedAction, env);
 
+    // demo 模式：模拟执行，不调真实云 API（demo 实例是假的，调云 API 会失败）
+    if (scope.isDemo) {
+      await db.insert(t.remediationRuns).values({
+        alertId,
+        instanceId,
+        rootCause: plan.rootCause,
+        actionPlan: plan as any,
+        actionExecuted: plan.recommendedAction,
+        status: 'success',
+        env: 'demo',
+        triggeredAt: new Date(),
+        approvedAt: new Date(),
+        executedAt: new Date(),
+        verifiedAt: new Date(),
+        verificationResult: `验证成功：${plan.verificationMetric || '指标'} 已恢复正常，修复有效`,
+      });
+      return;
+    }
+
     // 创建自愈记录
     const run = await db.insert(t.remediationRuns).values({
       alertId,
