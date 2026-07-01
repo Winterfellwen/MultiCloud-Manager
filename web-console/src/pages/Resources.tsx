@@ -9,8 +9,6 @@ import {
   useSyncResources,
 } from '@/hooks/useResources';
 import { useInstances, useInstanceAction, useSyncInstances, useCreateInstance, useProviders, useRegions, useInstanceTypes, useImages } from '@/hooks/useInstances';
-import { useDemoStore } from '@/stores/demo';
-import { demoResetAll } from '@/lib/demo/demo-api';
 import { ResourceTypeNav } from '@/components/ResourceTypeNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +24,6 @@ import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import { toast } from 'sonner';
 import { Search, RefreshCw, Trash2, RotateCcw, Play, Square, Server, LayoutGrid, Plus } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 const PROVIDERS = ['aws', 'aliyun', 'azure', 'tencent', 'huawei'];
@@ -104,8 +101,6 @@ export default function Resources() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'all' | 'instances'>('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const isDemoMode = useDemoStore((s) => s.isDemoMode);
-  const qc = useQueryClient();
 
   const { data: types } = useResourceTypes();
   const { data: stats } = useResourceStats();
@@ -162,20 +157,6 @@ export default function Resources() {
       await syncInstances.mutateAsync(undefined);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('instances.syncFailed'));
-    }
-  }
-
-  async function handleResetDemo() {
-    if (!window.confirm(t('instances.resetConfirm'))) return;
-    try {
-      await demoResetAll();
-      qc.invalidateQueries({ queryKey: ['instances'] });
-      qc.invalidateQueries({ queryKey: ['resources'] });
-      qc.invalidateQueries({ queryKey: ['cloud-accounts'] });
-      qc.invalidateQueries({ queryKey: ['audit'] });
-      toast.success(t('instances.resetSuccess'));
-    } catch (err) {
-      toast.error(t('instances.resetFailed'));
     }
   }
 
@@ -282,17 +263,6 @@ export default function Resources() {
             {viewMode === 'instances' ? t('instances.title') : t('resources.title')}
           </h1>
           <div className="flex flex-wrap gap-2">
-            {viewMode === 'instances' && isDemoMode && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={handleResetDemo}>
-                    <RotateCcw className="h-4 w-4 mr-1" />
-                    {t('instances.resetDemo')}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t('instances.resetDemoTip')}</TooltipContent>
-              </Tooltip>
-            )}
             <Button
               variant="outline"
               size="sm"

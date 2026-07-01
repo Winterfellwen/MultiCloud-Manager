@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth';
+import { useDemoStore } from '@/stores/demo';
 import { getApiBaseUrl } from '@/lib/config';
 
 const API_BASE = getApiBaseUrl();
@@ -61,6 +62,7 @@ interface RequestOptions {
 export async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, headers = {}, skipAuth = false, _retried = false } = options;
   const { accessToken } = useAuthStore.getState();
+  const isDemoMode = useDemoStore.getState().isDemoMode;
 
   const finalHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -68,6 +70,9 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   };
   if (!skipAuth && accessToken) {
     finalHeaders['Authorization'] = `Bearer ${accessToken}`;
+  }
+  if (isDemoMode) {
+    finalHeaders['X-Demo-Mode'] = 'true';
   }
 
   const res = await fetch(`${API_BASE}${path}`, {

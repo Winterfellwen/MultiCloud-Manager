@@ -2,9 +2,6 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useInstances, useInstanceAction, useSyncInstances, useProviders, useRegions, useInstanceTypes, useImages, useCreateInstance } from '@/hooks/useInstances';
-import { useDemoStore } from '@/stores/demo';
-import { demoResetAll } from '@/lib/demo/demo-api';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +14,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { InstanceStatus } from '@/types/cloud';
-import { Plus, RefreshCw, Search, Play, Square, RotateCw, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, RefreshCw, Search, Play, Square, RotateCw, Trash2 } from 'lucide-react';
 
 export default function Instances() {
   const { t } = useTranslation();
@@ -31,8 +28,6 @@ export default function Instances() {
   const { data: providersData } = useProviders();
   const action = useInstanceAction();
   const sync = useSyncInstances();
-  const isDemoMode = useDemoStore((s) => s.isDemoMode);
-  const qc = useQueryClient();
 
   const filtered = useMemo(() => {
     return (instances || []).filter((inst) => {
@@ -64,36 +59,11 @@ export default function Instances() {
     }
   }
 
-  async function handleResetDemo() {
-    if (!window.confirm(t('instances.resetConfirm'))) return;
-    try {
-      await demoResetAll();
-      qc.invalidateQueries({ queryKey: ['instances'] });
-      qc.invalidateQueries({ queryKey: ['resources'] });
-      qc.invalidateQueries({ queryKey: ['cloud-accounts'] });
-      qc.invalidateQueries({ queryKey: ['audit'] });
-      toast.success(t('instances.resetSuccess'));
-    } catch (err) {
-      toast.error(t('instances.resetFailed'));
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">{t('instances.title')}</h1>
         <div className="flex flex-wrap gap-2">
-          {isDemoMode && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={handleResetDemo}>
-                  <RotateCcw className="h-4 w-4 mr-1" />
-                  {t('instances.resetDemo')}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('instances.resetDemoTip')}</TooltipContent>
-            </Tooltip>
-          )}
           <Button variant="outline" size="sm" onClick={handleSync} disabled={sync.isPending}>
             <RefreshCw className={`h-4 w-4 mr-1 ${sync.isPending ? 'animate-spin' : ''}`} />
             {t('instances.sync')}

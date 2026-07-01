@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { cloudApi } from '../api/cloud';
 import { monitorApi } from '../api/monitor';
-import { useDemoStore } from '../stores/demo';
-import { demoDashboardStats } from '../lib/demo/demo-api';
 
 export interface DashboardStats {
   totalInstances: number;
@@ -14,11 +12,9 @@ export interface DashboardStats {
 }
 
 export function useDashboardStats() {
-  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery<DashboardStats>({
-    queryKey: ['dashboard-stats', isDemoMode],
+    queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      if (isDemoMode) return demoDashboardStats() as unknown as DashboardStats;
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);

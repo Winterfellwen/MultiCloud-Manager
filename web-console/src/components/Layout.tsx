@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { DemoBanner } from './common/DemoBanner';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -70,6 +71,7 @@ export function Layout() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
+        <DemoBanner />
         <main className={cn(
           'flex-1 overflow-hidden',
           isChatPage ? 'p-0' : 'overflow-auto p-3 md:p-6'

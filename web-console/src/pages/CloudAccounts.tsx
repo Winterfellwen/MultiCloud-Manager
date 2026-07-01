@@ -4,8 +4,6 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cloudApi } from '@/api/cloud';
-import { useDemoStore } from '@/stores/demo';
-import { demoListCloudAccounts } from '@/lib/demo/demo-api';
 import type { CloudAccount, ProviderMeta, TestConnectionResult } from '@/types/cloud';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +20,6 @@ import { cn } from '@/lib/utils';
 export default function CloudAccounts() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -51,8 +48,8 @@ export default function CloudAccounts() {
   }, [providersMeta]);
 
   const { data: accounts = [], isLoading } = useQuery({
-    queryKey: ['cloud-accounts', isDemoMode],
-    queryFn: () => isDemoMode ? demoListCloudAccounts() as unknown as Promise<CloudAccount[]> : cloudApi.listAccounts(),
+    queryKey: ['cloud-accounts'],
+    queryFn: () => cloudApi.listAccounts(),
   });
 
   const createMutation = useMutation({

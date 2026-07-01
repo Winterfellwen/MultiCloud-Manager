@@ -1,14 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../api/users';
-import { useDemoStore } from '../stores/demo';
-import { demoListUsers } from '../lib/demo/demo-api';
 import type { CreateUserParams, UpdateRoleParams, UpdateTeamParams } from '../types/user';
 
 export function useUsers() {
-  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   return useQuery({
-    queryKey: ['users', isDemoMode],
-    queryFn: () => isDemoMode ? demoListUsers() : usersApi.list(),
+    queryKey: ['users'],
+    queryFn: () => usersApi.list(),
   });
 }
 
