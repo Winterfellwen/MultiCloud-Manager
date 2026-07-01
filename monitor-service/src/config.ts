@@ -22,6 +22,9 @@ export const config = {
   // auth-service 内部地址（审计写入）
   authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3004',
 
+  // ai-gateway 内部地址（告警 AI 分析）
+  aiGatewayUrl: process.env.AI_GATEWAY_URL || 'http://ai-gateway:3005',
+
   // 采集间隔（秒）
   metricCollectIntervalSec: parseInt(process.env.METRIC_COLLECT_INTERVAL || '300', 10),
   // 告警检查间隔（秒）

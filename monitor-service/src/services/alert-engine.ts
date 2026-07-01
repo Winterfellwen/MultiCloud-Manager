@@ -82,12 +82,49 @@ export class AlertEngine {
 
         // 发布事件
         await eventPublisher.publish('alert.fired', { alertId: alert.id, ruleId: rule.id, instanceId, severity: rule.severity });
+
+        // 异步调用 AI 根因分析（不阻断告警流程）
+        this.requestAiAnalysis(alert.id, {
+          ruleName: rule.name,
+          metric: rule.metric,
+          condition: rule.condition,
+          currentValue: String(instancePoints[0].value),
+          instanceName: instName,
+          instanceId,
+          severity: rule.severity,
+          message: alert.message,
+        }).catch((err) => console.error(`AI analysis for alert ${alert.id} failed:`, err));
       } else if (!triggered && existing) {
         // 条件恢复，自动解决
         await alertService.resolveAlert(existing.id);
         await eventPublisher.publish('alert.resolved', { alertId: existing.id, ruleId: rule.id, instanceId });
       }
     }
+  }
+
+  /**
+   * 异步请求 ai-gateway 进行告警根因分析
+   */
+  private async requestAiAnalysis(alertId: string, params: {
+    ruleName: string;
+    metric: string;
+    condition: string;
+    currentValue: string;
+    instanceName: string;
+    instanceId?: string;
+    severity: string;
+    message: string;
+  }): Promise<void> {
+    const res = await fetch(`${config.aiGatewayUrl}/internal/analyze-alert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alertId, ...params }),
+    });
+    if (!res.ok) {
+      throw new Error(`ai-gateway responded ${res.status}`);
+    }
+    const data = await res.json() as { analysis: string };
+    await alertService.updateAiAnalysis(alertId, data.analysis);
   }
 
   /**
