@@ -44,6 +44,7 @@ import {
   handleExecApprovalResolve,
   type ExecApprovalContext,
 } from './methods/exec-approval.js';
+import { analyzeAlert } from './internal/analyze-alert.js';
 
 // 全局状态
 const clients = new Map<string, ClientConnection>();
@@ -68,6 +69,17 @@ app.get('/health', async () => ({
   timestamp: new Date().toISOString(),
   activeSessions: clients.size,
 }));
+
+// 内部端点（仅供 monitor-service 调用，不经过 api-gateway 代理）
+app.post('/internal/analyze-alert', async (request, reply) => {
+  try {
+    const result = await analyzeAlert(request.body as any);
+    return reply.send(result);
+  } catch (err) {
+    app.log.error({ err }, 'analyze-alert failed');
+    return reply.status(500).send({ error: 'ANALYSIS_FAILED', message: (err as Error).message });
+  }
+});
 
 // WebSocket 端点
 app.get('/ws', { websocket: true }, (socket, request) => {
