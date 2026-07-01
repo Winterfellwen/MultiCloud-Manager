@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { alertService } from './alert.service.js';
 import { notifyService } from './notify.service.js';
 import { eventPublisher } from '../events/publisher.js';
+import { remediationEngine } from './remediation-engine.js';
 import type { AlertSeverity } from '@cloudops/shared';
 
 interface RuleRow {
@@ -94,6 +95,10 @@ export class AlertEngine {
           severity: rule.severity,
           message: alert.message,
         }).catch((err) => console.error(`AI analysis for alert ${alert.id} failed:`, err));
+
+        // 触发自愈引擎（异步，不阻断告警流程）
+        remediationEngine.onAlertFired(alert.id, instanceId, rule.metric, String(instancePoints[0].value))
+          .catch((err) => console.error(`Remediation for alert ${alert.id} failed:`, err));
       } else if (!triggered && existing) {
         // 条件恢复，自动解决
         await alertService.resolveAlert(existing.id);
