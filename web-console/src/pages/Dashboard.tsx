@@ -6,6 +6,7 @@ import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAiInsight, useTokenStats } from '@/hooks/useAiInsights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PredictionCard from '@/components/dashboard/PredictionCard';
+import RemediationCard from '@/components/dashboard/RemediationCard';
 
 const PROVIDER_LABELS: Record<string, string> = {
   aliyun: '阿里云',
@@ -250,6 +251,9 @@ export default function Dashboard() {
 
       {/* 预测预警卡片 */}
       <PredictionCard />
+
+      {/* 最近自愈卡片 */}
+      <RemediationCard />
     </div>
   );
 }
