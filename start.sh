@@ -57,6 +57,18 @@ for port in 3000 3001 3002 3003 3004 3005; do
 done
 
 echo ""
+
+# Demo 数据自动初始化（仅本地开发环境，DEMO_AUTO_SEED=true 时执行）
+if [ "$DEMO_AUTO_SEED" = "true" ] && [ -f /app/scripts/demo-data.sql ]; then
+    echo "--- Seeding demo data ---"
+    if [ -n "$DATABASE_URL" ]; then
+        psql "$DATABASE_URL" -f /app/scripts/demo-data.sql 2>&1 || echo "WARNING: demo seed failed"
+    else
+        echo "WARNING: DATABASE_URL not set, skip demo seed"
+    fi
+fi
+
+echo ""
 echo "--- Starting nginx on port $NGINX_PORT ---"
 echo "============================================"
 nginx -g 'daemon off;'

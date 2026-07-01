@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import postgres from 'postgres';
 import { config } from '../config.js';
@@ -28,6 +28,14 @@ export async function runMigrations(): Promise<void> {
     const content = readFileSync(join(migrationsDir, file), 'utf-8');
     console.log(`Running migration: ${file}`);
     await runFile(sql, content);
+  }
+
+  // 执行 demo schema 建表（幂等，多服务启动安全）
+  const demoSchemaPath = join(process.cwd(), 'shared', 'src', 'db', 'migrations', '000_demo_schema.sql');
+  if (existsSync(demoSchemaPath)) {
+    console.log('Running migration: 000_demo_schema.sql');
+    const demoContent = readFileSync(demoSchemaPath, 'utf-8');
+    await runFile(sql, demoContent);
   }
 
   console.log('Migrations complete.');

@@ -113,7 +113,7 @@ WORKDIR /app
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 安装运行时依赖（无需 g++/python，原生模块已在 builder 编译好）
-RUN apk add --no-cache nginx supervisor curl && \
+RUN apk add --no-cache nginx supervisor curl postgresql-client && \
     npm install -g pm2
 
 # 复制构建产物 + node_modules（从 builder 直接复制，避免重复编译原生模块）
@@ -151,6 +151,9 @@ COPY --from=builder /app/ai-gateway/dist/migrations ./ai-gateway/migrations
 COPY --from=builder /app/ai-agent/dist/migrations ./ai-agent/migrations
 COPY --from=builder /app/cloud-service/dist/migrations ./cloud-service/migrations
 COPY --from=builder /app/monitor-service/dist/migrations ./monitor-service/migrations
+
+# shared demo schema migration（migrate.ts 通过 process.cwd()/shared/src/db/migrations 读取）
+COPY --from=builder /app/shared/src/db/migrations ./shared/src/db/migrations
 
 # 复制前端构建产物
 COPY --from=frontend-builder /app/web-console/dist ./web-console/dist
@@ -190,6 +193,9 @@ RUN addgroup -S sandbox && adduser -S sandbox -G sandbox && \
 # 复制启动脚本
 COPY start.sh ./
 RUN chmod +x start.sh
+
+# 复制脚本（含 demo-data.sql，仅 DEMO_AUTO_SEED=true 时执行）
+COPY scripts ./scripts
 
 # 启动脚本
 CMD ["./start.sh"]
