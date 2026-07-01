@@ -14,11 +14,25 @@ import { remediationRoutes } from './routes/remediation.js';
 import { knowledgeBaseRoutes } from './routes/knowledge-base.js';
 import { predictionEngine } from './services/prediction-engine.js';
 import { AppError } from '@cloudops/shared';
+import { scopeFromDemoFlag, type RequestScope } from '@cloudops/shared';
 import { runMigrations } from './db/migrate.js';
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    scope: RequestScope;
+  }
+}
 
 const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: config.corsOrigin });
+
+// scope 注入（demo/生产数据隔离）：读 X-Demo-Mode header，注入 request.scope
+app.addHook('onRequest', async (request) => {
+  const isDemo = request.headers['x-demo-mode'] === 'true';
+  const userId = (request.headers['x-scope-user-id'] as string) || '';
+  request.scope = scopeFromDemoFlag(isDemo, userId);
+});
 
 app.setErrorHandler((error, _request, reply) => {
   if (error instanceof AppError) {

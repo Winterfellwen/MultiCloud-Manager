@@ -62,6 +62,9 @@ async function proxyHandler(
       }),
       'x-trace-id': traceId,
       ...(userId && { 'x-user-id': userId }),
+      // 透传 scope 信号到后端服务（demo/生产数据隔离）
+      'x-demo-mode': request.scope?.isDemo ? 'true' : 'false',
+      ...(request.scope?.userId && { 'x-scope-user-id': request.scope.userId }),
     },
     body: hasBody ? JSON.stringify(request.body) : undefined,
   });
@@ -75,7 +78,8 @@ export async function proxyRoutes(app: FastifyInstance) {
     // 带通配符的路由
     app.all(`${route.prefix}/*`, async (request: FastifyRequest, reply: FastifyReply) => {
       let userId: string | undefined;
-      if (route.requireAuth) {
+      // demo 模式：scope 已在 onRequest hook 注入，跳过真实 JWT 校验
+      if (route.requireAuth && !request.scope?.isDemo) {
         const authHeader = request.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           throw new UnauthorizedError();
@@ -93,7 +97,8 @@ export async function proxyRoutes(app: FastifyInstance) {
     // 不带通配符的路由（精确匹配）
     app.all(`${route.prefix}`, async (request: FastifyRequest, reply: FastifyReply) => {
       let userId: string | undefined;
-      if (route.requireAuth) {
+      // demo 模式：scope 已在 onRequest hook 注入，跳过真实 JWT 校验
+      if (route.requireAuth && !request.scope?.isDemo) {
         const authHeader = request.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           throw new UnauthorizedError();

@@ -8,7 +8,14 @@ import { resourceRoutes } from "./routes/resources.js";
 import { providerRoutes, accountRoutes } from "./routes/providers.js";
 import { topologyRoutes } from "./routes/topology.js";
 import { AppError } from "@cloudops/shared";
+import { scopeFromDemoFlag, type RequestScope } from "@cloudops/shared";
 import { runMigrations } from "./db/migrate.js";
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    scope: RequestScope;
+  }
+}
 
 const app = Fastify({ logger: true });
 
@@ -73,8 +80,12 @@ await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
 await app.register(topologyRoutes, { prefix: "/cloud/topology" });
 
-// 首次访问云资源时触发同步
+// scope 注入（demo/生产数据隔离）+ 首次访问云资源时触发同步
 app.addHook('onRequest', async (request) => {
+  const isDemo = request.headers['x-demo-mode'] === 'true';
+  const userId = (request.headers['x-scope-user-id'] as string) || '';
+  request.scope = scopeFromDemoFlag(isDemo, userId);
+
   if (request.url.startsWith('/cloud/') && request.url !== '/cloud/accounts') {
     ensureInitialSync().catch(() => {});
   }

@@ -48,6 +48,13 @@ import { analyzeAlert } from './internal/analyze-alert.js';
 import { generateDashboardInsight } from './internal/dashboard-insight.js';
 import { analyzeRemediation } from './internal/analyze-remediation.js';
 import { generateEmbedding } from './internal/embedding.js';
+import { scopeFromDemoFlag, type RequestScope } from '@cloudops/shared';
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    scope: RequestScope;
+  }
+}
 
 // 全局状态
 const clients = new Map<string, ClientConnection>();
@@ -65,6 +72,13 @@ const app = Fastify({ logger: true });
 await app.register(cors, { origin: config.corsOrigin });
 await app.register(websocket);
 
+// scope 注入（demo/生产数据隔离）：内部端点接收 monitor-service 调用时透传的 scope header
+app.addHook('onRequest', async (request) => {
+  const isDemo = request.headers['x-demo-mode'] === 'true';
+  const userId = (request.headers['x-scope-user-id'] as string) || '';
+  request.scope = scopeFromDemoFlag(isDemo, userId);
+});
+
 // 健康检查
 app.get('/health', async () => ({
   status: 'ok',
@@ -76,7 +90,8 @@ app.get('/health', async () => ({
 // 内部端点（仅供 monitor-service 调用，不经过 api-gateway 代理）
 app.post('/internal/analyze-alert', async (request, reply) => {
   try {
-    const result = await analyzeAlert(request.body as any);
+    const body = request.body as any;
+    const result = await analyzeAlert({ ...body, scope: body.scope || request.scope.schema });
     return reply.send(result);
   } catch (err) {
     app.log.error({ err }, 'analyze-alert failed');
@@ -86,7 +101,8 @@ app.post('/internal/analyze-alert', async (request, reply) => {
 
 app.post('/internal/insight', async (request, reply) => {
   try {
-    const result = await generateDashboardInsight(request.body as any);
+    const body = request.body as any;
+    const result = await generateDashboardInsight({ ...body, scope: body.scope || request.scope.schema });
     return reply.send(result);
   } catch (err) {
     app.log.error({ err }, 'dashboard insight failed');
@@ -96,7 +112,8 @@ app.post('/internal/insight', async (request, reply) => {
 
 app.post('/internal/analyze-remediation', async (request, reply) => {
   try {
-    const result = await analyzeRemediation(request.body as any);
+    const body = request.body as any;
+    const result = await analyzeRemediation({ ...body, scope: body.scope || request.scope.schema });
     return reply.send(result);
   } catch (err) {
     app.log.error({ err }, 'analyze-remediation failed');
