@@ -18,6 +18,18 @@ declare module 'fastify' {
 }
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
+  // Demo 模式：跳过 JWT 验证，使用 x-scope-user-id 作为用户标识
+  if (request.headers['x-demo-mode'] === 'true') {
+    const userId = (request.headers['x-scope-user-id'] as string) || 'demo-u-1';
+    request.user = {
+      id: userId,
+      username: 'demo-admin',
+      role: 'admin',
+      teamId: null,
+    };
+    return;
+  }
+
   const authHeader = request.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     throw new UnauthorizedError('Missing or invalid authorization header');

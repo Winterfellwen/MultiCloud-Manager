@@ -145,6 +145,7 @@ export interface RemediationPolicy {
   id: string;
   name: string;
   actionType: string;
+  resourceType: string | null;
   envTags: string[];
   autoExecute: Record<string, boolean>;
   enabled: boolean;

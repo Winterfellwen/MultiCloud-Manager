@@ -19,7 +19,7 @@ export default function PredictionCard() {
   };
 
   return (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/monitor')}>
+    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/ai-ops')}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-muted-foreground">预测预警</CardTitle>

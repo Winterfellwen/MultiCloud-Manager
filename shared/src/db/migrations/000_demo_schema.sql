@@ -77,8 +77,19 @@ BEGIN
 END $$;
 
 -- ========== demo 默认自愈策略 ==========
+-- Clean up duplicates first
+DELETE FROM demo.remediation_policies
+WHERE id NOT IN (
+  SELECT DISTINCT ON (action_type) id
+  FROM demo.remediation_policies
+  ORDER BY action_type, created_at ASC
+);
+
 INSERT INTO demo.remediation_policies (name, action_type, env_tags, auto_execute) VALUES
 ('重启实例', 'reboot_instance', '["dev","uat","prod"]'::jsonb, '{"dev":true,"uat":true,"prod":false}'::jsonb),
 ('停止实例', 'stop_instance', '["dev","uat","prod"]'::jsonb, '{"dev":true,"uat":false,"prod":false}'::jsonb),
-('扩容实例', 'scale_up', '["dev","uat","prod"]'::jsonb, '{"dev":false,"uat":false,"prod":false}'::jsonb)
-ON CONFLICT DO NOTHING;
+('扩容实例', 'scale_up', '["dev","uat","prod"]'::jsonb, '{"dev":false,"uat":false,"prod":false}'::jsonb),
+('重启服务', 'restart_service', '["dev","uat","prod"]'::jsonb, '{"dev":true,"uat":false,"prod":false}'::jsonb),
+('清理缓存', 'clear_cache', '["dev","uat","prod"]'::jsonb, '{"dev":true,"uat":true,"prod":false}'::jsonb),
+('故障转移', 'failover', '["dev","uat","prod"]'::jsonb, '{"dev":false,"uat":false,"prod":false}'::jsonb)
+ON CONFLICT (action_type) DO NOTHING;

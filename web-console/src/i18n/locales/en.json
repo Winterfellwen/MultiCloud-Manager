@@ -62,6 +62,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "totalResources": "Total Resources",
     "totalInstances": "Total Instances",
     "running": "Running",
     "alertCount": "Alerts",

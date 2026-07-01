@@ -26,11 +26,12 @@ export default function Costs() {
   const providerTotals = useMemo(() => {
     const map = new Map<string, { total: number; currency: string }>();
     (summary || []).forEach((item) => {
+      const amount = Number(item.totalAmount) || 0;
       const existing = map.get(item.provider);
       if (existing) {
-        existing.total += item.totalAmount;
+        existing.total += amount;
       } else {
-        map.set(item.provider, { total: item.totalAmount, currency: item.currency });
+        map.set(item.provider, { total: amount, currency: item.currency });
       }
     });
     return Array.from(map.entries()).map(([provider, { total, currency }]) => ({ provider, total, currency }));
@@ -77,7 +78,7 @@ export default function Costs() {
             <CardTitle className="text-sm font-medium text-muted-foreground">{t('costs.totalCost')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¥{grandTotal.toFixed(2)}</div>
+            <div className="text-2xl font-bold">¥{Number(grandTotal).toFixed(2)}</div>
           </CardContent>
         </Card>
         {providerTotals.map((p) => (
@@ -115,7 +116,7 @@ export default function Costs() {
                     <TableRow key={idx}>
                       <TableCell>{item.provider}</TableCell>
                       <TableCell>{item.service}</TableCell>
-                      <TableCell className="font-medium">{item.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium">{Number(item.totalAmount).toFixed(2)}</TableCell>
                       <TableCell className="text-muted-foreground">{item.currency}</TableCell>
                     </TableRow>
                   ))}

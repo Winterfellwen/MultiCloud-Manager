@@ -109,7 +109,8 @@ export const metricPredictions = pgTable('metric_predictions', {
 export const remediationPolicies = pgTable('remediation_policies', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 128 }).notNull(),
-  actionType: varchar('action_type', { length: 64 }).notNull(),
+  actionType: varchar('action_type', { length: 64 }).notNull().unique(),
+  resourceType: varchar('resource_type', { length: 64 }),
   envTags: jsonb('env_tags').notNull(),
   autoExecute: jsonb('auto_execute').notNull(),
   enabled: boolean('enabled').default(true),

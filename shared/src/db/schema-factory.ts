@@ -115,6 +115,7 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
     lastSyncedAt: timestamp('last_synced_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    topology: jsonb('topology'),
   });
 
   // ========== monitor-service 业务表 ==========
@@ -146,7 +147,8 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
   const remediationPolicies = createTable('remediation_policies', {
     id: uuid('id').primaryKey().defaultRandom(),
     name: varchar('name', { length: 128 }).notNull(),
-    actionType: varchar('action_type', { length: 64 }).notNull(),
+    actionType: varchar('action_type', { length: 64 }).notNull().unique(),
+    resourceType: varchar('resource_type', { length: 64 }),
     envTags: jsonb('env_tags').notNull(),
     autoExecute: jsonb('auto_execute').notNull(),
     enabled: boolean('enabled').default(true),

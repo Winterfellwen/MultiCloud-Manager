@@ -46,7 +46,7 @@ export default function Dashboard() {
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/resources')}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.totalInstances')}</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.totalResources')}</CardTitle>
               <Server className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
@@ -54,7 +54,7 @@ export default function Dashboard() {
             {isLoading ? (
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             ) : stats ? (
-              <div className="text-2xl font-bold">{stats.totalInstances}</div>
+              <div className="text-2xl font-bold">{stats.totalResources}</div>
             ) : (
               <div className="text-2xl font-bold text-muted-foreground">-</div>
             )}

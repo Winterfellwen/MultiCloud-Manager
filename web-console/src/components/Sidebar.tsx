@@ -13,6 +13,8 @@ import {
   Cloud,
   Boxes,
   Network,
+  Bot,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -68,6 +70,16 @@ export function Sidebar() {
       to: '/costs',
       icon: DollarSign,
       permission: { resource: 'cost', action: 'view' },
+    },
+    {
+      label: 'AI 运维',
+      to: '/ai-ops',
+      icon: Bot,
+    },
+    {
+      label: '知识库',
+      to: '/knowledge-base',
+      icon: BookOpen,
     },
     {
       label: t('nav.aiSettings'),

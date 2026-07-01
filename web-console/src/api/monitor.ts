@@ -55,8 +55,11 @@ export const monitorApi = {
   },
   approveRemediation: (id: string) => api.post<{ ok: true; message: string }>(`/monitor/remediation/${id}/approve`),
   getRemediationPolicies: () => api.get<RemediationPolicy[]>('/monitor/remediation/policies'),
-  updateRemediationPolicy: (id: string, params: { autoExecute?: Record<string, boolean>; enabled?: boolean }) =>
+  createRemediationPolicy: (params: { name: string; actionType: string; resourceType?: string | null; envTags?: string[]; autoExecute?: Record<string, boolean> }) =>
+    api.post<RemediationPolicy>('/monitor/remediation/policies', params),
+  updateRemediationPolicy: (id: string, params: { name?: string; actionType?: string; resourceType?: string | null; autoExecute?: Record<string, boolean>; enabled?: boolean }) =>
     api.put<{ ok: true }>(`/monitor/remediation/policies/${id}`, params),
+  deleteRemediationPolicy: (id: string) => api.delete<{ ok: true }>(`/monitor/remediation/policies/${id}`),
   getKnowledgeBase: () => api.get<KnowledgeEntry[]>('/monitor/knowledge-base'),
   searchKnowledgeBase: (symptom: string, metric: string) =>
     api.get<{ cases: any[] }>(`/monitor/knowledge-base/search?symptom=${encodeURIComponent(symptom)}&metric=${encodeURIComponent(metric)}`),

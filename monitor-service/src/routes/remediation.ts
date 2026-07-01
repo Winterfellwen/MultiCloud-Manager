@@ -67,17 +67,68 @@ export async function remediationRoutes(app: FastifyInstance) {
     return await db.select().from(t.remediationPolicies).orderBy(desc(t.remediationPolicies.createdAt));
   });
 
+  // 创建自愈策略
+  app.post('/policies', async (request, reply) => {
+    const t = scopedDb(request.scope);
+    const { name, actionType, resourceType, envTags, autoExecute } = request.body as {
+      name: string;
+      actionType: string;
+      resourceType?: string;
+      envTags?: string[];
+      autoExecute?: Record<string, boolean>;
+    };
+
+    if (!name || !actionType) {
+      return reply.status(400).send({ error: 'VALIDATION', message: 'name 和 actionType 必填' });
+    }
+
+    const [policy] = await db.insert(t.remediationPolicies).values({
+      name,
+      actionType,
+      resourceType: resourceType || null,
+      envTags: envTags || ['dev', 'uat', 'prod'],
+      autoExecute: autoExecute || { dev: false, uat: false, prod: false },
+    }).returning();
+
+    return policy;
+  });
+
   // 更新策略
   app.put('/policies/:id', async (request, reply) => {
     const t = scopedDb(request.scope);
     const { id } = request.params as { id: string };
-    const { autoExecute, enabled } = request.body as { autoExecute?: Record<string, boolean>; enabled?: boolean };
+    const { name, actionType, resourceType, autoExecute, enabled } = request.body as {
+      name?: string;
+      actionType?: string;
+      resourceType?: string | null;
+      autoExecute?: Record<string, boolean>;
+      enabled?: boolean;
+    };
 
     const updates: Record<string, unknown> = {};
+    if (name !== undefined) updates.name = name;
+    if (actionType !== undefined) updates.actionType = actionType;
+    if (resourceType !== undefined) updates.resourceType = resourceType;
     if (autoExecute !== undefined) updates.autoExecute = autoExecute;
     if (enabled !== undefined) updates.enabled = enabled;
 
+    if (Object.keys(updates).length === 0) {
+      return reply.status(400).send({ error: 'VALIDATION', message: '无更新字段' });
+    }
+
     await db.update(t.remediationPolicies).set(updates).where(eq(t.remediationPolicies.id, id));
+    return { ok: true };
+  });
+
+  // 删除自愈策略
+  app.delete('/policies/:id', async (request, reply) => {
+    const t = scopedDb(request.scope);
+    const { id } = request.params as { id: string };
+
+    const deleted = await db.delete(t.remediationPolicies).where(eq(t.remediationPolicies.id, id)).returning();
+    if (deleted.length === 0) {
+      return reply.status(404).send({ error: 'NOT_FOUND', message: '策略不存在' });
+    }
     return { ok: true };
   });
 }

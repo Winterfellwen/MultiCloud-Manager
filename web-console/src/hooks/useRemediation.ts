@@ -24,11 +24,28 @@ export function useRemediationPolicies() {
   });
 }
 
+export function useCreateRemediationPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { name: string; actionType: string; resourceType?: string | null; envTags?: string[]; autoExecute?: Record<string, boolean> }) =>
+      monitorApi.createRemediationPolicy(params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['remediation-policies'] }),
+  });
+}
+
 export function useUpdateRemediationPolicy() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, params }: { id: string; params: { autoExecute?: Record<string, boolean>; enabled?: boolean } }) =>
+    mutationFn: ({ id, params }: { id: string; params: { name?: string; actionType?: string; resourceType?: string | null; autoExecute?: Record<string, boolean>; enabled?: boolean } }) =>
       monitorApi.updateRemediationPolicy(id, params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['remediation-policies'] }),
+  });
+}
+
+export function useDeleteRemediationPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => monitorApi.deleteRemediationPolicy(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['remediation-policies'] }),
   });
 }

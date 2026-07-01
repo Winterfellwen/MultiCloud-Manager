@@ -62,6 +62,7 @@
   },
   "dashboard": {
     "title": "总览",
+    "totalResources": "资源总览",
     "totalInstances": "总实例数",
     "running": "运行中",
     "alertCount": "告警数",
