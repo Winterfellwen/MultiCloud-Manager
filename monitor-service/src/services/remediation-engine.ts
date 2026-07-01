@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { alerts, instances, remediationPolicies, remediationRuns } from '../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
 import { config } from '../config.js';
+import { knowledgeBaseService } from './knowledge-base.service.js';
 
 interface RemediationPlan {
   rootCause: string;
@@ -33,8 +34,15 @@ export class RemediationEngine {
       .where(eq(remediationRuns.alertId, alertId)).limit(1);
     if (existing.length > 0) return;
 
-    // 查询历史相似案例（Phase 6 的 RAG，此处先用空数组，Phase 6 补充）
-    const historicalCases: any[] = [];
+    // 查询历史相似案例（RAG 检索）
+    let historicalCases: any[] = [];
+    try {
+      const symptom = `${instance.name || instanceId} ${metricName} = ${metricValue}`;
+      const cases = await knowledgeBaseService.searchSimilarCases(symptom, metricName);
+      historicalCases = cases;
+    } catch (err) {
+      console.warn('RAG retrieval failed, continuing without historical context:', (err as Error).message);
+    }
 
     // 获取告警信息
     const alertRows = await db.select().from(alerts).where(eq(alerts.id, alertId)).limit(1);
@@ -198,6 +206,11 @@ export class RemediationEngine {
       verifiedAt: new Date(),
       verificationResult: result,
     }).where(eq(remediationRuns.id, runId));
+
+    // 写入知识库
+    knowledgeBaseService.recordExperience(runId).catch((err) =>
+      console.error(`Knowledge base recording for ${runId} failed:`, err)
+    );
   }
 }
 
