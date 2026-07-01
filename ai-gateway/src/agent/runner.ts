@@ -45,6 +45,8 @@ export interface AgentTurnCallbacks {
   onToolCall: (toolCall: ToolCall) => void;
   onToolResult: (result: { name: string; success: boolean; data: unknown; error?: string; toolCallId?: string }) => void;
   onComplete: (finalText: string, truncated?: boolean) => void;
+  /** 每次 LLM 调用后的 token 使用量回调 */
+  onUsage?: (usage: LLMUsage) => void;
 }
 
 export interface AgentTurnParams {
@@ -251,6 +253,10 @@ export async function runAgentTurn(
       enableThinking: params.enableThinking ?? true, // 默认启用深度思考
       reasoningEffort: params.reasoningEffort,
     });
+
+    if (response.usage) {
+      callbacks.onUsage?.(response.usage);
+    }
 
     if (response.reasoning) {
       // 推理过程通过独立通道推送（前端可折叠显示）
@@ -718,11 +724,18 @@ async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConf
   return { ...fallbackConfig, model: modelOverride };
 }
 
+export interface LLMUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 interface LLMResponse {
   text: string;
   toolCalls: Array<ToolCall & { id: string }>;
   /** 推理过程内容（深度思考模式） */
   reasoning?: string;
+  usage?: LLMUsage;
 }
 
 interface CallLlmOptions {
@@ -825,7 +838,13 @@ async function callLLM(
         arguments: JSON.parse(tc.function.arguments || '{}'),
       }));
 
-      return { text, toolCalls, reasoning };
+      const usage = data.usage ? {
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0,
+      } : undefined;
+
+      return { text, toolCalls, reasoning, usage };
     } catch (err) {
       lastError = err as Error;
       const errorMsg = (err as Error).message || '';
