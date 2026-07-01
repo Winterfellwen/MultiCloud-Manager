@@ -19,6 +19,8 @@ import { recordEvent, readReplay } from '../acp/event-ledger.js';
 import { db } from '../db/index.js';
 import { sql } from 'drizzle-orm';
 import { runAgentTurn, type Attachment } from '../agent/runner.js';
+import { recordAudit } from '@cloudops/shared';
+import { config } from '../config.js';
 
 async function getSessionOwner(sessionKey: string): Promise<{ userId: string; username: string } | null> {
   const rows = await db.execute(sql`
@@ -95,6 +97,14 @@ export async function handleChatSend(
   const sessionOwner = await getSessionOwner(sessionKey);
   if (!sessionOwner) {
     // 会话不存在，允许创建新会话（首次发送消息）
+    // 新会话首次创建 —— 审计记录
+    await recordAudit(config.authServiceUrl, {
+      userId: client.userId,
+      action: 'ai.session.create',
+      resourceType: 'ai_session',
+      resourceId: sessionKey,
+      result: 'success',
+    });
   } else if (sessionOwner.userId !== client.userId) {
     respond(false, { error: 'NOT_AUTHORIZED', message: '无权继续他人的会话' });
     return;
@@ -188,6 +198,16 @@ export async function handleChatSend(
                 event: 'chat',
                 targetSessionKey: sessionKey,
                 payload: { runId, type: 'tool_call', toolCall },
+              });
+
+              // 审计：AI 发起工具调用
+              recordAudit(config.authServiceUrl, {
+                userId: client.userId,
+                action: 'ai.tool_call',
+                resourceType: 'ai_tool',
+                resourceId: toolCall.name,
+                result: 'success',
+                params: { sessionKey, tool: toolCall.name },
               });
             },
             onToolResult: (result) => {

@@ -183,6 +183,9 @@ export const config = {
   cloudServiceUrl: process.env.CLOUD_SERVICE_URL || 'http://cloud-service:3001',
   monitorServiceUrl: process.env.MONITOR_SERVICE_URL || 'http://monitor-service:3002',
 
+  // auth-service 内部地址（审计写入）
+  authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:3004',
+
   // Agent 配置
   agent: {
     maxIterations: parseInt(process.env.AGENT_MAX_ITERATIONS || '30', 10),
