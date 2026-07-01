@@ -9,6 +9,8 @@ import { alertRoutes } from './routes/alerts.js';
 import { costRoutes } from './routes/costs.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { metricsExportRoutes } from './routes/metrics-export.js';
+import { predictionRoutes } from './routes/predictions.js';
+import { predictionEngine } from './services/prediction-engine.js';
 import { AppError } from '@cloudops/shared';
 import { runMigrations } from './db/migrate.js';
 
@@ -55,6 +57,7 @@ await app.register(alertRoutes, { prefix: '/monitor/alerts' });
 await app.register(costRoutes, { prefix: '/monitor/costs' });
 await app.register(dashboardRoutes, { prefix: '/monitor/dashboard' });
 await app.register(metricsExportRoutes);
+await app.register(predictionRoutes, { prefix: '/monitor/predictions' });
 
 // 运行数据库迁移
 try {
@@ -68,6 +71,7 @@ try {
 try { metricCollector.start(); } catch (e) { console.error('metricCollector failed:', (e as Error).message); }
 try { alertEngine.start(); } catch (e) { console.error('alertEngine failed:', (e as Error).message); }
 try { costService.start(); } catch (e) { console.error('costService failed:', (e as Error).message); }
+try { predictionEngine.start(); } catch (e) { console.error('predictionEngine failed:', (e as Error).message); }
 
 // 优雅关闭
 const shutdown = () => {
@@ -75,6 +79,7 @@ const shutdown = () => {
   metricCollector.stop();
   alertEngine.stop();
   costService.stop();
+  predictionEngine.stop();
   app.close();
 };
 process.on('SIGTERM', shutdown);
