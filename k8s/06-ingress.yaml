@@ -1,28 +1,26 @@
-# Ingress：对外暴露 HTTP(S) 服务
-# 需要集群有 Ingress Controller（如 nginx-ingress
+# k8s/06-ingress.yaml
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: cloudops-ingress
   namespace: cloudops
   annotations:
-    # 使用 nginx ingress controller
     kubernetes.io/ingress.class: "nginx"
-    # WebSocket 升级头（对 /ws 路径
-    nginx.ingress.kubernetes.io/websocket-services: "cloudops-app"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/upgrade: "$http_upgrade"
-    nginx.ingress.kubernetes.io/connection-proxy-header: "upgrade"
-    # 可选：启用 cert-manager 自动签发 TLS 证书
-    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
-  # tls:
-  #   - hosts:
-  #       - cloudops.example.com
-  #     secretName: cloudops-tls
+  tls:
+    - hosts:
+        - cloudops.example.com
+      secretName: cloudops-tls
   rules:
-    - host: cloudops.example.com  # 替换为你的域名
+    - host: cloudops.example.com
       http:
         paths:
           - path: /
@@ -32,3 +30,19 @@ spec:
                 name: cloudops-app
                 port:
                   number: 80
+---
+# cert-manager ClusterIssuer（Let's Encrypt）
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

@@ -8,7 +8,7 @@ metadata:
   labels:
     app: cloudops-app
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: cloudops-app
@@ -20,7 +20,7 @@ spec:
       containers:
         - name: cloudops-app
           # 镜像请先构建并推送到镜像仓库：docker build -t your-registry/cloudops-app:latest .
-          image: your-registry/cloudops-app:latest
+          image: ghcr.io/winterfellwen/cloudops-ai:latest
           ports:
             - name: http
               containerPort: 80
@@ -54,6 +54,8 @@ spec:
               value: "http://localhost:3002"
             - name: AUTH_SERVICE_URL
               value: "http://localhost:3004"
+            - name: AI_GATEWAY_URL
+              value: "http://localhost:3005"
           # 健康检查：根路径转发到 api-gateway /health
           readinessProbe:
             httpGet:
