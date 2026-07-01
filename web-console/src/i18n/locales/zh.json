@@ -73,7 +73,17 @@
     "instancesFailed": "实例数据加载失败",
     "alertsFailed": "告警数据加载失败",
     "costsFailed": "费用数据加载失败",
-    "noInstances": "暂无实例数据"
+    "noInstances": "暂无实例数据",
+    "aiInsight": "AI 健康洞察",
+    "healthScore": "健康评分",
+    "risks": "风险项",
+    "suggestions": "建议",
+    "insightUnavailable": "洞察暂不可用",
+    "tokenUsage": "Token 使用量",
+    "todayTokens": "今日 Token",
+    "todayCalls": "今日调用",
+    "weekTokens": "本周 Token",
+    "weekCalls": "本周调用"
   },
   "instances": {
     "title": "云服务器管理",

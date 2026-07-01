@@ -1,8 +1,9 @@
 // Dashboard 总览页：统计卡片 + 云厂商分布
-import { Server, DollarSign, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
+import { Server, DollarSign, AlertTriangle, Loader2, AlertCircle, Brain, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboard';
+import { useAiInsight, useTokenStats } from '@/hooks/useAiInsights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -15,6 +16,8 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: stats, isLoading, error } = useDashboardStats();
+  const { data: insight, isLoading: insightLoading } = useAiInsight();
+  const { data: tokenStats } = useTokenStats();
 
   const formatCost = (cost: number) => {
     if (cost >= 10000) return `¥${(cost / 10000).toFixed(2)}万`;
@@ -162,6 +165,84 @@ export default function Dashboard() {
             </div>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">{t('dashboard.noInstances')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* AI 健康洞察 */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold">{t('dashboard.aiInsight')}</h2>
+          </div>
+          {insightLoading ? (
+            <div className="text-center py-4 text-muted-foreground">{t('common.loading')}</div>
+          ) : insight ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl font-bold" style={{
+                  color: insight.healthScore >= 80 ? '#22c55e' : insight.healthScore >= 60 ? '#eab308' : '#ef4444'
+                }}>
+                  {insight.healthScore}
+                </div>
+                <div className="text-sm text-muted-foreground">{t('dashboard.healthScore')}</div>
+              </div>
+              {insight.risks.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-1">{t('dashboard.risks')}</div>
+                  <ul className="space-y-1">
+                    {insight.risks.map((risk, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">• {risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {insight.suggestions.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-1">{t('dashboard.suggestions')}</div>
+                  <ul className="space-y-1">
+                    {insight.suggestions.map((s, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">• {s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">{t('dashboard.insightUnavailable')}</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Token 使用统计 */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold">{t('dashboard.tokenUsage')}</h2>
+          </div>
+          {tokenStats ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <div className="text-xs text-muted-foreground">{t('dashboard.todayTokens')}</div>
+                <div className="text-xl font-bold">{tokenStats.today.totalTokens.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">{t('dashboard.todayCalls')}</div>
+                <div className="text-xl font-bold">{tokenStats.today.calls}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">{t('dashboard.weekTokens')}</div>
+                <div className="text-xl font-bold">{tokenStats.week.totalTokens.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">{t('dashboard.weekCalls')}</div>
+                <div className="text-xl font-bold">{tokenStats.week.calls}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-muted-foreground">{t('common.loading')}</div>
           )}
         </CardContent>
       </Card>

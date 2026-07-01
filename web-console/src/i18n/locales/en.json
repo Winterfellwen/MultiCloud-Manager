@@ -73,7 +73,17 @@
     "instancesFailed": "Failed to load instance data",
     "alertsFailed": "Failed to load alert data",
     "costsFailed": "Failed to load cost data",
-    "noInstances": "No instance data"
+    "noInstances": "No instance data",
+    "aiInsight": "AI Health Insight",
+    "healthScore": "Health Score",
+    "risks": "Risks",
+    "suggestions": "Suggestions",
+    "insightUnavailable": "Insight unavailable",
+    "tokenUsage": "Token Usage",
+    "todayTokens": "Today Tokens",
+    "todayCalls": "Today Calls",
+    "weekTokens": "Week Tokens",
+    "weekCalls": "Week Calls"
   },
   "instances": {
     "title": "Instance Management",
