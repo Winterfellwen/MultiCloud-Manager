@@ -46,7 +46,7 @@ ${req.abnormalInstances.map(i => `- ${i.name} (${i.provider}): ${i.status}`).joi
   "suggestions": ["建议1", "建议2"]
 }`;
 
-  const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 800 });
+  const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 2000 });
 
   // 解析 JSON（兼容 reasoning 模型的思考过程输出）
   const parsed = extractJsonFromText(raw);
