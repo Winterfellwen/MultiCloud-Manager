@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { randomUUID } from 'crypto';
 import { config } from '../config.js';
 import { UnauthorizedError } from '@cloudops/shared';
 
@@ -17,35 +18,41 @@ const routes: ProxyRoute[] = [
   { prefix: '/agent', target: config.aiAgentUrl, requireAuth: true },
 ];
 
-/** 验证 JWT token 有效性 */
-function verifyJwt(token: string): boolean {
+/** 验证 JWT token 有效性，返回 payload 或 null */
+function verifyJwt(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) return false;
-    
+    if (parts.length !== 3) return null;
+
     const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    
+
     // 检查过期时间
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      return false;
+      return null;
     }
-    
+
     // 检查签发时间（允许 5 分钟时钟偏差）
     if (payload.iat && payload.iat > Math.floor(Date.now() / 1000) + 300) {
-      return false;
+      return null;
     }
-    
-    return true;
+
+    return payload;
   } catch {
-    return false;
+    return null;
   }
 }
 
 /** 统一的代理处理函数 */
-async function proxyHandler(request: FastifyRequest, reply: FastifyReply, target: string) {
+async function proxyHandler(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  target: string,
+  userId?: string,
+) {
   const targetUrl = `${target}${request.url}`;
   const hasBody = ['POST', 'PUT', 'PATCH'].includes(request.method) && request.body != null;
+  const traceId = (request.headers['x-trace-id'] as string) || randomUUID();
   const response = await fetch(targetUrl, {
     method: request.method,
     headers: {
@@ -53,6 +60,8 @@ async function proxyHandler(request: FastifyRequest, reply: FastifyReply, target
       ...(request.headers.authorization && {
         authorization: request.headers.authorization,
       }),
+      'x-trace-id': traceId,
+      ...(userId && { 'x-user-id': userId }),
     },
     body: hasBody ? JSON.stringify(request.body) : undefined,
   });
@@ -65,32 +74,38 @@ export async function proxyRoutes(app: FastifyInstance) {
   for (const route of routes) {
     // 带通配符的路由
     app.all(`${route.prefix}/*`, async (request: FastifyRequest, reply: FastifyReply) => {
+      let userId: string | undefined;
       if (route.requireAuth) {
         const authHeader = request.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           throw new UnauthorizedError();
         }
         const token = authHeader.slice(7);
-        if (!verifyJwt(token)) {
+        const payload = verifyJwt(token);
+        if (!payload) {
           throw new UnauthorizedError('Invalid or expired token');
         }
+        userId = payload.sub as string;
       }
-      return proxyHandler(request, reply, route.target);
+      return proxyHandler(request, reply, route.target, userId);
     });
 
     // 不带通配符的路由（精确匹配）
     app.all(`${route.prefix}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      let userId: string | undefined;
       if (route.requireAuth) {
         const authHeader = request.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           throw new UnauthorizedError();
         }
         const token = authHeader.slice(7);
-        if (!verifyJwt(token)) {
+        const payload = verifyJwt(token);
+        if (!payload) {
           throw new UnauthorizedError('Invalid or expired token');
         }
+        userId = payload.sub as string;
       }
-      return proxyHandler(request, reply, route.target);
+      return proxyHandler(request, reply, route.target, userId);
     });
   }
 }
