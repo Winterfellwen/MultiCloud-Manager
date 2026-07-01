@@ -29,8 +29,8 @@ docker-compose*.yml
 # Kubernetes
 k8s/
 
-# Scripts (not needed in image)
-scripts/
+# Scripts test files (not needed in image, but SQL scripts are needed)
+scripts/test-*
 
 # Test files
 *.test.*

@@ -21,6 +21,7 @@ import { RenderAPIClient } from './api.js';
 
 const STATUS_MAP: Record<string, Instance['status']> = {
   live: 'running',
+  available: 'running',
   suspended: 'stopped',
   deploying: 'pending',
   deprovisioning: 'pending',
@@ -33,7 +34,9 @@ function mapStatus(raw: string): Instance['status'] {
 }
 
 function planSpec(plan: RenderPlan | undefined) {
-  return RENDER_PLAN_SPECS[plan ?? 'free'];
+  const spec = RENDER_PLAN_SPECS[plan ?? 'free'];
+  // cpu 列为 integer，free 计划 0.1 CPU 向上取整为 1
+  return { ...spec, cpu: Math.ceil(spec.cpu) };
 }
 
 function serviceToInstance(svc: RenderService): Instance {

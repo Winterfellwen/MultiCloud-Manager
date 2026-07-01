@@ -60,7 +60,9 @@ const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>
   },
   render: async (cfg) => {
     const { RenderProvider } = await import('./render/index.js');
-    return new RenderProvider(cfg);
+    // 兼容两种 config 形态：字符串 apiKey 或 { apiKey } 对象
+    const apiKey = typeof cfg === 'string' ? cfg : cfg.apiKey;
+    return new RenderProvider(apiKey);
   },
   oracle: async (cfg) => {
     const { OracleProvider } = await import('./oracle/index.js');

@@ -52,8 +52,20 @@ export class RenderAPIClient {
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.cursor) query.set('cursor', params.cursor);
     const qs = query.toString();
-    const resp = await this.request<RenderListResponse<RenderService>>(`/services${qs ? `?${qs}` : ''}`);
-    return resp.data;
+    // Render API 返回 [{cursor, service: {...}}, ...]，提取 service 并补 status 字段
+    const raw = await this.request<any[]>(`/services${qs ? `?${qs}` : ''}`);
+    if (!Array.isArray(raw)) return [];
+    return raw.map(item => {
+      const svc = item.service ?? item;
+      if (!svc.status) {
+        svc.status = svc.suspended === 'suspended' ? 'suspended' : 'live';
+      }
+      // region 在 serviceDetails 里，补到顶层
+      if (!svc.region && svc.serviceDetails?.region) {
+        svc.region = svc.serviceDetails.region;
+      }
+      return svc as RenderService;
+    });
   }
 
   async getService(id: string): Promise<RenderService> {
@@ -111,8 +123,15 @@ export class RenderAPIClient {
 
   // ===== PostgreSQL =====
   async listPostgresInstances(): Promise<RenderDatabase[]> {
-    const resp = await this.request<RenderListResponse<RenderDatabase>>('/postgres');
-    return resp.data;
+    const raw = await this.request<any[]>('/postgres');
+    if (!Array.isArray(raw)) return [];
+    return raw.map(item => {
+      const db = item.postgres ?? item.service ?? item;
+      if (!db.status) {
+        db.status = db.suspended === 'suspended' ? 'suspended' : 'live';
+      }
+      return db as RenderDatabase;
+    });
   }
 
   async getPostgresInstance(id: string): Promise<RenderDatabase> {
@@ -154,8 +173,15 @@ export class RenderAPIClient {
 
   // ===== Redis (Key Value) =====
   async listRedisInstances(): Promise<RenderDatabase[]> {
-    const resp = await this.request<RenderListResponse<RenderDatabase>>('/key-value');
-    return resp.data;
+    const raw = await this.request<any[]>('/key-value');
+    if (!Array.isArray(raw)) return [];
+    return raw.map(item => {
+      const db = item.keyValue ?? item.service ?? item;
+      if (!db.status) {
+        db.status = db.suspended === 'suspended' ? 'suspended' : 'live';
+      }
+      return db as RenderDatabase;
+    });
   }
 
   async getRedisInstance(id: string): Promise<RenderDatabase> {

@@ -80,6 +80,9 @@ services:
       AGENT_MAX_ITERATIONS: ${AGENT_MAX_ITERATIONS:-10}
       AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-120000}
 
+      # ============ Demo 数据自动初始化（仅本地开发，生产不设） ============
+      DEMO_AUTO_SEED: ${DEMO_AUTO_SEED:-false}
+
     depends_on:
       postgres:
         condition: service_healthy

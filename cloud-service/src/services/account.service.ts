@@ -219,7 +219,10 @@ export class AccountService {
     try {
       const rows = await db.select().from(cloudAccounts);
       for (const row of rows) {
-        const cfg = row.config as Record<string, unknown>;
+        // config 字段可能被存为 JSON 字符串（非 jsonb 对象），需兼容解析
+        const cfg = typeof row.config === 'string'
+          ? JSON.parse(row.config) as Record<string, unknown>
+          : row.config as Record<string, unknown>;
         await this.registerFromAccount(row.provider, cfg);
       }
     } catch (err) {

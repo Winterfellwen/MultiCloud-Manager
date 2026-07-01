@@ -3,7 +3,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { loggerPlugin } from './middleware/logger.js';
-import { scopePlugin } from './middleware/scope.js';
+import { registerScopeHook } from './middleware/scope.js';
 import { healthRoutes } from './routes/health.js';
 import { proxyRoutes } from './routes/proxy.js';
 import { AppError } from '@cloudops/shared';
@@ -27,8 +27,8 @@ app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, 
 await app.register(cors);
 await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 await app.register(loggerPlugin);
-// scope 注入：必须在 proxy 路由（JWT 校验）之前注册，demo 模式跳过真实 JWT 校验
-await app.register(scopePlugin);
+// scope 注入：直接在根 app 上注册 hook（不用 register，否则插件封装隔离导致 hook 不传播到 proxyRoutes）
+registerScopeHook(app);
 
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof AppError) {
