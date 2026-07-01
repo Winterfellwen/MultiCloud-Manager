@@ -66,6 +66,45 @@ INSERT INTO token_usage (user_id, session_key, provider, model, prompt_tokens, c
 ('8ef124dc-1a02-4bd5-808e-8333087ca258', 'session-demo-003', 'https://integrate.api.nvidia.com/v1', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 2100, 520, 2620, NOW() - INTERVAL '30 min'),
 ('8ef124dc-1a02-4bd5-808e-8333087ca258', 'session-demo-004', 'https://integrate.api.nvidia.com/v1', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 580, 180, 760, NOW() - INTERVAL '10 min');
 
+-- ========== 预测引擎 demo 数据：24 小时磁盘指标（递增趋势） ==========
+-- 生成 24 个数据点（每小时一个），磁盘使用率从 70% 递增到 82%
+INSERT INTO metrics (instance_id, metric_name, value, unit, recorded_at, created_at)
+SELECT 'a1b2c3d4-0001-4000-8000-000000000001', 'disk_utilization',
+       70.0 + (n * 0.5), '%',
+       NOW() - INTERVAL '24 hours' + (n || ' hours')::INTERVAL,
+       NOW() - INTERVAL '24 hours' + (n || ' hours')::INTERVAL
+FROM generate_series(0, 23) AS n;
+
+-- 内存指标（递增趋势）
+INSERT INTO metrics (instance_id, metric_name, value, unit, recorded_at, created_at)
+SELECT 'a1b2c3d4-0001-4000-8000-000000000004', 'memory_utilization',
+       60.0 + (n * 0.8), '%',
+       NOW() - INTERVAL '24 hours' + (n || ' hours')::INTERVAL,
+       NOW() - INTERVAL '24 hours' + (n || ' hours')::INTERVAL
+FROM generate_series(0, 23) AS n;
+
+-- ========== 自愈 demo 数据 ==========
+INSERT INTO remediation_runs (id, alert_id, instance_id, root_cause, action_plan, action_executed, status, env, triggered_at, approved_at, executed_at, verified_at, verification_result) VALUES
+('d4e5f6a7-0001-4000-8000-000000000001', 'c3d4e5f6-0001-4000-8000-000000000001', 'a1b2c3d4-0001-4000-8000-000000000001',
+ 'web-prod-01 CPU 持续高于 80%，疑似内存泄漏导致进程 CPU 占用异常',
+ '{"rootCause":"内存泄漏","recommendedAction":"reboot_instance","reasoning":"重启释放累积内存","riskLevel":"moderate","expectedEffect":"CPU 降至 40-50%","verificationMetric":"cpu_utilization","verificationTimeout":60}'::jsonb,
+ 'reboot_instance', 'success', 'prod',
+ NOW() - INTERVAL '2 hour', NOW() - INTERVAL '2 hour', NOW() - INTERVAL '2 hour', NOW() - INTERVAL '1 hour 58 min',
+ '验证成功：cpu_utilization 已降至 45.2%（阈值 80%），修复有效'),
+('d4e5f6a7-0001-4000-8000-000000000002', 'c3d4e5f6-0001-4000-8000-000000000002', 'a1b2c3d4-0001-4000-8000-000000000008',
+ 'backup-server 内存使用率 92%，超过 90% 阈值',
+ '{"rootCause":"缓存未释放","recommendedAction":"reboot_instance","reasoning":"重启清理缓存","riskLevel":"moderate","expectedEffect":"内存降至 50%","verificationMetric":"memory_utilization","verificationTimeout":60}'::jsonb,
+ 'reboot_instance', 'pending', 'prod',
+ NOW() - INTERVAL '8 min', NULL, NULL, NULL, NULL);
+
+-- ========== 知识库 demo 数据 ==========
+INSERT INTO knowledge_base (id, symptom, metric_name, instance_provider, instance_env, root_cause, action_taken, outcome, resolution_time_minutes, helpful_count, created_at) VALUES
+('e5f6a7b8-0001-4000-8000-000000000001', 'api-worker-02 (aws) CPU 持续 >85%，疑似内存泄漏', 'cpu_utilization', 'aws', 'prod', '应用层内存泄漏，长时间运行导致 GC 压力增大', 'reboot_instance', 'success', 15, 3, NOW() - INTERVAL '15 day'),
+('e5f6a7b8-0001-4000-8000-000000000002', 'db-staging-01 (aws) 内存使用率 91%，超过阈值', 'memory_utilization', 'aws', 'staging', '数据库连接池配置过大，导致内存占用高', 'reboot_instance', 'failed', 0, 1, NOW() - INTERVAL '10 day'),
+('e5f6a7b8-0001-4000-8000-000000000003', 'nginx-gateway (aliyun) 磁盘使用率持续上升', 'disk_utilization', 'aliyun', 'prod', '日志文件未轮转，占用大量磁盘空间', 'reboot_instance', 'success', 5, 2, NOW() - INTERVAL '5 day'),
+('e5f6a7b8-0001-4000-8000-000000000004', 'redis-cache (aliyun) 内存使用率 88%', 'memory_utilization', 'aliyun', 'prod', 'Redis 缓存未设置淘汰策略，内存持续增长', 'reboot_instance', 'success', 8, 0, NOW() - INTERVAL '3 day'),
+('e5f6a7b8-0001-4000-8000-000000000005', 'ml-training-gpu (azure) CPU 95%，GPU 任务堆积', 'cpu_utilization', 'azure', 'prod', '训练任务并发数过高，导致 GPU 和 CPU 双重过载', 'stop_instance', 'success', 2, 1, NOW() - INTERVAL '1 day');
+
 COMMIT;
 
 -- 验证
@@ -74,4 +113,6 @@ UNION ALL SELECT 'alert_rules', count(*) FROM alert_rules
 UNION ALL SELECT 'alerts (firing)', count(*) FROM alerts WHERE status = 'firing'
 UNION ALL SELECT 'cost_records', count(*) FROM cost_records
 UNION ALL SELECT 'metrics', count(*) FROM metrics
-UNION ALL SELECT 'token_usage', count(*) FROM token_usage;
+UNION ALL SELECT 'token_usage', count(*) FROM token_usage
+UNION ALL SELECT 'remediation_runs', count(*) FROM remediation_runs
+UNION ALL SELECT 'knowledge_base', count(*) FROM knowledge_base;
