@@ -8,6 +8,7 @@ import { metricRoutes } from './routes/metrics.js';
 import { alertRoutes } from './routes/alerts.js';
 import { costRoutes } from './routes/costs.js';
 import { dashboardRoutes } from './routes/dashboard.js';
+import { metricsExportRoutes } from './routes/metrics-export.js';
 import { AppError } from '@cloudops/shared';
 import { runMigrations } from './db/migrate.js';
 
@@ -53,6 +54,7 @@ await app.register(metricRoutes, { prefix: '/monitor/metrics' });
 await app.register(alertRoutes, { prefix: '/monitor/alerts' });
 await app.register(costRoutes, { prefix: '/monitor/costs' });
 await app.register(dashboardRoutes, { prefix: '/monitor/dashboard' });
+await app.register(metricsExportRoutes);
 
 // 运行数据库迁移
 try {
