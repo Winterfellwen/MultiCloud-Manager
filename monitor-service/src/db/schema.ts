@@ -104,3 +104,33 @@ export const metricPredictions = pgTable('metric_predictions', {
   confidence: decimal('confidence', { precision: 5, scale: 2 }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// Phase 5 新增：自愈策略表
+export const remediationPolicies = pgTable('remediation_policies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 128 }).notNull(),
+  actionType: varchar('action_type', { length: 64 }).notNull(),
+  envTags: jsonb('env_tags').notNull(),
+  autoExecute: jsonb('auto_execute').notNull(),
+  enabled: boolean('enabled').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Phase 5 新增：自愈执行记录表
+export const remediationRuns = pgTable('remediation_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  alertId: uuid('alert_id').references(() => alerts.id, { onDelete: 'cascade' }),
+  instanceId: uuid('instance_id').references(() => instances.id, { onDelete: 'cascade' }),
+  rootCause: text('root_cause'),
+  actionPlan: jsonb('action_plan'),
+  actionExecuted: varchar('action_executed', { length: 64 }),
+  status: varchar('status', { length: 32 }).default('pending'),
+  env: varchar('env', { length: 32 }),
+  triggeredAt: timestamp('triggered_at').defaultNow().notNull(),
+  approvedAt: timestamp('approved_at'),
+  approvedBy: uuid('approved_by'),
+  executedAt: timestamp('executed_at'),
+  verifiedAt: timestamp('verified_at'),
+  verificationResult: text('verification_result'),
+  errorMessage: text('error_message'),
+});
