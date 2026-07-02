@@ -289,6 +289,9 @@ export class RemediationEngine {
       ));
 
     for (const alert of criticalAlerts) {
+      // 跳过没有 instance_id 的告警（安全发现针对磁盘/存储等非实例资源）
+      if (!alert.instanceId) continue;
+
       // 检查是否已有 remediation_run
       const existing = await db.select().from(t.remediationRuns)
         .where(eq(t.remediationRuns.alertId, alert.id))
@@ -297,6 +300,7 @@ export class RemediationEngine {
 
       await db.insert(t.remediationRuns).values({
         alertId: alert.id,
+        instanceId: alert.instanceId || null,
         rootCause: alert.message,
         actionPlan: { action: 'security_fix', recommendation: '自动安全修复' },
         actionExecuted: scope.isDemo ? 'simulate' : null,
