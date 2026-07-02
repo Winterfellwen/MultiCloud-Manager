@@ -13,34 +13,56 @@ import { Dialog } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
-import type { InstanceStatus } from '@/types/cloud';
-import { Plus, RefreshCw, Search, Play, Square, RotateCw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Play, Square, RotateCw, Trash2 } from 'lucide-react';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 
 export default function Instances() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<{ provider?: string; status?: InstanceStatus }>({});
-  const [search, setSearch] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const { data: instances, isLoading } = useInstances(filters);
+  const { data: instances, isLoading } = useInstances(filterValues);
   const { data: providersData } = useProviders();
   const action = useInstanceAction();
   const sync = useSyncInstances();
 
+  const filterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('instances.searchPlaceholder') },
+    {
+      key: 'provider',
+      type: 'select',
+      label: t('instances.provider'),
+      options: [
+        { label: t('instances.allProviders'), value: '' },
+        ...(providersData?.providers || []).map((p) => ({ label: p, value: p })),
+      ],
+    },
+    {
+      key: 'status',
+      type: 'select',
+      label: t('instances.status'),
+      options: [
+        { label: t('instances.allStatus'), value: '' },
+        { label: t('instances.running'), value: 'running' },
+        { label: t('instances.stopped'), value: 'stopped' },
+        { label: t('instances.terminated'), value: 'terminated' },
+        { label: t('instances.pending'), value: 'pending' },
+        { label: t('instances.error'), value: 'error' },
+      ],
+    },
+  ];
+
   const filtered = useMemo(() => {
     return (instances || []).filter((inst) => {
-      if (!search) return true;
-      const s = search.toLowerCase();
-      return (
-        (inst.name?.toLowerCase().includes(s)) ||
-        (inst.providerInstanceId?.toLowerCase().includes(s)) ||
-        (inst.publicIp?.includes(s)) ||
-        (inst.region?.toLowerCase().includes(s))
-      );
+      const s = (filterValues.search || '').toLowerCase();
+      if (s && !(inst.name?.toLowerCase().includes(s)) && !(inst.providerInstanceId?.toLowerCase().includes(s)) && !(inst.publicIp?.includes(s)) && !(inst.region?.toLowerCase().includes(s))) return false;
+      if (filterValues.provider && inst.provider !== filterValues.provider) return false;
+      if (filterValues.status && inst.status !== filterValues.status) return false;
+      return true;
     });
-  }, [instances, search]);
+  }, [instances, filterValues]);
 
   async function handleAction(id: string, act: 'start' | 'stop' | 'reboot' | 'delete') {
     try {
@@ -77,41 +99,11 @@ export default function Instances() {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <div className="w-full sm:flex-1 sm:min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('instances.searchPlaceholder')}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <Select
-              value={filters.provider || ''}
-              onChange={(e) => setFilters((f) => ({ ...f, provider: e.target.value || undefined }))}
-              className="w-full sm:w-[140px]"
-            >
-              <option value="">{t('instances.allProviders')}</option>
-              {(providersData?.providers || []).map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </Select>
-            <Select
-              value={filters.status || ''}
-              onChange={(e) => setFilters((f) => ({ ...f, status: (e.target.value || undefined) as InstanceStatus | undefined }))}
-              className="w-full sm:w-[140px]"
-            >
-              <option value="">{t('instances.allStatus')}</option>
-              <option value="running">{t('instances.running')}</option>
-              <option value="stopped">{t('instances.stopped')}</option>
-              <option value="terminated">{t('instances.terminated')}</option>
-              <option value="pending">{t('instances.pending')}</option>
-              <option value="error">{t('instances.error')}</option>
-            </Select>
-          </div>
+          <FilterBar
+            filters={filterConfigs}
+            values={filterValues}
+            onChange={setFilterValues}
+          />
         </CardContent>
       </Card>
 
