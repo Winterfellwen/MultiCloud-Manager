@@ -16,6 +16,7 @@ import {
   Zap, ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 
 export default function CloudAccounts() {
   const { t } = useTranslation();
@@ -30,6 +31,32 @@ export default function CloudAccounts() {
   const [error, setError] = useState('');
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, TestConnectionResult>>({});
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
+  const filterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchAccount') },
+    {
+      key: 'provider',
+      type: 'select',
+      label: t('common.filterProvider'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        { label: 'AWS', value: 'aws' },
+        { label: 'Aliyun', value: 'aliyun' },
+        { label: 'Azure', value: 'azure' },
+      ],
+    },
+    {
+      key: 'status',
+      type: 'select',
+      label: t('common.filterStatus'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        { label: 'Active', value: 'active' },
+        { label: 'Inactive', value: 'inactive' },
+      ],
+    },
+  ];
 
   // 从后端获取厂商元数据（声明式字段配置）
   const { data: providersMeta = [] } = useQuery({
@@ -51,6 +78,16 @@ export default function CloudAccounts() {
     queryKey: ['cloud-accounts'],
     queryFn: () => cloudApi.listAccounts(),
   });
+
+  const filteredAccounts = useMemo(() => {
+    return accounts.filter((acc) => {
+      const s = (filterValues.search || '').toLowerCase();
+      if (s && !acc.name.toLowerCase().includes(s)) return false;
+      if (filterValues.provider && acc.provider !== filterValues.provider) return false;
+      if (filterValues.status && acc.status !== filterValues.status) return false;
+      return true;
+    });
+  }, [accounts, filterValues]);
 
   const createMutation = useMutation({
     mutationFn: (params: { name: string; provider: string; config: Record<string, unknown> }) =>
@@ -190,6 +227,13 @@ export default function CloudAccounts() {
         </Button>
       </div>
 
+      <FilterBar
+        filters={filterConfigs}
+        values={filterValues}
+        onChange={setFilterValues}
+        className="mb-4"
+      />
+
       {/* 云账号列表 */}
       <Card>
         <CardHeader>
@@ -207,7 +251,7 @@ export default function CloudAccounts() {
             </div>
           ) : (
             <div className="space-y-3">
-              {accounts.map((account) => {
+              {filteredAccounts.map((account) => {
                 const meta = providersMap[account.provider];
                 const result = testResult[account.id];
                 return (
