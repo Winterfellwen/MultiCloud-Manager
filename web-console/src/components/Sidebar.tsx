@@ -72,12 +72,12 @@ export function Sidebar() {
       permission: { resource: 'cost', action: 'view' },
     },
     {
-      label: 'AI 运维',
+      label: t('nav.aiOps'),
       to: '/ai-ops',
       icon: Bot,
     },
     {
-      label: '知识库',
+      label: t('nav.knowledgeBase'),
       to: '/knowledge-base',
       icon: BookOpen,
     },
@@ -124,7 +124,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-60 border-r bg-muted/50 flex flex-col h-full">
+    <aside className="w-60 border-r bg-muted flex flex-col h-full">
       <div className="h-14 flex items-center px-6 border-b">
         <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
       </div>

@@ -1,5 +1,5 @@
 // web-console/src/components/monitor/RemediationTab.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRemediationRuns, useApproveRemediation } from '@/hooks/useRemediation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,22 @@ export default function RemediationTab() {
   const { data: runs, isLoading } = useRemediationRuns();
   const approve = useApproveRemediation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!runs || runs.length === 0) return;
+    const firstPending = runs.find(r => r.status === 'pending');
+    if (firstPending) {
+      setHighlightedId(firstPending.id);
+      setTimeout(() => {
+        const el = document.getElementById(`run-${firstPending.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      setTimeout(() => setHighlightedId(null), 3000);
+    }
+  }, [runs]);
 
   return (
     <Card>
@@ -52,11 +68,15 @@ export default function RemediationTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {runs.map((run) => {
-                const StatusIcon = STATUS_CONFIG[run.status]?.icon || Clock;
-                return (
-                  <React.Fragment key={run.id}>
-                    <TableRow>
+                {runs.map((run) => {
+                  const StatusIcon = STATUS_CONFIG[run.status]?.icon || Clock;
+                  const isHighlighted = highlightedId === run.id;
+                  return (
+                    <React.Fragment key={run.id}>
+                      <TableRow
+                        id={`run-${run.id}`}
+                        className={isHighlighted ? 'bg-yellow-100 dark:bg-yellow-900/30 animate-pulse transition-colors duration-1000' : ''}
+                      >
                       <TableCell>
                         <button
                           onClick={() => setExpandedId(expandedId === run.id ? null : run.id)}

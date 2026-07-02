@@ -186,6 +186,8 @@ export async function handleProvidersTest(
       respond(false, { error: 'NO_MODELS', message: '该 provider 没有配置模型' });
       return;
     }
+    // NVIDIA NIM 等 provider 需要 "provider/model" 格式
+    const fullModelId = model.id.includes('/') ? model.id : `${provider.id}/${model.id}`;
     const res = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -193,7 +195,7 @@ export async function handleProvidersTest(
         Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify({
-        model: model.id,
+        model: fullModelId,
         messages: [{ role: 'user', content: 'hi' }],
         max_tokens: 5,
       }),

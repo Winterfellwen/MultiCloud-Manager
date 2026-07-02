@@ -38,7 +38,9 @@
     "mcp": "MCP Config",
     "users": "Users",
     "audit": "Audit Logs",
-    "topology": "Topology"
+    "topology": "Topology",
+    "aiOps": "AI Ops",
+    "knowledgeBase": "Knowledge Base"
   },
   "topbar": {
     "title": "Multi-Cloud Console",
@@ -509,7 +511,73 @@
     "startNewSession": "Start a new conversation",
     "filterMine": "Mine",
     "filterTeam": "Team",
-    "filterAll": "All"
+    "filterAll": "All",
+    "mode.plan": "Plan",
+    "mode.action": "Action",
+    "mode.confirm": "Confirm",
+    "mode.planDesc": "🔒 Plan mode: Only read-only tools will be executed",
+    "mode.actionDesc": "⚡ Action mode: All tools will be executed automatically",
+    "mode.confirmDesc": "✋ Confirm mode: All tools require manual approval",
+    "thinkingOn": "Thinking enabled (click to disable)",
+    "thinkingOff": "Thinking disabled (click to enable)",
+    "thinkingLabel": "Thinking",
+    "inputPlaceholder": "Type a message, / for commands, Enter to send, Shift+Enter for new line",
+    "stop": "Stop",
+    "send": "Send",
+    "wsDisconnected": "Disconnected",
+    "wsConnecting": "Connecting...",
+    "wsConnected": "Connected",
+    "wsReconnecting": "Reconnecting...",
+    "wsError": "Connection error",
+    "selectSession": "Select or create a conversation",
+    "sessionList": "Sessions",
+    "readonly": "Read-only"
+  },
+  "aiops": {
+    "title": "AI Ops",
+    "tabPredictions": "Predictions",
+    "tabRemediation": "Remediation",
+    "tabPolicy": "Policy Config",
+    "predictions": {
+      "subtitle": "Based on recent 24h metric trends, predict future alerts",
+      "noData": "No predictions yet. Click \"Analyze Now\" to generate predictions.",
+      "instanceName": "Unnamed instance"
+    },
+    "remediation": {
+      "title": "Remediation History",
+      "noData": "No remediation records",
+      "instanceName": "Unnamed instance",
+      "reboot": "Reboot",
+      "stop": "Stop",
+      "scaleUp": "Scale Up",
+      "pending": "Pending",
+      "executing": "Executing",
+      "success": "Success",
+      "failed": "Failed"
+    },
+    "policy": {
+      "title": "Remediation Policy Config",
+      "add": "New Policy",
+      "editTitle": "Edit Policy",
+      "createTitle": "New Policy",
+      "actionType": "Action Type",
+      "name": "Policy Name",
+      "resourceType": "Resource Type",
+      "allTypes": "All Types",
+      "autoExecute": "Auto Execute",
+      "notifyOnly": "Notify Only",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "enableWarning": "Enabling auto-execute will automatically trigger remediation for matching alerts without manual approval. Are you sure?",
+      "noData": "No policies",
+      "actionReboot": "Reboot Instance",
+      "actionStop": "Stop Instance",
+      "actionScaleUp": "Scale Up Instance"
+    }
+  },
+  "knowledgeBase": {
+    "title": "AI Ops Knowledge Base: Each remediation experience is automatically accumulated. RAG retrieves similar cases for new alerts to assist decision-making.",
+    "noData": "No knowledge base entries yet. Experiences will be automatically accumulated after remediation."
   },
   "topology": {
     "title": "Topology View",

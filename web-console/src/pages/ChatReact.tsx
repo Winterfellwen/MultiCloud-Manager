@@ -15,22 +15,6 @@ import { MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WsConnectionStatus } from '../types/chat';
 
-const STATUS_TEXT: Record<WsConnectionStatus, string> = {
-  disconnected: '未连接',
-  connecting: '连接中...',
-  connected: '已连接',
-  reconnecting: '重连中...',
-  error: '连接错误',
-};
-
-const STATUS_COLOR: Record<WsConnectionStatus, string> = {
-  disconnected: 'bg-muted-foreground',
-  connecting: 'bg-yellow-500',
-  connected: 'bg-green-500',
-  reconnecting: 'bg-yellow-500',
-  error: 'bg-red-500',
-};
-
 export default function ChatReact() {
   const { t } = useTranslation();
   const connect = useChatStore((s) => s.connect);
@@ -43,6 +27,22 @@ export default function ChatReact() {
 
   const isMobile = useIsMobile();
   const [sessionListOpen, setSessionListOpen] = useState(false);
+
+  const STATUS_TEXT: Record<WsConnectionStatus, string> = {
+    disconnected: t('chat.wsDisconnected'),
+    connecting: t('chat.wsConnecting'),
+    connected: t('chat.wsConnected'),
+    reconnecting: t('chat.wsReconnecting'),
+    error: t('chat.wsError'),
+  };
+
+  const STATUS_COLOR: Record<WsConnectionStatus, string> = {
+    disconnected: 'bg-muted-foreground',
+    connecting: 'bg-yellow-500',
+    connected: 'bg-green-500',
+    reconnecting: 'bg-yellow-500',
+    error: 'bg-red-500',
+  };
 
   // 确保 WebSocket 已连接（Layout 已全局初始化，这里做幂等保障）
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function ChatReact() {
               size="icon"
               className="h-8 w-8 shrink-0"
               onClick={() => setSessionListOpen(true)}
-              title="会话列表"
+              title={t('chat.sessionList')}
             >
               <MessageSquare className="h-4 w-4" />
             </Button>
@@ -113,7 +113,7 @@ export default function ChatReact() {
             <MessageList messages={messages} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              选择或新建对话
+              {t('chat.selectSession')}
             </div>
           )}
         </div>

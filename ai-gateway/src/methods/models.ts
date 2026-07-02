@@ -107,10 +107,10 @@ export async function handleModelsTest(
       respond(false, { error: 'NOT_FOUND', message: `Provider "${params.providerId}" 不存在` });
       return;
     }
-    // 前端 modelId 格式为 "provider/model"，需要去掉 provider 前缀
-    const rawModelId = params.modelId.includes('/')
-      ? params.modelId.slice(params.modelId.indexOf('/') + 1)
-      : params.modelId;
+    // 前端 modelId 格式为 "provider/model"，直接使用完整 ID（NVIDIA NIM 等需要 provider/ 前缀）
+    const fullModelId = params.modelId.includes('/')
+      ? params.modelId
+      : `${provider.id}/${params.modelId}`;
     const res = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -118,7 +118,7 @@ export async function handleModelsTest(
         Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify({
-        model: rawModelId,
+        model: fullModelId,
         messages: [{ role: 'user', content: 'hi' }],
         max_tokens: 5,
       }),

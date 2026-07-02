@@ -1,5 +1,6 @@
 // 输入框 + 发送 + 中止按钮 + 模型选择 + 斜杠命令 + 深度思考开关
 import { useState, useEffect, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, Square, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useChatStore, type Mode } from '../../stores/chat';
@@ -11,13 +12,8 @@ import { cn } from '../../lib/utils';
 
 const MotionButton = motion.create(Button);
 
-const modes: { value: Mode; label: string; color: string }[] = [
-  { value: 'plan', label: 'Plan', color: 'blue' },
-  { value: 'action', label: 'Action', color: 'green' },
-  { value: 'confirm', label: 'Confirm', color: 'orange' },
-];
-
 export function ChatInput() {
+  const { t } = useTranslation();
   const inputText = useChatStore((s) => s.inputText);
   const isSending = useChatStore((s) => s.isSending);
   const setInputText = useChatStore((s) => s.setInputText);
@@ -31,6 +27,12 @@ export function ChatInput() {
   const streamingBuffers = useChatStore((s) => s.streamingBuffers);
   const mode = useChatStore((s) => s.mode);
   const setMode = useChatStore((s) => s.setMode);
+
+  const modes: { value: Mode; label: string; color: string }[] = [
+    { value: 'plan', label: t('chat.mode.plan'), color: 'blue' },
+    { value: 'action', label: t('chat.mode.action'), color: 'green' },
+    { value: 'confirm', label: t('chat.mode.confirm'), color: 'orange' },
+  ];
 
   const { matchCommands } = useSlashCommands();
 
@@ -202,10 +204,10 @@ export function ChatInput() {
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-input bg-background text-muted-foreground hover:bg-accent'
             )}
-            title={enableThinking ? '深度思考已开启（点击关闭）' : '深度思考已关闭（点击开启）'}
+            title={enableThinking ? t('chat.thinkingOn') : t('chat.thinkingOff')}
           >
             <Brain className="h-3 w-3" />
-            <span>深度思考</span>
+            <span>{t('chat.thinkingLabel')}</span>
           </button>
         </div>
 
@@ -215,7 +217,7 @@ export function ChatInput() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入消息，/ 查看命令，Enter 发送，Shift+Enter 换行"
+            placeholder={t('chat.inputPlaceholder')}
             rows={1}
             className={cn(
               'max-h-32 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm',
@@ -232,7 +234,7 @@ export function ChatInput() {
               whileTap={{ scale: 0.95 }}
             >
               <Square className="h-4 w-4" />
-              中止
+              {t('chat.stop')}
             </MotionButton>
           ) : (
             <MotionButton
@@ -242,16 +244,16 @@ export function ChatInput() {
               whileTap={{ scale: 0.95 }}
             >
               <Send className="h-4 w-4" />
-              发送
+              {t('chat.send')}
             </MotionButton>
           )}
         </div>
 
         {/* 模式指示器 */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {mode === 'plan' && '🔒 Plan mode: Only read-only tools will be executed'}
-          {mode === 'action' && '⚡ Action mode: All tools will be executed automatically'}
-          {mode === 'confirm' && '✋ Confirm mode: All tools require manual approval'}
+          {mode === 'plan' && t('chat.mode.planDesc')}
+          {mode === 'action' && t('chat.mode.actionDesc')}
+          {mode === 'confirm' && t('chat.mode.confirmDesc')}
         </div>
       </div>
     </div>

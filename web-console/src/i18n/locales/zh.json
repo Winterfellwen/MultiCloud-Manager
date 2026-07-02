@@ -38,7 +38,9 @@
     "mcp": "MCP 配置",
     "users": "用户管理",
     "audit": "审计日志",
-    "topology": "拓扑视图"
+    "topology": "拓扑视图",
+    "aiOps": "AI 运维",
+    "knowledgeBase": "知识库"
   },
   "topbar": {
     "title": "多云管理控制台",
@@ -509,7 +511,73 @@
     "startNewSession": "开始新的对话",
     "filterMine": "我的",
     "filterTeam": "团队",
-    "filterAll": "全部"
+    "filterAll": "全部",
+    "mode.plan": "Plan",
+    "mode.action": "Action",
+    "mode.confirm": "Confirm",
+    "mode.planDesc": "🔒 Plan 模式：仅执行只读工具",
+    "mode.actionDesc": "⚡ Action 模式：自动执行所有工具",
+    "mode.confirmDesc": "✋ Confirm 模式：所有工具需手动审批",
+    "thinkingOn": "深度思考已开启（点击关闭）",
+    "thinkingOff": "深度思考已关闭（点击开启）",
+    "thinkingLabel": "深度思考",
+    "inputPlaceholder": "输入消息，/ 查看命令，Enter 发送，Shift+Enter 换行",
+    "stop": "中止",
+    "send": "发送",
+    "wsDisconnected": "未连接",
+    "wsConnecting": "连接中...",
+    "wsConnected": "已连接",
+    "wsReconnecting": "重连中...",
+    "wsError": "连接错误",
+    "selectSession": "选择或新建对话",
+    "sessionList": "会话列表",
+    "readonly": "只读"
+  },
+  "aiops": {
+    "title": "AI 运维",
+    "tabPredictions": "预测",
+    "tabRemediation": "自愈",
+    "tabPolicy": "自愈策略配置",
+    "predictions": {
+      "subtitle": "基于最近 24 小时指标趋势，预测未来可能触发的告警",
+      "noData": "暂无预测数据。点击「立即分析」生成预测。",
+      "instanceName": "未命名实例"
+    },
+    "remediation": {
+      "title": "自愈执行记录",
+      "noData": "暂无自愈记录",
+      "instanceName": "未命名实例",
+      "reboot": "重启",
+      "stop": "停止",
+      "scaleUp": "扩容",
+      "pending": "待审批",
+      "executing": "执行中",
+      "success": "成功",
+      "failed": "失败"
+    },
+    "policy": {
+      "title": "自愈策略配置",
+      "add": "新增策略",
+      "editTitle": "编辑自愈策略",
+      "createTitle": "新增自愈策略",
+      "actionType": "动作类型",
+      "name": "策略名称",
+      "resourceType": "资源类型",
+      "allTypes": "全部类型",
+      "autoExecute": "自动执行",
+      "notifyOnly": "仅通知",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "enableWarning": "启用自动执行后，符合条件的告警将自动触发修复操作，无需人工审批。是否确认启用？",
+      "noData": "暂无策略",
+      "actionReboot": "重启实例",
+      "actionStop": "停止实例",
+      "actionScaleUp": "扩容实例"
+    }
+  },
+  "knowledgeBase": {
+    "title": "AI 运维知识库：每次自愈经验自动积累，新告警时 RAG 检索相似案例辅助决策",
+    "noData": "暂无知识库条目。完成自愈后经验会自动积累。"
   },
   "topology": {
     "title": "拓扑视图",

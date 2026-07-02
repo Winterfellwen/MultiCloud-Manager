@@ -619,10 +619,14 @@ async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConf
 
   if (defaultProvider) {
     const defaultModel = defaultProvider.models[0];
+    // NVIDIA NIM 等需要 "provider/model" 格式
+    const defaultModelId = defaultModel?.id
+      ? (defaultModel.id.includes('/') ? defaultModel.id : `${defaultProvider.id}/${defaultModel.id}`)
+      : config.llm.model;
     const defaultConfig = buildConfig(
       defaultProvider.baseUrl,
       defaultProvider.apiKey,
-      defaultModel?.id || config.llm.model,
+      defaultModelId,
       defaultProvider.id,
       defaultProvider.compat,
       defaultModel,
@@ -640,10 +644,11 @@ async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConf
       if (providerId === 'default') {
         // 在默认 provider 中查找对应模型
         const matchedModel = defaultProvider.models.find(m => m.id === modelName);
+        const fullModelName = modelName.includes('/') ? modelName : `${defaultProvider.id}/${modelName}`;
         return buildConfig(
           defaultProvider.baseUrl,
           defaultProvider.apiKey,
-          modelName,
+          fullModelName,
           defaultProvider.id,
           defaultProvider.compat,
           matchedModel,
@@ -654,10 +659,11 @@ async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConf
       const provider = await getProviderFromStore(providerId);
       if (provider) {
         const matchedModel = provider.models.find(m => m.id === modelName);
+        const fullModelName = modelName.includes('/') ? modelName : `${provider.id}/${modelName}`;
         return buildConfig(
           provider.baseUrl,
           provider.apiKey,
-          modelName,
+          fullModelName,
           provider.id,
           provider.compat,
           matchedModel,
@@ -668,10 +674,11 @@ async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConf
       const configProvider = config.llmProviders.find(p => p.id === providerId);
       if (configProvider) {
         const matchedModel = configProvider.models.find(m => m.id === modelName);
+        const fullModelName = modelName.includes('/') ? modelName : `${configProvider.id}/${modelName}`;
         return buildConfig(
           configProvider.baseUrl,
           configProvider.apiKey,
-          modelName,
+          fullModelName,
           configProvider.id,
           configProvider.compat,
           matchedModel,
@@ -682,10 +689,11 @@ async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConf
     // 纯模型名：使用默认 provider，覆盖 model
     // 尝试在默认 provider 中匹配模型以获取 reasoning 配置
     const matchedModel = defaultProvider.models.find(m => m.id === modelOverride);
+    const fullModelName = modelOverride.includes('/') ? modelOverride : `${defaultProvider.id}/${modelOverride}`;
     return buildConfig(
       defaultProvider.baseUrl,
       defaultProvider.apiKey,
-      modelOverride,
+      fullModelName,
       defaultProvider.id,
       defaultProvider.compat,
       matchedModel,
