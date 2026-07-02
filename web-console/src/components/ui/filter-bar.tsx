@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export type FilterType = 'search' | 'select';
 
@@ -36,6 +37,10 @@ function DebouncedSearchInput({
     setLocal(value);
   }, [value]);
 
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
   const handleChange = (val: string) => {
     setLocal(val);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -61,7 +66,7 @@ export function FilterBar({ filters, values, onChange, className }: FilterBarPro
   };
 
   return (
-    <div className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap ${className || ''}`}>
+    <div className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap", className)}>
       {filters.map((f) => {
         if (f.type === 'search') {
           return (
@@ -80,6 +85,7 @@ export function FilterBar({ filters, values, onChange, className }: FilterBarPro
               value={values[f.key] || ''}
               onChange={(e) => update(f.key, e.target.value)}
               className="w-full sm:w-[160px]"
+              aria-label={f.label}
             >
               {f.options?.map((opt) => (
                 <option key={opt.value} value={opt.value}>
