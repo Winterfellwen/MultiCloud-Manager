@@ -6,22 +6,28 @@ const { join } = require('node:path');
 const postgres = require('/app/cloud-service/node_modules/postgres');
 
 const sqlPath = join(__dirname, 'demo-data.sql');
-const MAX_RETRIES = 30;
+const MAX_RETRIES = 60;
 const RETRY_INTERVAL = 5000;
 
 async function waitForMigrations(sql) {
   for (let i = 0; i < MAX_RETRIES; i++) {
     try {
       const res = await sql`SELECT EXISTS (
-        SELECT 1 FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'instances'
+        SELECT 1 FROM information_schema.schemata
+        WHERE schema_name = 'demo'
       ) as exists`;
       if (res[0].exists) {
-        console.log('[seed-demo] Public tables ready');
-        return true;
+        const tbl = await sql`SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema = 'demo' AND table_name = 'instances'
+        ) as exists`;
+        if (tbl[0].exists) {
+          console.log('[seed-demo] Demo schema and tables ready');
+          return true;
+        }
       }
-    } catch { /* ignore */ }
-    console.log(`[seed-demo] Waiting for migrations... (${i + 1}/${MAX_RETRIES})`);
+    } catch (e) { /* ignore */ }
+    console.log(`[seed-demo] Waiting for demo schema... (${i + 1}/${MAX_RETRIES})`);
     await new Promise(r => setTimeout(r, RETRY_INTERVAL));
   }
   return false;
@@ -40,7 +46,7 @@ async function main() {
   try {
     const ready = await waitForMigrations(sql);
     if (!ready) {
-      console.error('[seed-demo] Migrations not ready after timeout');
+      console.error('[seed-demo] Demo schema not ready after timeout');
       process.exit(1);
     }
 
