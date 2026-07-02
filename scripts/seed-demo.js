@@ -1,36 +1,33 @@
 #!/usr/bin/env node
 // scripts/seed-demo.js
-// Node.js demo data seeder (replaces psql for Render compatibility)
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import postgres from 'postgres';
+// CommonJS demo data seeder (Render compatibility)
+// Uses postgres module from cloud-service/node_modules
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
+const postgres = require('/app/cloud-service/node_modules/postgres');
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const sqlPath = join(__dirname, 'demo-data.sql');
 
 async function main() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    console.error('DATABASE_URL not set, skipping demo seed');
+    console.log('[seed-demo] DATABASE_URL not set, skipping');
     process.exit(0);
   }
 
-  console.log('Connecting to database...');
+  console.log('[seed-demo] Connecting to database...');
   const sql = postgres(dbUrl, { max: 1 });
 
   try {
-    // Read and execute demo-data.sql
-    const sqlPath = join(__dirname, 'demo-data.sql');
     const sqlContent = readFileSync(sqlPath, 'utf-8');
-    console.log('Executing demo-data.sql...');
+    console.log('[seed-demo] Executing demo-data.sql...');
     await sql.unsafe(sqlContent);
-    console.log('Demo data seeded successfully!');
+    console.log('[seed-demo] Demo data seeded successfully!');
 
-    // Verify
-    const result = await sql`SELECT count(*) as count FROM demo.cloud_resources`;
-    console.log(`Demo resources: ${result[0].count}`);
+    const res = await sql`SELECT count(*) as count FROM demo.cloud_resources`;
+    console.log('[seed-demo] Demo resources:', res[0].count);
   } catch (err) {
-    console.error('Demo seed failed:', err.message);
+    console.error('[seed-demo] Failed:', err.message);
     process.exit(1);
   } finally {
     await sql.end();
