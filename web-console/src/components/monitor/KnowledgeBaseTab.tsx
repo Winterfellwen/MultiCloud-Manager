@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Loader2, BookOpen, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 
 const ACTION_LABELS: Record<string, string> = {
   reboot_instance: '重启实例',
@@ -36,13 +36,6 @@ export default function KnowledgeBaseTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <BookOpen className="h-4 w-4 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          AI 运维知识库：每次自愈经验自动积累，新告警时 RAG 检索相似案例辅助决策
-        </p>
-      </div>
-
       <FilterBar
         filters={filterConfigs}
         values={filterValues}
