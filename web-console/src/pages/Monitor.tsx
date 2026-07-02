@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAlertRules, useCreateAlertRule, useUpdateAlertRule, useDeleteAlertRule, useAlertEvents, useResolveAlertEvent } from '@/hooks/useAlerts';
@@ -14,6 +14,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { AlertSeverityBadge, AlertStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import { Plus, Trash2, CheckCircle, Pencil, Brain, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SecurityTab from '@/components/monitor/SecurityTab';
@@ -68,6 +69,33 @@ function RulesTab() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
 
+  const [ruleFilters, setRuleFilters] = useState<Record<string, string>>({});
+
+  const ruleFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchName') },
+    {
+      key: 'severity',
+      type: 'select',
+      label: t('common.filterSeverity'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        { label: t('monitor.alerts.info'), value: 'info' },
+        { label: t('monitor.alerts.warning'), value: 'warning' },
+        { label: t('monitor.alerts.critical'), value: 'critical' },
+        { label: t('monitor.alerts.emergency'), value: 'emergency' },
+      ],
+    },
+  ];
+
+  const filteredRules = useMemo(() => {
+    return (rules || []).filter((rule) => {
+      const s = (ruleFilters.search || '').toLowerCase();
+      if (s && !rule.name.toLowerCase().includes(s) && !rule.metric.toLowerCase().includes(s)) return false;
+      if (ruleFilters.severity && rule.severity !== ruleFilters.severity) return false;
+      return true;
+    });
+  }, [rules, ruleFilters]);
+
   async function handleDelete(id: string) {
     if (!confirm(t('monitor.confirmDeleteRule'))) return;
     try {
@@ -97,6 +125,12 @@ function RulesTab() {
             <Plus className="h-4 w-4 mr-1" />{t('monitor.createRule')}
           </Button>
         </div>
+        <FilterBar
+          filters={ruleFilterConfigs}
+          values={ruleFilters}
+          onChange={setRuleFilters}
+          className="mb-4"
+        />
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : (rules || []).length === 0 ? (
@@ -116,7 +150,7 @@ function RulesTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(rules || []).map((rule) => (
+                {filteredRules.map((rule) => (
                   <TableRow key={rule.id}>
                     <TableCell className="font-medium">{rule.name}</TableCell>
                     <TableCell>{rule.metric}</TableCell>
@@ -276,6 +310,32 @@ function EventsTab() {
   const resolve = useResolveAlertEvent();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [eventFilters, setEventFilters] = useState<Record<string, string>>({});
+
+  const eventFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchMessage') },
+    {
+      key: 'status',
+      type: 'select',
+      label: t('common.filterAlertStatus'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        { label: t('monitor.alerts.firing'), value: 'firing' },
+        { label: t('monitor.alerts.resolved'), value: 'resolved' },
+        { label: t('monitor.alerts.silenced'), value: 'silenced' },
+      ],
+    },
+  ];
+
+  const filteredEvents = useMemo(() => {
+    return (events || []).filter((evt) => {
+      const s = (eventFilters.search || '').toLowerCase();
+      if (s && !(evt.message || '').toLowerCase().includes(s)) return false;
+      if (eventFilters.status && evt.status !== eventFilters.status) return false;
+      return true;
+    });
+  }, [events, eventFilters]);
+
   async function handleResolve(id: string) {
     try {
       await resolve.mutateAsync(id);
@@ -288,6 +348,12 @@ function EventsTab() {
     <Card>
       <CardContent className="pt-6">
         <h2 className="text-lg font-semibold mb-4">{t('monitor.eventsTitle')}</h2>
+        <FilterBar
+          filters={eventFilterConfigs}
+          values={eventFilters}
+          onChange={setEventFilters}
+          className="mb-4"
+        />
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : (events || []).length === 0 ? (
@@ -306,7 +372,7 @@ function EventsTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(events || []).map((evt) => (
+                {filteredEvents.map((evt) => (
                   <React.Fragment key={evt.id}>
                     <TableRow>
                       <TableCell>
@@ -382,6 +448,32 @@ function ChannelsTab() {
   const del = useDeleteChannel();
   const [createOpen, setCreateOpen] = useState(false);
 
+  const [channelFilters, setChannelFilters] = useState<Record<string, string>>({});
+
+  const channelFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchName') },
+    {
+      key: 'type',
+      type: 'select',
+      label: t('common.filterChannelType'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        { label: 'Webhook', value: 'webhook' },
+        { label: t('users.email'), value: 'email' },
+        { label: 'Slack', value: 'slack' },
+      ],
+    },
+  ];
+
+  const filteredChannels = useMemo(() => {
+    return (channels || []).filter((ch) => {
+      const s = (channelFilters.search || '').toLowerCase();
+      if (s && !ch.name.toLowerCase().includes(s)) return false;
+      if (channelFilters.type && ch.type !== channelFilters.type) return false;
+      return true;
+    });
+  }, [channels, channelFilters]);
+
   async function handleDelete(id: string) {
     if (!confirm(t('monitor.confirmDeleteChannel'))) return;
     try {
@@ -400,6 +492,12 @@ function ChannelsTab() {
             <Plus className="h-4 w-4 mr-1" />{t('monitor.createChannel')}
           </Button>
         </div>
+        <FilterBar
+          filters={channelFilterConfigs}
+          values={channelFilters}
+          onChange={setChannelFilters}
+          className="mb-4"
+        />
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
         ) : (channels || []).length === 0 ? (
@@ -417,7 +515,7 @@ function ChannelsTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(channels || []).map((ch) => (
+                {filteredChannels.map((ch) => (
                   <TableRow key={ch.id}>
                     <TableCell className="font-medium">{ch.name}</TableCell>
                     <TableCell>{ch.type}</TableCell>
