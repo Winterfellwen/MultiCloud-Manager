@@ -9,6 +9,7 @@ import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
 import { useDemoStore } from '@/stores/demo';
 import { ApiError } from '@/api/client';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -64,11 +65,19 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50">
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">{t('login.title')}</CardTitle>
-          <p className="text-sm text-muted-foreground text-center">{t('login.subtitle')}</p>
+          <div className="flex flex-col items-center gap-3">
+            <img src="/logo.jpg" alt="MultiCloud Manager" className="w-24 h-24" />
+            <div className="text-center">
+              <CardTitle className="text-2xl">{t('login.title')}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t('login.subtitle')}</p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,6 +130,9 @@ export default function Login() {
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               {t('login.demoHint')}
+            </p>
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Created by 温信锐 (Peter Wen)
             </p>
           </form>
         </CardContent>
