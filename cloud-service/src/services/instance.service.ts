@@ -124,21 +124,10 @@ export class InstanceService {
   }
 
   /**
-   * 写入或更新缓存中的实例记录
+   * 写入或更新缓存中的实例记录（原子 upsert）
    */
   async upsertInstance(scope: RequestScope, instance: Instance): Promise<void> {
     const t = scopedDb(scope);
-    const existing = await db
-      .select()
-      .from(t.instances)
-      .where(
-        and(
-          eq(t.instances.provider, instance.provider),
-          eq(t.instances.providerInstanceId, instance.providerInstanceId)
-        )
-      )
-      .limit(1);
-
     const row = {
       provider: instance.provider,
       providerInstanceId: instance.providerInstanceId,
@@ -155,14 +144,26 @@ export class InstanceService {
       lastSyncedAt: instance.lastSyncedAt,
     };
 
-    if (existing.length > 0) {
-      await db
-        .update(t.instances)
-        .set(row)
-        .where(eq(t.instances.id, existing[0].id));
-    } else {
-      await db.insert(t.instances).values(row);
-    }
+    // 使用 drizzle 的 insert + onConflictDoUpdate 实现原子 upsert
+    await db
+      .insert(t.instances)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [t.instances.provider, t.instances.providerInstanceId],
+        set: {
+          name: row.name,
+          region: row.region,
+          status: row.status,
+          cpu: row.cpu,
+          memoryMb: row.memoryMb,
+          diskGb: row.diskGb,
+          publicIp: row.publicIp,
+          privateIp: row.privateIp,
+          monthlyCost: row.monthlyCost,
+          tags: row.tags,
+          lastSyncedAt: row.lastSyncedAt,
+        },
+      });
   }
 }
 

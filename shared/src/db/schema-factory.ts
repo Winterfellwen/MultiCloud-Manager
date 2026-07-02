@@ -35,6 +35,16 @@ type TableColumns = Record<string, any>;
  */
 function buildTables(createTable: (name: string, columns: TableColumns) => any) {
   // ========== cloud-service 业务表 ==========
+  const cloudAccounts = createTable('cloud_accounts', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 128 }).notNull(),
+    provider: varchar('provider', { length: 32 }).notNull(),
+    config: jsonb('config').notNull(),
+    status: varchar('status', { length: 16 }).default('active'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  });
+
   const instances = createTable('instances', {
     id: uuid('id').primaryKey().defaultRandom(),
     provider: varchar('provider', { length: 32 }).notNull(),
@@ -191,6 +201,7 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
   });
 
   return {
+    cloudAccounts,
     instances,
     metrics,
     costRecords,

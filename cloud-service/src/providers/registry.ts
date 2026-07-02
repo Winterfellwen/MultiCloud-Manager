@@ -72,9 +72,12 @@ const providerFactories: Record<string, (config: any) => Promise<ICloudProvider>
 
 export async function registerProviders(config: ProviderConfig): Promise<void> {
   const entries = Object.entries(config).filter(([key, val]) => val && providerFactories[key]);
-  // 串行加载避免多个 SDK 同时加载导致内存尖峰；跳过已注册的 provider
+  // 串行加载避免多个 SDK 同时加载导致内存尖峰；已注册的 provider 如果 config 变化则重新注册
   for (const [key, cfg] of entries) {
-    if (providers.has(key)) continue;
+    if (providers.has(key)) {
+      // 重新注册以更新凭证（ provider 内部持有旧凭证引用）
+      providers.delete(key);
+    }
     const provider = await providerFactories[key](cfg);
     providers.set(key, provider);
   }

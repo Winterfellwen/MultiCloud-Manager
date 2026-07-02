@@ -73,14 +73,14 @@ export async function providerRoutes(app: FastifyInstance) {
 
 export async function accountRoutes(app: FastifyInstance) {
   // 列出云账号（凭证已脱敏）
-  app.get("/", async () => {
-    return accountService.list();
+  app.get("/", async (request) => {
+    return accountService.list(request.scope);
   });
 
   // 获取单个云账号（凭证已脱敏）
   app.get("/:id", async (request) => {
     const { id } = request.params as { id: string };
-    return accountService.getById(id);
+    return accountService.getById(id, request.scope);
   });
 
   // 添加云账号

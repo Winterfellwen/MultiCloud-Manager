@@ -1,7 +1,7 @@
 import { db } from "../db/index.js";
-import { cloudAccounts } from "../db/schema.js";
+import { cloudAccounts as publicCloudAccounts } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { NotFoundError, ValidationError } from "@cloudops/shared";
+import { NotFoundError, ValidationError, scopedDb, type RequestScope } from "@cloudops/shared";
 import {
   getSupportedProviderIds,
   getProviderMeta,
@@ -21,28 +21,67 @@ interface AccountRow {
   updatedAt: Date;
 }
 
-/** 返回给前端的账号（凭证已脱敏） */
-interface AccountRowWithHint extends AccountRow {
+/** 返回给前端的账号（凭证已脱敏，config 不含明文密钥） */
+interface AccountRowWithHint {
+  id: string;
+  name: string;
+  provider: string;
+  /** 仅包含非敏感配置字段（region 等），凭证字段已移除 */
+  config: Record<string, unknown>;
+  status: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   /** 凭证脱敏提示（如 AKIA****wX9z），永不返回明文 */
   credentialHint: Record<string, string>;
 }
 
+/** 凭证字段名列表（从 config 中移除） */
+const SENSITIVE_CONFIG_KEYS = [
+  'accessKey', 'secretAccessKey', 'accessKeyId', 'accessKeySecret',
+  'clientSecret', 'secretId', 'secretKey',
+];
+
 const VALID_PROVIDERS = getSupportedProviderIds();
 
+/** 从 config 中移除敏感凭证字段，只保留非敏感配置（如 region） */
+function sanitizeConfig(cfg: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(cfg)) {
+    if (!SENSITIVE_CONFIG_KEYS.includes(k)) {
+      sanitized[k] = v;
+    }
+  }
+  return sanitized;
+}
+
 export class AccountService {
-  async list(): Promise<AccountRowWithHint[]> {
+  /**
+   * 获取 cloudAccounts 表对象（根据 scope 选择 public/demo schema）
+   */
+  private getTable(scope?: RequestScope) {
+    if (scope) {
+      const t = scopedDb(scope);
+      return t.cloudAccounts;
+    }
+    // 无 scope 时使用 public schema（启动时注册 provider 等场景）
+    return publicCloudAccounts;
+  }
+
+  async list(scope?: RequestScope): Promise<AccountRowWithHint[]> {
+    const cloudAccounts = this.getTable(scope);
     const rows = await db.select().from(cloudAccounts);
     return rows.map((r) => {
       const cfg = r.config as Record<string, unknown>;
       return {
         ...r,
-        config: cfg,
+        config: sanitizeConfig(cfg),
         credentialHint: maskConfig(r.provider, cfg),
       };
     }) as AccountRowWithHint[];
   }
 
-  async getById(id: string): Promise<AccountRowWithHint> {
+  async getById(id: string, scope?: RequestScope): Promise<AccountRowWithHint> {
+    const cloudAccounts = this.getTable(scope);
     const result = await db.select().from(cloudAccounts).where(eq(cloudAccounts.id, id)).limit(1);
     if (result.length === 0) {
       throw new NotFoundError("CloudAccount", id);
@@ -51,7 +90,7 @@ export class AccountService {
     const cfg = r.config as Record<string, unknown>;
     return {
       ...r,
-      config: cfg,
+      config: sanitizeConfig(cfg),
       credentialHint: maskConfig(r.provider, cfg),
     } as AccountRowWithHint;
   }
@@ -82,7 +121,7 @@ export class AccountService {
     }
 
     const result = await db
-      .insert(cloudAccounts)
+      .insert(publicCloudAccounts)
       .values({
         name: input.name,
         provider: input.provider,
@@ -98,13 +137,13 @@ export class AccountService {
     const cfg = r.config as Record<string, unknown>;
     return {
       ...r,
-      config: cfg,
+      config: sanitizeConfig(cfg),
       credentialHint: maskConfig(r.provider, cfg),
     } as AccountRowWithHint;
   }
 
   async delete(id: string): Promise<void> {
-    const result = await db.delete(cloudAccounts).where(eq(cloudAccounts.id, id)).returning();
+    const result = await db.delete(publicCloudAccounts).where(eq(publicCloudAccounts.id, id)).returning();
     if (result.length === 0) {
       throw new NotFoundError("CloudAccount", id);
     }
@@ -121,7 +160,7 @@ export class AccountService {
   }): Promise<AccountRowWithHint> {
     const existing = await this.getById(id);
 
-    const sets: Partial<typeof cloudAccounts.$inferInsert> = { updatedAt: new Date() };
+    const sets: Partial<typeof publicCloudAccounts.$inferInsert> = { updatedAt: new Date() };
     if (input.name !== undefined) sets.name = input.name;
     if (input.status !== undefined) sets.status = input.status;
 
@@ -139,9 +178,9 @@ export class AccountService {
     }
 
     const result = await db
-      .update(cloudAccounts)
+      .update(publicCloudAccounts)
       .set(sets)
-      .where(eq(cloudAccounts.id, id))
+      .where(eq(publicCloudAccounts.id, id))
       .returning();
 
     // 如果 config 变了，重新注册 Provider
@@ -153,7 +192,7 @@ export class AccountService {
     const cfg = r.config as Record<string, unknown>;
     return {
       ...r,
-      config: cfg,
+      config: sanitizeConfig(cfg),
       credentialHint: maskConfig(r.provider, cfg),
     } as AccountRowWithHint;
   }
@@ -217,7 +256,7 @@ export class AccountService {
    */
   async registerFromDb(): Promise<void> {
     try {
-      const rows = await db.select().from(cloudAccounts);
+      const rows = await db.select().from(publicCloudAccounts);
       for (const row of rows) {
         // config 字段可能被存为 JSON 字符串（非 jsonb 对象），需兼容解析
         const cfg = typeof row.config === 'string'

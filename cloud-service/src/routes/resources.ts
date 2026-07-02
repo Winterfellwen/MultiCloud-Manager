@@ -32,8 +32,8 @@ export async function resourceRoutes(app: FastifyInstance) {
       region: query.region,
       status: query.status,
       search: query.search,
-      limit: query.limit ? parseInt(query.limit) : undefined,
-      offset: query.offset ? parseInt(query.offset) : undefined,
+      limit: query.limit ? parseInt(query.limit, 10) || undefined : undefined,
+      offset: query.offset ? parseInt(query.offset, 10) || undefined : undefined,
     });
   });
 
