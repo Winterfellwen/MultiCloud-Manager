@@ -41,7 +41,7 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
             <TooltipContent>{t('topbar.menu')}</TooltipContent>
           </Tooltip>
         )}
-        <div className="flex items-center gap-2 hidden sm:block shrink-0">
+        <div className="flex items-center gap-2 hidden sm:flex shrink-0">
           <img src="/logo.jpg" alt="Logo" className="h-7 w-7 rounded" />
           <span className="text-sm text-muted-foreground">{t('topbar.title')}</span>
         </div>
