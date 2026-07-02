@@ -8,7 +8,7 @@ BEGIN;
 TRUNCATE demo.instances, demo.alerts, demo.alert_rules,
          demo.cost_records, demo.metrics, demo.cloud_resources,
          demo.token_usage, demo.remediation_runs, demo.knowledge_base,
-         demo.metric_predictions CASCADE;
+         demo.metric_predictions, demo.cloud_accounts CASCADE;
 
 -- 验证清空
 SELECT 'demo.instances' AS tbl, count(*) FROM demo.instances
