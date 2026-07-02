@@ -40,9 +40,8 @@ export function sendEventToClient(
   client.seq = nextSeq;
 
   const eventSeq = isTargeted ? undefined : nextSeq;
-  const seqFragment = eventSeq === undefined ? '' : `,"seq":${eventSeq}`;
 
-  const frame = `{"type":"event","event":"${event}"${seqFragment},"payload":${JSON.stringify(payload)}}`;
+  const frame = JSON.stringify({ type: 'event', event, seq: eventSeq, payload });
   client.socket.send(frame);
 }
 

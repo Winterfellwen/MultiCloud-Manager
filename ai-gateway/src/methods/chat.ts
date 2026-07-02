@@ -15,10 +15,11 @@ import {
 import { appendToBuffer, appendReasoningToBuffer, cleanupRun } from '../gateway/server-chat-state.js';
 import { broadcastEvent } from '../gateway/server-broadcast.js';
 import { sessionManager } from '../acp/control-plane/manager.js';
-import { recordEvent, readReplay } from '../acp/event-ledger.js';
+import { recordEvent, readReplay, markRunCompleted } from '../acp/event-ledger.js';
 import { db } from '../db/index.js';
 import { sql } from 'drizzle-orm';
 import { runAgentTurn, type Attachment } from '../agent/runner.js';
+import { resolveLlmConfig } from '../agent/runner.js';
 import { recordAudit } from '@cloudops/shared';
 import { config } from '../config.js';
 
@@ -146,6 +147,17 @@ export async function handleChatSend(
   });
 
   // fire-and-forget 启动 AI 生成（与连接解耦）
+  // 预解析 LLM 配置，用于 token_usage 记录实际 provider/model
+  let resolvedProvider = config.llm.baseUrl;
+  let resolvedModel = config.llm.model;
+  try {
+    const llmCfg = await resolveLlmConfig(params.model);
+    resolvedProvider = llmCfg.baseUrl;
+    resolvedModel = llmCfg.model;
+  } catch {
+    // 解析失败时使用默认值
+  }
+
   sessionManager.runSessionTurn({
     sessionKey,
     runId,
@@ -219,6 +231,7 @@ export async function handleChatSend(
               });
             },
             onComplete: (finalText, truncated) => {
+              markRunCompleted(runId);
               queuedRecordEvent(sessionKey, 'assistant_complete', { runId, finalText, truncated });
               broadcastEvent(context.clients, {
                 event: 'chat',
@@ -227,10 +240,10 @@ export async function handleChatSend(
               });
             },
             onUsage: (usage) => {
-              // fire-and-forget 写入 token_usage 表
+              // fire-and-forget 写入 token_usage 表（使用实际解析的 provider/model）
               db.execute(sql`
                 INSERT INTO token_usage (user_id, session_key, provider, model, prompt_tokens, completion_tokens, total_tokens)
-                VALUES (${client.userId}, ${sessionKey}, ${config.llm.baseUrl}, ${config.llm.model}, ${usage.promptTokens}, ${usage.completionTokens}, ${usage.totalTokens})
+                VALUES (${client.userId}, ${sessionKey}, ${resolvedProvider}, ${resolvedModel}, ${usage.promptTokens}, ${usage.completionTokens}, ${usage.totalTokens})
               `).catch(() => {});
             },
           }
@@ -245,6 +258,7 @@ export async function handleChatSend(
 
         if (isAborted) {
           // 中止：广播 aborted 事件（前端将消息标记为 aborted 而非 error）
+          markRunCompleted(runId);
           queuedRecordEvent(sessionKey, 'assistant_complete', { runId, finalText: '', aborted: true });
           broadcastEvent(context.clients, {
             event: 'chat',

@@ -72,6 +72,7 @@ export async function callLlmChat(
       temperature: options.temperature ?? 0.3,
       max_tokens: options.maxTokens ?? 800,
     }),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!res.ok) {

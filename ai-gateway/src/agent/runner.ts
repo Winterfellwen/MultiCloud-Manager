@@ -318,7 +318,8 @@ export async function runAgentTurn(
       })
     );
 
-    for (const settled of toolResults) {
+    for (let i = 0; i < toolResults.length; i++) {
+      const settled = toolResults[i];
       if (settled.status === 'fulfilled') {
         const result = settled.value;
         callbacks.onToolResult(result);
@@ -328,12 +329,15 @@ export async function runAgentTurn(
           content: JSON.stringify(result.data),
         });
       } else {
-        const errorResult = { name: 'unknown', success: false, data: null, error: settled.reason?.message || 'Tool execution failed', toolCallId: '' };
+        // 从 response.toolCalls 中匹配对应的 toolCallId
+        const matchedToolCall = response.toolCalls[i];
+        const toolCallId = matchedToolCall?.id || `error-${Date.now()}`;
+        const errorResult = { name: matchedToolCall?.name || 'unknown', success: false, data: null, error: settled.reason?.message || 'Tool execution failed', toolCallId };
         callbacks.onToolResult(errorResult);
         messages.push({
           role: 'tool',
-          tool_call_id: errorResult.toolCallId,
-          content: JSON.stringify(errorResult),
+          tool_call_id: toolCallId,
+          content: JSON.stringify({ error: errorResult.error }),
         });
       }
     }
@@ -577,6 +581,8 @@ interface ResolvedLlmConfig {
   thinkingLevelMap?: import('../config.js').ThinkingLevelMap;
 }
 
+export type { ResolvedLlmConfig };
+
 /**
  * 解析 model 覆盖配置
  * - model 为空：使用默认 provider（store 中 is_default=1 的，或 config.llm）
@@ -587,7 +593,7 @@ interface ResolvedLlmConfig {
  * 同时解析 thinking 配置（参考 openclaw getCompat 模式）：
  * 模型级 thinkingFormat > provider compat.thinkingFormat > 基于 baseUrl 自动检测
  */
-async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConfig> {
+export async function resolveLlmConfig(modelOverride?: string): Promise<ResolvedLlmConfig> {
   // 获取默认 provider（优先从 store 读取）
   const storeProviders = await listProvidersFromStore();
   const defaultProvider = storeProviders.find(p => (p as any).isDefault) || storeProviders[0];

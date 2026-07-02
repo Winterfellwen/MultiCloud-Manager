@@ -234,6 +234,20 @@ app.get('/ws', { websocket: true }, (socket, request) => {
       }
     } catch (error) {
       app.log.error(error);
+      // 发送错误响应，避免客户端永久挂起
+      try {
+        const frame = JSON.parse(data.toString());
+        if (frame.type === 'req' && frame.id && socket.readyState === socket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'res',
+            id: frame.id,
+            ok: false,
+            payload: { error: (error as Error).message || 'Internal server error' },
+          }));
+        }
+      } catch {
+        // 解析 frame 失败则忽略
+      }
     }
   });
 });
