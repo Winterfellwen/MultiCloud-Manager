@@ -11,9 +11,10 @@ import {
 import { useInstances, useInstanceAction, useSyncInstances, useCreateInstance, useProviders, useRegions, useInstanceTypes, useImages } from '@/hooks/useInstances';
 import { ResourceTypeNav } from '@/components/ResourceTypeNav';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog } from '@/components/ui/dialog';
@@ -23,7 +24,7 @@ import { getStatusColor, type ResourceType } from '@/types/resource';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import { toast } from 'sonner';
-import { Search, RefreshCw, Trash2, RotateCcw, Play, Square, Server, LayoutGrid, Plus } from 'lucide-react';
+import { RefreshCw, Trash2, RotateCcw, Play, Square, Server, LayoutGrid, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const PROVIDERS = ['aws', 'aliyun', 'azure', 'tencent', 'huawei'];
@@ -95,20 +96,61 @@ export default function Resources() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<ResourceType | 'all'>('all');
-  const [search, setSearch] = useState('');
-  const [provider, setProvider] = useState('');
-  const [status, setStatus] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'all' | 'instances'>('all');
   const [createOpen, setCreateOpen] = useState(false);
+
+  const resourceFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('resources.searchPlaceholder') },
+    {
+      key: 'provider',
+      type: 'select',
+      label: t('resources.provider'),
+      options: [
+        { label: t('resources.allProviders'), value: '' },
+        ...PROVIDERS.map((p) => ({ label: p, value: p })),
+      ],
+    },
+    {
+      key: 'status',
+      type: 'select',
+      label: t('resources.status'),
+      options: [
+        { label: t('resources.allStatus'), value: '' },
+        { label: 'running', value: 'running' },
+        { label: 'stopped', value: 'stopped' },
+        { label: 'available', value: 'available' },
+        { label: 'pending', value: 'pending' },
+        { label: 'error', value: 'error' },
+      ],
+    },
+  ];
+
+  const instanceFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('instances.searchPlaceholder') },
+    {
+      key: 'status',
+      type: 'select',
+      label: t('instances.status'),
+      options: [
+        { label: t('instances.allStatus'), value: '' },
+        { label: 'running', value: 'running' },
+        { label: 'stopped', value: 'stopped' },
+        { label: 'terminated', value: 'terminated' },
+        { label: 'pending', value: 'pending' },
+        { label: 'error', value: 'error' },
+      ],
+    },
+  ];
 
   const { data: types } = useResourceTypes();
   const { data: stats } = useResourceStats();
   const { data: result, isLoading } = useResources({
     resourceType: selectedType === 'all' ? undefined : selectedType,
-    provider: provider || undefined,
-    status: status || undefined,
-    search: search || undefined,
+    provider: filterValues.provider || undefined,
+    status: filterValues.status || undefined,
+    search: filterValues.search || undefined,
     limit: 100,
   }, { enabled: viewMode === 'all' });
   const del = useDeleteResource();
@@ -163,8 +205,8 @@ export default function Resources() {
   const filteredInstances = useMemo(() => {
     if (!instances) return [];
     return instances.filter((inst) => {
-      if (!search) return true;
-      const s = search.toLowerCase();
+      if (!filterValues.search) return true;
+      const s = filterValues.search.toLowerCase();
       return (
         (inst.name?.toLowerCase().includes(s)) ||
         (inst.providerInstanceId?.toLowerCase().includes(s)) ||
@@ -172,7 +214,7 @@ export default function Resources() {
         (inst.region?.toLowerCase().includes(s))
       );
     });
-  }, [instances, search]);
+  }, [instances, filterValues.search]);
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -221,10 +263,10 @@ export default function Resources() {
               <button
                 key={p}
                 type="button"
-                onClick={() => setProvider(provider === p ? '' : p)}
+                onClick={() => setFilterValues((v) => ({ ...v, provider: v.provider === p ? '' : p }))}
                 className={cn(
                   'flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm transition-colors whitespace-nowrap',
-                  provider === p
+                  filterValues.provider === p
                     ? 'bg-secondary text-secondary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
@@ -242,10 +284,10 @@ export default function Resources() {
               <button
                 key={p}
                 type="button"
-                onClick={() => setProvider(provider === p ? '' : p)}
+                onClick={() => setFilterValues((v) => ({ ...v, provider: v.provider === p ? '' : p }))}
                 className={cn(
                   'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors whitespace-nowrap',
-                  provider === p
+                  filterValues.provider === p
                     ? 'bg-secondary text-secondary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 )}
@@ -286,46 +328,11 @@ export default function Resources() {
         {/* Resources view */}
         {viewMode === 'all' && (
           <>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <div className="w-full sm:flex-1 sm:min-w-[200px]">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder={t('resources.searchPlaceholder')}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-                  <Select
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value)}
-                    className="w-full sm:w-[140px]"
-                  >
-                    <option value="">{t('resources.allProviders')}</option>
-                    {PROVIDERS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </Select>
-                  <Select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full sm:w-[140px]"
-                  >
-                    <option value="">{t('resources.allStatus')}</option>
-                    <option value="running">{t('resources.running')}</option>
-                    <option value="stopped">{t('resources.stopped')}</option>
-                    <option value="pending">{t('resources.pending')}</option>
-                    <option value="error">{t('resources.error')}</option>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+            <FilterBar
+              filters={resourceFilterConfigs}
+              values={filterValues}
+              onChange={setFilterValues}
+            />
 
             <Card>
               <CardContent className="pt-6">
@@ -396,35 +403,11 @@ export default function Resources() {
         {/* Instances view */}
         {viewMode === 'instances' && (
           <>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <div className="w-full sm:flex-1 sm:min-w-[200px]">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder={t('instances.searchPlaceholder')}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-                  <Select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full sm:w-[140px]"
-                  >
-                    <option value="">{t('instances.allStatus')}</option>
-                    <option value="running">{t('instances.running')}</option>
-                    <option value="stopped">{t('instances.stopped')}</option>
-                    <option value="terminated">{t('instances.terminated')}</option>
-                    <option value="pending">{t('instances.pending')}</option>
-                    <option value="error">{t('instances.error')}</option>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+            <FilterBar
+              filters={instanceFilterConfigs}
+              values={filterValues}
+              onChange={setFilterValues}
+            />
 
             <Card>
               <CardContent className="pt-6">
