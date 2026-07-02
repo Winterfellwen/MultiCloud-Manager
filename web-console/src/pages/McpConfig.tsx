@@ -1,7 +1,8 @@
 // MCP 配置页：展示已配置的 MCP 服务器列表，支持添加/删除/启用禁用
 // 注意：MCP 配置目前通过环境变量读取，前端展示为主。
 // 添加/删除功能为 UI 层操作，后端保存接口后续补充。
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Plug, Server, Globe, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,32 @@ export default function McpConfig() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<McpServer | null>(null);
 
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+
+  const filterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchServer') },
+    {
+      key: 'status',
+      type: 'select',
+      label: t('common.filterEnabled'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        { label: t('common.filterEnabledOnly'), value: 'enabled' },
+        { label: t('common.filterDisabledOnly'), value: 'disabled' },
+      ],
+    },
+  ];
+
+  const filteredServers = useMemo(() => {
+    return servers.filter((srv) => {
+      const s = (filterValues.search || '').toLowerCase();
+      if (s && !srv.name.toLowerCase().includes(s)) return false;
+      if (filterValues.status === 'enabled' && !srv.enabled) return false;
+      if (filterValues.status === 'disabled' && srv.enabled) return false;
+      return true;
+    });
+  }, [servers, filterValues]);
+
   // 切换服务器启用/禁用状态
   const handleToggle = (id: string) => {
     setServers((prev) => {
@@ -131,6 +158,12 @@ export default function McpConfig() {
       {/* 服务器列表 */}
       <Card>
         <CardContent className="pt-6">
+          <FilterBar
+            filters={filterConfigs}
+            values={filterValues}
+            onChange={setFilterValues}
+            className="mb-4"
+          />
           {servers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Plug className="h-10 w-10 mb-2 opacity-50" />
@@ -148,7 +181,7 @@ export default function McpConfig() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {servers.map((server) => (
+                {filteredServers.map((server) => (
                   <TableRow key={server.id}>
                     <TableCell className="font-medium">{server.name}</TableCell>
                     <TableCell>
