@@ -18,6 +18,7 @@ import './hooks/handlers/audit-handler.js';
 // 导入工具 descriptors（副作用注册）
 import './tools/descriptors/cloud-tools.js';
 import './tools/descriptors/monitor-tools.js';
+import './tools/descriptors/security-tools.js';
 
 const app = Fastify({ logger: true });
 

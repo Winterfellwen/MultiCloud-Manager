@@ -1,7 +1,7 @@
 // monitor-service/src/services/remediation-engine.ts
 import { db } from '../db/index.js';
-import { scopedDb, type RequestScope } from '@cloudops/shared';
-import { eq, and, desc } from 'drizzle-orm';
+import { scopedDb, PUBLIC_SCOPE, DEMO_SCOPE, type RequestScope } from '@cloudops/shared';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { config } from '../config.js';
 import { knowledgeBaseService } from './knowledge-base.service.js';
 
@@ -16,6 +16,36 @@ interface RemediationPlan {
 }
 
 export class RemediationEngine {
+  private timer: NodeJS.Timeout | null = null;
+
+  start() {
+    const intervalMs = config.alertCheckIntervalSec * 1000;
+    this.timer = setInterval(() => this.runCycle().catch(console.error), intervalMs);
+    console.log(`Remediation engine started (interval: ${config.alertCheckIntervalSec}s)`);
+  }
+
+  stop() {
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  /**
+   * 双跑：对 public 和 demo 两个 schema 各跑一遍安全告警自愈生成
+   */
+  private async runCycle(): Promise<void> {
+    try {
+      await this.generateRemediationForSecurity(PUBLIC_SCOPE)
+        .catch((err) => console.error('Security remediation generation (public) failed:', err));
+    } catch (err) {
+      console.error('Remediation public failed:', (err as Error).message);
+    }
+    try {
+      await this.generateRemediationForSecurity(DEMO_SCOPE)
+        .catch((err) => console.error('Security remediation generation (demo) failed:', err));
+    } catch (err) {
+      console.error('Remediation demo failed:', (err as Error).message);
+    }
+  }
+
   /**
    * 告警触发时调用：分析根因 → 创建自愈记录
    */
@@ -237,6 +267,46 @@ export class RemediationEngine {
     knowledgeBaseService.recordExperience(scope, runId).catch((err) =>
       console.error(`Knowledge base recording for ${runId} failed:`, err)
     );
+  }
+
+  /** 为 critical 安全告警生成 remediation_run（demo 模式自动 success） */
+  private async generateRemediationForSecurity(scope: RequestScope): Promise<void> {
+    const t = scopedDb(scope);
+
+    // 查询所有 metric='security' 的 alert_rules
+    const securityRules = await db.select().from(t.alertRules)
+      .where(eq(t.alertRules.metric, 'security'));
+    const ruleIdList = securityRules.map((r) => r.id);
+
+    if (ruleIdList.length === 0) return;
+
+    // 查询 critical 安全告警
+    const criticalAlerts = await db.select().from(t.alerts)
+      .where(and(
+        eq(t.alerts.status, 'firing'),
+        eq(t.alerts.severity, 'critical'),
+        inArray(t.alerts.ruleId, ruleIdList),
+      ));
+
+    for (const alert of criticalAlerts) {
+      // 检查是否已有 remediation_run
+      const existing = await db.select().from(t.remediationRuns)
+        .where(eq(t.remediationRuns.alertId, alert.id))
+        .limit(1);
+      if (existing.length > 0) continue;
+
+      await db.insert(t.remediationRuns).values({
+        alertId: alert.id,
+        rootCause: alert.message,
+        actionPlan: { action: 'security_fix', recommendation: '自动安全修复' },
+        actionExecuted: scope.isDemo ? 'simulate' : null,
+        status: scope.isDemo ? 'success' : 'pending',
+        env: scope.schema,
+        triggeredAt: new Date(),
+        verifiedAt: scope.isDemo ? new Date() : null,
+        verificationResult: scope.isDemo ? 'demo 模拟修复成功' : null,
+      });
+    }
   }
 }
 

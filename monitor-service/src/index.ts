@@ -13,8 +13,12 @@ import { predictionRoutes } from './routes/predictions.js';
 import { remediationRoutes } from './routes/remediation.js';
 import { knowledgeBaseRoutes } from './routes/knowledge-base.js';
 import { predictionEngine } from './services/prediction-engine.js';
+import { securityScanner } from './services/security-scanner.js';
+import { remediationEngine } from './services/remediation-engine.js';
+import { securityRoutes } from './routes/security.js';
+import { capacityRoutes } from './routes/capacity.js';
 import { AppError } from '@cloudops/shared';
-import { scopeFromDemoFlag, type RequestScope } from '@cloudops/shared';
+import { scopeFromDemoFlag, PUBLIC_SCOPE, DEMO_SCOPE, type RequestScope } from '@cloudops/shared';
 import { runMigrations } from './db/migrate.js';
 
 declare module 'fastify' {
@@ -76,6 +80,8 @@ await app.register(metricsExportRoutes);
 await app.register(predictionRoutes, { prefix: '/monitor/predictions' });
 await app.register(remediationRoutes, { prefix: '/monitor/remediation' });
 await app.register(knowledgeBaseRoutes, { prefix: '/monitor/knowledge-base' });
+await app.register(securityRoutes, { prefix: '/monitor/security' });
+await app.register(capacityRoutes, { prefix: '/monitor/capacity' });
 
 // 运行数据库迁移
 try {
@@ -90,6 +96,15 @@ try { metricCollector.start(); } catch (e) { console.error('metricCollector fail
 try { alertEngine.start(); } catch (e) { console.error('alertEngine failed:', (e as Error).message); }
 try { costService.start(); } catch (e) { console.error('costService failed:', (e as Error).message); }
 try { predictionEngine.start(); } catch (e) { console.error('predictionEngine failed:', (e as Error).message); }
+try { remediationEngine.start(); } catch (e) { console.error('remediationEngine failed:', (e as Error).message); }
+try {
+  if (config.securityScanEnabled) {
+    securityScanner.start();
+    // 启动后立即跑一次首次扫描
+    securityScanner.scanOnce(PUBLIC_SCOPE).catch((e) => console.error('Initial security scan public failed:', e));
+    securityScanner.scanOnce(DEMO_SCOPE).catch((e) => console.error('Initial security scan demo failed:', e));
+  }
+} catch (e) { console.error('securityScanner failed:', (e as Error).message); }
 
 // 优雅关闭
 const shutdown = () => {
@@ -98,6 +113,8 @@ const shutdown = () => {
   alertEngine.stop();
   costService.stop();
   predictionEngine.stop();
+  securityScanner.stop();
+  remediationEngine.stop();
   app.close();
 };
 process.on('SIGTERM', shutdown);

@@ -54,7 +54,7 @@ export class PredictionEngine {
   async runAll(scope: RequestScope): Promise<void> {
     const t = scopedDb(scope);
     const allInstances = await db.select().from(t.instances).where(eq(t.instances.status, 'running'));
-    const predictionMetrics = ['disk_utilization', 'memory_utilization'];
+    const predictionMetrics = ['disk_utilization', 'memory_utilization', 'cpu_utilization'];
 
     for (const inst of allInstances) {
       for (const metricName of predictionMetrics) {
@@ -128,6 +128,10 @@ export class PredictionEngine {
       await this.createPredictiveAlert(scope, result, instanceName);
     }
 
+    // 生成容量扩容建议
+    await this.generateCapacityRecommendation(scope, instanceId, instanceName, metricName, result)
+      .catch((err) => console.error(`Capacity recommendation for ${instanceId}/${metricName} failed:`, err));
+
     return result;
   }
 
@@ -151,6 +155,69 @@ export class PredictionEngine {
       severity: 'info',
       message,
       status: 'firing',
+    });
+  }
+
+  /** 生成容量扩容建议并写入 knowledge_base */
+  private async generateCapacityRecommendation(
+    scope: RequestScope,
+    instanceId: string,
+    instanceName: string,
+    metricName: string,
+    prediction: PredictionResult
+  ): Promise<void> {
+    // 仅在 hoursToThreshold < 72h 且 confidence > 70 时生成建议
+    if (prediction.hoursToThreshold >= 72 || prediction.confidence <= 70) {
+      return;
+    }
+
+    const t = scopedDb(scope);
+
+    // 查询实例规格
+    const inst = await db.select().from(t.instances)
+      .where(eq(t.instances.id, instanceId))
+      .limit(1);
+
+    if (inst.length === 0) return;
+    const i = inst[0];
+    const currentSpec = `${i.cpu}C${(i.memoryMb || 0) / 1024}G`;
+
+    let targetSpec = currentSpec;
+    let actionLabel = 'scale_up';
+    if (metricName === 'memory_utilization') {
+      targetSpec = `${i.cpu}C${((i.memoryMb || 0) / 1024) * 2}G`;
+    } else if (metricName === 'cpu_utilization') {
+      targetSpec = `${(i.cpu || 0) * 2}C${(i.memoryMb || 0) / 1024}G`;
+      actionLabel = 'scale_out';
+    } else if (metricName === 'disk_utilization') {
+      targetSpec = `${currentSpec} + 磁盘扩容50%`;
+    }
+
+    const metricLabel = metricName === 'memory_utilization' ? '内存'
+      : metricName === 'cpu_utilization' ? 'CPU'
+      : '磁盘';
+
+    const symptom = `${instanceName} ${metricLabel}预计 ${Math.round(prediction.hoursToThreshold)}h 超阈值`;
+    const rootCause = `${currentSpec} → ${targetSpec}`;
+
+    // 去重：24h 内已有同 symptom 不重复写入
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recent = await db.select().from(t.knowledgeBase)
+      .where(and(
+        eq(t.knowledgeBase.metricName, 'capacity'),
+        gte(t.knowledgeBase.createdAt, twentyFourHoursAgo),
+      ))
+      .limit(100);
+
+    if (recent.some((r) => r.symptom === symptom)) return;
+
+    await db.insert(t.knowledgeBase).values({
+      symptom,
+      metricName: 'capacity',
+      instanceProvider: i.provider,
+      rootCause,
+      actionTaken: 'pending',
+      outcome: prediction.hoursToThreshold < 48 ? 'urgent' : 'recommend',
     });
   }
 

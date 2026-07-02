@@ -372,6 +372,41 @@ INSERT INTO demo.metric_predictions (instance_id, metric_name, current_value, pr
 ('a1b2c3d4-0003-4000-8000-000000000003', 'cpu_utilization', 91.20, 94.80, 90.00, 2.1, 1.7143, 96.50, NOW()),
 ('a1b2c3d4-0003-4000-8000-000000000004', 'disk_utilization', 65.30, 71.80, 85.00, 36.0, 0.1806, 62.10, NOW());
 
+-- ========== 安全扫描规则（alert_rules 表）==========
+INSERT INTO demo.alert_rules (id, name, metric, condition, duration, severity, actions, enabled, created_at) VALUES
+('d5e6f7a8-0001-4000-8000-000000000001', 'security.public_exposure', 'security', 'auto', '0m', 'critical', '{"notify":["webhook"]}'::jsonb, true, NOW() - INTERVAL '30 day'),
+('d5e6f7a8-0001-4000-8000-000000000002', 'security.unencrypted_disk', 'security', 'auto', '0m', 'critical', '{"notify":["webhook"]}'::jsonb, true, NOW() - INTERVAL '30 day'),
+('d5e6f7a8-0001-4000-8000-000000000003', 'security.idle_resource', 'security', 'auto', '0m', 'warning', '{"notify":["webhook"]}'::jsonb, true, NOW() - INTERVAL '30 day'),
+('d5e6f7a8-0001-4000-8000-000000000004', 'security.weak_security_group', 'security', 'auto', '0m', 'warning', '{"notify":["webhook"]}'::jsonb, true, NOW() - INTERVAL '30 day'),
+('d5e6f7a8-0001-4000-8000-000000000005', 'security.unencrypted_storage', 'security', 'auto', '0m', 'warning', '{"notify":["webhook"]}'::jsonb, true, NOW() - INTERVAL '30 day')
+ON CONFLICT (id) DO NOTHING;
+
+-- ========== 安全发现 → alerts（critical 类）==========
+INSERT INTO demo.alerts (id, rule_id, instance_id, severity, message, status, fired_at) VALUES
+('e6f7a8b9-0001-4000-8000-000000000001', 'd5e6f7a8-0001-4000-8000-000000000001', 'a1b2c3d4-0001-4000-8000-000000000001', 'critical', 'web-prod-01 公网 IP 54.221.10.5 暴露，建议绑定 WAF 或限制访问', 'firing', NOW() - INTERVAL '2 hour'),
+('e6f7a8b9-0001-4000-8000-000000000002', 'd5e6f7a8-0001-4000-8000-000000000002', 'a1b2c3d4-0003-4000-8000-000000000001', 'critical', 'ml-training-gpu 磁盘未加密，存在数据泄露风险', 'firing', NOW() - INTERVAL '2 hour')
+ON CONFLICT (id) DO NOTHING;
+
+-- ========== 安全发现 → knowledge_base（全部，metric_name='security'）==========
+INSERT INTO demo.knowledge_base (id, alert_id, symptom, metric_name, instance_provider, root_cause, action_taken, outcome, created_at) VALUES
+('f7a8b9c0-0001-4000-8000-000000000001', 'e6f7a8b9-0001-4000-8000-000000000001', 'web-prod-01 公网 IP 54.221.10.5 暴露', 'security', 'aws', '建议绑定安全组仅放行 443 端口，或配置 WAF', 'pending', 'critical', NOW() - INTERVAL '2 hour'),
+('f7a8b9c0-0001-4000-8000-000000000002', 'e6f7a8b9-0001-4000-8000-000000000002', 'ml-training-gpu 磁盘未加密', 'security', 'azure', '建议启用 Azure Disk Encryption 或平台级加密', 'pending', 'critical', NOW() - INTERVAL '2 hour'),
+('f7a8b9c0-0001-4000-8000-000000000003', NULL, 'api-worker-02 闲置 7 天', 'security', 'aws', '建议关机或降配以节省成本', 'pending', 'warning', NOW() - INTERVAL '3 hour'),
+('f7a8b9c0-0001-4000-8000-000000000004', NULL, 'nginx-gateway 安全组开放 0.0.0.0/0:22', 'security', 'aliyun', '建议限制 SSH 访问源为运维 VPN 段', 'pending', 'warning', NOW() - INTERVAL '3 hour'),
+('f7a8b9c0-0001-4000-8000-000000000005', NULL, 'redis-cache 对象存储未启用 SSE', 'security', 'aliyun', '建议启用服务端加密 SSE-KMS', 'pending', 'warning', NOW() - INTERVAL '3 hour')
+ON CONFLICT (id) DO NOTHING;
+
+-- ========== 容量建议 → knowledge_base（metric_name='capacity'）==========
+INSERT INTO demo.knowledge_base (id, symptom, metric_name, instance_provider, root_cause, action_taken, outcome, created_at) VALUES
+('f7a8b9c0-0002-4000-8000-000000000001', 'analytics-worker 内存预计 48h 超 90%', 'capacity', 'aliyun', '16C32G → 16C64G，月增 $105', 'pending', 'urgent', NOW() - INTERVAL '1 hour'),
+('f7a8b9c0-0002-4000-8000-000000000002', 'web-prod-01 磁盘预计 120h 超阈值', 'capacity', 'aws', '磁盘扩容 50%', 'pending', 'recommend', NOW() - INTERVAL '1 hour')
+ON CONFLICT (id) DO NOTHING;
+
+-- ========== 容量预测 → metric_predictions（补充 hours_to_threshold<72 的紧急记录）==========
+INSERT INTO demo.metric_predictions (instance_id, metric_name, current_value, predicted_value, threshold, hours_to_threshold, slope, confidence) VALUES
+('a1b2c3d4-0001-4000-8000-000000000006', 'memory_utilization', 85.2, 92.5, 90, 48, 0.15, 85.00)
+ON CONFLICT DO NOTHING;
+
 COMMIT;
 
 -- 验证

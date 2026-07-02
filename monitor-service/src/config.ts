@@ -46,4 +46,9 @@ export const config = {
   predictionHistoryHours: parseInt(process.env.PREDICTION_HISTORY_HOURS || '24', 10),
   predictionThreshold: parseFloat(process.env.PREDICTION_THRESHOLD || '90'), // 磁盘/内存 90% 预警
   predictionMinConfidence: parseFloat(process.env.PREDICTION_MIN_CONFIDENCE || '0.7'), // R² 最低置信度
+
+  // 安全扫描配置
+  securityScanIntervalSec: parseInt(process.env.SECURITY_SCAN_INTERVAL_SEC || '21600', 10), // 默认 6 小时
+  securityEnabledRules: (process.env.SECURITY_ENABLED_RULES || 'public_exposure,unencrypted_disk,unencrypted_storage,idle_resource,weak_security_group').split(','),
+  securityScanEnabled: process.env.SECURITY_SCAN_ENABLED !== 'false', // 默认开启
 };

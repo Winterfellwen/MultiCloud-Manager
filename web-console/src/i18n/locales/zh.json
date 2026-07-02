@@ -23,7 +23,11 @@
     "creating": "创建中...",
     "deleting": "删除中...",
     "confirmDelete": "确认删除",
-    "downloading": "下载中..."
+    "downloading": "下载中...",
+    "error": "出错了",
+    "back": "返回",
+    "noPermission": "权限不足",
+    "noPermissionDesc": "您没有访问此页面的权限"
   },
   "nav": {
     "dashboard": "总览",
@@ -120,7 +124,17 @@
     "imageLabel": "镜像",
     "typeLabel": "实例规格",
     "pleaseSelect": "请选择",
-    "resetConfirm": "确定要还原所有 Demo 数据吗？这将清除所有修改并恢复初始状态。"
+    "resetConfirm": "确定要还原所有 Demo 数据吗？这将清除所有修改并恢复初始状态。",
+    "basicInfo": "基本信息",
+    "network": "网络信息",
+    "tags": "标签",
+    "timeInfo": "时间信息",
+    "createdAt": "创建时间",
+    "lastSynced": "最后同步",
+    "startSuccess": "实例启动成功",
+    "stopSuccess": "实例停止成功",
+    "rebootSuccess": "实例重启成功",
+    "deleteSuccess": "实例删除成功"
   },
   "monitor": {
     "title": "监控告警",
@@ -167,13 +181,24 @@
     "typeSlack": "Slack",
     "configJson": "配置（JSON）",
     "createRuleTitle": "新建告警规则",
+    "editRuleTitle": "编辑告警规则",
+    "updateFailed": "更新失败",
     "createChannelTitle": "新建通知渠道",
     "confirmDeleteRule": "确定删除此规则？",
     "confirmDeleteChannel": "确定删除此渠道？",
     "noRules": "暂无规则",
     "noEvents": "暂无告警事件",
     "noChannels": "暂无渠道",
-    "aiAnalysis": "AI 根因分析"
+    "aiAnalysis": "AI 根因分析",
+    "alerts": {
+      "info": "信息",
+      "warning": "警告",
+      "critical": "严重",
+      "emergency": "紧急",
+      "firing": "告警中",
+      "resolved": "已解决",
+      "silenced": "已静音"
+    }
   },
   "costs": {
     "title": "成本分析",
@@ -476,7 +501,8 @@
     "vpc": "VPC",
     "securitygroup": "安全组",
     "cdn": "CDN",
-    "cluster": "集群"
+    "cluster": "集群",
+    "aiservice": "AI 服务"
   },
   "teams": {
     "tab": "团队",
@@ -493,10 +519,12 @@
     "edit": "编辑"
   },
   "chat": {
-    "status.running": "运行中",
-    "status.completed": "已完成",
-    "status.error": "错误",
-    "status.approval": "待审批",
+    "status": {
+      "running": "运行中",
+      "completed": "已完成",
+      "error": "错误",
+      "approval": "待审批"
+    },
     "newSession": "新建对话",
     "noSessions": "暂无对话",
     "deleteSession": "删除对话",
@@ -531,7 +559,23 @@
     "wsError": "连接错误",
     "selectSession": "选择或新建对话",
     "sessionList": "会话列表",
-    "readonly": "只读"
+    "readonly": "只读",
+    "done": "完成",
+    "selected": "已选",
+    "deleting": "删除中...",
+    "messages": "条消息",
+    "approval": {
+      "title": "工具执行审批",
+      "description": "以下工具调用需要您的确认",
+      "toolName": "工具名称",
+      "params": "调用参数",
+      "autoReject": "秒后自动拒绝",
+      "autoRejecting": "正在自动拒绝...",
+      "reject": "拒绝",
+      "allow": "允许",
+      "moderateRisk": "中等风险",
+      "highRisk": "高风险"
+    }
   },
   "aiops": {
     "title": "AI 运维",
@@ -581,6 +625,7 @@
   },
   "topology": {
     "title": "拓扑视图",
+    "search": "搜索资源",
     "modeTree": "浏览",
     "modeGraph": "关系图",
     "filters": {
@@ -632,5 +677,26 @@
     "searchPlaceholder": "搜索所有资源...",
     "searchResults": "找到 {count} 个结果",
     "noResults": "未找到结果"
+  },
+  "security": {
+    "title": "安全风险",
+    "critical": "严重",
+    "warning": "警告",
+    "all": "全部",
+    "noRisk": "暂无安全风险",
+    "noFindings": "暂无安全发现",
+    "rescan": "重新扫描",
+    "scanTriggered": "安全扫描已触发",
+    "resource": "资源",
+    "provider": "云厂商",
+    "severity": "严重度",
+    "recommendation": "修复建议",
+    "foundAt": "发现时间"
+  },
+  "capacity": {
+    "title": "容量规划",
+    "urgent": "紧急",
+    "recommend": "建议",
+    "noRisk": "暂无容量风险"
   }
 }

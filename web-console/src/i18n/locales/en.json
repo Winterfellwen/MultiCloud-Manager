@@ -23,7 +23,11 @@
     "creating": "Creating...",
     "deleting": "Deleting...",
     "confirmDelete": "Confirm Delete",
-    "downloading": "Downloading..."
+    "downloading": "Downloading...",
+    "error": "Error",
+    "back": "Back",
+    "noPermission": "Access Denied",
+    "noPermissionDesc": "You don't have permission to access this page"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -120,7 +124,17 @@
     "imageLabel": "Image",
     "typeLabel": "Instance Type",
     "pleaseSelect": "Please select",
-    "resetConfirm": "Reset all Demo data? This will clear all changes and restore initial state."
+    "resetConfirm": "Reset all Demo data? This will clear all changes and restore initial state.",
+    "basicInfo": "Basic Info",
+    "network": "Network",
+    "tags": "Tags",
+    "timeInfo": "Time Info",
+    "createdAt": "Created At",
+    "lastSynced": "Last Synced",
+    "startSuccess": "Instance started",
+    "stopSuccess": "Instance stopped",
+    "rebootSuccess": "Instance rebooted",
+    "deleteSuccess": "Instance deleted"
   },
   "monitor": {
     "title": "Monitor & Alerts",
@@ -167,13 +181,24 @@
     "typeSlack": "Slack",
     "configJson": "Config (JSON)",
     "createRuleTitle": "New Alert Rule",
+    "editRuleTitle": "Edit Alert Rule",
+    "updateFailed": "Update failed",
     "createChannelTitle": "New Notification Channel",
     "confirmDeleteRule": "Delete this rule?",
     "confirmDeleteChannel": "Delete this channel?",
     "noRules": "No rules",
     "noEvents": "No alert events",
     "noChannels": "No channels",
-    "aiAnalysis": "AI Root Cause Analysis"
+    "aiAnalysis": "AI Root Cause Analysis",
+    "alerts": {
+      "info": "Info",
+      "warning": "Warning",
+      "critical": "Critical",
+      "emergency": "Emergency",
+      "firing": "Firing",
+      "resolved": "Resolved",
+      "silenced": "Silenced"
+    }
   },
   "costs": {
     "title": "Cost Analysis",
@@ -476,7 +501,8 @@
     "vpc": "VPC",
     "securitygroup": "Security Group",
     "cdn": "CDN",
-    "cluster": "Cluster"
+    "cluster": "Cluster",
+    "aiservice": "AI Service"
   },
   "teams": {
     "tab": "Teams",
@@ -493,10 +519,12 @@
     "edit": "Edit"
   },
   "chat": {
-    "status.running": "Running",
-    "status.completed": "Completed",
-    "status.error": "Error",
-    "status.approval": "Pending Approval",
+    "status": {
+      "running": "Running",
+      "completed": "Completed",
+      "error": "Error",
+      "approval": "Pending Approval"
+    },
     "newSession": "New Chat",
     "noSessions": "No conversations",
     "deleteSession": "Delete chat",
@@ -531,7 +559,23 @@
     "wsError": "Connection error",
     "selectSession": "Select or create a conversation",
     "sessionList": "Sessions",
-    "readonly": "Read-only"
+    "readonly": "Read-only",
+    "done": "Done",
+    "selected": "Selected",
+    "deleting": "Deleting...",
+    "messages": "messages",
+    "approval": {
+      "title": "Tool Execution Approval",
+      "description": "The following tool calls require your confirmation",
+      "toolName": "Tool Name",
+      "params": "Parameters",
+      "autoReject": "seconds until auto-reject",
+      "autoRejecting": "Auto-rejecting...",
+      "reject": "Reject",
+      "allow": "Allow",
+      "moderateRisk": "Moderate Risk",
+      "highRisk": "High Risk"
+    }
   },
   "aiops": {
     "title": "AI Ops",
@@ -581,6 +625,7 @@
   },
   "topology": {
     "title": "Topology View",
+    "search": "Search resources",
     "modeTree": "Browse",
     "modeGraph": "Graph",
     "filters": {
@@ -632,5 +677,26 @@
     "searchPlaceholder": "Search all resources...",
     "searchResults": "{count} results found",
     "noResults": "No results found"
+  },
+  "security": {
+    "title": "Security",
+    "critical": "Critical",
+    "warning": "Warning",
+    "all": "All",
+    "noRisk": "No security risks",
+    "noFindings": "No findings",
+    "rescan": "Rescan",
+    "scanTriggered": "Security scan triggered",
+    "resource": "Resource",
+    "provider": "Provider",
+    "severity": "Severity",
+    "recommendation": "Recommendation",
+    "foundAt": "Found At"
+  },
+  "capacity": {
+    "title": "Capacity",
+    "urgent": "Urgent",
+    "recommend": "Recommend",
+    "noRisk": "No capacity risks"
   }
 }
