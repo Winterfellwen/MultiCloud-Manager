@@ -1,5 +1,5 @@
 // 用户管理页：列表 + 角色分配 + 团队设置 + 删除 + 创建用户
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserPlus, Trash2, Loader2, AlertCircle, Users as UsersIcon, Plus, Edit2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -76,6 +77,53 @@ export default function Users() {
     team: '',
     teamId: '',
   });
+
+  const [userFilters, setUserFilters] = useState<Record<string, string>>({});
+  const [teamFilters, setTeamFilters] = useState<Record<string, string>>({});
+
+  const userFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchUsername') },
+    {
+      key: 'role',
+      type: 'select',
+      label: t('common.filterRole'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        ...ROLE_OPTIONS.map((opt) => ({ label: t(`roles.${opt.value}`), value: opt.value })),
+      ],
+    },
+    {
+      key: 'team',
+      type: 'select',
+      label: t('common.filterTeam'),
+      options: [
+        { label: t('common.filterAll'), value: '' },
+        ...(teams || []).map((team) => ({ label: team.name, value: team.id })),
+      ],
+    },
+  ];
+
+  const teamFilterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: t('common.filterSearchName') },
+  ];
+
+  const filteredUsers = useMemo(() => {
+    return (users || []).filter((user) => {
+      const s = (userFilters.search || '').toLowerCase();
+      if (s && !user.username.toLowerCase().includes(s) && !(user.email || '').toLowerCase().includes(s)) return false;
+      if (userFilters.role && user.role !== userFilters.role) return false;
+      if (userFilters.team && user.teamId !== userFilters.team) return false;
+      return true;
+    });
+  }, [users, userFilters]);
+
+  const filteredTeams = useMemo(() => {
+    return (teams || []).filter((team) => {
+      const s = (teamFilters.search || '').toLowerCase();
+      if (s && !team.name.toLowerCase().includes(s)) return false;
+      return true;
+    });
+  }, [teams, teamFilters]);
 
   const handleCreate = async () => {
     if (!form.username || !form.password) return;
@@ -191,6 +239,12 @@ export default function Users() {
         </TabsList>
 
       <TabsContent value="users">
+      <FilterBar
+        filters={userFilterConfigs}
+        values={userFilters}
+        onChange={setUserFilters}
+        className="mb-4"
+      />
       {error && (
         <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
@@ -219,14 +273,14 @@ export default function Users() {
                     <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                   </TableCell>
                 </TableRow>
-              ) : users && users.length === 0 ? (
+              ) : users && filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     {t('users.noUsers')}
                   </TableCell>
                 </TableRow>
               ) : (
-                users?.map((user) => (
+                filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.username}</TableCell>
                     <TableCell className="text-muted-foreground">{user.email || '-'}</TableCell>
@@ -302,11 +356,17 @@ export default function Users() {
       </TabsContent>
 
       <TabsContent value="teams">
+        <FilterBar
+          filters={teamFilterConfigs}
+          values={teamFilters}
+          onChange={setTeamFilters}
+          className="mb-4"
+        />
         {teamsLoading ? (
           <div className="text-center py-8">
             <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : teams && teams.length === 0 ? (
+        ) : teams && filteredTeams.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             {t('teams.noTeams')}
           </div>
@@ -322,7 +382,7 @@ export default function Users() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {teams?.map((team) => (
+                  {filteredTeams.map((team) => (
                     <TableRow key={team.id}>
                       <TableCell className="font-medium">{team.name}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">
