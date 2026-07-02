@@ -16,8 +16,9 @@ import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
 import { Plus, Trash2, CheckCircle, Pencil, Brain, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import SecurityTab from '@/components/monitor/SecurityTab';
 
-type Tab = 'rules' | 'events' | 'channels';
+type Tab = 'rules' | 'events' | 'channels' | 'security';
 
 export default function Monitor() {
   const { t } = useTranslation();
@@ -33,6 +34,7 @@ export default function Monitor() {
             { key: 'rules' as const, label: t('monitor.tabRules') },
             { key: 'events' as const, label: t('monitor.tabEvents') },
             { key: 'channels' as const, label: t('monitor.tabChannels') },
+            { key: 'security' as const, label: t('security.title') },
           ]).map((tabItem) => (
             <button
               key={tabItem.key}
@@ -53,6 +55,7 @@ export default function Monitor() {
       {tab === 'rules' && <RulesTab />}
       {tab === 'events' && <EventsTab />}
       {tab === 'channels' && <ChannelsTab />}
+      {tab === 'security' && <SecurityTab />}
     </div>
   );
 }
@@ -324,7 +327,7 @@ function EventsTab() {
                       <TableCell className="text-sm">{evt.message}</TableCell>
                       <TableCell><AlertStatusBadge status={evt.status as any} /></TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {new Date(evt.firedAt).toLocaleString('zh-CN')}
+                        {new Date(evt.firedAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -351,7 +354,7 @@ function EventsTab() {
                               {t('monitor.aiAnalysis')}
                               {evt.aiAnalyzedAt && (
                                 <span className="text-xs text-muted-foreground ml-2">
-                                  {new Date(evt.aiAnalyzedAt).toLocaleString('zh-CN')}
+                                  {new Date(evt.aiAnalyzedAt).toLocaleString()}
                                 </span>
                               )}
                             </div>

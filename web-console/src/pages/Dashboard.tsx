@@ -7,6 +7,8 @@ import { useAiInsight, useTokenStats } from '@/hooks/useAiInsights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PredictionCard from '@/components/dashboard/PredictionCard';
 import RemediationCard from '@/components/dashboard/RemediationCard';
+import SecurityCard from '@/components/dashboard/SecurityCard';
+import CapacityCard from '@/components/dashboard/CapacityCard';
 
 const PROVIDER_LABELS: Record<string, string> = {
   aliyun: '阿里云',
@@ -254,6 +256,12 @@ export default function Dashboard() {
 
       {/* 最近自愈卡片 */}
       <RemediationCard />
+
+      {/* 安全风险卡片 */}
+      <SecurityCard />
+
+      {/* 容量规划卡片 */}
+      <CapacityCard />
     </div>
   );
 }
