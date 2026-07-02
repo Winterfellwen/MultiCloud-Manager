@@ -18,11 +18,26 @@ CREATE TABLE IF NOT EXISTS demo.cost_records (LIKE public.cost_records INCLUDING
 CREATE TABLE IF NOT EXISTS demo.alert_rules (LIKE public.alert_rules INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.alerts (LIKE public.alerts INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.cloud_resources (LIKE public.cloud_resources INCLUDING ALL);
+
+-- Fallback: add topology column if missing (migration 003 may not have run yet)
+DO $$
+BEGIN
+  ALTER TABLE demo.cloud_resources ADD COLUMN IF NOT EXISTS topology JSONB;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS demo.token_usage (LIKE public.token_usage INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.metric_predictions (LIKE public.metric_predictions INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.remediation_policies (LIKE public.remediation_policies INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.remediation_runs (LIKE public.remediation_runs INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.knowledge_base (LIKE public.knowledge_base INCLUDING ALL);
+
+-- Fallback: add embedding column if missing
+DO $$
+BEGIN
+  ALTER TABLE demo.knowledge_base ADD COLUMN IF NOT EXISTS embedding JSONB;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- ========== demo schema 内部表间外键 ==========
 -- 这些外键指向 demo schema 内的表（不复制 public 的外键）

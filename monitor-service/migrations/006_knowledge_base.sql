@@ -19,13 +19,14 @@ CREATE TABLE IF NOT EXISTS knowledge_base (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 尝试添加 embedding 列（pgvector 可用时）；失败则跳过，降级为纯关键词检索
+-- 尝试添加 embedding 列（pgvector 可用时用 vector，否则降级为 jsonb）
 DO $$
 BEGIN
   BEGIN
     ALTER TABLE knowledge_base ADD COLUMN IF NOT EXISTS embedding VECTOR(1536);
   EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'embedding column creation skipped (pgvector not available): %', SQLERRM;
+    -- pgvector 不可用，降级为 jsonb 存储
+    ALTER TABLE knowledge_base ADD COLUMN IF NOT EXISTS embedding JSONB;
   END;
 END $$;
 
