@@ -344,7 +344,33 @@ INSERT INTO demo.knowledge_base (id, symptom, metric_name, instance_provider, in
 ('e5f6a7b8-0001-4000-8000-000000000004', 'redis-cache (aliyun) 内存使用率 88%', 'memory_utilization', 'aliyun', 'prod', 'Redis 缓存未设置淘汰策略，内存持续增长', 'reboot_instance', 'success', 8, 0, NOW() - INTERVAL '3 day'),
 ('e5f6a7b8-0001-4000-8000-000000000005', 'ml-training-gpu (azure) CPU 95%，GPU 任务堆积', 'cpu_utilization', 'azure', 'prod', '训练任务并发数过高，导致 GPU 和 CPU 双重过载', 'stop_instance', 'success', 2, 1, NOW() - INTERVAL '1 day'),
 ('e5f6a7b8-0001-4000-8000-000000000006', 'cache-we-01 (azure) 内存使用率 91.5%', 'memory_utilization', 'azure', 'prod', 'Redis 缓存未设置淘汰策略，热数据堆积', 'reboot_instance', 'success', 10, 2, NOW() - INTERVAL '2 day'),
-('e5f6a7b8-0001-4000-8000-000000000007', 'web-prod-01 (aws) 网络延迟 >200ms', 'network_latency', 'aws', 'prod', 'ENI 限流导致网络延迟升高', 'reboot_instance', 'success', 12, 1, NOW() - INTERVAL '7 day');
+('e5f6a7b8-0001-4000-8000-000000000007', 'web-prod-01 (aws) 网络延迟 >200ms', 'network_latency', 'aws', 'prod', 'ENI 限流导致网络延迟升高', 'reboot_instance', 'success', 12, 1, NOW() - INTERVAL '7 day'),
+('e5f6a7b8-0001-4000-8000-000000000008', 'web-prod-03 (azure) CPU >90%，响应延迟增加', 'cpu_utilization', 'azure', 'prod', '应用线程池耗尽，导致 CPU 飙升', 'restart_service', 'success', 15, 3, NOW() - INTERVAL '4 day'),
+('e5f6a7b8-0001-4000-8000-000000000009', 'cache-prod-01 (aws) Redis 内存使用率 89%', 'memory_utilization', 'aws', 'prod', '缓存过期策略不当，大量冷数据堆积', 'clear_cache', 'success', 8, 5, NOW() - INTERVAL '6 day'),
+('e5f6a7b8-0001-4000-8000-000000000010', 'nginx-gateway (aliyun) 磁盘 I/O 等待时间过长', 'disk_io_wait', 'aliyun', 'prod', '日志文件过大，占满磁盘空间', 'clear_cache', 'success', 12, 2, NOW() - INTERVAL '8 day'),
+('e5f6a7b8-0001-4000-8000-000000000011', 'ml-training-01 (aws) GPU 温度超过 85°C', 'gpu_temperature', 'aws', 'prod', '散热风扇故障，机房温度过高', 'reboot_instance', 'failed', 45, 1, NOW() - INTERVAL '12 day'),
+('e5f6a7b8-0001-4000-8000-000000000012', 'db-replica-02 (azure) 复制延迟 >30s', 'replication_lag', 'azure', 'prod', '网络带宽不足，主从同步超时', 'scale_up', 'success', 25, 4, NOW() - INTERVAL '9 day'),
+('e5f6a7b8-0001-4000-8000-000000000013', 'api-gateway-01 (aliyun) 连接数接近上限', 'connection_count', 'aliyun', 'uat', '突发流量导致连接池耗尽', 'scale_up', 'success', 10, 6, NOW() - INTERVAL '11 day'),
+('e5f6a7b8-0001-4000-8000-000000000014', 'batch-worker-03 (aws) 任务队列堆积 >1000', 'queue_depth', 'aws', 'dev', 'Worker 进程 OOM 崩溃', 'reboot_instance', 'success', 5, 8, NOW() - INTERVAL '13 day'),
+('e5f6a7b8-0001-4000-8000-000000000015', 'monitoring-01 (azure) 磁盘使用率 78%', 'disk_utilization', 'azure', 'dev', '监控数据保留策略过长', 'clear_cache', 'success', 20, 2, NOW() - INTERVAL '14 day');
+
+-- ========== 预测数据 ==========
+INSERT INTO demo.metric_predictions (instance_id, metric_name, current_value, predicted_value, threshold, hours_to_threshold, slope, confidence, created_at) VALUES
+('a1b2c3d4-0001-4000-8000-000000000001', 'cpu_utilization', 78.50, 92.30, 90.00, 12.5, 1.1040, 87.50, NOW()),
+('a1b2c3d4-0001-4000-8000-000000000002', 'memory_utilization', 85.20, 95.80, 90.00, 8.3, 1.2771, 92.30, NOW()),
+('a1b2c3d4-0001-4000-8000-000000000002', 'cpu_utilization', 62.10, 68.50, 90.00, 72.0, 0.0889, 65.40, NOW()),
+('a1b2c3d4-0001-4000-8000-000000000003', 'disk_utilization', 72.80, 88.50, 85.00, 18.2, 0.8626, 78.90, NOW()),
+('a1b2c3d4-0001-4000-8000-000000000004', 'network_in', 450.00, 680.00, 700.00, 24.0, 9.5833, 71.20, NOW()),
+('a1b2c3d4-0001-4000-8000-000000000006', 'gpu_utilization', 88.90, 96.20, 95.00, 6.1, 1.1967, 94.10, NOW()),
+('a1b2c3d4-0001-4000-8000-000000000007', 'cpu_utilization', 35.20, 38.80, 90.00, 120.0, 0.0300, 45.60, NOW()),
+('a1b2c3d4-0002-4000-8000-000000000001', 'cpu_utilization', 82.30, 91.50, 90.00, 10.2, 0.8922, 83.70, NOW()),
+('a1b2c3d4-0002-4000-8000-000000000001', 'memory_utilization', 68.40, 72.10, 90.00, 48.0, 0.0771, 52.30, NOW()),
+('a1b2c3d4-0002-4000-8000-000000000002', 'memory_utilization', 55.80, 61.20, 90.00, 96.0, 0.0563, 48.90, NOW()),
+('a1b2c3d4-0002-4000-8000-000000000003', 'disk_utilization', 78.90, 89.20, 85.00, 14.5, 0.7103, 81.40, NOW()),
+('a1b2c3d4-0003-4000-8000-000000000001', 'cpu_utilization', 45.60, 52.30, 90.00, 80.0, 0.0838, 56.20, NOW()),
+('a1b2c3d4-0003-4000-8000-000000000002', 'memory_utilization', 72.10, 82.50, 90.00, 22.0, 0.4727, 74.80, NOW()),
+('a1b2c3d4-0003-4000-8000-000000000003', 'cpu_utilization', 91.20, 94.80, 90.00, 2.1, 1.7143, 96.50, NOW()),
+('a1b2c3d4-0003-4000-8000-000000000004', 'disk_utilization', 65.30, 71.80, 85.00, 36.0, 0.1806, 62.10, NOW());
 
 COMMIT;
 
