@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHmac } from 'crypto';
 import { config } from '../config.js';
 import { UnauthorizedError } from '@cloudops/shared';
 
@@ -18,7 +18,7 @@ const routes: ProxyRoute[] = [
   { prefix: '/agent', target: config.aiAgentUrl, requireAuth: true },
 ];
 
-/** 验证 JWT token 有效性，返回 payload 或 null */
+/** 验证 JWT token 有效性（HMAC 签名验证），返回 payload 或 null */
 function verifyJwt(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.');
@@ -26,6 +26,18 @@ function verifyJwt(token: string): Record<string, unknown> | null {
 
     const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    const signature = parts[2];
+
+    // 仅支持 HMAC 算法（HS256/HS384/HS512）
+    const alg = header.alg;
+    if (typeof alg !== 'string' || !alg.startsWith('HS')) return null;
+
+    // 使用 Node.js crypto 验证 HMAC 签名
+    const hmac = createHmac(alg.toLowerCase(), config.jwtSecret);
+    hmac.update(`${parts[0]}.${parts[1]}`);
+    const expectedSig = hmac.digest('base64url');
+
+    if (signature !== expectedSig) return null;
 
     // 检查过期时间
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
