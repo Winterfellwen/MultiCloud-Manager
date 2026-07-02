@@ -19,10 +19,11 @@ CREATE TABLE IF NOT EXISTS demo.alert_rules (LIKE public.alert_rules INCLUDING A
 CREATE TABLE IF NOT EXISTS demo.alerts (LIKE public.alerts INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.cloud_resources (LIKE public.cloud_resources INCLUDING ALL);
 
--- Fallback: add topology column if missing (migration 003 may not have run yet)
+-- Fallback: add topology and updated_at columns if missing (migration 003 may not have run yet)
 DO $$
 BEGIN
   ALTER TABLE demo.cloud_resources ADD COLUMN IF NOT EXISTS topology JSONB;
+  ALTER TABLE demo.cloud_resources ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
