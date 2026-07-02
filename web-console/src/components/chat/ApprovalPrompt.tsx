@@ -2,6 +2,7 @@
 // 提供"允许"和"拒绝"按钮，支持倒计时自动拒绝
 // 根据当前模式（Plan/Action/Confirm）自动处理或要求手动审批
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Check, X, Clock, Loader2 } from 'lucide-react';
 import { usePendingApprovals, useResolveApproval } from '@/hooks/useExecApproval';
 import type { ApprovalRequest } from '@/hooks/useExecApproval';
@@ -23,13 +24,14 @@ const COUNTDOWN_SECONDS = 60;
 
 const DANGER_CONFIG: Record<
   ApprovalRequest['dangerLevel'],
-  { label: string; variant: 'warning' | 'destructive' }
+  { labelKey: string; variant: 'warning' | 'destructive' }
 > = {
-  moderate: { label: '中等风险', variant: 'warning' },
-  dangerous: { label: '高风险', variant: 'destructive' },
+  moderate: { labelKey: 'chat.approval.moderateRisk', variant: 'warning' },
+  dangerous: { labelKey: 'chat.approval.highRisk', variant: 'destructive' },
 };
 
 export function ApprovalPrompt() {
+  const { t } = useTranslation();
   const { data: approvals } = usePendingApprovals();
   const resolveApproval = useResolveApproval();
 
@@ -127,19 +129,19 @@ export function ApprovalPrompt() {
       <Dialog
         open={!!currentApproval}
         onClose={() => handleResolve('reject')}
-        title="工具执行审批"
-        description="以下工具调用需要您的确认"
+        title={t('chat.approval.title')}
+        description={t('chat.approval.description')}
       >
         <div className="space-y-4">
           {/* 风险级别标识 */}
           <div className="flex items-center gap-2">
             <AlertTriangle className={`h-5 w-5 ${currentApproval.dangerLevel === 'dangerous' ? 'text-red-500' : 'text-yellow-500'}`} />
-            <Badge variant={dangerConfig.variant}>{dangerConfig.label}</Badge>
+            <Badge variant={dangerConfig.variant}>{t(dangerConfig.labelKey)}</Badge>
           </div>
 
           {/* 工具信息 */}
           <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">工具名称</div>
+            <div className="text-xs text-muted-foreground">{t('chat.approval.toolName')}</div>
             <div className="font-mono text-sm font-medium rounded-md bg-muted px-3 py-2">
               {currentApproval.toolName}
             </div>
@@ -147,7 +149,7 @@ export function ApprovalPrompt() {
 
           {/* 参数展示 */}
           <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">调用参数</div>
+            <div className="text-xs text-muted-foreground">{t('chat.approval.params')}</div>
             <pre className="max-h-48 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">
               {argsJson}
             </pre>
@@ -158,8 +160,8 @@ export function ApprovalPrompt() {
             <Clock className="h-3.5 w-3.5" />
             <span>
               {countdown > 0
-                ? `${countdown} 秒后自动拒绝`
-                : '正在自动拒绝...'}
+                ? `${countdown} ${t('chat.approval.autoReject')}`
+                : t('chat.approval.autoRejecting')}
             </span>
           </div>
 
@@ -171,7 +173,7 @@ export function ApprovalPrompt() {
               disabled={resolveApproval.isPending}
             >
               <X className="mr-1.5 h-4 w-4" />
-              拒绝
+              {t('chat.approval.reject')}
             </Button>
             <Button
               onClick={() => handleResolve('approve')}
@@ -182,7 +184,7 @@ export function ApprovalPrompt() {
               ) : (
                 <Check className="mr-1.5 h-4 w-4" />
               )}
-              允许
+              {t('chat.approval.allow')}
             </Button>
           </div>
         </div>

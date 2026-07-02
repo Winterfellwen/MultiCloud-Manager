@@ -42,7 +42,7 @@ export default function Audit() {
     setQuery({ ...query, offset: newOffset });
   };
 
-  const formatDate = (s: string) => new Date(s).toLocaleString('zh-CN');
+  const formatDate = (s: string) => new Date(s).toLocaleString();
 
   const currentPage = Math.floor((activeQuery.offset || 0) / PAGE_SIZE) + 1;
   const hasNextPage = logs && logs.length === PAGE_SIZE;

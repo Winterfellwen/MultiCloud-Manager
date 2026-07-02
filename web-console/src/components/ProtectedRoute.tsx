@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/auth';
 import { hasPermission } from '@/types/auth';
 import type { UserRole } from '@/types/auth';
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
   const location = useLocation();
+  const { t } = useTranslation();
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated || !user) {
@@ -20,8 +22,8 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-muted-foreground">权限不足</h2>
-          <p className="text-sm text-muted-foreground mt-2">您没有访问此页面的权限</p>
+          <h2 className="text-xl font-semibold text-muted-foreground">{t('common.noPermission')}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{t('common.noPermissionDesc')}</p>
         </div>
       </div>
     );

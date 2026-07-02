@@ -1,39 +1,49 @@
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import type { InstanceStatus } from '@/types/cloud';
 import type { AlertSeverity, AlertStatus } from '@/types/monitor';
 
-const INSTANCE_STATUS_CONFIG: Record<InstanceStatus, { label: string; variant: 'success' | 'secondary' | 'destructive' | 'warning' | 'outline' }> = {
-  running: { label: '运行中', variant: 'success' },
-  stopped: { label: '已停止', variant: 'secondary' },
-  terminated: { label: '已终止', variant: 'destructive' },
-  pending: { label: '启动中', variant: 'warning' },
-  error: { label: '错误', variant: 'destructive' },
-};
-
 export function InstanceStatusBadge({ status }: { status: InstanceStatus }) {
-  const config = INSTANCE_STATUS_CONFIG[status] || { label: status, variant: 'outline' as const };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  const { t } = useTranslation();
+  const labelKey = `instances.${status}`;
+  const variantMap: Record<InstanceStatus, 'success' | 'secondary' | 'destructive' | 'warning' | 'outline'> = {
+    running: 'success',
+    stopped: 'secondary',
+    terminated: 'destructive',
+    pending: 'warning',
+    error: 'destructive',
+  };
+  return <Badge variant={variantMap[status] || 'outline'}>{t(labelKey, status)}</Badge>;
 }
-
-const ALERT_SEVERITY_CONFIG: Record<AlertSeverity, { label: string; variant: 'success' | 'secondary' | 'destructive' | 'warning' | 'outline' }> = {
-  info: { label: '信息', variant: 'secondary' },
-  warning: { label: '警告', variant: 'warning' },
-  critical: { label: '严重', variant: 'destructive' },
-  emergency: { label: '紧急', variant: 'destructive' },
-};
 
 export function AlertSeverityBadge({ severity }: { severity: AlertSeverity }) {
-  const config = ALERT_SEVERITY_CONFIG[severity] || { label: severity, variant: 'outline' as const };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  const { t } = useTranslation();
+  const labelMap: Record<AlertSeverity, string> = {
+    info: t('monitor.alerts.info'),
+    warning: t('monitor.alerts.warning'),
+    critical: t('monitor.alerts.critical'),
+    emergency: t('monitor.alerts.emergency'),
+  };
+  const variantMap: Record<AlertSeverity, 'success' | 'secondary' | 'destructive' | 'warning' | 'outline'> = {
+    info: 'secondary',
+    warning: 'warning',
+    critical: 'destructive',
+    emergency: 'destructive',
+  };
+  return <Badge variant={variantMap[severity] || 'outline'}>{labelMap[severity] || severity}</Badge>;
 }
 
-const ALERT_STATUS_CONFIG: Record<AlertStatus, { label: string; variant: 'success' | 'secondary' | 'destructive' | 'warning' | 'outline' }> = {
-  firing: { label: '告警中', variant: 'destructive' },
-  resolved: { label: '已解决', variant: 'success' },
-  silenced: { label: '已静音', variant: 'secondary' },
-};
-
 export function AlertStatusBadge({ status }: { status: AlertStatus }) {
-  const config = ALERT_STATUS_CONFIG[status] || { label: status, variant: 'outline' as const };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  const { t } = useTranslation();
+  const labelMap: Record<AlertStatus, string> = {
+    firing: t('monitor.alerts.firing'),
+    resolved: t('monitor.alerts.resolved'),
+    silenced: t('monitor.alerts.silenced'),
+  };
+  const variantMap: Record<AlertStatus, 'success' | 'secondary' | 'destructive' | 'warning' | 'outline'> = {
+    firing: 'destructive',
+    resolved: 'success',
+    silenced: 'secondary',
+  };
+  return <Badge variant={variantMap[status] || 'outline'}>{labelMap[status] || status}</Badge>;
 }

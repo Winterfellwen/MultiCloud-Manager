@@ -120,7 +120,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
           {isEditing ? (
             <>
               <Button variant="ghost" size="sm" onClick={() => { setIsEditing(false); setSelectedKeys(new Set()); }}>
-                完成
+                {t('chat.done')}
               </Button>
               <div className="flex items-center gap-1.5 flex-1">
                 <button
@@ -135,7 +135,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
                   )}
                 </button>
                 <span className="text-xs text-muted-foreground">
-                  已选 {selectedKeys.size}/{sessions.length}
+                  {t('chat.selected')} {selectedKeys.size}/{sessions.length}
                 </span>
               </div>
               <Button
@@ -145,7 +145,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
                 onClick={handleBatchDelete}
               >
                 <Trash2 className="mr-1 h-3.5 w-3.5" />
-                {isDeleting ? '删除中...' : '删除'}
+                {isDeleting ? t('chat.deleting') : t('common.delete')}
               </Button>
             </>
           ) : (
@@ -264,7 +264,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
                   {session.username && (
                     <span className="text-xs text-muted-foreground">
                       <span className="text-blue-400">{session.username}</span>
-                      {' · '}{session.messageCount}条消息
+                      {' · '}{session.messageCount}{t('chat.messages')}
                     </span>
                   )}
                 </div>

@@ -159,7 +159,7 @@ export default function Users() {
 
   const formatDate = (s: string | null) => {
     if (!s) return '-';
-    return new Date(s).toLocaleString('zh-CN');
+    return new Date(s).toLocaleString();
   };
 
   return (
