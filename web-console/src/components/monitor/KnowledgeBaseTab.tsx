@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useKnowledgeBase } from '@/hooks/useKnowledgeBase';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Loader2, BookOpen, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
@@ -22,11 +22,17 @@ const METRIC_LABELS: Record<string, string> = {
 export default function KnowledgeBaseTab() {
   const { data: entries, isLoading } = useKnowledgeBase();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
 
-  const filtered = (entries || []).filter((e) =>
-    !search || e.symptom.toLowerCase().includes(search.toLowerCase()) || (e.rootCause || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filterConfigs: FilterConfig[] = [
+    { key: 'search', type: 'search', placeholder: '搜索症状或根因...' },
+  ];
+
+  const filtered = (entries || []).filter((e) => {
+    const s = (filterValues.search || '').toLowerCase();
+    if (!s) return true;
+    return e.symptom.toLowerCase().includes(s) || (e.rootCause || '').toLowerCase().includes(s);
+  });
 
   return (
     <div className="space-y-4">
@@ -37,11 +43,10 @@ export default function KnowledgeBaseTab() {
         </p>
       </div>
 
-      <Input
-        placeholder="搜索症状或根因..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
+      <FilterBar
+        filters={filterConfigs}
+        values={filterValues}
+        onChange={setFilterValues}
       />
 
       <Card>
