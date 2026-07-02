@@ -1,5 +1,5 @@
 // 审计日志页：筛选栏 + 日志表格 + 分页
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { useAuditLogs } from '@/hooks/useAudit';
@@ -7,8 +7,8 @@ import { RESULT_LABELS, PROVIDER_OPTIONS } from '@/types/audit';
 import type { AuditLogQuery } from '@/types/audit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
@@ -25,6 +25,32 @@ export default function Audit() {
   const [activeQuery, setActiveQuery] = useState<AuditLogQuery>(query);
   const { data: logs, isLoading, error } = useAuditLogs(activeQuery);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({
+    action: query.action || '',
+    provider: query.provider || '',
+  });
+
+  const filterConfigs: FilterConfig[] = [
+    { key: 'action', type: 'search', placeholder: t('audit.actionPlaceholder') },
+    {
+      key: 'provider',
+      type: 'select',
+      label: t('audit.provider'),
+      options: [
+        { label: t('audit.allProviders'), value: '' },
+        ...PROVIDER_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value })),
+      ],
+    },
+  ];
+
+  useEffect(() => {
+    setQuery((prev) => ({
+      ...prev,
+      action: filterValues.action || undefined,
+      provider: filterValues.provider || undefined,
+      offset: 0,
+    }));
+  }, [filterValues]);
 
   const handleSearch = () => {
     setActiveQuery({ ...query, offset: 0 });
@@ -53,30 +79,11 @@ export default function Audit() {
 
       {/* 筛选栏 */}
       <div className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="space-y-1 w-full sm:w-[180px]">
-          <label className="text-xs text-muted-foreground">{t('audit.actionType')}</label>
-          <Input
-            value={query.action || ''}
-            onChange={(e) => setQuery({ ...query, action: e.target.value || undefined })}
-            placeholder={t('audit.actionPlaceholder')}
-            className="w-full"
-          />
-        </div>
-        <div className="space-y-1 w-full sm:w-[140px]">
-          <label className="text-xs text-muted-foreground">{t('audit.provider')}</label>
-          <Select
-            value={query.provider || ''}
-            onChange={(e) => setQuery({ ...query, provider: e.target.value || undefined })}
-            className="w-full"
-          >
-            <option value="">{t('audit.allProviders')}</option>
-            {PROVIDER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <FilterBar
+          filters={filterConfigs}
+          values={filterValues}
+          onChange={setFilterValues}
+        />
         <div className="space-y-1 w-full sm:w-[160px]">
           <label className="text-xs text-muted-foreground">{t('audit.startDate')}</label>
           <Input
