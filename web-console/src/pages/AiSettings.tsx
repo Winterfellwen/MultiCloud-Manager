@@ -471,7 +471,7 @@ export default function AiSettings() {
                   {testResult[provider.id] && (
                     <div className={cn(
                       'px-3 py-1.5 text-xs break-words',
-                      testResult[provider.id].ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                      testResult[provider.id].ok ? 'bg-success-50 dark:bg-success-950/30 text-success-700 dark:text-success-300' : 'bg-destructive-50 dark:bg-destructive-950/30 text-destructive-700 dark:text-destructive-300'
                     )}>
                       {testResult[provider.id].ok ? '✓ ' : '✗ '}{testResult[provider.id].msg}
                     </div>
@@ -635,8 +635,8 @@ export default function AiSettings() {
                       </div>
                     </div>
                     {modelTestResult[model.id] && !modelTestResult[model.id].ok && (
-                      <div className="ml-8 rounded-md border border-red-200 bg-red-50 px-3 py-2">
-                        <div className="text-xs font-medium text-red-700">✗ {t('aiSettings.testModelFailed')}</div>
+                      <div className="ml-8 rounded-md border border-red-200 bg-destructive-50 dark:bg-destructive-950/30 px-3 py-2">
+                        <div className="text-xs font-medium text-destructive-700 dark:text-destructive-300">✗ {t('aiSettings.testModelFailed')}</div>
                         <div className="text-xs text-red-600 mt-1 break-words whitespace-pre-wrap">{modelTestResult[model.id].msg}</div>
                       </div>
                     )}
@@ -1018,7 +1018,7 @@ export default function AiSettings() {
                       key={m.id}
                       className={cn(
                         'flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition-colors',
-                        alreadyHas ? 'bg-green-50 border-green-200' : 'hover:bg-accent',
+                        alreadyHas ? 'bg-success-50 dark:bg-success-950/30 border-green-200' : 'hover:bg-accent',
                       )}
                     >
                       <input
