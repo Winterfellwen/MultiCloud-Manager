@@ -15,9 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
-import {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-} from '@/components/ui/table';
+import { TableWithPagination, type Column } from '@/components/ui/table-with-pagination';
+import type { UserRow } from '@/types/user';
+import type { Team } from '@/types/team';
 
 function TeamMembersView({ teamId }: { teamId: string }) {
   const { data: members, isLoading } = useTeamMembers(teamId);
@@ -107,6 +107,111 @@ export default function Users() {
     { key: 'search', type: 'search', placeholder: t('common.filterSearchName') },
   ];
 
+  const userColumns = useMemo<Column<UserRow>[]>(() => [
+    {
+      key: 'username',
+      header: t('users.username'),
+      accessor: 'username',
+      className: 'w-[150px]',
+      cell: (value) => <span className="font-medium">{String(value)}</span>,
+    },
+    {
+      key: 'email',
+      header: t('users.email'),
+      accessor: (row) => row.email || '-',
+      className: 'w-[200px]',
+      cell: (value) => <span className="text-muted-foreground">{String(value)}</span>,
+    },
+    {
+      key: 'role',
+      header: t('users.role'),
+      accessor: 'role',
+      className: 'w-[120px]',
+      cell: (_value, row) => (
+        currentUser?.id === row.id ? (
+          <Badge variant={ROLE_BADGE_VARIANT[row.role]}>
+            {t(`roles.${row.role}`)}
+          </Badge>
+        ) : (
+          <Select
+            value={row.role}
+            onChange={(e) => handleRoleChange(row.id, e.target.value as UserRole)}
+            className="h-8 w-[120px] py-1 text-xs"
+            disabled={updateRole.isPending}
+          >
+            {ROLE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {t(`roles.${opt.value}`)}
+              </option>
+            ))}
+          </Select>
+        )
+      ),
+    },
+    {
+      key: 'team',
+      header: t('users.team'),
+      accessor: 'teamId',
+      className: 'w-[120px]',
+      cell: (_value, row) => (
+        currentUser?.id === row.id ? (
+          <span className="text-xs text-muted-foreground">
+            {row.teamId ? teams?.find(team => team.id === row.teamId)?.name || row.team : '-'}
+          </span>
+        ) : (
+          <Select
+            value={row.teamId || ''}
+            onChange={(e) => handleUserTeamChange(row.id, e.target.value)}
+            className="h-8 w-[120px] py-1 text-xs"
+            disabled={assignUserToTeam.isPending}
+          >
+            <option value="">{t('users.unassigned')}</option>
+            {teams?.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </Select>
+        )
+      ),
+    },
+    {
+      key: 'createdAt',
+      header: t('users.createdAt'),
+      accessor: (row) => formatDate(row.createdAt),
+      className: 'w-[160px]',
+      cell: (value) => <span className="text-muted-foreground text-xs">{String(value)}</span>,
+    },
+    {
+      key: 'lastLogin',
+      header: t('users.lastLogin'),
+      accessor: (row) => formatDate(row.lastLoginAt),
+      className: 'w-[160px]',
+      cell: (value) => <span className="text-muted-foreground text-xs">{String(value)}</span>,
+    },
+    {
+      key: 'actions',
+      header: t('users.actions'),
+      accessor: () => '',
+      className: 'w-[80px]',
+      cell: (_value, row) => (
+        currentUser?.id === row.id ? (
+          <span className="text-xs text-muted-foreground">{t('users.currentUser')}</span>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+            onClick={() => setDeleteTarget({ id: row.id, username: row.username })}
+            disabled={deleteUser.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )
+      ),
+    },
+  ], [currentUser, teams, t, updateRole.isPending, assignUserToTeam.isPending, deleteUser.isPending]);
+
   const filteredUsers = useMemo(() => {
     return (users || []).filter((user) => {
       const s = (userFilters.search || '').toLowerCase();
@@ -124,6 +229,51 @@ export default function Users() {
       return true;
     });
   }, [teams, teamFilters]);
+
+  const teamColumns = useMemo<Column<Team>[]>(() => [
+    {
+      key: 'name',
+      header: t('teams.name'),
+      accessor: 'name',
+      className: 'w-[200px]',
+      cell: (value) => <span className="font-medium">{String(value)}</span>,
+    },
+    {
+      key: 'createdAt',
+      header: t('teams.createdAt'),
+      accessor: (row) => formatDate(row.createdAt),
+      className: 'w-[180px]',
+      cell: (value) => <span className="text-muted-foreground text-xs">{String(value)}</span>,
+    },
+    {
+      key: 'actions',
+      header: t('teams.actions'),
+      accessor: () => '',
+      className: 'w-[80px]',
+      cell: (_value, row) => (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={() => openEditTeam(row)}
+            disabled={updateTeamMutation.isPending}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+            onClick={() => handleTeamDelete(row.id)}
+            disabled={deleteTeamMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </>
+      ),
+    },
+  ], [t, updateTeamMutation.isPending, deleteTeamMutation.isPending]);
 
   const handleCreate = async () => {
     if (!form.username || !form.password) return;
@@ -254,103 +404,13 @@ export default function Users() {
 
       <div className="rounded-md border overflow-hidden">
         <div className="overflow-x-auto">
-          <Table className="min-w-[720px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[150px]">{t('users.username')}</TableHead>
-                <TableHead className="w-[200px]">{t('users.email')}</TableHead>
-                <TableHead className="w-[120px]">{t('users.role')}</TableHead>
-                <TableHead className="w-[120px]">{t('users.team')}</TableHead>
-                <TableHead className="w-[160px]">{t('users.createdAt')}</TableHead>
-                <TableHead className="w-[160px]">{t('users.lastLogin')}</TableHead>
-                <TableHead className="w-[80px]">{t('users.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-                  </TableCell>
-                </TableRow>
-              ) : users && filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    {t('users.noUsers')}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.username}</TableCell>
-                    <TableCell className="text-muted-foreground">{user.email || '-'}</TableCell>
-                    <TableCell>
-                      {currentUser?.id === user.id ? (
-                        <Badge variant={ROLE_BADGE_VARIANT[user.role]}>
-                          {t(`roles.${user.role}`)}
-                        </Badge>
-                      ) : (
-                        <Select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                          className="h-8 w-[120px] py-1 text-xs"
-                          disabled={updateRole.isPending}
-                        >
-                          {ROLE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {t(`roles.${opt.value}`)}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {currentUser?.id === user.id ? (
-                        <span className="text-xs text-muted-foreground">
-                          {user.teamId ? teams?.find(t => t.id === user.teamId)?.name || user.team : '-'}
-                        </span>
-                      ) : (
-                        <Select
-                          value={user.teamId || ''}
-                          onChange={(e) => handleUserTeamChange(user.id, e.target.value)}
-                          className="h-8 w-[120px] py-1 text-xs"
-                          disabled={assignUserToTeam.isPending}
-                        >
-                          <option value="">{t('users.unassigned')}</option>
-                          {teams?.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {formatDate(user.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {formatDate(user.lastLoginAt)}
-                    </TableCell>
-                    <TableCell>
-                      {currentUser?.id === user.id ? (
-                        <span className="text-xs text-muted-foreground">{t('users.currentUser')}</span>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteTarget({ id: user.id, username: user.username })}
-                          disabled={deleteUser.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <TableWithPagination
+            data={filteredUsers}
+            columns={userColumns}
+            loading={isLoading}
+            emptyTitle={t('users.noUsers')}
+            rowKey="id"
+          />
         </div>
       </div>
       </TabsContent>
@@ -362,88 +422,44 @@ export default function Users() {
           onChange={setTeamFilters}
           className="mb-4"
         />
-        {teamsLoading ? (
-          <div className="text-center py-8">
-            <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : teams && filteredTeams.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            {t('teams.noTeams')}
-          </div>
-        ) : (
-          <>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">{t('teams.name')}</TableHead>
-                    <TableHead className="w-[180px]">{t('teams.createdAt')}</TableHead>
-                    <TableHead className="w-[80px]">{t('teams.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTeams.map((team) => (
-                    <TableRow key={team.id}>
-                      <TableCell className="font-medium">{team.name}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {formatDate(team.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            onClick={() => openEditTeam(team)}
-                            disabled={updateTeamMutation.isPending}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleTeamDelete(team.id)}
-                            disabled={deleteTeamMutation.isPending}
-                          >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+        <div className="rounded-md border">
+          <TableWithPagination
+            data={filteredTeams}
+            columns={teamColumns}
+            loading={teamsLoading}
+            emptyTitle={t('teams.noTeams')}
+            rowKey="id"
+          />
+        </div>
+        {/* 团队成员查看对话框 */}
+        <Dialog
+          open={!!editingTeam}
+          onClose={() => setEditingTeam(null)}
+          title={t('teams.membersTitle', { name: editingTeam?.name })}
+        >
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => openEditTeam(editingTeam!)}>
+                <Edit2 className="mr-1.5 h-4 w-4" />
+                {t('teams.edit')}
+              </Button>
             </div>
-            {/* 团队成员查看对话框 */}
-            <Dialog
-              open={!!editingTeam}
-              onClose={() => setEditingTeam(null)}
-              title={t('teams.membersTitle', { name: editingTeam?.name })}
-            >
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => openEditTeam(editingTeam!)}>
-                    <Edit2 className="mr-1.5 h-4 w-4" />
-                    {t('teams.edit')}
-                  </Button>
-                </div>
-                <div className="rounded-md border p-4 max-h-[400px] overflow-y-auto">
-                  <TeamMembersView teamId={editingTeam?.id || ''} />
-                </div>
-                {editingTeam && (
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={() => setEditingTeam(null)}>
-                      {t('common.close')}
-                    </Button>
-                    <Button onClick={handleTeamUpdate} disabled={updateTeamMutation.isPending}>
-                      {updateTeamMutation.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                      {t('common.save')}
-                    </Button>
-                  </div>
-                )}
+            <div className="rounded-md border p-4 max-h-[400px] overflow-y-auto">
+              <TeamMembersView teamId={editingTeam?.id || ''} />
+            </div>
+            {editingTeam && (
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEditingTeam(null)}>
+                  {t('common.close')}
+                </Button>
+                <Button onClick={handleTeamUpdate} disabled={updateTeamMutation.isPending}>
+                  {updateTeamMutation.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                  {t('common.save')}
+                </Button>
               </div>
-            </Dialog>
-          </>
-        )}
+            )}
+          </div>
+        </Dialog>
       </TabsContent>
       </Tabs>
 
