@@ -8,9 +8,9 @@ interface Props {
 }
 
 const LEVEL_CONFIG = {
-  info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-50' },
-  warn: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-50' },
-  error: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+  info: { icon: Info, color: 'text-blue-500', bg: 'bg-info-50 dark:bg-info-950/30' },
+  warn: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-warning-50 dark:bg-warning-950/30' },
+  error: { icon: XCircle, color: 'text-red-500', bg: 'bg-destructive-50 dark:bg-destructive-950/30' },
 };
 
 function formatTime(iso: string) {
@@ -37,8 +37,8 @@ export function InstanceLogsCard({ instanceId }: Props) {
             return (
               <div key={i} className={`flex items-start gap-2 px-2 py-1.5 rounded ${cfg.bg}`}>
                 <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${cfg.color}`} />
-                <span className="text-gray-400 shrink-0">{formatTime(log.timestamp)}</span>
-                <span className="text-gray-700">{log.message}</span>
+                <span className="text-muted-foreground shrink-0">{formatTime(log.timestamp)}</span>
+                <span className="text-foreground">{log.message}</span>
               </div>
             );
           })}
