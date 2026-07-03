@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { TableWithPagination, Column } from '@/components/ui/table-with-pagination';
 import { Dialog } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -73,6 +74,63 @@ function RulesTab() {
 
   const [ruleFilters, setRuleFilters] = useState<Record<string, string>>({});
 
+  const ruleColumns: Column<any>[] = [
+    { key: 'name', header: t('common.name'), accessor: 'name', className: 'w-[180px]' },
+    { key: 'metric', header: t('monitor.metric'), accessor: 'metric', className: 'w-[140px]' },
+    { key: 'condition', header: t('monitor.condition'), accessor: 'condition', className: 'w-[120px] text-muted-foreground' },
+    { key: 'duration', header: t('monitor.duration'), accessor: 'duration', className: 'w-[100px] text-muted-foreground' },
+    {
+      key: 'severity',
+      header: t('monitor.severity'),
+      accessor: (row) => <AlertSeverityBadge severity={row.severity as AlertSeverity} />,
+      className: 'w-[100px]',
+    },
+    {
+      key: 'enabled',
+      header: t('common.enabled'),
+      accessor: (row) => (
+        <button
+          onClick={() => handleToggleEnabled(row)}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            row.enabled ? 'bg-success-500' : 'bg-muted'
+          }`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+              row.enabled ? 'translate-x-4.5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      ),
+      className: 'w-[100px]',
+    },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      accessor: (row) => (
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => setEditingRule(row)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('tooltip.edit')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(row.id)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+          </Tooltip>
+        </div>
+      ),
+      className: 'w-[100px]',
+    },
+  ];
+
   const ruleFilterConfigs: FilterConfig[] = [
     { key: 'search', type: 'search', placeholder: t('common.filterSearchName') },
     {
@@ -132,72 +190,13 @@ function RulesTab() {
           onChange={setRuleFilters}
           className="mb-4"
         />
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
-        ) : (rules || []).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">{t('monitor.noRules')}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table className="min-w-[560px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">{t('common.name')}</TableHead>
-                  <TableHead className="w-[140px]">{t('monitor.metric')}</TableHead>
-                  <TableHead className="w-[120px]">{t('monitor.condition')}</TableHead>
-                  <TableHead className="w-[100px]">{t('monitor.duration')}</TableHead>
-                  <TableHead className="w-[100px]">{t('monitor.severity')}</TableHead>
-                  <TableHead className="w-[100px]">{t('common.enabled')}</TableHead>
-                  <TableHead className="w-[100px]">{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRules.map((rule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="font-medium">{rule.name}</TableCell>
-                    <TableCell>{rule.metric}</TableCell>
-                    <TableCell className="text-muted-foreground">{rule.condition}</TableCell>
-                    <TableCell className="text-muted-foreground">{rule.duration}</TableCell>
-                    <TableCell><AlertSeverityBadge severity={rule.severity as AlertSeverity} /></TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => handleToggleEnabled(rule)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                          rule.enabled ? 'bg-success-500' : 'bg-muted'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                            rule.enabled ? 'translate-x-4.5' : 'translate-x-0.5'
-                          }`}
-                        />
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => setEditingRule(rule)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('tooltip.edit')}</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(rule.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <TableWithPagination
+          data={filteredRules}
+          columns={ruleColumns}
+          rowKey="id"
+          loading={isLoading}
+          emptyTitle={t('monitor.noRules')}
+        />
       </CardContent>
       <CreateRuleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       {editingRule && (
@@ -465,6 +464,46 @@ function ChannelsTab() {
 
   const [channelFilters, setChannelFilters] = useState<Record<string, string>>({});
 
+  const channelColumns: Column<any>[] = [
+    { key: 'name', header: t('common.name'), accessor: 'name', className: 'w-[160px]' },
+    { key: 'type', header: t('monitor.type'), accessor: 'type', className: 'w-[100px]' },
+    {
+      key: 'config',
+      header: t('monitor.config'),
+      accessor: (row) => (
+        <span className="text-muted-foreground text-xs max-w-xs truncate">
+          {JSON.stringify(row.config)}
+        </span>
+      ),
+      className: 'w-[200px]',
+    },
+    {
+      key: 'enabled',
+      header: t('common.enabled'),
+      accessor: (row) => (
+        <span className={row.enabled ? 'text-success-600' : 'text-muted-foreground'}>
+          {row.enabled ? t('common.enabled') : t('common.disabled')}
+        </span>
+      ),
+      className: 'w-[100px]',
+    },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      accessor: (row) => (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(row.id)}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('tooltip.delete')}</TooltipContent>
+        </Tooltip>
+      ),
+      className: 'w-[80px]',
+    },
+  ];
+
   const channelFilterConfigs: FilterConfig[] = [
     { key: 'search', type: 'search', placeholder: t('common.filterSearchName') },
     {
@@ -512,51 +551,13 @@ function ChannelsTab() {
           onChange={setChannelFilters}
           className="mb-4"
         />
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
-        ) : (channels || []).length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">{t('monitor.noChannels')}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table className="min-w-[520px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[160px]">{t('common.name')}</TableHead>
-                  <TableHead className="w-[100px]">{t('monitor.type')}</TableHead>
-                  <TableHead className="w-[200px]">{t('monitor.config')}</TableHead>
-                  <TableHead className="w-[100px]">{t('common.enabled')}</TableHead>
-                  <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredChannels.map((ch) => (
-                  <TableRow key={ch.id}>
-                    <TableCell className="font-medium">{ch.name}</TableCell>
-                    <TableCell>{ch.type}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs max-w-xs truncate">
-                      {JSON.stringify(ch.config)}
-                    </TableCell>
-                    <TableCell>
-                      <span className={ch.enabled ? 'text-success-600' : 'text-muted-foreground'}>
-                        {ch.enabled ? t('common.enabled') : t('common.disabled')}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(ch.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('tooltip.delete')}</TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <TableWithPagination
+          data={filteredChannels}
+          columns={channelColumns}
+          rowKey="id"
+          loading={isLoading}
+          emptyTitle={t('monitor.noChannels')}
+        />
       </CardContent>
       <CreateChannelDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <ConfirmDialog
