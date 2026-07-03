@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Dialog } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { AlertSeverityBadge, AlertStatusBadge } from '@/components/StatusBadge';
 import { ApiError } from '@/api/client';
 import type { AlertSeverity, AlertActionType, ChannelType } from '@/types/monitor';
@@ -68,6 +69,7 @@ function RulesTab() {
   const updateRule = useUpdateAlertRule();
   const [createOpen, setCreateOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [ruleFilters, setRuleFilters] = useState<Record<string, string>>({});
 
@@ -97,7 +99,6 @@ function RulesTab() {
   }, [rules, ruleFilters]);
 
   async function handleDelete(id: string) {
-    if (!confirm(t('monitor.confirmDeleteRule'))) return;
     try {
       await del.mutateAsync(id);
     } catch (err) {
@@ -183,7 +184,7 @@ function RulesTab() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(rule.id)}>
+                            <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(rule.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </TooltipTrigger>
@@ -206,6 +207,19 @@ function RulesTab() {
           editingRule={editingRule}
         />
       )}
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            handleDelete(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }
+        }}
+        title={t('common.confirm')}
+        description={t('monitor.confirmDeleteRule')}
+        variant="destructive"
+      />
     </Card>
   );
 }
@@ -447,6 +461,7 @@ function ChannelsTab() {
   const { data: channels, isLoading } = useChannels();
   const del = useDeleteChannel();
   const [createOpen, setCreateOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [channelFilters, setChannelFilters] = useState<Record<string, string>>({});
 
@@ -475,7 +490,6 @@ function ChannelsTab() {
   }, [channels, channelFilters]);
 
   async function handleDelete(id: string) {
-    if (!confirm(t('monitor.confirmDeleteChannel'))) return;
     try {
       await del.mutateAsync(id);
     } catch (err) {
@@ -530,7 +544,7 @@ function ChannelsTab() {
                     <TableCell>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteId(ch.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TooltipTrigger>
@@ -545,6 +559,19 @@ function ChannelsTab() {
         )}
       </CardContent>
       <CreateChannelDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            handleDelete(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }
+        }}
+        title={t('common.confirm')}
+        description={t('monitor.confirmDeleteChannel')}
+        variant="destructive"
+      />
     </Card>
   );
 }
