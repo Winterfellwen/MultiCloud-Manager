@@ -47,7 +47,8 @@
     "noPermissionDesc": "您没有访问此页面的权限",
     "noData": "暂无数据",
     "showing": "显示",
-    "of": "共"
+    "of": "共",
+    "tenThousand": "万"
   },
   "nav": {
     "dashboard": "总览",

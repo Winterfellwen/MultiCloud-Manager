@@ -10,11 +10,7 @@ import RemediationCard from '@/components/dashboard/RemediationCard';
 import SecurityCard from '@/components/dashboard/SecurityCard';
 import CapacityCard from '@/components/dashboard/CapacityCard';
 
-const PROVIDER_LABELS: Record<string, string> = {
-  aliyun: '阿里云',
-  aws: 'AWS',
-  azure: 'Azure',
-};
+
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -24,7 +20,7 @@ export default function Dashboard() {
   const { data: tokenStats } = useTokenStats();
 
   const formatCost = (cost: number) => {
-    if (cost >= 10000) return `¥${(cost / 10000).toFixed(2)}万`;
+    if (cost >= 10000) return `¥${(cost / 10000).toFixed(2)}${t('common.tenThousand')}`;
     return `¥${cost.toFixed(2)}`;
   };
 
@@ -155,7 +151,7 @@ export default function Dashboard() {
               {Object.entries(stats.byProvider).map(([provider, count]) => (
                 <div key={provider} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
-                    <span>{PROVIDER_LABELS[provider] || provider}</span>
+                    <span>{t(`providers.${provider}`) || provider}</span>
                     <span className="text-muted-foreground">{count} {t('dashboard.instances')}</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">

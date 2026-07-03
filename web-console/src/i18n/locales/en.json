@@ -47,7 +47,8 @@
     "noPermissionDesc": "You don't have permission to access this page",
     "noData": "No data",
     "showing": "Showing",
-    "of": "of"
+    "of": "of",
+    "tenThousand": "ten thousand"
   },
   "nav": {
     "dashboard": "Dashboard",
