@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Dialog } from '@/components/ui/dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
@@ -364,20 +365,22 @@ export default function CloudAccounts() {
       >
           <div className="space-y-4 py-2">
             {/* 账号名称 */}
-            <div className="space-y-2">
-              <Label htmlFor="account-name">{t('cloudAccounts.accountName')}</Label>
+            <FormField
+              label={t('cloudAccounts.accountName')}
+              htmlFor="account-name"
+              error={error && !form.name.trim() ? t('cloudAccounts.nameRequired') : undefined}
+            >
               <Input
                 id="account-name"
                 value={form.name}
                 onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder={t('cloudAccounts.accountNamePlaceholder')}
               />
-            </div>
+            </FormField>
 
             {/* 云厂商选择 */}
             {!editingId && (
-              <div className="space-y-2">
-                <Label>{t('cloudAccounts.providerLabel')}</Label>
+              <FormField label={t('cloudAccounts.providerLabel')}>
                 <div className="grid grid-cols-3 gap-2">
                   {providersMeta.map(p => (
                     <button
@@ -398,7 +401,7 @@ export default function CloudAccounts() {
                 {currentMeta?.description && (
                   <p className="text-xs text-muted-foreground">{currentMeta.description}</p>
                 )}
-              </div>
+              </FormField>
             )}
 
             {/* 凭证字段（从后端元数据动态渲染） */}
@@ -432,11 +435,15 @@ export default function CloudAccounts() {
                   </div>
                 )}
                 {currentMeta.fields.map(field => (
-                  <div key={field.key} className="space-y-1">
-                    <Label htmlFor={`cfg-${field.key}`} className="text-xs text-muted-foreground">
-                      {field.label}
-                      {field.required && <span className="ml-1 text-destructive">*</span>}
-                    </Label>
+                  <FormField
+                    key={field.key}
+                    label={field.label}
+                    htmlFor={`cfg-${field.key}`}
+                    required={field.required && !editingId}
+                    error={field.required && !editingId && !form.config[field.key]?.trim()
+                      ? t('cloudAccounts.fieldRequired', { label: field.label })
+                      : undefined}
+                  >
                     {field.type === 'textarea' ? (
                       <textarea
                         id={`cfg-${field.key}`}
@@ -457,14 +464,11 @@ export default function CloudAccounts() {
                     {field.help && (
                       <p className="text-[10px] text-muted-foreground">{field.help}</p>
                     )}
-                  </div>
+                  </FormField>
                 ))}
               </div>
             )}
 
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
