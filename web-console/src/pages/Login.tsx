@@ -132,7 +132,7 @@ export default function Login() {
               {t('login.demoHint')}
             </p>
             <p className="text-xs text-center text-muted-foreground mt-2">
-              Created by 温信锐 (Peter Wen)
+              {t('login.author')}
             </p>
           </form>
         </CardContent>
