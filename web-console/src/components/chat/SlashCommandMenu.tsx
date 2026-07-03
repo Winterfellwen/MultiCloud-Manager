@@ -33,7 +33,7 @@ export function SlashCommandMenu({
   if (commands.length === 0) return null;
 
   return (
-    <div className="absolute bottom-full left-0 z-50 mb-1 w-80 overflow-hidden rounded-md border border-border bg-white shadow-lg dark:bg-slate-800">
+    <div className="absolute bottom-full left-0 z-50 mb-1 w-80 overflow-hidden rounded-md border border-border bg-card shadow-lg">
       <div className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
         {t('chat.slashCommands')}
       </div>
