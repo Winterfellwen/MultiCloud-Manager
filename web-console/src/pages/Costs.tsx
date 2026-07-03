@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useCostSummary, useInstanceCosts, useCollectCosts } from '@/hooks/useCosts';
+import type { CostSummaryItem, InstanceCost } from '@/types/monitor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { TableWithPagination, Column } from '@/components/ui/table-with-pagination';
 import { ApiError } from '@/api/client';
 import { RefreshCw } from 'lucide-react';
 
@@ -38,6 +39,53 @@ export default function Costs() {
   }, [summary]);
 
   const grandTotal = providerTotals.reduce((sum, p) => sum + p.total, 0);
+
+  const summaryColumns: Column<CostSummaryItem>[] = [
+    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[140px]' },
+    { key: 'service', header: t('costs.service'), accessor: 'service', className: 'w-[180px]' },
+    {
+      key: 'totalAmount',
+      header: t('costs.amount'),
+      accessor: 'totalAmount',
+      className: 'w-[100px]',
+      cell: (value) => <span className="font-medium">{Number(value).toFixed(2)}</span>,
+    },
+    {
+      key: 'currency',
+      header: t('costs.currency'),
+      accessor: 'currency',
+      className: 'w-[100px]',
+      cell: (value) => <span className="text-muted-foreground">{value as string}</span>,
+    },
+  ];
+
+  const instanceColumns: Column<InstanceCost>[] = [
+    {
+      key: 'name',
+      header: t('costs.instanceName'),
+      accessor: (row) => row.name || row.id.slice(0, 8),
+      className: 'w-[180px]',
+      cell: (value) => <span className="font-medium">{value as string}</span>,
+    },
+    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[120px]' },
+    {
+      key: 'region',
+      header: t('common.region'),
+      accessor: 'region',
+      className: 'w-[120px]',
+      cell: (value) => <span className="text-muted-foreground">{value as string}</span>,
+    },
+    {
+      key: 'monthlyCost',
+      header: t('instances.monthlyCost'),
+      accessor: 'monthlyCost',
+      className: 'w-[120px]',
+      cell: (value) => {
+        const cost = value as string | null;
+        return cost ? `¥${parseFloat(cost).toFixed(2)}` : '-';
+      },
+    },
+  ];
 
   async function handleCollect() {
     try {
@@ -96,70 +144,26 @@ export default function Costs() {
       <Card>
         <CardContent className="pt-6">
           <h2 className="text-lg font-semibold mb-4">{t('costs.serviceBreakdown')}</h2>
-          {summaryLoading ? (
-            <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
-          ) : (summary || []).length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">{t('costs.noCostData')}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[400px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[140px]">{t('common.provider')}</TableHead>
-                    <TableHead className="w-[180px]">{t('costs.service')}</TableHead>
-                    <TableHead className="w-[100px]">{t('costs.amount')}</TableHead>
-                    <TableHead className="w-[100px]">{t('costs.currency')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(summary || []).map((item, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{item.provider}</TableCell>
-                      <TableCell>{item.service}</TableCell>
-                      <TableCell className="font-medium">{Number(item.totalAmount).toFixed(2)}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.currency}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <TableWithPagination
+            data={summary || []}
+            columns={summaryColumns}
+            loading={summaryLoading}
+            rowKey={(row) => `${row.provider}-${row.service}`}
+            emptyTitle={t('costs.noCostData')}
+          />
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="pt-6">
           <h2 className="text-lg font-semibold mb-4">{t('costs.instanceMonthly')}</h2>
-          {instLoading ? (
-            <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
-          ) : (instanceCosts || []).length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">{t('costs.noInstanceCost')}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[480px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[180px]">{t('costs.instanceName')}</TableHead>
-                    <TableHead className="w-[120px]">{t('common.provider')}</TableHead>
-                    <TableHead className="w-[120px]">{t('common.region')}</TableHead>
-                    <TableHead className="w-[120px]">{t('instances.monthlyCost')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(instanceCosts || []).map((inst) => (
-                    <TableRow key={inst.id}>
-                      <TableCell className="font-medium">{inst.name || inst.id.slice(0, 8)}</TableCell>
-                      <TableCell>{inst.provider}</TableCell>
-                      <TableCell className="text-muted-foreground">{inst.region}</TableCell>
-                      <TableCell>
-                        {inst.monthlyCost ? `¥${parseFloat(inst.monthlyCost).toFixed(2)}` : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <TableWithPagination
+            data={instanceCosts || []}
+            columns={instanceColumns}
+            loading={instLoading}
+            rowKey="id"
+            emptyTitle={t('costs.noInstanceCost')}
+          />
         </CardContent>
       </Card>
     </div>
