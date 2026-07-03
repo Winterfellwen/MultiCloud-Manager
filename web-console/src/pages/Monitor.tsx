@@ -161,7 +161,7 @@ function RulesTab() {
                       <button
                         onClick={() => handleToggleEnabled(rule)}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                          rule.enabled ? 'bg-green-500' : 'bg-gray-300'
+                          rule.enabled ? 'bg-success-500' : 'bg-muted'
                         }`}
                       >
                         <span
@@ -523,7 +523,7 @@ function ChannelsTab() {
                       {JSON.stringify(ch.config)}
                     </TableCell>
                     <TableCell>
-                      <span className={ch.enabled ? 'text-green-600' : 'text-muted-foreground'}>
+                      <span className={ch.enabled ? 'text-success-600' : 'text-muted-foreground'}>
                         {ch.enabled ? t('common.enabled') : t('common.disabled')}
                       </span>
                     </TableCell>
