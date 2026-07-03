@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FilterBar, type FilterConfig } from '@/components/ui/filter-bar';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function CloudAccounts() {
   const { t } = useTranslation();
@@ -32,6 +33,7 @@ export default function CloudAccounts() {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, TestConnectionResult>>({});
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const filterConfigs: FilterConfig[] = [
     { key: 'search', type: 'search', placeholder: t('common.filterSearchAccount') },
@@ -185,11 +187,11 @@ export default function CloudAccounts() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(t('cloudAccounts.confirmDelete', { name }))) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (id: string) => {
+    setConfirmDeleteId(id);
   };
+
+  const deleteTarget = confirmDeleteId ? accounts.find(a => a.id === confirmDeleteId) : null;
 
   const handleTest = (id: string) => {
     setTestingId(id);
@@ -335,7 +337,7 @@ export default function CloudAccounts() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(account.id, account.name)}
+                              onClick={() => handleDelete(account.id)}
                               disabled={deleteMutation.isPending}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -480,6 +482,22 @@ export default function CloudAccounts() {
             </Button>
           </div>
       </Dialog>
+
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            deleteMutation.mutate(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }
+        }}
+        title={t('common.confirmDelete')}
+        description={t('cloudAccounts.confirmDelete', { name: deleteTarget?.name || '' })}
+        variant="destructive"
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }
