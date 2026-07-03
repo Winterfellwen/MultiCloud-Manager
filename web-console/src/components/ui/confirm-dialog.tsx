@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
   onConfirm: () => void;
   title: string;
   description: string;
@@ -16,11 +16,11 @@ interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   open,
-  onOpenChange,
+  onClose,
   onConfirm,
   title,
   description,
-  variant = 'destructive',
+  variant = 'default',
   confirmText,
   cancelText,
   loading = false,
@@ -28,9 +28,9 @@ export function ConfirmDialog({
   const { t } = useTranslation();
 
   return (
-    <Dialog open={open} onClose={() => onOpenChange(false)} title={title} description={description}>
+    <Dialog open={open} onClose={onClose} title={title} description={description}>
       <div className="flex justify-end gap-2 mt-4">
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+        <Button variant="outline" onClick={onClose} disabled={loading}>
           {cancelText || t('common.cancel')}
         </Button>
         <Button
