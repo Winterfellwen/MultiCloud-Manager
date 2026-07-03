@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -689,8 +689,7 @@ export default function AiSettings() {
           </div>
 
           {enableThinking && (
-            <div className="space-y-2">
-              <Label>{t('aiSettings.reasoningEffort')}</Label>
+            <FormField label={t('aiSettings.reasoningEffort')}>
               <div className="grid grid-cols-3 gap-2">
                 {(['low', 'medium', 'high'] as ReasoningEffort[]).map(effort => (
                   <button
@@ -713,7 +712,7 @@ export default function AiSettings() {
                 {reasoningEffort === 'medium' && t('aiSettings.effortMediumDesc')}
                 {reasoningEffort === 'high' && t('aiSettings.effortHighDesc')}
               </p>
-            </div>
+            </FormField>
           )}
         </CardContent>
       </Card>
@@ -724,8 +723,7 @@ export default function AiSettings() {
           <CardTitle className="text-lg">{t('aiSettings.genParams')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="temperature">{t('aiSettings.temperature', { value: temperature.toFixed(2) })}</Label>
+          <FormField label={t('aiSettings.temperature', { value: temperature.toFixed(2) })} htmlFor="temperature">
             <input
               id="temperature" type="range" min="0" max="2" step="0.1"
               value={temperature}
@@ -735,9 +733,8 @@ export default function AiSettings() {
             <p className="text-xs text-muted-foreground">
               {t('aiSettings.temperatureDesc')}
             </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="maxTokens">{t('aiSettings.maxTokens')}</Label>
+          </FormField>
+          <FormField label={t('aiSettings.maxTokens')} htmlFor="maxTokens">
             <Input
               id="maxTokens" type="number" min="256" max="32768" step="256"
               value={maxTokens}
@@ -746,7 +743,7 @@ export default function AiSettings() {
             <p className="text-xs text-muted-foreground">
               {t('aiSettings.maxTokensDesc')}
             </p>
-          </div>
+          </FormField>
           <div className="flex items-center gap-3 pt-2">
             <Button onClick={handleSaveParams} size="sm">{t('aiSettings.saveConfig')}</Button>
           </div>
@@ -763,8 +760,7 @@ export default function AiSettings() {
       >
           <div className="space-y-4 py-2">
             {!editingProvider && (
-              <div className="space-y-2">
-                <Label>{t('aiSettings.selectPreset')}</Label>
+              <FormField label={t('aiSettings.selectPreset')}>
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value=""
@@ -798,10 +794,9 @@ export default function AiSettings() {
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground">{t('aiSettings.presetHint')}</p>
-              </div>
+              </FormField>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="provider-id">{t('aiSettings.providerId')}</Label>
+            <FormField label={t('aiSettings.providerId')} required htmlFor="provider-id">
               <Input
                 id="provider-id"
                 value={providerForm.id}
@@ -810,18 +805,16 @@ export default function AiSettings() {
                 disabled={!!editingProvider}
               />
               <p className="text-xs text-muted-foreground">{t('aiSettings.providerIdHint')}</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="provider-name">{t('aiSettings.displayName')}</Label>
+            </FormField>
+            <FormField label={t('aiSettings.displayName')} required htmlFor="provider-name">
               <Input
                 id="provider-name"
                 value={providerForm.name}
                 onChange={(e) => setProviderForm(f => ({ ...f, name: e.target.value }))}
                 placeholder={t('aiSettings.displayNamePlaceholder')}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="provider-url">{t('aiSettings.baseUrl')}</Label>
+            </FormField>
+            <FormField label={t('aiSettings.baseUrl')} required htmlFor="provider-url">
               <Input
                 id="provider-url"
                 value={providerForm.baseUrl}
@@ -829,9 +822,8 @@ export default function AiSettings() {
                 placeholder={t('aiSettings.baseUrlPlaceholder')}
               />
               <p className="text-xs text-muted-foreground">{t('aiSettings.baseUrlHint')}</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="provider-key">{t('aiSettings.apiKey')}</Label>
+            </FormField>
+            <FormField label={t('aiSettings.apiKey')} required htmlFor="provider-key">
               <Input
                 id="provider-key"
                 type="password"
@@ -839,7 +831,7 @@ export default function AiSettings() {
                 onChange={(e) => setProviderForm(f => ({ ...f, apiKey: e.target.value }))}
                 placeholder={editingProvider ? t('aiSettings.apiKeyEditPlaceholder') : t('aiSettings.apiKeyPlaceholder')}
               />
-            </div>
+            </FormField>
 
             {/* compat 配置（参考 openclaw） */}
             <div className="space-y-3 rounded-md border bg-muted/30 p-3">
@@ -852,8 +844,7 @@ export default function AiSettings() {
               </p>
 
               {/* thinkingFormat 选择 */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('aiSettings.thinkingDialect')}</Label>
+              <FormField label={t('aiSettings.thinkingDialect')}>
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={providerForm.compat.thinkingFormat || ''}
@@ -875,11 +866,10 @@ export default function AiSettings() {
                 <p className="text-xs text-muted-foreground">
                   {t('aiSettings.thinkingDialectDesc')}
                 </p>
-              </div>
+              </FormField>
 
               {/* maxTokensField 选择 */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('aiSettings.maxTokensField')}</Label>
+              <FormField label={t('aiSettings.maxTokensField')}>
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={providerForm.compat.maxTokensField || 'max_tokens'}
@@ -894,7 +884,7 @@ export default function AiSettings() {
                   <option value="max_tokens">{t('aiSettings.maxTokensDefault')}</option>
                   <option value="max_completion_tokens">{t('aiSettings.maxTokensCompletion')}</option>
                 </select>
-              </div>
+              </FormField>
 
               {/* 布尔开关 */}
               <div className="grid grid-cols-1 gap-2">
