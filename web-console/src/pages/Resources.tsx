@@ -43,46 +43,48 @@ function attr(attrs: Record<string, unknown>, key: string): string {
 }
 
 /** 不同资源类型动态展示的额外列 */
-const COLUMN_DEFS: Partial<Record<ResourceType, ColumnDef[]>> = {
-  instance: [
-    { key: 'spec', label: '规格', render: (a) => {
-      const cpu = a.cpu; const mem = a.memoryMb;
-      if (!cpu && !mem) return '-';
-      return `${cpu || '?'}C/${mem ? Math.round(Number(mem) / 1024) : '?'}G`;
-    } },
-    { key: 'ip', label: 'IP', render: (a) => String(a.publicIp || a.privateIp || '-') },
-  ],
-  disk: [
-    { key: 'size', label: '容量', render: (a) => a.sizeGb ? `${a.sizeGb}GB` : '-' },
-    { key: 'diskType', label: '类型', render: (a) => attr(a, 'diskType') },
-  ],
-  database: [
-    { key: 'engine', label: '引擎', render: (a) => a.engine ? `${a.engine} ${a.engineVersion || ''}` : '-' },
-    { key: 'class', label: '规格', render: (a) => attr(a, 'instanceClass') },
-  ],
-  cache: [
-    { key: 'engine', label: '引擎', render: (a) => a.engine ? `${a.engine} ${a.engineVersion || ''}` : '-' },
-    { key: 'class', label: '规格', render: (a) => attr(a, 'instanceClass') },
-  ],
-  bucket: [
-    { key: 'objectCount', label: '对象数', render: (a) => a.objectCount ? Number(a.objectCount).toLocaleString() : '-' },
-    { key: 'size', label: '大小', render: (a) => a.sizeBytes ? formatBytes(Number(a.sizeBytes)) : '-' },
-  ],
-  loadbalancer: [
-    { key: 'lbType', label: '类型', render: (a) => attr(a, 'type') },
-    { key: 'dns', label: 'DNS', render: (a) => attr(a, 'dnsName') },
-  ],
-  vpc: [{ key: 'cidr', label: 'CIDR', render: (a) => attr(a, 'cidrBlock') }],
-  cluster: [
-    { key: 'version', label: '版本', render: (a) => attr(a, 'kubernetesVersion') },
-    { key: 'nodeCount', label: '节点数', render: (a) => attr(a, 'nodeCount') },
-  ],
-  aiservice: [
-    { key: 'kind', label: '类型', render: (a) => attr(a, 'kind') || attr(a, 'serviceKind') },
-    { key: 'sku', label: 'SKU', render: (a) => attr(a, 'skuName') },
-    { key: 'endpoint', label: '端点', render: (a) => attr(a, 'endpoint') },
-  ],
-};
+function getColumnDefs(t: (key: string) => string): Partial<Record<ResourceType, ColumnDef[]>> {
+  return {
+    instance: [
+      { key: 'spec', label: t('resources.columns.spec'), render: (a) => {
+        const cpu = a.cpu; const mem = a.memoryMb;
+        if (!cpu && !mem) return '-';
+        return `${cpu || '?'}C/${mem ? Math.round(Number(mem) / 1024) : '?'}G`;
+      } },
+      { key: 'ip', label: t('resources.columns.ip'), render: (a) => String(a.publicIp || a.privateIp || '-') },
+    ],
+    disk: [
+      { key: 'size', label: t('resources.columns.capacity'), render: (a) => a.sizeGb ? `${a.sizeGb}GB` : '-' },
+      { key: 'diskType', label: t('resources.columns.type'), render: (a) => attr(a, 'diskType') },
+    ],
+    database: [
+      { key: 'engine', label: t('resources.columns.engine'), render: (a) => a.engine ? `${a.engine} ${a.engineVersion || ''}` : '-' },
+      { key: 'class', label: t('resources.columns.spec'), render: (a) => attr(a, 'instanceClass') },
+    ],
+    cache: [
+      { key: 'engine', label: t('resources.columns.engine'), render: (a) => a.engine ? `${a.engine} ${a.engineVersion || ''}` : '-' },
+      { key: 'class', label: t('resources.columns.spec'), render: (a) => attr(a, 'instanceClass') },
+    ],
+    bucket: [
+      { key: 'objectCount', label: t('resources.columns.objects'), render: (a) => a.objectCount ? Number(a.objectCount).toLocaleString() : '-' },
+      { key: 'size', label: t('resources.columns.size'), render: (a) => a.sizeBytes ? formatBytes(Number(a.sizeBytes)) : '-' },
+    ],
+    loadbalancer: [
+      { key: 'lbType', label: t('resources.columns.type'), render: (a) => attr(a, 'type') },
+      { key: 'dns', label: t('resources.columns.dns'), render: (a) => attr(a, 'dnsName') },
+    ],
+    vpc: [{ key: 'cidr', label: 'CIDR', render: (a) => attr(a, 'cidrBlock') }],
+    cluster: [
+      { key: 'version', label: 'Version', render: (a) => attr(a, 'kubernetesVersion') },
+      { key: 'nodeCount', label: t('resources.columns.nodes'), render: (a) => attr(a, 'nodeCount') },
+    ],
+    aiservice: [
+      { key: 'kind', label: t('resources.columns.type'), render: (a) => attr(a, 'kind') || attr(a, 'serviceKind') },
+      { key: 'sku', label: t('resources.columns.sku'), render: (a) => attr(a, 'skuName') },
+      { key: 'endpoint', label: t('resources.columns.endpoint'), render: (a) => attr(a, 'endpoint') },
+    ],
+  };
+}
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -162,8 +164,8 @@ export default function Resources() {
 
   const items = result?.items || [];
   const extraCols = useMemo(() =>
-    selectedType !== 'all' ? COLUMN_DEFS[selectedType] || [] : [],
-    [selectedType]
+    selectedType !== 'all' ? getColumnDefs(t)[selectedType] || [] : [],
+    [selectedType, t]
   );
 
   async function handleDelete(id: string) {

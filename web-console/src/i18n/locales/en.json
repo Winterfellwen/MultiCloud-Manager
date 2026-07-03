@@ -310,7 +310,20 @@
     "confirmDeleteDesc": "This action cannot be undone. Delete this resource?",
     "confirmDelete": "Delete",
     "noResources": "No resources",
-    "allResources": "All Resources"
+    "allResources": "All Resources",
+    "columns": {
+      "spec": "Spec",
+      "ip": "IP",
+      "capacity": "Capacity",
+      "type": "Type",
+      "engine": "Engine",
+      "objects": "Objects",
+      "size": "Size",
+      "dns": "DNS",
+      "nodes": "Nodes",
+      "sku": "SKU",
+      "endpoint": "Endpoint"
+    }
   },
   "cloudAccounts": {
     "title": "Cloud Accounts",

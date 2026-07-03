@@ -310,7 +310,20 @@
     "confirmDeleteDesc": "此操作不可撤销，确定要删除该资源吗？",
     "confirmDelete": "确认删除",
     "noResources": "暂无资源",
-    "allResources": "全部资源"
+    "allResources": "全部资源",
+    "columns": {
+      "spec": "规格",
+      "ip": "IP",
+      "capacity": "容量",
+      "type": "类型",
+      "engine": "引擎",
+      "objects": "对象数",
+      "size": "大小",
+      "dns": "DNS",
+      "nodes": "节点数",
+      "sku": "SKU",
+      "endpoint": "端点"
+    }
   },
   "cloudAccounts": {
     "title": "云厂商管理",
