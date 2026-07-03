@@ -44,7 +44,10 @@
     "error": "Error",
     "back": "Back",
     "noPermission": "Access Denied",
-    "noPermissionDesc": "You don't have permission to access this page"
+    "noPermissionDesc": "You don't have permission to access this page",
+    "noData": "No data",
+    "showing": "Showing",
+    "of": "of"
   },
   "nav": {
     "dashboard": "Dashboard",

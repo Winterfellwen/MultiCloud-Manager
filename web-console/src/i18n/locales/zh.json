@@ -44,7 +44,10 @@
     "error": "出错了",
     "back": "返回",
     "noPermission": "权限不足",
-    "noPermissionDesc": "您没有访问此页面的权限"
+    "noPermissionDesc": "您没有访问此页面的权限",
+    "noData": "暂无数据",
+    "showing": "显示",
+    "of": "共"
   },
   "nav": {
     "dashboard": "总览",
