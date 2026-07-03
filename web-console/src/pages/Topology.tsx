@@ -68,7 +68,6 @@ export default function Topology() {
   }, []);
 
   function handleSearchResultClick(node: TopologyNode) {
-    console.log('SEARCH CLICK:', node.label, node.id);
     setShowResults(false);
     setSearchQuery(node.label);
     setMode('graph');
@@ -110,9 +109,6 @@ export default function Topology() {
   // Current node in drilldown
   const currentNode = useMemo(() => {
     const result = getTreeChildren(tree, drillPath);
-    if (drillPath.length > 0) {
-      console.log('[search-debug] drillPath:', drillPath, 'treeIds:', tree.map(t => t.id), 'result:', result?.id ?? 'null');
-    }
     return result;
   }, [tree, drillPath]);
 
@@ -193,7 +189,7 @@ export default function Topology() {
                 )}
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                {t('topology.modeTree', '浏览')}
+                {t('topology.modeTree')}
               </button>
               <button
                 onClick={() => setMode('graph')}
@@ -205,7 +201,7 @@ export default function Topology() {
                 )}
               >
                 <Network className="h-3.5 w-3.5" />
-                {t('topology.modeGraph', '关系图')}
+                {t('topology.modeGraph')}
               </button>
             </div>
           </div>
@@ -216,9 +212,9 @@ export default function Topology() {
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
               onFocus={() => searchQuery && setShowResults(true)}
-              placeholder={t('topology.searchPlaceholder', '搜索所有资源...')}
+              placeholder={t('topology.searchPlaceholder')}
               className="pl-7 pr-7 py-1.5 text-xs border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring w-48"
-              aria-label={t('topology.search', 'Search resources')}
+              aria-label={t('topology.search')}
             />
             {searchQuery && (
               <button
