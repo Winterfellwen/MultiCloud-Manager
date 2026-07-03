@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   Brain, Check, Settings2, Plus, Pencil, Trash2, Zap, Loader2, Server, ChevronDown, ChevronUp,
@@ -183,6 +184,10 @@ export default function AiSettings() {
   const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set());
   const [discoverError, setDiscoverError] = useState('');
   const [discoverSearchQuery, setDiscoverSearchQuery] = useState('');
+  
+  // 删除确认对话框
+  const [confirmDeleteProviderId, setConfirmDeleteProviderId] = useState<string | null>(null);
+  const [confirmDeleteModel, setConfirmDeleteModel] = useState<{ providerId: string; modelId: string } | null>(null);
   useEffect(() => {
     const savedTemp = localStorage.getItem('ai-temperature');
     const savedTokens = localStorage.getItem('ai-maxTokens');
@@ -266,9 +271,7 @@ export default function AiSettings() {
   };
 
   const handleDeleteProvider = (provider: LlmProviderConfig) => {
-    if (confirm(t('aiSettings.confirmDeleteProvider', { name: provider.name }))) {
-      deleteProvider.mutate(provider.id);
-    }
+    setConfirmDeleteProviderId(provider.id);
   };
 
   const handleTestProvider = (provider: LlmProviderConfig) => {
@@ -507,9 +510,7 @@ export default function AiSettings() {
                                 <button
                                   className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity"
                                   onClick={() => {
-                                    if (confirm(t('aiSettings.confirmDeleteModel', { id: m.id }))) {
-                                      deleteModel.mutate({ providerId: provider.id, modelId: m.id });
-                                    }
+                                    setConfirmDeleteModel({ providerId: provider.id, modelId: m.id });
                                   }}
                                 >
                                   <Trash2 className="h-3 w-3" />
@@ -622,9 +623,7 @@ export default function AiSettings() {
                               className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm(t('aiSettings.confirmDeleteModel', { id: model.id }))) {
-                                  deleteModel.mutate({ providerId: model.provider, modelId: model.id });
-                                }
+                                setConfirmDeleteModel({ providerId: model.provider, modelId: model.id });
                               }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1066,6 +1065,37 @@ export default function AiSettings() {
           </Button>
         </div>
       </Dialog>
+      
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        open={!!confirmDeleteProviderId}
+        onClose={() => setConfirmDeleteProviderId(null)}
+        onConfirm={() => {
+          if (confirmDeleteProviderId) {
+            deleteProvider.mutate(confirmDeleteProviderId);
+            setConfirmDeleteProviderId(null);
+          }
+        }}
+        title={t('common.confirmDelete')}
+        description={t('aiSettings.confirmDeleteProvider', { name: providers.find(p => p.id === confirmDeleteProviderId)?.name || '' })}
+        variant="destructive"
+        loading={deleteProvider.isPending}
+      />
+      
+      <ConfirmDialog
+        open={!!confirmDeleteModel}
+        onClose={() => setConfirmDeleteModel(null)}
+        onConfirm={() => {
+          if (confirmDeleteModel) {
+            deleteModel.mutate(confirmDeleteModel);
+            setConfirmDeleteModel(null);
+          }
+        }}
+        title={t('common.confirmDelete')}
+        description={t('aiSettings.confirmDeleteModel', { id: confirmDeleteModel?.modelId || '' })}
+        variant="destructive"
+        loading={deleteModel.isPending}
+      />
     </div>
   );
 }
