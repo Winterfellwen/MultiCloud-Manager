@@ -275,7 +275,7 @@ export default function CloudAccounts() {
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           {account.status === 'active' ? (
-                            <><CheckCircle2 className="h-3 w-3 text-green-500" /> {t('cloudAccounts.active')}</>
+                            <><CheckCircle2 className="h-3 w-3 text-success-500" /> {t('cloudAccounts.active')}</>
                           ) : (
                             <><XCircle className="h-3 w-3 text-muted-foreground" /> {account.status || t('cloudAccounts.unknown')}</>
                           )}
@@ -294,7 +294,7 @@ export default function CloudAccounts() {
                         )}
                         {/* 测试结果 */}
                         {result && (
-                          <div className={cn('mt-1 flex items-center gap-1 text-xs', result.ok ? 'text-green-600' : 'text-red-600')}>
+                          <div className={cn('mt-1 flex items-center gap-1 text-xs', result.ok ? 'text-success-600' : 'text-destructive-600')}>
                             {result.ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                             {result.message}
                           </div>
