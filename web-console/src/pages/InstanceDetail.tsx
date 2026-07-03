@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useInstance, useInstanceAction } from '@/hooks/useInstances';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +18,28 @@ export default function InstanceDetail() {
   const navigate = useNavigate();
   const { data: instance, isLoading, error } = useInstance(id);
   const action = useInstanceAction();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  async function executeDelete() {
+    if (!instance) return;
+    try {
+      await action.mutateAsync({ id: instance.id, action: 'delete' });
+      toast.success(t('instances.deleteSuccess'));
+      navigate('/resources');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('instances.opFailed'));
+    }
+  }
 
   async function handleAction(act: 'start' | 'stop' | 'reboot' | 'delete') {
     if (!instance) return;
-    if (act === 'delete' && !window.confirm(t('instances.confirmDeleteDesc'))) return;
+    if (act === 'delete') {
+      setConfirmOpen(true);
+      return;
+    }
     try {
       await action.mutateAsync({ id: instance.id, action: act });
       toast.success(t(`instances.${act}Success`));
-      if (act === 'delete') navigate('/resources');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('instances.opFailed'));
     }
@@ -200,6 +216,15 @@ export default function InstanceDetail() {
         instanceId={instance.id}
         incoming={instance.connections?.incoming || []}
         outgoing={instance.connections?.outgoing || []}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => { setConfirmOpen(false); executeDelete(); }}
+        title={t('common.confirmDelete')}
+        description={t('common.confirmDeleteDescription')}
+        variant="destructive"
       />
     </div>
   );
