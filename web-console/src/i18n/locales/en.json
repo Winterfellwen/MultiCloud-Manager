@@ -75,6 +75,7 @@
   "login": {
     "title": "CloudOps AI",
     "subtitle": "Multi-Cloud Console Login",
+    "author": "Built by Rui Wen",
     "username": "Username",
     "usernamePlaceholder": "Enter username",
     "password": "Password",
@@ -88,7 +89,10 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "overview": "Overview",
     "totalResources": "Total Resources",
+    "activeAlerts": "Active Alerts",
+    "costTrend": "Cost Trend",
     "totalInstances": "Total Instances",
     "running": "Running",
     "alertCount": "Alerts",
@@ -450,6 +454,23 @@
     "serviceUrlPlaceholder": "e.g. http://localhost:3100/mcp",
     "confirmDeleteTitle": "Confirm Delete",
     "confirmDeleteDesc": "Delete MCP server \"{{name}}\"? This action cannot be undone."
+  },
+  "errors": {
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedError": "An unexpected error occurred",
+    "goHome": "Go Home",
+    "retry": "Retry"
+  },
+  "demo": {
+    "readOnlyNotice": "Demo Mode — Read Only",
+    "demoDataNotice": "This is demo data. No real cloud resources are managed."
+  },
+  "modelSelect": {
+    "failedToLoadModels": "Failed to load models",
+    "noProvidersConfigured": "No AI providers configured"
+  },
+  "filterBar": {
+    "noResults": "No results found"
   },
   "notFound": {
     "title": "404",

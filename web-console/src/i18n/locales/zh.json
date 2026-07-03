@@ -75,6 +75,7 @@
   "login": {
     "title": "CloudOps AI",
     "subtitle": "多云管理控制台登录",
+    "author": "由 Rui Wen 构建",
     "username": "用户名",
     "usernamePlaceholder": "请输入用户名",
     "password": "密码",
@@ -88,7 +89,10 @@
   },
   "dashboard": {
     "title": "总览",
+    "overview": "概览",
     "totalResources": "资源总览",
+    "activeAlerts": "活跃告警",
+    "costTrend": "费用趋势",
     "totalInstances": "总实例数",
     "running": "运行中",
     "alertCount": "告警数",
@@ -450,6 +454,23 @@
     "serviceUrlPlaceholder": "如 http://localhost:3100/mcp",
     "confirmDeleteTitle": "确认删除",
     "confirmDeleteDesc": "确定要删除 MCP 服务器 \"{{name}}\" 吗？此操作不可撤销。"
+  },
+  "errors": {
+    "somethingWentWrong": "出错了",
+    "unexpectedError": "发生了意外错误",
+    "goHome": "返回首页",
+    "retry": "重试"
+  },
+  "demo": {
+    "readOnlyNotice": "演示模式 — 只读",
+    "demoDataNotice": "这是演示数据，不会管理真实的云资源。"
+  },
+  "modelSelect": {
+    "failedToLoadModels": "加载模型失败",
+    "noProvidersConfigured": "未配置AI提供商"
+  },
+  "filterBar": {
+    "noResults": "未找到结果"
   },
   "notFound": {
     "title": "404",
