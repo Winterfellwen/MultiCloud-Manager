@@ -18,7 +18,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { TableWithPagination, type Column } from '@/components/ui/table-with-pagination';
 import { Dialog } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getStatusColor, type ResourceType, type CloudResource } from '@/types/resource';
 import type { InstanceRow, InstanceStatus } from '@/types/cloud';
@@ -531,46 +531,41 @@ function CreateInstanceDialog({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <Dialog open={open} onClose={onClose} title={t('instances.createDialogTitle')} description={t('instances.createDialogDesc')}>
       <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-        <div className="space-y-2">
-          <Label>{t('instances.providerLabel')}</Label>
+        <FormField label={t('instances.providerLabel')} required>
           <Select value={provider} onChange={(e) => { setProvider(e.target.value); setRegion(''); }} required>
             <option value="">{t('instances.pleaseSelect')}</option>
             {(providersData?.providers || []).map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>{t('instances.regionLabel')}</Label>
+        </FormField>
+        <FormField label={t('instances.regionLabel')} required>
           <Select value={region} onChange={(e) => setRegion(e.target.value)} required disabled={!provider}>
             <option value="">{t('instances.pleaseSelect')}</option>
             {(regions || []).map((r) => (
               <option key={r.id} value={r.id}>{r.displayName}</option>
             ))}
           </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>{t('instances.nameLabel')}</Label>
+        </FormField>
+        <FormField label={t('instances.nameLabel')} required>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="my-instance" required />
-        </div>
-        <div className="space-y-2">
-          <Label>{t('instances.imageLabel')}</Label>
+        </FormField>
+        <FormField label={t('instances.imageLabel')} required>
           <Select value={imageId} onChange={(e) => setImageId(e.target.value)} required disabled={!provider}>
             <option value="">{t('instances.pleaseSelect')}</option>
             {(images || []).map((img) => (
               <option key={img.id} value={img.id}>{img.name}</option>
             ))}
           </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>{t('instances.typeLabel')}</Label>
+        </FormField>
+        <FormField label={t('instances.typeLabel')} required>
           <Select value={instanceType} onChange={(e) => setInstanceType(e.target.value)} required disabled={!provider || !region}>
             <option value="">{t('instances.pleaseSelect')}</option>
             {(types || []).map((ty) => (
               <option key={ty.id} value={ty.id}>{ty.name} ({ty.cpu}C/{ty.memoryMb}MB)</option>
             ))}
           </Select>
-        </div>
+        </FormField>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button type="submit" disabled={create.isPending}>{create.isPending ? t('common.creating') : t('common.create')}</Button>
