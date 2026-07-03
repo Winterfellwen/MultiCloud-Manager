@@ -1,12 +1,14 @@
 // 模型选择器：下拉选择可用模型，显示能力图标，不可用模型灰显
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { ChevronDown, ImageIcon, Brain, FileText, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useModels } from '../../hooks/useModels';
 import { useChatStore } from '../../stores/chat';
 import { buildChatModelOption } from '../../lib/openclaw/chat-model-ref';
 import { cn } from '../../lib/utils';
 
 export function ModelSelect() {
+  const { t } = useTranslation();
   const { data: models = [], isLoading } = useModels();
   const selectedModel = useChatStore((s) => s.selectedModel);
   const setModel = useChatStore((s) => s.setModel);
@@ -37,7 +39,7 @@ export function ModelSelect() {
 
   const selectedLabel =
     options.find((o) => o.value === selectedModel)?.label ||
-    (selectedModel ? selectedModel : '选择模型');
+    (selectedModel ? selectedModel : t('modelSelect.placeholder'));
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!open) return;
