@@ -1,5 +1,5 @@
 // Dashboard 总览页：统计卡片 + 云厂商分布
-import { Server, DollarSign, AlertTriangle, Loader2, AlertCircle, Brain, Activity } from 'lucide-react';
+import { Server, DollarSign, AlertTriangle, Loader2, AlertCircle, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboard';
@@ -9,6 +9,7 @@ import PredictionCard from '@/components/dashboard/PredictionCard';
 import RemediationCard from '@/components/dashboard/RemediationCard';
 import SecurityCard from '@/components/dashboard/SecurityCard';
 import CapacityCard from '@/components/dashboard/CapacityCard';
+import { AiInsightCard } from '@/components/dashboard/AiInsightCard';
 
 
 
@@ -16,7 +17,7 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: stats, isLoading, error } = useDashboardStats();
-  const { data: insight, isLoading: insightLoading } = useAiInsight();
+  const { data: insight, isLoading: insightLoading, refetch } = useAiInsight();
   const { data: tokenStats } = useTokenStats();
 
   const formatCost = (cost: number) => {
@@ -169,51 +170,12 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* AI 健康洞察 */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Brain className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold">{t('dashboard.aiInsight')}</h2>
-          </div>
-          {insightLoading ? (
-            <div className="text-center py-4 text-muted-foreground">{t('common.loading')}</div>
-          ) : insight ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="text-3xl font-bold" style={{
-                  color: insight.healthScore >= 80 ? '#22c55e' : insight.healthScore >= 60 ? '#eab308' : '#ef4444'
-                }}>
-                  {insight.healthScore}
-                </div>
-                <div className="text-sm text-muted-foreground">{t('dashboard.healthScore')}</div>
-              </div>
-              {insight.risks.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium mb-1">{t('dashboard.risks')}</div>
-                  <ul className="space-y-1">
-                    {insight.risks.map((risk, i) => (
-                      <li key={i} className="text-sm text-muted-foreground">• {risk}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {insight.suggestions.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium mb-1">{t('dashboard.suggestions')}</div>
-                  <ul className="space-y-1">
-                    {insight.suggestions.map((s, i) => (
-                      <li key={i} className="text-sm text-muted-foreground">• {s}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground">{t('dashboard.insightUnavailable')}</div>
-          )}
-        </CardContent>
-      </Card>
+      <AiInsightCard
+        insight={insight}
+        loading={insightLoading}
+        showRefresh
+        onRefresh={() => refetch()}
+      />
 
       {/* Token 使用统计 */}
       <Card>
