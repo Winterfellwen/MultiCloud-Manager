@@ -12,11 +12,14 @@ export async function dashboardRoutes(app: FastifyInstance) {
   app.get('/ai-insight', async (request, reply) => {
     const scope = request.scope;
     const cacheKey = scope.schema;
+    const refresh = (request.query as { refresh?: string })?.refresh === 'true';
 
-    // 检查缓存
-    const cached = insightCache.get(cacheKey);
-    if (cached && Date.now() < cached.expiresAt) {
-      return reply.send(cached.data);
+    // 检查缓存（强制刷新时跳过）
+    if (!refresh) {
+      const cached = insightCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        return reply.send(cached.data);
+      }
     }
 
     // 收集上下文数据
@@ -74,6 +77,14 @@ export async function dashboardRoutes(app: FastifyInstance) {
     // 更新缓存
     insightCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
 
+    // 持久化到 insight_history
+    await db.insert(t.insightHistory).values({
+      healthScore: data.healthScore,
+      risks: JSON.stringify(data.risks || []),
+      suggestions: JSON.stringify(data.suggestions || []),
+      raw: data.raw || '',
+    });
+
     return reply.send(data);
   });
 
@@ -118,5 +129,19 @@ export async function dashboardRoutes(app: FastifyInstance) {
       },
       trend: trendRows.map(r => ({ date: r.date, tokens: r.tokens })),
     };
+  });
+
+  app.get('/ai-insight/history', async (request) => {
+    const scope = request.scope;
+    const t = scopedDb(scope);
+    const rows = await db.select()
+      .from(t.insightHistory)
+      .orderBy(desc(t.insightHistory.createdAt))
+      .limit(20);
+    return rows.map(r => ({
+      ...r,
+      risks: typeof r.risks === 'string' ? JSON.parse(r.risks) : r.risks,
+      suggestions: typeof r.suggestions === 'string' ? JSON.parse(r.suggestions) : r.suggestions,
+    }));
   });
 }
