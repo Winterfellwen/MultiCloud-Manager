@@ -77,12 +77,14 @@ export async function dashboardRoutes(app: FastifyInstance) {
     // 更新缓存
     insightCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
 
-    // 持久化到 insight_history
-    await db.insert(t.insightHistory).values({
+    // 持久化到 insight_history（非阻塞）
+    db.insert(t.insightHistory).values({
       healthScore: data.healthScore,
       risks: JSON.stringify(data.risks || []),
       suggestions: JSON.stringify(data.suggestions || []),
       raw: data.raw || '',
+    }).catch(err => {
+      request.log.error(err, 'Failed to persist insight history');
     });
 
     return reply.send(data);
