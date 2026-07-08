@@ -354,8 +354,9 @@ export class MockWsClient {
           isDefault: true,
           compat: { thinkingFormat: 'openai', supportsTools: true },
           models: [
+            { id: 'meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct', contextWindow: 128000, reasoning: false, input: ['text'] },
             { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron 3 Nano 30B', contextWindow: 128000, reasoning: false, input: ['text'] },
-            { id: 'meta/llama-3.1-70b-instruct', name: 'Llama 3.1 70B Instruct', contextWindow: 128000, reasoning: false, input: ['text'] },
+            { id: 'google/gemma-2-2b-it', name: 'Gemma 2 2B IT', contextWindow: 8192, reasoning: false, input: ['text'] },
           ],
         },
         {

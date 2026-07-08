@@ -49,8 +49,9 @@ ON CONFLICT (id, provider_id) DO NOTHING;
 -- NVIDIA NIM: 补充额外模型（需与 NVIDIA API 实际可用的模型 ID 一致）
 INSERT INTO llm_models (id, provider_id, name, context_window, reasoning, input_types, thinking_format, thinking_level_map, supported_reasoning_efforts)
 VALUES
+  ('meta/llama-3.1-8b-instruct', 'nvidia', 'Llama 3.1 8B Instruct', 128000, FALSE, '["text"]', NULL, NULL, NULL),
   ('nvidia/nemotron-3-nano-30b-a3b', 'nvidia', 'Nemotron 3 Nano 30B', 128000, FALSE, '["text"]', NULL, NULL, NULL),
-  ('meta/llama-3.1-70b-instruct', 'nvidia', 'Llama 3.1 70B Instruct', 128000, FALSE, '["text"]', NULL, NULL, NULL)
+  ('google/gemma-2-2b-it', 'nvidia', 'Gemma 2 2B IT', 8192, FALSE, '["text"]', NULL, NULL, NULL)
 ON CONFLICT (id, provider_id) DO NOTHING;
 
 COMMIT;

@@ -157,6 +157,7 @@ export default function AiSettings() {
   const discoverModels = useDiscoverModels();
   const deleteModel = useDeleteModel();
   const testModel = useTestModel();
+  const [modelTestingId, setModelTestingId] = useState<string | null>(null);
   const [modelTestResult, setModelTestResult] = useState<Record<string, { ok: boolean; msg: string }>>({});
 
   const selectedModel = useChatStore((s) => s.selectedModel);
@@ -593,16 +594,20 @@ export default function AiSettings() {
                               disabled={testModel.isPending}
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setModelTestingId(model.id);
+                                setModelTestResult(prev => ({ ...prev, [model.id]: { ok: false, msg: t('aiSettings.testConnecting') } }));
                                 testModel.mutate(
                                   { providerId: model.provider, modelId: model.id },
                                   {
                                     onSuccess: (res) => {
+                                      setModelTestingId(null);
                                       setModelTestResult(prev => ({
                                         ...prev,
                                         [model.id]: { ok: res.ok, msg: res.message || (res.ok ? t('aiSettings.testModelSuccess') : t('aiSettings.testModelFailed')) },
                                       }));
                                     },
                                     onError: (err) => {
+                                      setModelTestingId(null);
                                       setModelTestResult(prev => ({
                                         ...prev,
                                         [model.id]: { ok: false, msg: err.message },
@@ -612,7 +617,7 @@ export default function AiSettings() {
                                 );
                               }}
                             >
-                              <Zap className="h-3.5 w-3.5" />
+                              {modelTestingId === model.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent>{t('tooltip.testModel')}</TooltipContent>
