@@ -46,12 +46,11 @@ VALUES
   ('meta-llama/llama-4-maverick', 'openrouter', 'Llama 4 Maverick', 1048576, FALSE, '["text","image"]', NULL, NULL, NULL)
 ON CONFLICT (id, provider_id) DO NOTHING;
 
--- NVIDIA NIM: 补充额外模型（seedFromEnv 已创建基础 provider 和部分模型）
+-- NVIDIA NIM: 补充额外模型（需与 NVIDIA API 实际可用的模型 ID 一致）
 INSERT INTO llm_models (id, provider_id, name, context_window, reasoning, input_types, thinking_format, thinking_level_map, supported_reasoning_efforts)
 VALUES
-  ('llama-3.1-nemotron-70b-instruct', 'nvidia', 'Llama 3.1 Nemotron 70B', 128000, FALSE, '["text"]', NULL, NULL, NULL),
-  ('llama-3.3-70b-instruct', 'nvidia', 'Llama 3.3 70B', 128000, FALSE, '["text"]', NULL, NULL, NULL),
-  ('deepseek-r1', 'nvidia', 'DeepSeek R1', 128000, TRUE, '["text"]', NULL, NULL, NULL)
+  ('nvidia/nemotron-3-nano-30b-a3b', 'nvidia', 'Nemotron 3 Nano 30B', 128000, FALSE, '["text"]', NULL, NULL, NULL),
+  ('meta/llama-3.1-70b-instruct', 'nvidia', 'Llama 3.1 70B Instruct', 128000, FALSE, '["text"]', NULL, NULL, NULL)
 ON CONFLICT (id, provider_id) DO NOTHING;
 
 COMMIT;

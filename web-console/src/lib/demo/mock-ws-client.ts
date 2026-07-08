@@ -179,6 +179,14 @@ export class MockWsClient {
         return this.handleChatAbort(params as { runId: string });
       case 'tools.catalog':
         return this.handleToolsCatalog();
+      case 'providers.list':
+        return this.handleProvidersList();
+      case 'models.list':
+        return this.handleModelsList();
+      case 'models.delete':
+        return { ok: true, message: '演示模式不支持删除操作' };
+      case 'models.test':
+        return { ok: false, message: '演示模式不支持测试操作' };
       default:
         throw new Error(`Unknown method: ${method}`);
     }
@@ -319,6 +327,104 @@ export class MockWsClient {
         },
       ],
     };
+  }
+
+  private handleProvidersList(): { providers: Array<{
+    id: string;
+    name: string;
+    baseUrl: string;
+    apiKey: string;
+    isDefault: boolean;
+    compat?: Record<string, unknown>;
+    models: Array<{
+      id: string;
+      name: string;
+      contextWindow: number;
+      reasoning: boolean;
+      input: string[];
+    }>;
+  }> } {
+    return {
+      providers: [
+        {
+          id: 'nvidia',
+          name: 'NVIDIA NIM',
+          baseUrl: 'https://integrate.api.nvidia.com/v1',
+          apiKey: 'nvapi-****Kq8',
+          isDefault: true,
+          compat: { thinkingFormat: 'openai', supportsTools: true },
+          models: [
+            { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron 3 Nano 30B', contextWindow: 128000, reasoning: false, input: ['text'] },
+            { id: 'meta/llama-3.1-70b-instruct', name: 'Llama 3.1 70B Instruct', contextWindow: 128000, reasoning: false, input: ['text'] },
+          ],
+        },
+        {
+          id: 'openai',
+          name: 'OpenAI',
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'sk-****DEMO',
+          isDefault: false,
+          compat: { thinkingFormat: 'openai', supportsReasoningEffort: true, supportsTools: true, maxTokensField: 'max_completion_tokens' },
+          models: [
+            { id: 'gpt-4o', name: 'GPT-4o', contextWindow: 128000, reasoning: false, input: ['text', 'image'] },
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', contextWindow: 128000, reasoning: false, input: ['text', 'image'] },
+            { id: 'o3-mini', name: 'o3-mini', contextWindow: 200000, reasoning: true, input: ['text'] },
+            { id: 'gpt-4.1', name: 'GPT-4.1', contextWindow: 1047576, reasoning: false, input: ['text', 'image'] },
+          ],
+        },
+        {
+          id: 'deepseek',
+          name: 'DeepSeek',
+          baseUrl: 'https://api.deepseek.com/v1',
+          apiKey: 'sk-****DEMO',
+          isDefault: false,
+          compat: { thinkingFormat: 'deepseek', supportsTools: true },
+          models: [
+            { id: 'deepseek-chat', name: 'DeepSeek V3', contextWindow: 65536, reasoning: false, input: ['text'] },
+            { id: 'deepseek-reasoner', name: 'DeepSeek R1', contextWindow: 65536, reasoning: true, input: ['text'] },
+          ],
+        },
+        {
+          id: 'openrouter',
+          name: 'OpenRouter',
+          baseUrl: 'https://openrouter.ai/api/v1',
+          apiKey: 'sk-or-****DEMO',
+          isDefault: false,
+          compat: { thinkingFormat: 'openrouter', supportsTools: true },
+          models: [
+            { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', contextWindow: 200000, reasoning: false, input: ['text', 'image'] },
+            { id: 'google/gemini-2.5-pro-preview', name: 'Gemini 2.5 Pro', contextWindow: 1048576, reasoning: true, input: ['text', 'image'] },
+            { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', contextWindow: 1048576, reasoning: false, input: ['text', 'image'] },
+          ],
+        },
+      ],
+    };
+  }
+
+  private handleModelsList(): { models: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    contextWindow: number;
+    reasoning: boolean;
+    input: string[];
+    available: boolean;
+    thinkingFormat: string;
+  }> } {
+    const providers = this.handleProvidersList().providers;
+    const models = providers.flatMap((p) =>
+      p.models.map((m) => ({
+        id: `${p.id}/${m.id}`,
+        name: m.name,
+        provider: p.id,
+        contextWindow: m.contextWindow,
+        reasoning: m.reasoning,
+        input: m.input,
+        available: true,
+        thinkingFormat: 'openai' as const,
+      })),
+    );
+    return { models };
   }
 
   // ===== 流式响应生成 =====
