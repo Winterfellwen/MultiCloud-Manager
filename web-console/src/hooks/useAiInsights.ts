@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { aiInsightsApi } from '@/api/aiInsights';
 
 export function useAiInsight() {
@@ -14,5 +14,18 @@ export function useTokenStats() {
     queryKey: ['token-stats'],
     queryFn: aiInsightsApi.getTokenStats,
     refetchInterval: 60 * 1000,
+  });
+}
+
+export function useRefreshInsight() {
+  return useMutation({
+    mutationFn: () => aiInsightsApi.getInsight(true),
+  });
+}
+
+export function useInsightHistory() {
+  return useQuery({
+    queryKey: ['insight-history'],
+    queryFn: aiInsightsApi.getInsightHistory,
   });
 }

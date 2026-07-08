@@ -18,3 +18,12 @@ export interface TokenStats {
   };
   trend: { date: string; tokens: number }[];
 }
+
+export interface InsightHistoryItem {
+  id: number;
+  healthScore: number;
+  risks: string[];
+  suggestions: string[];
+  raw: string;
+  createdAt: string;
+}
