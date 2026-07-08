@@ -637,6 +637,9 @@
     "tabPredictions": "预测",
     "tabRemediation": "自愈",
     "tabPolicy": "自愈策略配置",
+    "tabInsight": "健康洞察",
+    "insightHistory": "洞察历史",
+    "triggerNow": "立即刷新",
     "predictions": {
       "subtitle": "基于最近 24 小时指标趋势，预测未来可能触发的告警",
       "noData": "暂无预测数据。点击「立即分析」生成预测。",

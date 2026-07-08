@@ -637,6 +637,9 @@
     "tabPredictions": "Predictions",
     "tabRemediation": "Remediation",
     "tabPolicy": "Policy Config",
+    "tabInsight": "Health Insight",
+    "insightHistory": "Insight History",
+    "triggerNow": "Refresh",
     "predictions": {
       "subtitle": "Based on recent 24h metric trends, predict future alerts",
       "noData": "No predictions yet. Click \"Analyze Now\" to generate predictions.",
