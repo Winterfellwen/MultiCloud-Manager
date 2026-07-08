@@ -200,6 +200,15 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
     createdAt: timestamp('created_at').defaultNow().notNull(),
   });
 
+  const insightHistory = createTable('insight_history', {
+    id: serial('id').primaryKey(),
+    healthScore: integer('health_score').notNull(),
+    risks: text('risks'),
+    suggestions: text('suggestions'),
+    raw: text('raw'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  });
+
   return {
     cloudAccounts,
     instances,
@@ -213,6 +222,7 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
     remediationPolicies,
     remediationRuns,
     knowledgeBase,
+    insightHistory,
   };
 }
 
