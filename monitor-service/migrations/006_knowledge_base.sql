@@ -1,6 +1,11 @@
 -- monitor-service/migrations/006_knowledge_base.sql
 -- 启用 pgvector 扩展（如果未安装则跳过，降级为纯关键词检索）
-CREATE EXTENSION IF NOT EXISTS vector;
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pgvector not available, skipping extension creation';
+END $$;
 
 -- 创建表（不包含 embedding 列，确保即使 pgvector 不可用也能创建）
 CREATE TABLE IF NOT EXISTS knowledge_base (

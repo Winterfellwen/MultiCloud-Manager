@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS demo.metric_predictions (LIKE public.metric_predictio
 CREATE TABLE IF NOT EXISTS demo.remediation_policies (LIKE public.remediation_policies INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.remediation_runs (LIKE public.remediation_runs INCLUDING ALL);
 CREATE TABLE IF NOT EXISTS demo.knowledge_base (LIKE public.knowledge_base INCLUDING ALL);
+CREATE TABLE IF NOT EXISTS demo.insight_history (LIKE public.insight_history INCLUDING ALL);
 
 -- Fallback: add embedding column if missing
 DO $$
