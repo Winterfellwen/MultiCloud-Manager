@@ -5,8 +5,9 @@ import { cn } from '@/lib/utils';
 import PredictionsTab from '@/components/monitor/PredictionsTab';
 import RemediationTab from '@/components/monitor/RemediationTab';
 import RemediationPolicySection from '@/components/aiops/RemediationPolicySection';
+import AiOpsInsightTab from '@/components/aiops/AiOpsInsightTab';
 
-type Tab = 'predictions' | 'remediation' | 'policy';
+type Tab = 'predictions' | 'remediation' | 'policy' | 'insight';
 
 export default function AiOps() {
   const { t } = useTranslation();
@@ -29,6 +30,7 @@ export default function AiOps() {
             { key: 'predictions' as const, label: t('aiops.tabPredictions') },
             { key: 'remediation' as const, label: t('aiops.tabRemediation') },
             { key: 'policy' as const, label: t('aiops.tabPolicy') },
+            { key: 'insight' as const, label: t('aiops.tabInsight') },
           ]).map((tabItem) => (
             <button
               key={tabItem.key}
@@ -49,6 +51,7 @@ export default function AiOps() {
       {tab === 'predictions' && <PredictionsTab />}
       {tab === 'remediation' && <RemediationTab />}
       {tab === 'policy' && <RemediationPolicySection />}
+      {tab === 'insight' && <AiOpsInsightTab />}
     </div>
   );
 }
