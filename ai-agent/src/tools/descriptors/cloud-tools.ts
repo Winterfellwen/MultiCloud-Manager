@@ -7,7 +7,7 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-const PROVIDER_LIST = 'aws | aliyun | azure | tencent | huawei';
+const PROVIDER_LIST = 'aws | aliyun | azure | tencent | huawei | oracle | render';
 const RESOURCE_TYPES = 'instance | disk | bucket | database | cache | loadbalancer | vpc | securitygroup | cdn | cluster | aiservice';
 
 // ============ 实例管理工具 ============

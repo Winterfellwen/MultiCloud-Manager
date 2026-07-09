@@ -475,9 +475,35 @@ export class OCIClient {
     );
   }
 
+  // ===== Instance Creation =====
+
+  async createInstance(body: Record<string, unknown>): Promise<OCIInstance> {
+    return this.request<OCIInstance>(
+      'compute',
+      'POST',
+      `/20160918/instances`,
+      JSON.stringify(body)
+    );
+  }
+
+  async listAvailabilityDomains(): Promise<Array<{ name: string }>> {
+    const data = await this.request<{ items: Array<{ name: string }> }>(
+      'compute',
+      'GET',
+      `/20160918/availabilityDomains`,
+      null,
+      { compartmentId: this.compartmentOcid }
+    );
+    return data.items || [];
+  }
+
   // ===== Region =====
 
   getRegion(): string {
     return this.region;
+  }
+
+  getCompartmentOcid(): string {
+    return this.compartmentOcid;
   }
 }

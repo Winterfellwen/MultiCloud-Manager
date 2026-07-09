@@ -60,7 +60,7 @@ export type ModeType = 'plan' | 'action' | 'confirm';
 
 // ============ 工具注册表 ============
 
-const PROVIDER_LIST = 'aws | aliyun | azure | tencent | huawei';
+const PROVIDER_LIST = 'aws | aliyun | azure | tencent | huawei | oracle | render';
 const RESOURCE_TYPES = 'instance | disk | bucket | database | cache | loadbalancer | vpc | securitygroup | cdn | cluster | aiservice';
 
 /** 所有已注册工具的元信息（按 group 组织） */

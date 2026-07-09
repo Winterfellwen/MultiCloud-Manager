@@ -228,9 +228,40 @@ export class OracleProvider implements ICloudProvider {
   }
 
   async createInstance(opts: CreateInstanceOpts): Promise<Instance> {
-    // OCI CreateInstance is complex, requires subnet, image, shape, etc.
-    // For now, throw not implemented - this requires more detailed setup
-    throw new Error('CreateInstance not fully implemented for Oracle Cloud. Please use the OCI console to create instances.');
+    // Get availability domains to pick the first one
+    const ads = await this.api.listAvailabilityDomains();
+    if (!ads.length) {
+      throw new Error('No availability domains found in this region');
+    }
+    const adsName = ads[0].name;
+
+    // Try to find a subnet if none provided
+    let subnetId = opts.subnetId;
+    if (!subnetId) {
+      const subnets = await this.api.listSubnets();
+      if (subnets.length) {
+        subnetId = subnets[0].id;
+      }
+    }
+
+    const body: Record<string, unknown> = {
+      compartmentId: this.api.getCompartmentOcid(),
+      shape: opts.instanceType,
+      displayName: opts.name,
+      availabilityDomain: adsName,
+      sourceDetails: {
+        sourceType: 'image',
+        imageId: opts.imageId,
+      },
+      metadata: {},
+    };
+
+    if (subnetId) {
+      body.createVnicDetails = { subnetId };
+    }
+
+    const result = await this.api.createInstance(body);
+    return ociInstanceToInstance(result, this.api.getRegion());
   }
 
   async deleteInstance(id: string): Promise<void> {

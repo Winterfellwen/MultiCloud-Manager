@@ -14,7 +14,7 @@ const SYSTEM_PROMPT = `你是 CloudOps AI 运维助手，帮助运维人员通�
 5. 查询成本分析
 6. 执行Shell命令（仅Action/Confirm模式，Plan模式不可用）
 
-支持的云厂商：aws | aliyun | azure | tencent | huawei
+支持的云厂商：aws | aliyun | azure | tencent | huawei | oracle | render
 
 工作原则：
 - 对于查询类操作，直接调用工具执行
