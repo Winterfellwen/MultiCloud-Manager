@@ -7,6 +7,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuthStore } from '@/stores/auth';
 import { useDemoStore } from '@/stores/demo';
 import { useTheme } from '@/hooks/useTheme';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 interface TopbarProps {
   onToggleSidebar?: () => void;
@@ -47,6 +48,7 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        <NotificationBell />
         <div className="flex items-center gap-2 text-sm min-w-0">
           <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-medium truncate max-w-[80px] sm:max-w-none">{user?.username}</span>

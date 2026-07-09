@@ -209,6 +209,21 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
     createdAt: timestamp('created_at').defaultNow().notNull(),
   });
 
+  const notifications = createTable('notifications', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: varchar('type', { length: 64 }).notNull(),
+    category: varchar('category', { length: 32 }).notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    link: text('link'),
+    metadata: jsonb('metadata').default({}),
+    createdBy: uuid('created_by'),
+    userId: uuid('user_id'),
+    roleRequired: varchar('role_required', { length: 32 }),
+    readAt: timestamp('read_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  });
+
   return {
     cloudAccounts,
     instances,
@@ -223,6 +238,7 @@ function buildTables(createTable: (name: string, columns: TableColumns) => any) 
     remediationRuns,
     knowledgeBase,
     insightHistory,
+    notifications,
   };
 }
 

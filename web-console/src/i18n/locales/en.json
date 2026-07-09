@@ -65,7 +65,8 @@
     "audit": "Audit Logs",
     "topology": "Topology",
     "aiOps": "AI Ops",
-    "knowledgeBase": "Knowledge Base"
+    "knowledgeBase": "Knowledge Base",
+    "notifications": "Notifications"
   },
   "topbar": {
     "title": "Multi-Cloud Console",
@@ -505,6 +506,16 @@
     "menu": "Open menu",
     "logout": "Logout",
     "language": "Switch language"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all",
+    "empty": "No notifications",
+    "justNow": "just now",
+    "minAgo": "m ago",
+    "hourAgo": "h ago",
+    "dayAgo": "d ago"
   },
   "notification": {
     "opSuccess": "Operation successful",

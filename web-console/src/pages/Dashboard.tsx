@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: stats, isLoading, error } = useDashboardStats();
-  const { data: insight, isLoading: insightLoading, refetch } = useAiInsight();
+  const { data: insight, isLoading: insightLoading, isFetching, refetch } = useAiInsight();
   const { data: tokenStats } = useTokenStats();
 
   const formatCost = (cost: number) => {
@@ -173,6 +173,7 @@ export default function Dashboard() {
       <AiInsightCard
         insight={insight}
         loading={insightLoading}
+        refreshing={isFetching}
         showRefresh
         onRefresh={() => refetch()}
       />

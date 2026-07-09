@@ -15,6 +15,7 @@ import {
   Network,
   Bot,
   BookOpen,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -80,6 +81,11 @@ export function Sidebar() {
       label: t('nav.knowledgeBase'),
       to: '/knowledge-base',
       icon: BookOpen,
+    },
+    {
+      label: t('nav.notifications'),
+      to: '/notifications',
+      icon: Bell,
     },
     {
       label: t('nav.aiSettings'),

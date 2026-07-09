@@ -19,6 +19,7 @@ import McpConfig from '@/pages/McpConfig';
 import AiSettings from '@/pages/AiSettings';
 import AiOps from '@/pages/AiOps';
 import KnowledgeBase from '@/pages/KnowledgeBase';
+import Notifications from '@/pages/Notifications';
 import CloudAccounts from '@/pages/CloudAccounts';
 import Topology from '@/pages/Topology';
 import NotFound from '@/pages/NotFound';
@@ -97,6 +98,7 @@ export default function App() {
               <Route path="/ai-settings" element={<AiSettings />} />
               <Route path="/ai-ops" element={<AiOps />} />
               <Route path="/knowledge-base" element={<KnowledgeBase />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/cloud-accounts" element={<CloudAccounts />} />
               <Route
                 path="/users"

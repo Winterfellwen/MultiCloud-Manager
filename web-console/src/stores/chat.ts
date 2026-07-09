@@ -6,9 +6,11 @@ import { create } from 'zustand';
 
 export type Mode = 'plan' | 'action' | 'confirm';
 import { WsClient } from '../lib/ws-client';
+import { toast } from 'sonner';
 import { MockWsClient } from '../lib/demo/mock-ws-client';
 import { getWsBaseUrl } from '../lib/config';
 import { useAuthStore } from './auth';
+import { useNotificationStore } from './notifications';
 import { useDemoStore } from './demo';
 import type {
   ChatMessage,
@@ -526,6 +528,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
               : sess
           ),
         }));
+
+        // Push notification: chat completed
+        const session = state.sessions.find((s) => s.sessionKey === sessionKey);
+        const title = session?.title || sessionKey;
+        toast.info(title, { description: 'AI 对话已完成', duration: 4000 });
+        useNotificationStore.getState().addNotification({
+          id: 'chat-' + Date.now(),
+          type: 'chat.completed',
+          category: 'ai',
+          title: session?.title || 'AI 对话',
+          description: 'AI 对话已完成',
+          link: '/chat/react',
+          metadata: {},
+          createdBy: null,
+          userId: null,
+          roleRequired: null,
+          readAt: null,
+          createdAt: new Date().toISOString(),
+        });
         break;
       }
 

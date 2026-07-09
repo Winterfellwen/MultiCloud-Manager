@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AiOpsInsightTab() {
   const { t } = useTranslation();
-  const { data: insight, isLoading, refetch } = useAiInsight();
+  const { data: insight, isLoading, isFetching, refetch } = useAiInsight();
   const refreshMutation = useRefreshInsight();
   const { data: history, isLoading: historyLoading } = useInsightHistory();
   const { data: tokenStats } = useTokenStats();
@@ -23,7 +23,8 @@ export default function AiOpsInsightTab() {
     <div className="space-y-6">
       <AiInsightCard
         insight={refreshMutation.data || insight}
-        loading={refreshMutation.isPending || isLoading}
+        loading={isLoading}
+        refreshing={refreshMutation.isPending || isFetching}
         showRefresh
         refreshDisabled={refreshMutation.isPending}
         onRefresh={handleRefresh}

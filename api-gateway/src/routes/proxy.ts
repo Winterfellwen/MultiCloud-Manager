@@ -32,8 +32,13 @@ function verifyJwt(token: string): Record<string, unknown> | null {
     const alg = header.alg;
     if (typeof alg !== 'string' || !alg.startsWith('HS')) return null;
 
+    // JWT 算法名（HS256）→ OpenSSL digest 名（sha256）
+    const digestMap: Record<string, string> = { HS256: 'sha256', HS384: 'sha384', HS512: 'sha512' };
+    const digest = digestMap[alg];
+    if (!digest) return null;
+
     // 使用 Node.js crypto 验证 HMAC 签名
-    const hmac = createHmac(alg.toLowerCase(), config.jwtSecret);
+    const hmac = createHmac(digest, config.jwtSecret);
     hmac.update(`${parts[0]}.${parts[1]}`);
     const expectedSig = hmac.digest('base64url');
 

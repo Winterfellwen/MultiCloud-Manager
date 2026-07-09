@@ -6,12 +6,13 @@ import type { AiInsight } from '@/types/aiInsights';
 interface AiInsightCardProps {
   insight: AiInsight | undefined;
   loading: boolean;
+  refreshing?: boolean;
   refreshDisabled?: boolean;
   onRefresh: () => void;
   showRefresh?: boolean;
 }
 
-export function AiInsightCard({ insight, loading, refreshDisabled, onRefresh, showRefresh = false }: AiInsightCardProps) {
+export function AiInsightCard({ insight, loading, refreshing, refreshDisabled, onRefresh, showRefresh = false }: AiInsightCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -29,7 +30,7 @@ export function AiInsightCard({ insight, loading, refreshDisabled, onRefresh, sh
               className="text-muted-foreground hover:text-primary transition-colors"
               title={t('aiops.triggerNow')}
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${refreshing || loading ? 'animate-spin' : ''}`} />
             </button>
           )}
         </div>
