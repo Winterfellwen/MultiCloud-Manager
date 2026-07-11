@@ -26,7 +26,7 @@ export interface CreateInstanceOpts {
   provider: string;
   region: string;
   name: string;
-  imageId: string;
+  imageId?: string;
   instanceType: string;
   subnetId?: string;
   securityGroupIds?: string[];

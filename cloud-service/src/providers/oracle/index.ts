@@ -244,6 +244,16 @@ export class OracleProvider implements ICloudProvider {
       }
     }
 
+    // Auto-select latest Oracle Linux image if none provided
+    let imageId = opts.imageId;
+    if (!imageId) {
+      const images = await this.api.listImages();
+      if (!images.length) {
+        throw new Error('No available images found in this region');
+      }
+      imageId = images[0].id;
+    }
+
     const body: Record<string, unknown> = {
       compartmentId: this.api.getCompartmentOcid(),
       shape: opts.instanceType,
@@ -251,7 +261,7 @@ export class OracleProvider implements ICloudProvider {
       availabilityDomain: adsName,
       sourceDetails: {
         sourceType: 'image',
-        imageId: opts.imageId,
+        imageId,
       },
       metadata: {},
     };
@@ -281,6 +291,8 @@ export class OracleProvider implements ICloudProvider {
   }
 
   async listRegions(): Promise<Region[]> {
+    // Make a real API call to verify credentials are valid
+    await this.api.listInstances();
     return OCI_REGIONS.map(r => ({
       id: r.id,
       name: r.id,

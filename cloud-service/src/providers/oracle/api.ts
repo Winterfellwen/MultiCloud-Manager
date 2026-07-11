@@ -79,8 +79,8 @@ export class OCISigner {
    * Generate the OCI request signature per v1 spec.
    * Headers to sign: (request-target), date, host, x-content-sha256
    */
-  sign(method: string, path: string, host: string, body: string | null): string {
-    const date = new Date().toUTCString();
+  sign(method: string, path: string, host: string, body: string | null, date?: string): string {
+    const dateStr = date || new Date().toUTCString();
     const contentSha256 = body
       ? crypto.createHash('sha256').update(body).digest('base64')
       : crypto.createHash('sha256').update('').digest('base64');
@@ -93,7 +93,7 @@ export class OCISigner {
     // [body only if POST/PUT/PATCH]
     const signingString = [
       `(request-target): ${method.toLowerCase()} ${path}`,
-      `date: ${date}`,
+      `date: ${dateStr}`,
       `host: ${host}`,
       `x-content-sha256: ${contentSha256}`,
     ].join('\n');
@@ -140,16 +140,18 @@ export class OCIClient {
     const host = url.host;
     const actualPath = `${url.pathname}${url.search}`;
 
+    const dateHeader = new Date().toUTCString();
+    const contentSha256 = body
+      ? crypto.createHash('sha256').update(body).digest('base64')
+      : crypto.createHash('sha256').update('').digest('base64');
     const headers: Record<string, string> = {
-      'Date': new Date().toUTCString(),
+      'Date': dateHeader,
       'Content-Type': 'application/json',
       'Host': host,
-      'x-content-sha256': body
-        ? crypto.createHash('sha256').update(body).digest('base64')
-        : crypto.createHash('sha256').update('').digest('base64'),
+      'x-content-sha256': contentSha256,
     };
 
-    const authorization = this.signer.sign(method, actualPath, host, body);
+    const authorization = this.signer.sign(method, actualPath, host, body, dateHeader);
     headers['Authorization'] = authorization;
 
     const res = await fetch(url.toString(), {

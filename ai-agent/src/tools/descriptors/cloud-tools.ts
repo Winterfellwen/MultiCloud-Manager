@@ -89,17 +89,17 @@ const rebootInstanceDesc: ToolDescriptor = {
 
 const createInstanceDesc: ToolDescriptor = {
   name: 'cloud_create_instance',
-  description: `创建一台新的云服务器实例。需要指定云厂商、区域、规格、镜像和实例名称。支持厂商: ${PROVIDER_LIST}`,
+  description: `创建一台新的云服务器实例。需要指定云厂商、区域、规格和名称。支持厂商: ${PROVIDER_LIST}`,
   inputSchema: {
     type: 'object',
     properties: {
       provider: { type: 'string', description: `云厂商: ${PROVIDER_LIST}` },
       region: { type: 'string', description: '区域，如 us-east-1, cn-shanghai, eastus' },
       instanceType: { type: 'string', description: '规格，如 t3.micro, ecs.t6-c1m2, Standard_D2s_v3' },
-      imageId: { type: 'string', description: '镜像 ID 或别名，如 UbuntuLTS, Debian11, CentOS85' },
+      imageId: { type: 'string', description: '镜像 ID（不填则自动选择最新镜像）' },
       name: { type: 'string', description: '实例名称' },
     },
-    required: ['provider', 'region', 'instanceType', 'imageId', 'name'],
+    required: ['provider', 'region', 'instanceType', 'name'],
   },
   owner: { kind: 'core' },
   executor: { kind: 'core', executorId: 'cloud_create_instance' },
@@ -379,12 +379,18 @@ toolRegistry.register(getInstanceDesc, makeCloudExecutor('GET', (a) => `/${a.ins
 toolRegistry.register(startInstanceDesc, makeCloudExecutor('POST', (a) => `/${a.instanceId}/start`));
 toolRegistry.register(stopInstanceDesc, makeCloudExecutor('POST', (a) => `/${a.instanceId}/stop`));
 toolRegistry.register(rebootInstanceDesc, makeCloudExecutor('POST', (a) => `/${a.instanceId}/reboot`));
-toolRegistry.register(createInstanceDesc, makeCloudExecutor('POST', () => '', (a) => ({
-  provider: a.provider,
-  region: a.region,
-  instanceType: a.instanceType,
-  name: a.name,
-})));
+toolRegistry.register(createInstanceDesc, makeCloudExecutor('POST', () => '', (a) => {
+  const body: Record<string, unknown> = {
+    provider: a.provider,
+    region: a.region,
+    instanceType: a.instanceType,
+    name: a.name,
+  };
+  if (a.imageId) {
+    body.imageId = a.imageId;
+  }
+  return body;
+}));
 toolRegistry.register(deleteInstanceDesc, makeCloudExecutor('DELETE', (a) => `/${a.instanceId}`));
 
 // 资源管理

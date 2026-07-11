@@ -255,18 +255,23 @@ export class AccountService {
    * 服务重启后内存中的 providers Map 会丢失，需要从数据库重新加载
    */
   async registerFromDb(): Promise<void> {
+    let rows: any[];
     try {
-      const rows = await db.select().from(publicCloudAccounts);
-      for (const row of rows) {
-        // config 字段可能被存为 JSON 字符串（非 jsonb 对象），需兼容解析
+      rows = await db.select().from(publicCloudAccounts);
+    } catch (err) {
+      // 数据库查询失败不阻塞启动（可能表还未创建）
+      console.error('Failed to query cloud accounts from DB:', (err as Error).message);
+      return;
+    }
+    for (const row of rows) {
+      try {
         const cfg = typeof row.config === 'string'
           ? JSON.parse(row.config) as Record<string, unknown>
           : row.config as Record<string, unknown>;
         await this.registerFromAccount(row.provider, cfg);
+      } catch (err) {
+        console.error(`Failed to register ${row.provider} account "${row.name}":`, (err as Error).message);
       }
-    } catch (err) {
-      // 数据库查询失败不阻塞启动（可能表还未创建）
-      console.error('Failed to load cloud accounts from DB:', (err as Error).message);
     }
   }
 

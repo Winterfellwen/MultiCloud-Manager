@@ -133,7 +133,7 @@ export const CLOUD_PROVIDERS: ProviderMeta[] = [
       { key: 'compartmentOcid', label: 'Compartment OCID', type: 'text', required: true, placeholder: 'ocid1.compartment.oc1...' },
       { key: 'fingerprint', label: 'API Key Fingerprint', type: 'text', required: true, placeholder: 'e2:90:2d:...' },
       { key: 'region', label: 'Region', type: 'text', required: true, default: 'us-ashburn-1', placeholder: 'us-ashburn-1' },
-      { key: 'privateKey', label: 'Private Key (PEM)', type: 'textarea', required: true, placeholder: '-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----', help: '下载的 API 私钥内容，支持 PKCS#8 和 PKCS#1 格式' },
+      { key: 'privateKey', label: 'Private Key (PEM)', type: 'textarea', required: true, placeholder: '-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----', help: '下载的 API 私钥内容，推荐使用 PKCS#8 格式（以 -----BEGIN PRIVATE KEY----- 开头）' },
     ],
   },
 ];

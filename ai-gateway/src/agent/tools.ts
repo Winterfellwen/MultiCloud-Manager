@@ -145,9 +145,9 @@ const TOOL_GROUPS: ToolGroup[] = [
             region: { type: 'string', description: '区域/可用区' },
             name: { type: 'string', description: '实例名称' },
             instanceType: { type: 'string', description: '实例规格（如 t3.micro、ecs.g6.large）' },
-            imageId: { type: 'string', description: '镜像 ID' },
+            imageId: { type: 'string', description: '镜像 ID（不填则自动选择最新 Oracle Linux/CentOS 镜像）' },
           },
-          required: ['provider', 'region', 'name', 'instanceType', 'imageId'],
+          required: ['provider', 'region', 'name', 'instanceType'],
         },
       },
       {

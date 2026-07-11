@@ -20,7 +20,7 @@ const createInstanceSchema = z.object({
   provider: z.string(),
   region: z.string(),
   name: z.string().min(1).max(128),
-  imageId: z.string(),
+  imageId: z.string().optional(),
   instanceType: z.string(),
   subnetId: z.string().optional(),
   securityGroupIds: z.array(z.string()).optional(),

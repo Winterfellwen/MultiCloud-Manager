@@ -124,7 +124,7 @@ export class AzureProvider implements ICloudProvider {
         location: opts.region,
         hardwareProfile: { vmSize: opts.instanceType as any },
         storageProfile: {
-          imageReference: this.parseImageRef(opts.imageId),
+          imageReference: this.parseImageRef(opts.imageId || 'UbuntuLTS'),
         },
         osProfile: {
           computerName: vmName,
