@@ -7,6 +7,7 @@
     "build": "pnpm -r run build",
     "db:migrate": "pnpm -r run db:migrate",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "test:tool-compat": "node scripts/test-tool-compat.mjs"
   }
 }
