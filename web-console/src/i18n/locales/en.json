@@ -441,7 +441,14 @@
     "connecting": "Connecting to service ({{status}})...",
     "loadFailed": "Load failed",
     "noMatch": "No matching tools",
-    "genericProvider": "Generic"
+    "genericProvider": "Generic",
+    "execHistory": "Execution History",
+    "noExecutions": "No executions yet",
+    "recentExecutions": "Recent Executions",
+    "execTime": "Time",
+    "execUser": "User",
+    "execResult": "Result",
+    "execDuration": "Duration"
   },
   "mcp": {
     "title": "MCP Config",

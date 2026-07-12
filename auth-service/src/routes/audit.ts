@@ -10,6 +10,7 @@ export async function auditRoutes(app: FastifyInstance) {
     return auditService.query({
       userId: query.userId,
       action: query.action,
+      resourceId: query.resourceId,
       provider: query.provider,
       startDate: query.startDate ? new Date(query.startDate) : undefined,
       endDate: query.endDate ? new Date(query.endDate) : undefined,

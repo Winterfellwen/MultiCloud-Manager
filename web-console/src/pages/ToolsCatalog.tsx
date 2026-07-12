@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle, Wrench } from 'lucide-react';
 import { useToolsCatalog } from '@/hooks/useToolsCatalog';
+import { useToolExecutions } from '@/hooks/useToolExecutions';
 import type { ToolCatalogEntry } from '@/hooks/useToolsCatalog';
 import { useChatStore } from '@/stores/chat';
 import { Input } from '@/components/ui/input';
@@ -160,14 +161,63 @@ export default function ToolsCatalog() {
           ))}
         </div>
       )}
+
+      {/* 全局最近执行区域 */}
+      {!isLoading && !error && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-3">{t('tools.recentExecutions')}</h2>
+          <Card>
+            <CardContent className="pt-4">
+              <RecentExecutions providerFilter={providerFilter} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
-/** 工具卡片：展示名称、描述、风险级别 */
+function RecentExecutions({ providerFilter }: { providerFilter: string }) {
+  const { t } = useTranslation();
+  const { data } = useToolExecutions(undefined, 50);
+
+  if (!data) return <Loader2 className="h-4 w-4 animate-spin" />;
+
+  const filtered = providerFilter === 'all'
+    ? data
+    : data.filter(ex => ex.provider === providerFilter);
+
+  if (filtered.length === 0) {
+    return <p className="text-sm text-muted-foreground">{t('tools.noExecutions')}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {filtered.map(ex => (
+        <div key={ex.id} className="flex items-center justify-between border-b pb-1 last:border-0">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-mono text-xs">{ex.resourceId}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">{ex.userId}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {ex.durationMs != null && <span>{ex.durationMs}ms</span>}
+            <span className={ex.result === 'success' ? 'text-green-600' : 'text-red-600'}>
+              {ex.result === 'success' ? '✓' : '✗'}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 工具卡片：展示名称、描述、风险级别、云厂商标签、执行记录 */
 function ToolCard({ tool }: { tool: ToolCatalogEntry }) {
   const { t } = useTranslation();
   const riskConfig = tool.risk ? RISK_BADGE[tool.risk] : null;
+  const [showHistory, setShowHistory] = useState(false);
+  const { data: executions } = useToolExecutions(showHistory ? tool.id : undefined, 10);
 
   return (
     <Card className="transition-shadow hover:shadow-md">
@@ -205,6 +255,31 @@ function ToolCard({ tool }: { tool: ToolCatalogEntry }) {
         )}
 
         <p className="mt-3 font-mono text-xs text-muted-foreground/70">{tool.id}</p>
+
+        {/* 执行记录按钮 */}
+        <button
+          className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setShowHistory(!showHistory)}
+        >
+          {t('tools.execHistory')} ({executions?.length ?? 0})
+        </button>
+
+        {/* 执行记录列表 */}
+        {showHistory && (
+          <div className="mt-2 space-y-1 border-t pt-2">
+            {(!executions || executions.length === 0) && (
+              <p className="text-xs text-muted-foreground">{t('tools.noExecutions')}</p>
+            )}
+            {executions?.map(ex => (
+              <div key={ex.id} className="flex items-center justify-between text-xs">
+                <span>{new Date(ex.timestamp).toLocaleString()}</span>
+                <span className={ex.result === 'success' ? 'text-green-600' : 'text-red-600'}>
+                  {ex.result === 'success' ? '✓' : '✗'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

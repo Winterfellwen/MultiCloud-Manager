@@ -34,6 +34,7 @@ export interface AuditLogQuery {
   userId?: string;
   action?: string;
   resourceType?: string;
+  resourceId?: string;
   provider?: string;
   startDate?: Date;
   endDate?: Date;

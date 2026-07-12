@@ -25,6 +25,7 @@ export class AuditService {
     const conditions = [];
     if (filters.userId) conditions.push(eq(auditLogs.userId, filters.userId));
     if (filters.action) conditions.push(eq(auditLogs.action, filters.action));
+    if (filters.resourceId) conditions.push(eq(auditLogs.resourceId, filters.resourceId));
     if (filters.provider) conditions.push(eq(auditLogs.provider, filters.provider));
     if (filters.startDate) conditions.push(gte(auditLogs.timestamp, filters.startDate));
     if (filters.endDate) conditions.push(lte(auditLogs.timestamp, filters.endDate));

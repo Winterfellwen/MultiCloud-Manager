@@ -441,7 +441,14 @@
     "connecting": "正在连接服务（{{status}}）...",
     "loadFailed": "加载失败",
     "noMatch": "暂无匹配的工具",
-    "genericProvider": "通用"
+    "genericProvider": "通用",
+    "execHistory": "执行记录",
+    "noExecutions": "暂无执行记录",
+    "recentExecutions": "最近执行",
+    "execTime": "执行时间",
+    "execUser": "用户",
+    "execResult": "结果",
+    "execDuration": "耗时"
   },
   "mcp": {
     "title": "MCP 配置",
