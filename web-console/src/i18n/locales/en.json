@@ -434,12 +434,14 @@
     "total": "{{count}} tools available",
     "searchPlaceholder": "Search tool name or description...",
     "allRisk": "All Risk Levels",
+    "allProviders": "All Providers",
     "riskLow": "Low Risk",
     "riskMedium": "Medium Risk",
     "riskHigh": "High Risk",
     "connecting": "Connecting to service ({{status}})...",
     "loadFailed": "Load failed",
-    "noMatch": "No matching tools"
+    "noMatch": "No matching tools",
+    "genericProvider": "Generic"
   },
   "mcp": {
     "title": "MCP Config",

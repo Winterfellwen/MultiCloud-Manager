@@ -26,13 +26,22 @@ export default function ToolsCatalog() {
 
   const [search, setSearch] = useState('');
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
+  const [providerFilter, setProviderFilter] = useState<string>('all');
 
   // 页面挂载时确保 WebSocket 已连接
   useEffect(() => {
     connect();
   }, [connect]);
 
-  // 按搜索词和风险级别过滤工具
+  // 提取所有 unique 云厂商
+  const allProviders = useMemo(() => {
+    if (!data?.groups) return [];
+    const set = new Set<string>();
+    data.groups.forEach(g => g.providerSet?.forEach(p => set.add(p)));
+    return [...set].sort();
+  }, [data]);
+
+  // 按搜索词、风险级别和云厂商过滤工具
   const filteredGroups = useMemo(() => {
     if (!data?.groups) return [];
     const keyword = search.trim().toLowerCase();
@@ -41,9 +50,8 @@ export default function ToolsCatalog() {
       .map((group) => ({
         ...group,
         tools: group.tools.filter((tool) => {
-          // 风险级别筛选
           if (riskFilter !== 'all' && tool.risk !== riskFilter) return false;
-          // 关键词搜索（匹配名称或描述）
+          if (providerFilter !== 'all' && (!tool.supportedProviders || !tool.supportedProviders.includes(providerFilter))) return false;
           if (!keyword) return true;
           return (
             tool.label.toLowerCase().includes(keyword) ||
@@ -53,7 +61,7 @@ export default function ToolsCatalog() {
         }),
       }))
       .filter((group) => group.tools.length > 0);
-  }, [data, search, riskFilter]);
+  }, [data, search, riskFilter, providerFilter]);
 
   const totalTools = data?.groups?.reduce((sum, g) => sum + g.tools.length, 0) ?? 0;
 
@@ -92,6 +100,16 @@ export default function ToolsCatalog() {
               <option value="low">{t('tools.riskLow')}</option>
               <option value="medium">{t('tools.riskMedium')}</option>
               <option value="high">{t('tools.riskHigh')}</option>
+            </Select>
+            <Select
+              value={providerFilter}
+              onChange={(e) => setProviderFilter(e.target.value)}
+              className="w-full sm:w-[160px]"
+            >
+              <option value="all">{t('tools.allProviders')}</option>
+              {allProviders.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
             </Select>
           </div>
         </CardContent>
@@ -170,6 +188,22 @@ function ToolCard({ tool }: { tool: ToolCatalogEntry }) {
         <p className="text-sm text-muted-foreground line-clamp-3">
           {tool.description}
         </p>
+
+        {/* 云厂商标签 */}
+        {tool.supportedProviders && tool.supportedProviders.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {tool.supportedProviders.map(p => (
+              <span key={p} className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {p}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground/60">
+            {t('tools.genericProvider')}
+          </span>
+        )}
+
         <p className="mt-3 font-mono text-xs text-muted-foreground/70">{tool.id}</p>
       </CardContent>
     </Card>

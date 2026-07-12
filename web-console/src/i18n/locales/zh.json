@@ -434,12 +434,14 @@
     "total": "共 {{count}} 个可用工具",
     "searchPlaceholder": "搜索工具名称或描述...",
     "allRisk": "全部风险级别",
+    "allProviders": "全部云厂商",
     "riskLow": "低风险",
     "riskMedium": "中风险",
     "riskHigh": "高风险",
     "connecting": "正在连接服务（{{status}}）...",
     "loadFailed": "加载失败",
-    "noMatch": "暂无匹配的工具"
+    "noMatch": "暂无匹配的工具",
+    "genericProvider": "通用"
   },
   "mcp": {
     "title": "MCP 配置",
