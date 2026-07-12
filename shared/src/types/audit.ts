@@ -11,6 +11,8 @@ export interface AuditLog {
   result: 'success' | 'failure';
   ip: string | null;
   traceId: string | null;
+  durationMs: number | null;
+  sessionId: string | null;
 }
 
 export interface CreateAuditLogInput {
@@ -24,6 +26,8 @@ export interface CreateAuditLogInput {
   result: 'success' | 'failure';
   ip?: string;
   traceId?: string;
+  durationMs?: number;
+  sessionId?: string;
 }
 
 export interface AuditLogQuery {

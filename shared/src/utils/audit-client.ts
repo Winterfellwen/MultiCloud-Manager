@@ -9,6 +9,8 @@ export interface AuditEntry {
   params?: Record<string, unknown>;
   ip?: string;
   traceId?: string;
+  durationMs?: number;
+  sessionId?: string;
 }
 
 /**

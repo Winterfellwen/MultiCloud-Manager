@@ -16,6 +16,8 @@ export class AuditService {
       result: input.result,
       ip: input.ip,
       traceId: input.traceId,
+      durationMs: input.durationMs,
+      sessionId: input.sessionId,
     });
   }
 

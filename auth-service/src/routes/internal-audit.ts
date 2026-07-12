@@ -23,6 +23,8 @@ export async function internalAuditRoutes(app: FastifyInstance) {
       result: body.result ?? 'success',
       ip: body.ip,
       traceId: body.traceId,
+      durationMs: body.durationMs,
+      sessionId: body.sessionId,
     });
     return reply.status(201).send({ ok: true });
   });

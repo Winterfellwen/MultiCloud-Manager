@@ -211,16 +211,6 @@ export async function handleChatSend(
                 targetSessionKey: sessionKey,
                 payload: { runId, type: 'tool_call', toolCall },
               });
-
-              // 审计：AI 发起工具调用
-              recordAudit(config.authServiceUrl, {
-                userId: client.userId,
-                action: 'ai.tool_call',
-                resourceType: 'ai_tool',
-                resourceId: toolCall.name,
-                result: 'success',
-                params: { sessionKey, tool: toolCall.name },
-              });
             },
             onToolResult: (result) => {
               queuedRecordEvent(sessionKey, 'tool_result', { runId, toolCallId: result.toolCallId, result });
