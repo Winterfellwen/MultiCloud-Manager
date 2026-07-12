@@ -13,6 +13,8 @@ export interface CatalogToolItem {
   description: string;
   /** 风险级别：safe / moderate / dangerous */
   risk?: DangerLevel;
+  /** 支持的云厂商列表，undefined 表示通用工具 */
+  supportedProviders?: string[];
 }
 
 /** 工具分组 */
@@ -23,6 +25,8 @@ export interface CatalogGroup {
   label: string;
   /** 该分组下的工具 */
   tools: CatalogToolItem[];
+  /** 该组下所有工具的云厂商并集，用于前端筛选器 */
+  providerSet?: string[];
 }
 
 /**
@@ -42,7 +46,9 @@ export function handleToolsCatalog(
       label: tool.label,
       description: tool.description,
       risk: tool.dangerLevel,
+      supportedProviders: tool.supportedProviders,
     })),
+    providerSet: [...new Set(group.tools.flatMap(t => t.supportedProviders ?? []))],
   }));
 
   respond(true, { groups });

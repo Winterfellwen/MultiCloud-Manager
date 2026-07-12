@@ -43,6 +43,8 @@ export interface ToolDefinition {
   dangerLevel: DangerLevel;
   /** 所属分组 ID */
   group: string;
+  /** 支持的云厂商列表，空数组或 undefined 表示通用工具 */
+  supportedProviders?: string[];
 }
 
 /** 工具分组 */
@@ -75,6 +77,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: `列出云服务器实例。支持厂商: ${PROVIDER_LIST}`,
         dangerLevel: 'safe',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: {
@@ -90,6 +93,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '查看云服务器实例的详细信息',
         dangerLevel: 'safe',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '实例 ID（内部UUID）' } },
@@ -102,6 +106,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '启动一台已停止的云服务器实例',
         dangerLevel: 'moderate',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '实例 ID（内部UUID）' } },
@@ -114,6 +119,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '停止一台运行中的云服务器实例',
         dangerLevel: 'moderate',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '实例 ID（内部UUID）' } },
@@ -126,6 +132,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '重启一台云服务器实例',
         dangerLevel: 'moderate',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '实例 ID（内部UUID）' } },
@@ -138,6 +145,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: `创建一台新的云服务器实例。支持厂商: ${PROVIDER_LIST}`,
         dangerLevel: 'dangerous',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: {
@@ -156,6 +164,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '永久删除一台云服务器实例（不可恢复）',
         dangerLevel: 'dangerous',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '实例 ID（内部UUID）' } },
@@ -174,6 +183,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: `列出各类云资源（磁盘/数据库/缓存/VPC等）。支持类型: ${RESOURCE_TYPES}。支持厂商: ${PROVIDER_LIST}`,
         dangerLevel: 'safe',
         group: 'cloud-resources',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: {
@@ -191,6 +201,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '查看云资源的详细信息（包含类型特定属性）',
         dangerLevel: 'safe',
         group: 'cloud-resources',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle', 'render'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '资源 ID（内部UUID）' } },
@@ -203,6 +214,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '删除一个云资源（仅部分类型支持，如磁盘、对象存储桶）',
         dangerLevel: 'dangerous',
         group: 'cloud-resources',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle'],
         parameters: {
           type: 'object',
           properties: { id: { type: 'string', description: '资源 ID（内部UUID）' } },
@@ -215,6 +227,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '触发云资源同步，从云厂商拉取最新资源列表',
         dangerLevel: 'moderate',
         group: 'cloud-resources',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle'],
         parameters: {
           type: 'object',
           properties: {
@@ -229,6 +242,7 @@ const TOOL_GROUPS: ToolGroup[] = [
         description: '直接调用 cloud-service HTTP API。支持 GET/POST/PUT/DELETE 方法。路径必须以 /cloud/ 或 /monitor/ 开头。用于执行 cloud_xxx_* 工具未覆盖的高级操作。',
         dangerLevel: 'safe',
         group: 'cloud',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle'],
         parameters: {
           type: 'object',
           properties: {
