@@ -8,12 +8,14 @@ export interface ToolCatalogEntry {
   label: string;
   description: string;
   risk?: 'low' | 'medium' | 'high';
+  supportedProviders?: string[];
 }
 
 export interface ToolCatalogGroup {
   id: string;
   label: string;
   tools: ToolCatalogEntry[];
+  providerSet?: string[];
 }
 
 export interface ToolCatalogResponse {
