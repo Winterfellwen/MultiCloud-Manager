@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/lib/config';
+import { useAuthStore } from '@/stores/auth';
 
 export interface ToolExecution {
   id: string;
@@ -7,10 +8,15 @@ export interface ToolExecution {
   userId: string;
   action: string;
   resourceId: string;
-  provider?: string;
+  resourceType: string | null;
+  provider: string | null;
+  region: string | null;
+  params: Record<string, unknown> | null;
   result: string;
-  params?: { sessionId?: string };
-  durationMs?: number;
+  ip: string | null;
+  traceId: string | null;
+  durationMs: number | null;
+  sessionId: string | null;
 }
 
 const apiBase = getApiBaseUrl();
@@ -22,9 +28,13 @@ export function useToolExecutions(toolName?: string, limit = 20) {
   return useQuery({
     queryKey: ['tool-executions', toolName, limit],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/audit/?${params}`);
+      const token = useAuthStore.getState().accessToken;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      params.set('_t', String(Date.now()));
+      const res = await fetch(`${apiBase}/audit/?${params}`, { headers });
       if (!res.ok) throw new Error(`Failed to fetch tool executions: ${res.status}`);
-      return res.json() as Promise<ToolExecution[]>;
+      return (await res.json()) as ToolExecution[];
     },
   });
 }

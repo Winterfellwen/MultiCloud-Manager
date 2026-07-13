@@ -448,7 +448,16 @@
     "execTime": "Time",
     "execUser": "User",
     "execResult": "Result",
-    "execDuration": "Duration"
+    "execDuration": "Duration",
+    "execToolName": "Tool",
+    "execResource": "Resource",
+    "execProvider": "Provider",
+    "execTeam": "Team",
+    "execAction": "Actions",
+    "execDetail": "Details",
+    "executionDetail": "Execution Details",
+    "exportCSV": "Export CSV",
+    "exportJSON": "Export JSON"
   },
   "mcp": {
     "title": "MCP Config",

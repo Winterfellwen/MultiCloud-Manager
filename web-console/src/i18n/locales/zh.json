@@ -448,7 +448,16 @@
     "execTime": "执行时间",
     "execUser": "用户",
     "execResult": "结果",
-    "execDuration": "耗时"
+    "execDuration": "耗时",
+    "execToolName": "工具名称",
+    "execResource": "资源对象",
+    "execProvider": "云平台",
+    "execTeam": "用户组",
+    "execAction": "操作",
+    "execDetail": "详情",
+    "executionDetail": "执行详情",
+    "exportCSV": "导出 CSV",
+    "exportJSON": "导出 JSON"
   },
   "mcp": {
     "title": "MCP 配置",

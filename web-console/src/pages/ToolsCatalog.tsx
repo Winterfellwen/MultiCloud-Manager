@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Search, Loader2, AlertCircle, Wrench } from 'lucide-react';
 import { useToolsCatalog } from '@/hooks/useToolsCatalog';
 import { useToolExecutions } from '@/hooks/useToolExecutions';
+import { ExecutionTable } from '@/components/execution/ExecutionTable';
 import type { ToolCatalogEntry } from '@/hooks/useToolsCatalog';
 import { useChatStore } from '@/stores/chat';
 import { Input } from '@/components/ui/input';
@@ -168,46 +169,11 @@ export default function ToolsCatalog() {
           <h2 className="text-lg font-semibold mb-3">{t('tools.recentExecutions')}</h2>
           <Card>
             <CardContent className="pt-4">
-              <RecentExecutions providerFilter={providerFilter} />
+              <ExecutionTable providerFilter={providerFilter} />
             </CardContent>
           </Card>
         </div>
       )}
-    </div>
-  );
-}
-
-function RecentExecutions({ providerFilter }: { providerFilter: string }) {
-  const { t } = useTranslation();
-  const { data } = useToolExecutions(undefined, 50);
-
-  if (!data) return <Loader2 className="h-4 w-4 animate-spin" />;
-
-  const filtered = providerFilter === 'all'
-    ? data
-    : data.filter(ex => ex.provider === providerFilter);
-
-  if (filtered.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t('tools.noExecutions')}</p>;
-  }
-
-  return (
-    <div className="space-y-2">
-      {filtered.map(ex => (
-        <div key={ex.id} className="flex items-center justify-between border-b pb-1 last:border-0">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-mono text-xs">{ex.resourceId}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-xs text-muted-foreground">{ex.userId}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {ex.durationMs != null && <span>{ex.durationMs}ms</span>}
-            <span className={ex.result === 'success' ? 'text-green-600' : 'text-red-600'}>
-              {ex.result === 'success' ? '✓' : '✗'}
-            </span>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

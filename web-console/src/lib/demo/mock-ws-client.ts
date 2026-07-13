@@ -283,30 +283,33 @@ export class MockWsClient {
     return { runId: params.runId, status: 'aborted' };
   }
 
-  private handleToolsCatalog(): { groups: Array<{ id: string; label: string; tools: Array<{ id: string; label: string; description: string; risk?: string }> }> } {
+  private handleToolsCatalog(): { groups: Array<{ id: string; label: string; tools: Array<{ id: string; label: string; description: string; risk?: string; supportedProviders?: string[] }>; providerSet?: string[] }> } {
+    const cloudProviders = ['aws', 'aliyun', 'tencent', 'huawei', 'azure', 'gcp'];
     return {
       groups: [
         {
           id: 'cloud',
           label: '云服务器',
+          providerSet: cloudProviders,
           tools: [
-            { id: 'cloud_list_instances', label: '列出实例', description: '查询云服务器实例列表', risk: 'safe' },
-            { id: 'cloud_get_instance', label: '获取实例详情', description: '获取单个云服务器实例的详细信息', risk: 'safe' },
-            { id: 'cloud_start_instance', label: '启动实例', description: '启动一个已停止的云服务器实例', risk: 'dangerous' },
-            { id: 'cloud_stop_instance', label: '停止实例', description: '停止一个运行中的云服务器实例', risk: 'dangerous' },
-            { id: 'cloud_reboot_instance', label: '重启实例', description: '重启一个云服务器实例', risk: 'dangerous' },
-            { id: 'cloud_create_instance', label: '创建实例', description: '创建一个新的云服务器实例', risk: 'dangerous' },
-            { id: 'cloud_delete_instance', label: '删除实例', description: '删除一个云服务器实例（不可恢复）', risk: 'dangerous' },
+            { id: 'cloud_list_instances', label: '列出实例', description: '查询云服务器实例列表', risk: 'safe', supportedProviders: cloudProviders },
+            { id: 'cloud_get_instance', label: '获取实例详情', description: '获取单个云服务器实例的详细信息', risk: 'safe', supportedProviders: cloudProviders },
+            { id: 'cloud_start_instance', label: '启动实例', description: '启动一个已停止的云服务器实例', risk: 'dangerous', supportedProviders: cloudProviders },
+            { id: 'cloud_stop_instance', label: '停止实例', description: '停止一个运行中的云服务器实例', risk: 'dangerous', supportedProviders: cloudProviders },
+            { id: 'cloud_reboot_instance', label: '重启实例', description: '重启一个云服务器实例', risk: 'dangerous', supportedProviders: cloudProviders },
+            { id: 'cloud_create_instance', label: '创建实例', description: '创建一个新的云服务器实例', risk: 'dangerous', supportedProviders: cloudProviders },
+            { id: 'cloud_delete_instance', label: '删除实例', description: '删除一个云服务器实例（不可恢复）', risk: 'dangerous', supportedProviders: cloudProviders },
           ],
         },
         {
           id: 'cloud-resources',
           label: '云资源',
+          providerSet: cloudProviders,
           tools: [
-            { id: 'cloud_list_resources', label: '列出资源', description: '查询云资源列表', risk: 'safe' },
-            { id: 'cloud_get_resource', label: '获取资源详情', description: '获取单个云资源的详细信息', risk: 'safe' },
-            { id: 'cloud_delete_resource', label: '删除资源', description: '删除一个云资源', risk: 'dangerous' },
-            { id: 'cloud_sync_resources', label: '同步资源', description: '从云厂商同步最新资源数据', risk: 'moderate' },
+            { id: 'cloud_list_resources', label: '列出资源', description: '查询云资源列表', risk: 'safe', supportedProviders: cloudProviders },
+            { id: 'cloud_get_resource', label: '获取资源详情', description: '获取单个云资源的详细信息', risk: 'safe', supportedProviders: cloudProviders },
+            { id: 'cloud_delete_resource', label: '删除资源', description: '删除一个云资源', risk: 'dangerous', supportedProviders: cloudProviders },
+            { id: 'cloud_sync_resources', label: '同步资源', description: '从云厂商同步最新资源数据', risk: 'moderate', supportedProviders: cloudProviders },
           ],
         },
         {
