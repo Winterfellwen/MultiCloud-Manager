@@ -77,34 +77,38 @@ export class OCISigner {
 
   /**
    * Generate the OCI request signature per v1 spec.
-   * Headers to sign: (request-target), date, host, x-content-sha256
+   * GET/DELETE (no body): sign date, (request-target), host
+   * POST/PUT/PATCH (with body): sign date, (request-target), host, content-length, content-type, x-content-sha256
+   * Matches the OCI Python SDK signing behavior.
    */
   sign(method: string, path: string, host: string, body: string | null, date?: string): string {
     const dateStr = date || new Date().toUTCString();
-    const contentSha256 = body
-      ? crypto.createHash('sha256').update(body).digest('base64')
-      : crypto.createHash('sha256').update('').digest('base64');
+    const hasBody = body !== null && body !== undefined && body.length > 0;
 
-    // Signing string format:
-    // (request-target): POST /v1/compartments/ocid1.compartment.oc1.../instances\n
-    // date: Mon, 01 Jan 2024 00:00:00 GMT\n
-    // host: iaas.us-ashburn-1.oraclecloud.com\n
-    // x-content-sha256: base64-encoded-sha256\n
-    // [body only if POST/PUT/PATCH]
-    const signingString = [
-      `(request-target): ${method.toLowerCase()} ${path}`,
+    const lines: string[] = [
       `date: ${dateStr}`,
+      `(request-target): ${method.toLowerCase()} ${path}`,
       `host: ${host}`,
-      `x-content-sha256: ${contentSha256}`,
-    ].join('\n');
+    ];
+    const headerNames = ['date', '(request-target)', 'host'];
 
-    // Sign with RSA-SHA256
+    if (hasBody) {
+      const contentSha256 = crypto.createHash('sha256').update(body).digest('base64');
+      const contentLength = Buffer.byteLength(body, 'utf8');
+      lines.push(`content-type: application/json`);
+      lines.push(`x-content-sha256: ${contentSha256}`);
+      lines.push(`content-length: ${contentLength}`);
+      headerNames.push('content-type', 'x-content-sha256', 'content-length');
+    }
+
+    const signingString = lines.join('\n');
+
     const sign = crypto.createSign('RSA-SHA256');
     sign.update(signingString);
     sign.end();
     const signature = sign.sign(this.privateKey, 'base64');
 
-    return `Signature version="1",keyId="${this.keyId}",algorithm="rsa-sha256",headers="(request-target) date host x-content-sha256",signature="${signature}"`;
+    return `Signature version="1",keyId="${this.keyId}",algorithm="rsa-sha256",headers="${headerNames.join(' ')}",signature="${signature}"`;
   }
 }
 
@@ -141,15 +145,16 @@ export class OCIClient {
     const actualPath = `${url.pathname}${url.search}`;
 
     const dateHeader = new Date().toUTCString();
-    const contentSha256 = body
-      ? crypto.createHash('sha256').update(body).digest('base64')
-      : crypto.createHash('sha256').update('').digest('base64');
     const headers: Record<string, string> = {
       'Date': dateHeader,
       'Content-Type': 'application/json',
       'Host': host,
-      'x-content-sha256': contentSha256,
     };
+
+    if (body !== null && body !== undefined && body.length > 0) {
+      headers['x-content-sha256'] = crypto.createHash('sha256').update(body).digest('base64');
+      headers['content-length'] = String(Buffer.byteLength(body, 'utf8'));
+    }
 
     const authorization = this.signer.sign(method, actualPath, host, body, dateHeader);
     headers['Authorization'] = authorization;
