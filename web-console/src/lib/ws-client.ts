@@ -33,6 +33,7 @@ export class WsClient {
   private lastSeq = 0;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
   private isManualClose = false;
   private status: WsConnectionStatus = 'disconnected';
 
@@ -66,9 +67,31 @@ export class WsClient {
     };
   }
 
+  /**
+   * 启动保活定时器：每 25s 发送一个应用层 keepalive 消息
+   * 防止代理/负载均衡器因空闲超时断开 WebSocket
+   */
+  private startKeepalive(): void {
+    this.stopKeepalive();
+    this.keepaliveTimer = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        // type 为 'ping'（非 'req'），服务端收到后直接忽略，不产生 pending 请求
+        this.ws.send(JSON.stringify({ type: 'ping', t: Date.now() }));
+      }
+    }, 25_000);
+  }
+
+  private stopKeepalive(): void {
+    if (this.keepaliveTimer) {
+      clearInterval(this.keepaliveTimer);
+      this.keepaliveTimer = null;
+    }
+  }
+
   /** 手动关闭 */
   close(): void {
     this.isManualClose = true;
+    this.stopKeepalive();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -152,6 +175,7 @@ export class WsClient {
     if (frame.event === 'hello-ok') {
       this.reconnectAttempts = 0;
       this.setStatus('connected');
+      this.startKeepalive();
       this.options.onEvent?.('hello-ok', frame.payload, frame.seq);
       return;
     }
@@ -170,6 +194,7 @@ export class WsClient {
   }
 
   private handleClose(code: number, _reason: string): void {
+    this.stopKeepalive();
     this.ws = null;
     // 拒绝所有 pending 请求
     for (const pending of this.pending.values()) {

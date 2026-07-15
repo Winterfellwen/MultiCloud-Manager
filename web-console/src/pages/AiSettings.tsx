@@ -22,6 +22,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import i18n from 'i18next';
+
+/** 翻译 WebSocket 连接错误为用户友好消息 */
+function formatWsError(e: Error): string {
+  if (/connection closed/i.test(e.message)) {
+    return i18n.t('common.connectionError', '网络连接已断开') + '，' + i18n.t('common.pleaseRetry', '请稍后重试');
+  }
+  return e.message;
+}
 
 type ReasoningEffort = 'low' | 'medium' | 'high';
 
@@ -254,7 +263,7 @@ export default function AiSettings() {
         ...(providerForm.apiKey ? { apiKey: providerForm.apiKey } : {}),
         compat: cleanCompat,
       }, {
-        onError: (e: Error) => setProviderError(e.message),
+        onError: (e: Error) => setProviderError(formatWsError(e)),
         onSuccess: () => setProviderDialogOpen(false),
       });
     } else {
@@ -265,7 +274,7 @@ export default function AiSettings() {
         apiKey: providerForm.apiKey,
         compat: cleanCompat,
       }, {
-        onError: (e: Error) => setProviderError(e.message),
+        onError: (e: Error) => setProviderError(formatWsError(e)),
         onSuccess: () => setProviderDialogOpen(false),
       });
     }
@@ -595,7 +604,6 @@ export default function AiSettings() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setModelTestingId(model.id);
-                                setModelTestResult(prev => ({ ...prev, [model.id]: { ok: false, msg: t('aiSettings.testConnecting') } }));
                                 testModel.mutate(
                                   { providerId: model.provider, modelId: model.id },
                                   {
@@ -638,7 +646,13 @@ export default function AiSettings() {
                         </Tooltip>
                       </div>
                     </div>
-                    {modelTestResult[model.id] && !modelTestResult[model.id].ok && (
+                    {modelTestingId === model.id && (
+                      <div className="ml-8 flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        {t('aiSettings.testConnecting')}
+                      </div>
+                    )}
+                    {modelTestResult[model.id] && !modelTestResult[model.id].ok && modelTestingId !== model.id && (
                       <div className="ml-8 rounded-md border border-red-200 bg-destructive-50 dark:bg-destructive-950/30 px-3 py-2">
                         <div className="text-xs font-medium text-destructive-700 dark:text-destructive-300">✗ {t('aiSettings.testModelFailed')}</div>
                         <div className="text-xs text-red-600 mt-1 break-words whitespace-pre-wrap">{modelTestResult[model.id].msg}</div>

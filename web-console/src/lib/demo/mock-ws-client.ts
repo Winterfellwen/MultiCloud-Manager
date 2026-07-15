@@ -181,6 +181,18 @@ export class MockWsClient {
         return this.handleToolsCatalog();
       case 'providers.list':
         return this.handleProvidersList();
+      case 'providers.create':
+        return this.handleProvidersCreate(params as { id: string; name: string; baseUrl: string; apiKey: string });
+      case 'providers.update':
+        return this.handleProvidersUpdate(params as { id: string; name?: string; baseUrl?: string; apiKey?: string });
+      case 'providers.delete':
+        return this.handleProvidersDelete(params as { id: string });
+      case 'providers.test':
+        return { ok: true, message: '演示模式：模拟连接成功' };
+      case 'providers.discoverModels':
+        return this.handleProvidersDiscoverModels();
+      case 'providers.thinkingFormats':
+        return { formats: ['openai', 'openrouter', 'deepseek', 'together', 'qwen', 'qwen-chat-template', 'zai'] };
       case 'models.list':
         return this.handleModelsList();
       case 'models.delete':
@@ -401,6 +413,45 @@ export class MockWsClient {
             { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick', contextWindow: 1048576, reasoning: false, input: ['text', 'image'] },
           ],
         },
+      ],
+    };
+  }
+
+  private handleProvidersCreate(params: { id: string; name: string; baseUrl: string; apiKey: string }): { provider: Record<string, unknown> } {
+    return {
+      provider: {
+        id: params.id,
+        name: params.name,
+        baseUrl: params.baseUrl,
+        apiKey: params.apiKey.slice(0, 4) + '****' + params.apiKey.slice(-4),
+        isDefault: false,
+        models: [],
+      },
+    };
+  }
+
+  private handleProvidersUpdate(params: { id: string; name?: string; baseUrl?: string; apiKey?: string }): { provider: Record<string, unknown> | null } {
+    return {
+      provider: {
+        id: params.id,
+        name: params.name || 'Updated Provider',
+        baseUrl: params.baseUrl || 'https://api.example.com/v1',
+        apiKey: params.apiKey ? params.apiKey.slice(0, 4) + '****' + params.apiKey.slice(-4) : 'sk-****DEMO',
+        isDefault: false,
+        models: [],
+      },
+    };
+  }
+
+  private handleProvidersDelete(params: { id: string }): { id: string; deleted: boolean } {
+    return { id: params.id, deleted: true };
+  }
+
+  private handleProvidersDiscoverModels(): { models: Array<{ id: string; name: string }> } {
+    return {
+      models: [
+        { id: 'demo-model-1', name: 'Demo Model 1' },
+        { id: 'demo-model-2', name: 'Demo Model 2' },
       ],
     };
   }

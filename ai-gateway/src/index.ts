@@ -142,6 +142,25 @@ app.get('/ws', { websocket: true }, (socket, request) => {
 
   if (!client) return;
 
+  // WebSocket 错误处理器：防止未捕获的 error 导致连接异常关闭（Render 上的 1006）
+  socket.on('error', (err) => {
+    app.log.error({ err, connId: client.connId }, 'WebSocket error');
+  });
+
+  // 保活 ping：每 25 秒发送 WebSocket 协议级 ping，防止 nginx proxy_read_timeout 断开
+  // 浏览器自动回复 pong，无需额外处理
+  const keepaliveTimer = setInterval(() => {
+    if (socket.readyState === socket.OPEN) {
+      socket.ping();
+    } else {
+      clearInterval(keepaliveTimer);
+    }
+  }, 25_000);
+
+  socket.once('close', () => {
+    clearInterval(keepaliveTimer);
+  });
+
   socket.on('message', async (data: Buffer) => {
     try {
       const frame = JSON.parse(data.toString());
