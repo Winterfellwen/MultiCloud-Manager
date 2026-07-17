@@ -1,6 +1,6 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useResources,
   useResourceTypes,
@@ -98,8 +98,14 @@ function formatBytes(bytes: number): string {
 export default function Resources() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedType, setSelectedType] = useState<ResourceType | 'all'>('all');
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [filterValues, setFilterValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    const p = searchParams.get('provider');
+    if (p) initial.provider = p;
+    return initial;
+  });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'all' | 'instances'>('all');
   const [createOpen, setCreateOpen] = useState(false);
@@ -247,6 +253,16 @@ export default function Resources() {
       );
     });
   }, [instances, filterValues.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (filterValues.provider) {
+      params.set('provider', filterValues.provider);
+    } else {
+      params.delete('provider');
+    }
+    setSearchParams(params, { replace: true });
+  }, [filterValues.provider]);
 
   const instanceColumns = useMemo<Column<InstanceRow>[]>(() => [
     { key: 'name', header: t('common.name'), accessor: (row) => row.name || row.providerInstanceId.slice(0, 8), className: 'w-[160px]' },
