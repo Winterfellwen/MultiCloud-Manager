@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserPlus, Trash2, Loader2, AlertCircle, Users as UsersIcon, Plus, Edit2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import { useSearchParams } from 'react-router-dom';
 import { useUsers, useCreateUser, useUpdateUserRole, useDeleteUser } from '@/hooks/useUsers';
 import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam, useTeamMembers, useAssignUserToTeam } from '@/hooks/useTeams';
 import { ROLE_OPTIONS } from '@/types/user';
@@ -79,6 +80,7 @@ export default function Users() {
   });
 
   const [userFilters, setUserFilters] = useState<Record<string, string>>({});
+  const [searchParams] = useSearchParams();
   const [teamFilters, setTeamFilters] = useState<Record<string, string>>({});
 
   const userFilterConfigs: FilterConfig[] = [
@@ -218,9 +220,11 @@ export default function Users() {
       if (s && !user.username.toLowerCase().includes(s) && !(user.email || '').toLowerCase().includes(s)) return false;
       if (userFilters.role && user.role !== userFilters.role) return false;
       if (userFilters.team && user.teamId !== userFilters.team) return false;
+      const highlightUserId = searchParams.get('userId');
+      if (highlightUserId && user.id !== highlightUserId) return false;
       return true;
     });
-  }, [users, userFilters]);
+  }, [users, userFilters, searchParams]);
 
   const filteredTeams = useMemo(() => {
     return (teams || []).filter((team) => {
