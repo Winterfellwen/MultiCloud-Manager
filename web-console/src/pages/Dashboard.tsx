@@ -150,9 +150,13 @@ export default function Dashboard() {
           ) : stats && Object.keys(stats.byProvider).length > 0 ? (
             <div className="space-y-3">
               {Object.entries(stats.byProvider).map(([provider, count]) => (
-                <div key={provider} className="space-y-1">
+                <div
+                  key={provider}
+                  className="space-y-1 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate(`/resources?provider=${provider}`)}
+                >
                   <div className="flex items-center justify-between text-sm">
-                    <span>{t(`providers.${provider}`) || provider}</span>
+                    <span className="text-blue-600 hover:underline">{t(`providers.${provider}`) || provider}</span>
                     <span className="text-muted-foreground">{count} {t('dashboard.instances')}</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
