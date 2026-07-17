@@ -5,6 +5,24 @@ export interface AiInsight {
   raw: string;
 }
 
+export interface DiagnosticEntry {
+  step: string;
+  status: 'ok' | 'fail' | 'skip';
+  detail: string;
+  suggestion?: string;
+  duration?: number;
+}
+
+export interface AiInsightResponse {
+  ok: boolean;
+  healthScore?: number;
+  risks?: Array<{ title: string; severity: string; suggestion: string }>;
+  suggestions?: string[];
+  raw?: string;
+  lastSuccessAt?: string;
+  diagnostics: DiagnosticEntry[];
+}
+
 export interface TokenStats {
   today: {
     totalTokens: number;
