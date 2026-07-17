@@ -221,7 +221,7 @@ export default function Users() {
       if (userFilters.role && user.role !== userFilters.role) return false;
       if (userFilters.team && user.teamId !== userFilters.team) return false;
       const highlightUserId = searchParams.get('userId');
-      if (highlightUserId && user.id !== highlightUserId) return false;
+      if (highlightUserId && user.id !== highlightUserId && user.username !== highlightUserId) return false;
       return true;
     });
   }, [users, userFilters, searchParams]);
