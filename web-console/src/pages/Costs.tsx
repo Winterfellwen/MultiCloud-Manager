@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCostSummary, useInstanceCosts, useCollectCosts } from '@/hooks/useCosts';
 import type { CostSummaryItem, InstanceCost } from '@/types/monitor';
@@ -16,6 +17,7 @@ export default function Costs() {
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
   const [startDate, setStartDate] = useState(monthStart.toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(monthEnd.toISOString().slice(0, 10));
+  const navigate = useNavigate();
 
   const { data: summary, isLoading: summaryLoading } = useCostSummary({
     start: new Date(startDate).toISOString(),
@@ -163,6 +165,7 @@ export default function Costs() {
             loading={instLoading}
             rowKey="id"
             emptyTitle={t('costs.noInstanceCost')}
+            onRowClick={(row) => navigate(`/instances/${row.id}`)}
           />
         </CardContent>
       </Card>
