@@ -17,6 +17,14 @@ function getIp(request: any): string {
   return (request.headers['x-forwarded-for'] as string) || request.ip;
 }
 
+interface CreateResourceBody {
+  provider: string;
+  resourceType: ResourceType;
+  name: string;
+  region?: string;
+  [key: string]: unknown;
+}
+
 export async function resourceRoutes(app: FastifyInstance) {
   // 获取资源类型元数据
   app.get("/types", async () => {
@@ -44,6 +52,32 @@ export async function resourceRoutes(app: FastifyInstance) {
       resourceService.statsByStatus(request.scope),
     ]);
     return { byType, byStatus };
+  });
+
+  // 创建资源（如对象存储桶）
+  app.post("/", async (request) => {
+    const body = request.body as CreateResourceBody;
+    const { provider: providerId, resourceType, name, region, ...rest } = body;
+    if (!providerId || !resourceType || !name) {
+      return { error: 'provider, resourceType, and name are required' };
+    }
+    const provider = getProvider(providerId);
+    if (!provider.createResource) {
+      return { error: `Provider ${providerId} does not support resource creation` };
+    }
+    const resource = await provider.createResource(resourceType, { name, region, ...rest });
+    await resourceService.upsertResource(request.scope, resource);
+    await recordAudit(config.authServiceUrl, {
+      userId: getUserId(request),
+      action: 'resource.create',
+      resourceType,
+      resourceId: resource.id,
+      provider: providerId,
+      result: 'success',
+      ip: getIp(request),
+      traceId: getTraceId(request),
+    });
+    return resource;
   });
 
   // 获取资源详情

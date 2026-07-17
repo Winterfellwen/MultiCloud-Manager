@@ -355,25 +355,30 @@ export class OCIClient {
 
   // ===== Object Storage =====
 
+  private _namespace: string | null = null;
+
   async getObjectStorageNamespace(): Promise<string> {
-    const data = await this.request<{ namespace: string }>(
+    if (this._namespace) return this._namespace;
+    const data: any = await this.request(
       'objectstorage',
       'GET',
       `/n/`
     );
-    return data.namespace;
+    this._namespace = data.namespace || (typeof data === 'string' ? data : null);
+    if (!this._namespace) throw new Error('Failed to resolve Object Storage namespace');
+    return this._namespace;
   }
 
   async listBuckets(): Promise<OCIBucket[]> {
     const namespace = await this.getObjectStorageNamespace();
-    const data = await this.request<{ items: OCIBucket[] }>(
+    const data = await this.request<any>(
       'objectstorage',
       'GET',
       `/n/${namespace}/b`,
       null,
       { compartmentId: this.compartmentOcid }
     );
-    return data.items || [];
+    return Array.isArray(data) ? data : (data?.items || []);
   }
 
   async getBucket(namespace: string, name: string): Promise<OCIBucket> {
@@ -381,6 +386,21 @@ export class OCIClient {
       'objectstorage',
       'GET',
       `/n/${namespace}/b/${name}`
+    );
+  }
+
+  async createBucket(name: string, storageTier: string = 'Standard', publicAccessType: string = 'NoPublicAccess'): Promise<OCIBucket> {
+    const namespace = await this.getObjectStorageNamespace();
+    return this.request<OCIBucket>(
+      'objectstorage',
+      'POST',
+      `/n/${namespace}/b`,
+      JSON.stringify({
+        compartmentId: this.compartmentOcid,
+        name,
+        storageTier,
+        publicAccessType,
+      })
     );
   }
 

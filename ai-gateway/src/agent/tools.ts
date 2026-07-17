@@ -222,6 +222,24 @@ const TOOL_GROUPS: ToolGroup[] = [
         },
       },
       {
+        name: 'cloud_create_resource',
+        label: '创建资源',
+        description: `创建云资源（如对象存储桶等）。支持类型: ${RESOURCE_TYPES}。支持厂商: ${PROVIDER_LIST}`,
+        dangerLevel: 'dangerous',
+        group: 'cloud-resources',
+        supportedProviders: ['aws', 'aliyun', 'azure', 'tencent', 'huawei', 'oracle'],
+        parameters: {
+          type: 'object',
+          properties: {
+            provider: { type: 'string', description: `云厂商: ${PROVIDER_LIST}` },
+            resourceType: { type: 'string', description: `资源类型: ${RESOURCE_TYPES}` },
+            name: { type: 'string', description: '资源名称' },
+            region: { type: 'string', description: '区域' },
+          },
+          required: ['provider', 'resourceType', 'name'],
+        },
+      },
+      {
         name: 'cloud_sync_resources',
         label: '触发资源同步',
         description: '触发云资源同步，从云厂商拉取最新资源列表',
@@ -545,6 +563,8 @@ export async function executeTool(
         return await callCloudService(`/cloud/resources/${args.id}`, 'GET', {}, authToken);
       case 'cloud_delete_resource':
         return await callCloudService(`/cloud/resources/${args.id}`, 'DELETE', {}, authToken);
+      case 'cloud_create_resource':
+        return await callCloudService('/cloud/resources', 'POST', args, authToken);
       case 'cloud_sync_resources':
         return await callCloudService('/cloud/resources/sync', 'POST', args, authToken);
 

@@ -145,20 +145,22 @@ function lbToLoadBalancer(lb: OCILoadBalancer, region: string): LoadBalancer {
 }
 
 function bucketToBucket(bucket: OCIBucket, region: string): Bucket {
+  const providerResourceId = bucket.name;
   return {
-    id: bucket.id,
+    id: providerResourceId,
     provider: 'oracle',
     resourceType: 'bucket',
-    providerResourceId: bucket.id,
+    providerResourceId,
     name: bucket.name,
     region,
-    status: mapResourceState(bucket.lifecycleState),
+    status: bucket.lifecycleState ? mapResourceState(bucket.lifecycleState) : 'active',
     attributes: {
       storageClass: bucket.storageTier || 'Standard',
       objectCount: bucket.approximateCount || 0,
       sizeBytes: bucket.approximateSizeInBytes || 0,
       versioning: false,
       publicAccess: false,
+      ocid: bucket.id || undefined,
     },
     tags: {},
     createdAt: new Date(bucket.timeCreated),
@@ -421,6 +423,21 @@ export class OracleProvider implements ICloudProvider {
     const found = resources.find(r => r.providerResourceId === id || r.id === id);
     if (!found) throw new Error(`${resourceType} ${id} not found`);
     return found;
+  }
+
+  async createResource(resourceType: ResourceType, props: Record<string, unknown>): Promise<CloudResource> {
+    switch (resourceType) {
+      case 'bucket': {
+        const bucketName = props.name as string;
+        if (!bucketName) throw new Error('bucket name is required');
+        const storageTier = (props.storageTier as string) || 'Standard';
+        const publicAccessType = (props.publicAccessType as string) || 'NoPublicAccess';
+        const result = await this.api.createBucket(bucketName, storageTier, publicAccessType);
+        return bucketToBucket(result, this.api.getRegion());
+      }
+      default:
+        throw new Error(`Create ${resourceType} not implemented for Oracle Cloud`);
+    }
   }
 
   async deleteResource(resourceType: ResourceType, id: string): Promise<void> {

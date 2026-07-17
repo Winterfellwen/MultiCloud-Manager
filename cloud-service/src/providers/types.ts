@@ -113,6 +113,8 @@ export interface ICloudProvider {
   deleteResource(resourceType: ResourceType, id: string): Promise<void>;
   /** 获取该 Provider 支持的资源类型列表 */
   getSupportedResourceTypes(): ResourceType[];
+  /** 创建指定类型的资源 */
+  createResource?(resourceType: ResourceType, props: Record<string, unknown>): Promise<CloudResource>;
 }
 
 // ===== 资源类型枚举 =====

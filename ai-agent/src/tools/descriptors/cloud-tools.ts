@@ -186,6 +186,25 @@ const syncResourcesDesc: ToolDescriptor = {
   dangerLevel: 'moderate',
 };
 
+const createResourceDesc: ToolDescriptor = {
+  name: 'cloud_create_resource',
+  description: `创建云资源（如对象存储桶等）。支持类型: ${RESOURCE_TYPES}。`,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      provider: { type: 'string', description: `云厂商: ${PROVIDER_LIST}` },
+      resourceType: { type: 'string', description: `资源类型: ${RESOURCE_TYPES}` },
+      name: { type: 'string', description: '资源名称' },
+      region: { type: 'string', description: '区域' },
+    },
+    required: ['provider', 'resourceType', 'name'],
+  },
+  owner: { kind: 'core' },
+  executor: { kind: 'core', executorId: 'cloud_create_resource' },
+  sortKey: '12',
+  dangerLevel: 'dangerous',
+};
+
 // ============ Shell 执行工具 ============
 
 const shellExecuteDesc: ToolDescriptor = {
@@ -422,6 +441,13 @@ toolRegistry.register(deleteResourceDesc, makeResourceExecutor('DELETE', (a) => 
 toolRegistry.register(syncResourcesDesc, makeResourceExecutor('POST', () => '/sync', (a) => ({
   provider: a.provider,
   resourceType: a.resourceType,
+})));
+
+toolRegistry.register(createResourceDesc, makeResourceExecutor('POST', () => '', (a) => ({
+  provider: a.provider,
+  resourceType: a.resourceType,
+  name: a.name,
+  region: a.region,
 })));
 
 // Shell 执行
