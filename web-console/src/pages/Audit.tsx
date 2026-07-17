@@ -1,6 +1,7 @@
 // 审计日志页：筛选栏 + 日志表格 + 分页
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronR } from 'lucide-react';
 import { useAuditLogs } from '@/hooks/useAudit';
 import { RESULT_LABELS, PROVIDER_OPTIONS } from '@/types/audit';
@@ -17,6 +18,7 @@ const PAGE_SIZE = 20;
 
 export default function Audit() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState<AuditLogQuery>({
     limit: PAGE_SIZE,
     offset: 0,
@@ -177,7 +179,12 @@ export default function Audit() {
                         {formatDate(log.timestamp)}
                       </TableCell>
                       <TableCell className="font-mono text-xs truncate max-w-[100px]">
-                        {log.userId.slice(0, 8)}...
+                        <button
+                          onClick={() => navigate(`/users?userId=${log.userId}`)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {log.userId.slice(0, 8)}...
+                        </button>
                       </TableCell>
                       <TableCell className="font-mono text-xs">{log.action}</TableCell>
                       <TableCell className="text-xs">{log.resourceType || '-'}</TableCell>
@@ -195,7 +202,14 @@ export default function Audit() {
                         <TableCell colSpan={9} className="bg-muted/30">
                           <div className="space-y-2 py-2">
                             <div className="text-xs text-muted-foreground">{t('audit.fullUserId')}</div>
-                            <div className="font-mono text-xs">{log.userId}</div>
+                            <div className="font-mono text-xs">
+                              <button
+                                onClick={() => navigate(`/users?userId=${log.userId}`)}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {log.userId}
+                              </button>
+                            </div>
                             {log.resourceId && (
                               <>
                                 <div className="text-xs text-muted-foreground">{t('audit.resourceId')}</div>
