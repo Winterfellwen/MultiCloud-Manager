@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAlertRules, useCreateAlertRule, useUpdateAlertRule, useDeleteAlertRule, useAlertEvents, useResolveAlertEvent } from '@/hooks/useAlerts';
 import { useChannels, useCreateChannel, useDeleteChannel } from '@/hooks/useChannels';
@@ -322,6 +323,7 @@ function EventsTab() {
   const { data: events, isLoading } = useAlertEvents();
   const resolve = useResolveAlertEvent();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const [eventFilters, setEventFilters] = useState<Record<string, string>>({});
 
@@ -379,6 +381,7 @@ function EventsTab() {
                   <TableHead className="w-[40px]"></TableHead>
                   <TableHead className="w-[100px]">{t('monitor.severity')}</TableHead>
                   <TableHead className="w-[200px]">{t('monitor.message')}</TableHead>
+                  <TableHead className="w-[160px]">{t('resourceTypes.instance')}</TableHead>
                   <TableHead className="w-[100px]">{t('common.status')}</TableHead>
                   <TableHead className="w-[160px]">{t('monitor.firedAt')}</TableHead>
                   <TableHead className="w-[80px]">{t('common.actions')}</TableHead>
@@ -404,6 +407,18 @@ function EventsTab() {
                       </TableCell>
                       <TableCell><AlertSeverityBadge severity={evt.severity as AlertSeverity} /></TableCell>
                       <TableCell className="text-sm">{evt.message}</TableCell>
+                      <TableCell className="text-xs font-mono">
+                        {evt.instanceId ? (
+                          <button
+                            onClick={() => navigate(`/instances/${evt.instanceId}`)}
+                            className="text-blue-600 hover:underline"
+                          >
+                            {evt.instanceId.slice(0, 8)}...
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell><AlertStatusBadge status={evt.status as any} /></TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(evt.firedAt).toLocaleString()}
@@ -426,7 +441,7 @@ function EventsTab() {
                     </TableRow>
                     {expandedId === evt.id && evt.aiAnalysis && (
                       <TableRow>
-                        <TableCell colSpan={6} className="bg-muted/30">
+                        <TableCell colSpan={7} className="bg-muted/30">
                           <div className="space-y-2 py-3">
                             <div className="flex items-center gap-1.5 text-sm font-medium">
                               <Brain className="h-4 w-4 text-purple-600" />
