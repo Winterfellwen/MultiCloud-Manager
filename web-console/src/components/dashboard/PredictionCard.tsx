@@ -38,7 +38,12 @@ export default function PredictionCard() {
             {topPredictions.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{p.instanceName || t('aiops.predictions.instanceName')}</div>
+                  <div
+                    className="font-medium truncate text-blue-600 hover:underline cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/instances/${p.instanceId}`); }}
+                  >
+                    {p.instanceName || t('aiops.predictions.instanceName')}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {p.metricName === 'disk_utilization' ? 'Disk' : 'Mem'} {parseFloat(p.currentValue).toFixed(0)}% → {parseFloat(p.threshold).toFixed(0)}%
                   </div>
