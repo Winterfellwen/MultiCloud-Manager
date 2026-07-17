@@ -669,6 +669,9 @@
     "tabInsight": "健康洞察",
     "insightHistory": "洞察历史",
     "triggerNow": "立即刷新",
+    "diagnostics": "诊断信息",
+    "passed": "通过",
+    "lastSuccess": "上次成功",
     "predictions": {
       "subtitle": "基于最近 24 小时指标趋势，预测未来可能触发的告警",
       "noData": "暂无预测数据。点击「立即分析」生成预测。",
