@@ -1,9 +1,9 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiInsightsApi } from '@/api/aiInsights';
-import type { AiInsight, InsightHistoryItem } from '@/types/aiInsights';
+import type { AiInsightResponse, InsightHistoryItem } from '@/types/aiInsights';
 
 export function useAiInsight() {
-  return useQuery({
+  return useQuery<AiInsightResponse>({
     queryKey: ['ai-insight'],
     queryFn: () => aiInsightsApi.getInsight(),
     refetchInterval: 5 * 60 * 1000,
@@ -19,8 +19,12 @@ export function useTokenStats() {
 }
 
 export function useRefreshInsight() {
-  return useMutation<AiInsight>({
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: () => aiInsightsApi.getInsight(true),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['ai-insight'], data);
+    },
   });
 }
 

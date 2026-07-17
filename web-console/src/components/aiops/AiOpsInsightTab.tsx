@@ -6,17 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AiOpsInsightTab() {
   const { t } = useTranslation();
-  const { data: insight, isLoading, isFetching, refetch } = useAiInsight();
+  const { data: insight, isLoading, isFetching } = useAiInsight();
   const refreshMutation = useRefreshInsight();
   const { data: history, isLoading: historyLoading } = useInsightHistory();
   const { data: tokenStats } = useTokenStats();
 
   const handleRefresh = () => {
-    refreshMutation.mutate(undefined, {
-      onSuccess: () => {
-        refetch();
-      },
-    });
+    refreshMutation.mutate();
   };
 
   return (
