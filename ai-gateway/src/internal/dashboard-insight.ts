@@ -1,4 +1,5 @@
 import { callLlmChat } from './llm-resolver.js';
+import { config } from '../config.js';
 
 export interface DashboardInsightRequest {
   totalInstances: number;
@@ -14,10 +15,19 @@ export interface DashboardInsightRequest {
 }
 
 export interface DashboardInsightResponse {
-  healthScore: number;
-  risks: string[];
-  suggestions: string[];
-  raw: string;
+  ok: boolean;
+  healthScore?: number;
+  risks?: Array<{ title: string; severity: string; suggestion: string }>;
+  suggestions?: string[];
+  raw?: string;
+  llmDiagnostics?: { model: string; tokens: number; duration: number };
+  error?: string;
+  message?: string;
+  suggestion?: string;
+}
+
+function estimateTokens(text: string): number {
+  return Math.round(text.length / 4);
 }
 
 /**
@@ -25,7 +35,8 @@ export interface DashboardInsightResponse {
  * 使用用户在「AI 设置」页面配置的默认 provider
  */
 export async function generateDashboardInsight(req: DashboardInsightRequest): Promise<DashboardInsightResponse> {
-  const prompt = `你是云运维专家。请分析以下云资源概况，给出健康评估和建议。
+  try {
+    const prompt = `你是云运维专家。请分析以下云资源概况，给出健康评估和建议。
 
 资源概况：
 - 总实例数: ${req.totalInstances}
@@ -48,16 +59,41 @@ ${req.abnormalInstances.map(i => `- ${i.name} (${i.provider}): ${i.status}`).joi
   "suggestions": ["建议1", "建议2"]
 }`;
 
-  const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 2000 });
+    const startTime = Date.now();
+    const raw = await callLlmChat(prompt, { temperature: 0.3, maxTokens: 2000 });
+    const duration = Date.now() - startTime;
 
-  // 解析 JSON（兼容 reasoning 模型的思考过程输出）
-  const parsed = extractJsonFromText(raw);
-  return {
-    healthScore: parsed.healthScore ?? 0,
-    risks: parsed.risks || [],
-    suggestions: parsed.suggestions || [],
-    raw,
-  };
+    const parsed = extractJsonFromText(raw);
+    if (!parsed || typeof parsed.healthScore !== 'number') {
+      return {
+        ok: false,
+        error: 'PARSE_FAILED',
+        message: 'LLM 返回数据无法解析',
+        suggestion: '请检查 AI 设置中的模型配置',
+        llmDiagnostics: { model: config.llm.model, tokens: 0, duration },
+      };
+    }
+    return {
+      ok: true,
+      healthScore: parsed.healthScore,
+      risks: (parsed.risks || []).map(r => typeof r === 'string' ? { title: r, severity: 'unknown', suggestion: '' } : r),
+      suggestions: parsed.suggestions || [],
+      raw,
+      llmDiagnostics: { model: config.llm.model, tokens: estimateTokens(raw), duration },
+    };
+  } catch (e) {
+    const err = e as Error;
+    return {
+      ok: false,
+      error: 'LLM_API_ERROR',
+      message: err.message,
+      suggestion: err.message.includes('401') || err.message.includes('API key')
+        ? '请检查 AI 设置中的 API Key'
+        : err.message.includes('timeout')
+          ? 'LLM 请求超时，请检查网络或模型响应速度'
+          : '请检查 AI 设置中的模型配置',
+    };
+  }
 }
 
 /**
