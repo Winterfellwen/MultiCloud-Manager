@@ -79,6 +79,16 @@ services:
       - key: RENDER_API_KEY
         sync: false
 
+      # ============ 内部服务通信（Docker 单容器部署用 localhost） ============
+      - key: AI_GATEWAY_URL
+        value: "http://localhost:3005"
+      - key: CLOUD_SERVICE_URL
+        value: "http://localhost:3001"
+      - key: MONITOR_SERVICE_URL
+        value: "http://localhost:3002"
+      - key: AUTH_SERVICE_URL
+        value: "http://localhost:3004"
+
       # ============ LLM（可选 ============
       - key: LLM_API_KEY
         sync: false
