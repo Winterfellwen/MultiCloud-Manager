@@ -43,7 +43,16 @@ export default function RemediationCard() {
             {recentRuns.map((run) => (
               <div key={run.id} className="flex items-center justify-between text-sm">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{run.instanceName || t('aiops.remediation.instanceName')}</div>
+                  {run.instanceId ? (
+                    <div
+                      className="font-medium truncate text-blue-600 hover:underline cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/instances/${run.instanceId}`); }}
+                    >
+                      {run.instanceName || t('aiops.remediation.instanceName')}
+                    </div>
+                  ) : (
+                    <div className="font-medium truncate">{run.instanceName || t('aiops.remediation.instanceName')}</div>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {t(`aiops.remediation.${ACTION_LABELS[run.actionExecuted || ''] || 'reboot'}`)}
                   </div>
