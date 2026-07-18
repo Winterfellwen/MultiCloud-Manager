@@ -128,6 +128,20 @@ export class InstanceService {
       .where(eq(t.instances.id, id));
   }
 
+  async updateTags(scope: RequestScope, id: string, tags: Record<string, string>): Promise<InstanceRow> {
+    const t = scopedDb(scope);
+    if (Object.keys(tags).length === 0) {
+      throw new ValidationError('No tags provided');
+    }
+    const [result] = await db
+      .update(t.instances)
+      .set({ tags })
+      .where(eq(t.instances.id, id))
+      .returning();
+    if (!result) throw new NotFoundError('Instance', id);
+    return { ...result, tags: result.tags as Record<string, string> | null } as InstanceRow;
+  }
+
   async delete(scope: RequestScope, id: string): Promise<void> {
     const row = await this.getById(scope, id);
     const provider = getProvider(row.provider);

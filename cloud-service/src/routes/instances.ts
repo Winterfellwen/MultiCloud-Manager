@@ -95,6 +95,34 @@ export async function instanceRoutes(app: FastifyInstance) {
     }
   });
 
+  // 更新实例标签
+  app.patch("/:id", async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const body = request.body as { tags?: Record<string, string> };
+      if (!body.tags || typeof body.tags !== 'object') {
+        return reply.status(400).send({
+          error: "VALIDATION_ERROR",
+          message: "请求体必须包含 tags 字段",
+        });
+      }
+      const result = await instanceService.updateTags(request.scope, id, body.tags);
+      return reply.send(result);
+    } catch (err: any) {
+      if (err.statusCode && err.message) {
+        return reply.status(err.statusCode).send({
+          error: err.code || "PROVIDER_ERROR",
+          message: err.message,
+          details: err.details,
+        });
+      }
+      return reply.status(500).send({
+        error: "INTERNAL_ERROR",
+        message: err.message || "更新标签失败",
+      });
+    }
+  });
+
   // 启动实例
   app.post("/:id/start", async (request, reply) => {
     try {
