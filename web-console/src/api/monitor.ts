@@ -7,6 +7,8 @@ import type {
   PredictionItem,
   RemediationRun, RemediationPolicy,
   KnowledgeEntry,
+  CostForecastResponse,
+  IdleResource,
 } from '@/types/monitor';
 
 export const monitorApi = {
@@ -36,6 +38,13 @@ export const monitorApi = {
   },
   getInstanceCosts: () => api.get<InstanceCost[]>('/monitor/costs/instances'),
   collectCosts: () => api.post<{ ok: true; message: string }>('/monitor/costs/collect'),
+  getCostForecast: (params?: { provider?: string; months?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.provider) query.set('provider', params.provider);
+    if (params?.months) query.set('months', String(params.months));
+    const qs = query.toString();
+    return api.get<CostForecastResponse>(`/monitor/costs/forecast${qs ? '?' + qs : ''}`);
+  },
   getMetrics: (instanceId: string, params?: { metric?: string; start?: string; end?: string; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.metric) query.set('metric', params.metric);
@@ -63,4 +72,7 @@ export const monitorApi = {
   getKnowledgeBase: () => api.get<KnowledgeEntry[]>('/monitor/knowledge-base'),
   searchKnowledgeBase: (symptom: string, metric: string) =>
     api.get<{ cases: any[] }>(`/monitor/knowledge-base/search?symptom=${encodeURIComponent(symptom)}&metric=${encodeURIComponent(metric)}`),
+  getIdleResources: () => api.get<IdleResource[]>('/monitor/idle-resources'),
+  getIdleSavings: () => api.get<{ totalMonthlySavings: number; items: IdleResource[] }>('/monitor/idle-resources/savings'),
+  getIdleSummary: () => api.get<{ totalIdle: number; totalMonthlyCost: number; potentialSavings: number; items: IdleResource[] }>('/monitor/idle-summary'),
 };

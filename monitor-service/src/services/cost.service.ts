@@ -108,6 +108,84 @@ export class CostService {
       .from(t.instances);
   }
 
+  async getForecast(scope: RequestScope, options: { provider?: string; months?: number }) {
+    const t = scopedDb(scope);
+    const months = options.months || 3;
+    const now = new Date();
+    const historicalStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+
+    const conditions = [gte(t.costRecords.periodStart, historicalStart)];
+    if (options.provider) conditions.push(eq(t.costRecords.provider, options.provider));
+
+    const rows = await db
+      .select({
+        periodStart: t.costRecords.periodStart,
+        provider: t.costRecords.provider,
+        totalAmount: sql<number>`sum(${t.costRecords.amount}::numeric)`,
+        currency: t.costRecords.currency,
+      })
+      .from(t.costRecords)
+      .where(and(...conditions))
+      .groupBy(t.costRecords.periodStart, t.costRecords.provider, t.costRecords.currency)
+      .orderBy(t.costRecords.periodStart);
+
+    const monthlyMap = new Map<string, { total: number; currency: string }>();
+    for (const row of rows) {
+      const monthKey = new Date(row.periodStart).toISOString().slice(0, 7);
+      const existing = monthlyMap.get(monthKey) || { total: 0, currency: row.currency };
+      existing.total += Number(row.totalAmount) || 0;
+      monthlyMap.set(monthKey, existing);
+    }
+
+    const monthlyData = Array.from(monthlyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, { total, currency }]) => ({
+        month,
+        total: Math.round(total * 100) / 100,
+        currency,
+      }));
+
+    const values = monthlyData.map(d => d.total);
+    const n = values.length;
+    if (n < 2) {
+      return {
+        historical: monthlyData,
+        forecast: [],
+        trend: 'insufficient_data' as const,
+      };
+    }
+
+    const xMean = (n - 1) / 2;
+    const yMean = values.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+      num += (i - xMean) * (values[i] - yMean);
+      den += (i - xMean) * (i - xMean);
+    }
+    const slope = den !== 0 ? num / den : 0;
+    const intercept = yMean - slope * xMean;
+
+    const forecast = [];
+    const lastMonth = monthlyData.length > 0 ? monthlyData[monthlyData.length - 1].month : now.toISOString().slice(0, 7);
+    const [lastYear, lastMonthNum] = lastMonth.split('-').map(Number);
+
+    for (let i = 1; i <= months; i++) {
+      const fi = n - 1 + i;
+      const predicted = Math.max(0, intercept + slope * fi);
+      const m = lastMonthNum + i;
+      const forecastMonth = `${lastYear + Math.floor((m - 1) / 12)}-${String(((m - 1) % 12) + 1).padStart(2, '0')}`;
+      forecast.push({
+        month: forecastMonth,
+        predicted: Math.round(predicted * 100) / 100,
+        currency: monthlyData[0]?.currency || 'USD',
+      });
+    }
+
+    const trend = slope > 0.01 ? 'increasing' : slope < -0.01 ? 'decreasing' : 'stable';
+
+    return { historical: monthlyData, forecast, trend };
+  }
+
   private async getRegisteredProviders(): Promise<string[]> {
     const res = await fetch(`${config.cloudServiceUrl}/cloud/providers`);
     if (!res.ok) throw new Error(`cloud-service responded ${res.status}`);

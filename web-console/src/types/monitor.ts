@@ -90,6 +90,18 @@ export interface InstanceCost {
   tags: Record<string, string> | null;
 }
 
+export interface CostForecast {
+  month: string;
+  total: number;
+  currency: string;
+}
+
+export interface CostForecastResponse {
+  historical: CostForecast[];
+  forecast: Array<{ month: string; predicted: number; currency: string }>;
+  trend: 'increasing' | 'decreasing' | 'stable' | 'insufficient_data';
+}
+
 export interface MetricData {
   id: string;
   instanceId: string;
@@ -165,4 +177,18 @@ export interface KnowledgeEntry {
   resolutionTimeMinutes: number | null;
   helpfulCount: number;
   createdAt: string;
+}
+
+export interface IdleResource {
+  id: string;
+  name: string;
+  provider: string;
+  resourceType: string;
+  region: string;
+  status: string;
+  monthlyCost: number;
+  currency: string;
+  reason: string;
+  daysIdle: number;
+  suggestion: string;
 }

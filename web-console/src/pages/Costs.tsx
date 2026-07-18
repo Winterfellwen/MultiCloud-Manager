@@ -2,15 +2,15 @@ import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCostSummary, useInstanceCosts, useCollectCosts } from '@/hooks/useCosts';
+import { useCostSummary, useInstanceCosts, useCollectCosts, useCostForecast } from '@/hooks/useCosts';
 import type { CostSummaryItem, InstanceCost } from '@/types/monitor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TableWithPagination, Column } from '@/components/ui/table-with-pagination';
 import { ApiError } from '@/api/client';
 import { getExchangeRate } from '@/api/exchange-rates';
-import { RefreshCw } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartTooltip, Legend } from 'recharts';
+import { RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartTooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip2 } from 'recharts';
 
 const PROVIDER_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -75,6 +75,7 @@ export default function Costs() {
     end: new Date(endDate + 'T23:59:59').toISOString(),
   });
   const { data: instanceCosts, isLoading: instLoading } = useInstanceCosts();
+  const { data: forecast, isLoading: forecastLoading } = useCostForecast();
   const collect = useCollectCosts();
 
   const providerTotals = useMemo(() => {
@@ -293,6 +294,46 @@ export default function Costs() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground py-8 text-center">{t('costs.noCostData')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cost Forecast */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">{t('costs.forecast', '成本预测')}</CardTitle>
+          {forecast && (
+            <div className="flex items-center gap-1 text-sm">
+              {forecast.trend === 'increasing' && <TrendingUp className="h-4 w-4 text-red-500" />}
+              {forecast.trend === 'decreasing' && <TrendingDown className="h-4 w-4 text-green-500" />}
+              {forecast.trend === 'stable' && <Minus className="h-4 w-4 text-muted-foreground" />}
+              <span className="text-muted-foreground">
+                {forecast.trend === 'increasing' ? t('costs.trendUp', '上涨趋势') :
+                 forecast.trend === 'decreasing' ? t('costs.trendDown', '下降趋势') :
+                 forecast.trend === 'stable' ? t('costs.trendStable', '平稳') :
+                 t('costs.insufficientData', '数据不足')}
+              </span>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          {forecastLoading ? (
+            <div className="flex items-center justify-center h-48"><span className="text-muted-foreground">Loading...</span></div>
+          ) : forecast && forecast.historical.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={[...forecast.historical, ...forecast.forecast.map(f => ({ month: f.month, total: null, predicted: f.predicted }))]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <RechartTooltip2 />
+                <Area type="monotone" dataKey="total" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.1} name={t('costs.actual', '实际')} strokeWidth={2} connectNulls />
+                <Area type="monotone" dataKey="predicted" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} name={t('costs.forecast', '预测')} strokeWidth={2} strokeDasharray="5 5" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-48">
+              <span className="text-muted-foreground">{t('costs.noData', '暂无成本数据')}</span>
+            </div>
           )}
         </CardContent>
       </Card>
