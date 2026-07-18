@@ -20,6 +20,7 @@ import Slb20140515 from "@alicloud/slb20140515";
 import Cdn20180510 from "@alicloud/cdn20180510";
 import Cs20151215 from "@alicloud/cs20151215";
 import RKvstore20150101 from "@alicloud/r-kvstore20150101";
+import crypto from "node:crypto";
 import { Config } from "@alicloud/openapi-client";
 import { RuntimeOptions } from "@alicloud/tea-util";
 import type {
@@ -428,8 +429,71 @@ export class AliyunProvider implements ICloudProvider {
   }
 
   private async listBuckets(): Promise<Bucket[]> {
-    // TODO: OSS 需要独立的签名请求或 @alicloud/oss-client，暂返回空数组
-    return [];
+    if (!this.accessKeyId || !this.accessKeySecret) return [];
+
+    try {
+      const date = new Date().toUTCString();
+      const resource = "/";
+      const contentType = "";
+      const md5 = "";
+      const canonicalizedOSSHeaders = "";
+      const canonicalizedResource = resource;
+      const stringToSign = `GET\n${md5}\n${contentType}\n${date}\n${canonicalizedOSSHeaders}${canonicalizedResource}`;
+      const signature = crypto
+        .createHmac("sha1", this.accessKeySecret)
+        .update(stringToSign)
+        .digest("base64");
+
+      const url = `https://oss-${this.defaultRegion}.aliyuncs.com`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `OSS ${this.accessKeyId}:${signature}`,
+          Date: date,
+          "x-oss-date": date,
+        },
+      });
+      if (!res.ok) {
+        console.warn(`Aliyun listBuckets returned ${res.status}: ${await res.text()}`);
+        return [];
+      }
+      const xml = await res.text();
+      const buckets: Bucket[] = [];
+      const nameRegex = /<Name>([^<]+)<\/Name>/g;
+      const locationRegex = /<Location>([^<]+)<\/Location>/g;
+      const creationDateRegex = /<CreationDate>([^<]+)<\/CreationDate>/g;
+      const names: string[] = [];
+      let m;
+      while ((m = nameRegex.exec(xml)) !== null) names.push(m[1]);
+      const locations: string[] = [];
+      while ((m = locationRegex.exec(xml)) !== null) locations.push(m[1]);
+      const dates: string[] = [];
+      while ((m = creationDateRegex.exec(xml)) !== null) dates.push(m[1]);
+
+      for (let i = 0; i < names.length; i++) {
+        buckets.push({
+          id: names[i],
+          provider: "aliyun",
+          resourceType: "bucket",
+          providerResourceId: names[i],
+          name: names[i],
+          region: locations[i] || this.defaultRegion,
+          status: "active",
+          createdAt: dates[i] ? new Date(dates[i]) : new Date(),
+          tags: {},
+          attributes: {
+            storageClass: "Standard",
+            objectCount: 0,
+            sizeBytes: 0,
+            versioning: false,
+            publicAccess: false,
+          },
+        });
+      }
+      return buckets;
+    } catch (err) {
+      console.warn(`Aliyun listBuckets error: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   private async listDatabases(region?: string): Promise<DatabaseInstance[]> {

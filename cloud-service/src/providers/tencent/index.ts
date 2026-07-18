@@ -3,6 +3,7 @@
 // 凭证有效性通过 listRegions 间接验证
 
 import { createRequire } from "module";
+import crypto from "node:crypto";
 import type {
   ICloudProvider,
   Instance,
@@ -527,8 +528,94 @@ export class TencentProvider implements ICloudProvider {
   }
 
   private async listBuckets(): Promise<Bucket[]> {
-    // TODO: COS 需要独立的 cos-nodejs-sdk-v5 或独立签名请求，暂返回空数组
-    return [];
+    if (!this.secretId || !this.secretKey) return [];
+
+    try {
+      const service = "cos";
+      const region = this.defaultRegion;
+      const endpoint = `https://cos.${region}.myqcloud.com`;
+      const now = new Date();
+      const amzDate = now.toISOString().replace(/[:-]/g, "").replace(/\.\d{3}/, "");
+      const dateStamp = amzDate.slice(0, 8);
+
+      const canonicalRequest = [
+        "GET",
+        "/",
+        "",
+        `host:cos.${region}.myqcloud.com\nx-amz-date:${amzDate}\n`,
+        "host;x-amz-date",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      ].join("\n");
+
+      const credentialScope = `${dateStamp}/${service}/aws4_request`;
+      const stringToSign = [
+        "AWS4-HMAC-SHA256",
+        amzDate,
+        credentialScope,
+        crypto.createHash("sha256").update(canonicalRequest).digest("hex"),
+      ].join("\n");
+
+      const hmac = (key: string | Buffer, msg: string) =>
+        crypto.createHmac("sha256", key).update(msg).digest();
+      const kDate = hmac(`AWS4${this.secretKey}`, dateStamp);
+      const kRegion = hmac(kDate, service);
+      const kService = hmac(kRegion, "aws4_request");
+      const kSigning = hmac(kService, stringToSign);
+      const signature = crypto.createHmac("sha256", kSigning).update(stringToSign).digest("hex");
+
+      const authorization =
+        `AWS4-HMAC-SHA256 Credential=${this.secretId}/${credentialScope}, ` +
+        `SignedHeaders=host;x-amz-date, Signature=${signature}`;
+
+      const res = await fetch(endpoint, {
+        headers: {
+          Host: `cos.${region}.myqcloud.com`,
+          "x-amz-date": amzDate,
+          Authorization: authorization,
+        },
+      });
+      if (!res.ok) {
+        console.warn(`Tencent listBuckets returned ${res.status}: ${await res.text()}`);
+        return [];
+      }
+      const xml = await res.text();
+      const buckets: Bucket[] = [];
+      const nameRegex = /<Name>([^<]+)<\/Name>/g;
+      const locationRegex = /<Location>([^<]+)<\/Location>/g;
+      const creationDateRegex = /<CreationDate>([^<]+)<\/CreationDate>/g;
+      const names: string[] = [];
+      let m;
+      while ((m = nameRegex.exec(xml)) !== null) names.push(m[1]);
+      const locations: string[] = [];
+      while ((m = locationRegex.exec(xml)) !== null) locations.push(m[1]);
+      const dates: string[] = [];
+      while ((m = creationDateRegex.exec(xml)) !== null) dates.push(m[1]);
+
+      for (let i = 0; i < names.length; i++) {
+        buckets.push({
+          id: names[i],
+          provider: "tencent",
+          resourceType: "bucket",
+          providerResourceId: names[i],
+          name: names[i],
+          region: locations[i] || this.defaultRegion,
+          status: "active",
+          createdAt: dates[i] ? new Date(dates[i]) : new Date(),
+          tags: {},
+          attributes: {
+            storageClass: "Standard",
+            objectCount: 0,
+            sizeBytes: 0,
+            versioning: false,
+            publicAccess: false,
+          },
+        });
+      }
+      return buckets;
+    } catch (err) {
+      console.warn(`Tencent listBuckets error: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   private async listDatabases(region?: string): Promise<DatabaseInstance[]> {
