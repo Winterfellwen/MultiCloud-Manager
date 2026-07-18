@@ -39,6 +39,8 @@ export const cloudApi = {
   updateAccount: (id: string, params: { name?: string; config?: Record<string, unknown>; status?: string }) =>
     api.put<CloudAccount>(`/cloud/accounts/${id}`, params),
   deleteAccount: (id: string) => api.delete<{ ok: true; id: string }>(`/cloud/accounts/${id}`),
+  updateInstanceTags: (id: string, tags: Record<string, string>) =>
+    api.patch<InstanceRow>(`/cloud/instances/${id}`, { tags }),
   /** 测试云账号连通性 */
   testAccount: (id: string) => api.post<TestConnectionResult>(`/cloud/accounts/${id}/test`, {}),
   /** 获取实例指标 */

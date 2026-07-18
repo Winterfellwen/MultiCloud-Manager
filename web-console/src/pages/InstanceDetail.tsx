@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { useInstanceByProviderId, useInstanceAction } from '@/hooks/useInstances';
+import { cloudApi } from '@/api/cloud';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { TagEditorDialog } from '@/components/instance';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { ApiError } from '@/api/client';
-import { ArrowLeft, Play, Square, RotateCw, Trash2, Server, Cpu, Globe, Tag, Clock } from 'lucide-react';
+import { ArrowLeft, Play, Square, RotateCw, Trash2, Server, Cpu, Globe, Tag, Clock, Pencil } from 'lucide-react';
 import { InstanceMetricsCard, InstanceLogsCard, InstanceConnectionsCard } from '@/components/instance';
 
 export default function InstanceDetail() {
@@ -18,7 +21,11 @@ export default function InstanceDetail() {
   const navigate = useNavigate();
   const { data: instance, isLoading, error } = useInstanceByProviderId(providerInstanceId);
   const action = useInstanceAction();
+  const qc = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [editingTags, setEditingTags] = useState<Record<string, string>>({});
+  const [savingTags, setSavingTags] = useState(false);
 
   async function executeDelete() {
     if (!instance) return;
@@ -42,6 +49,21 @@ export default function InstanceDetail() {
       toast.success(t(`instances.${act}Success`));
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('instances.opFailed'));
+    }
+  }
+
+  async function handleSaveTags() {
+    if (!instance) return;
+    setSavingTags(true);
+    try {
+      await cloudApi.updateInstanceTags(instance.id, editingTags);
+      toast.success(t('instances.tagsUpdated', '标签更新成功'));
+      setTagDialogOpen(false);
+      qc.invalidateQueries({ queryKey: ['instance', 'provider', providerInstanceId] });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('instances.opFailed'));
+    } finally {
+      setSavingTags(false);
     }
   }
 
@@ -169,15 +191,24 @@ export default function InstanceDetail() {
       </Card>
 
       {/* Tags */}
-      {instance.tags && Object.keys(instance.tags).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Tag className="h-4 w-4" />
               {t('instances.tags', '标签')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => {
+              setEditingTags(instance.tags || {});
+              setTagDialogOpen(true);
+            }}>
+              <Pencil className="h-4 w-4 mr-1" />
+              {t('common.edit', '编辑')}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {instance.tags && Object.keys(instance.tags).length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {Object.entries(instance.tags).map(([key, value]) => (
                 <Badge key={key} variant="secondary">
@@ -185,9 +216,11 @@ export default function InstanceDetail() {
                 </Badge>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('instances.noTags', '暂无标签')}</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Timestamps */}
       <Card>
@@ -216,6 +249,15 @@ export default function InstanceDetail() {
         instanceId={instance.id}
         incoming={instance.connections?.incoming || []}
         outgoing={instance.connections?.outgoing || []}
+      />
+
+      <TagEditorDialog
+        open={tagDialogOpen}
+        onOpenChange={setTagDialogOpen}
+        tags={editingTags}
+        onTagsChange={setEditingTags}
+        onSave={handleSaveTags}
+        saving={savingTags}
       />
 
       <ConfirmDialog
