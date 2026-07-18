@@ -93,7 +93,7 @@
   "login": {
     "title": "CloudOps AI",
     "subtitle": "多云管理控制台登录",
-    "author": "由 Rui Wen 构建",
+    "author": "由 温信锐（Peter Wen）构建",
     "username": "用户名",
     "usernamePlaceholder": "请输入用户名",
     "password": "密码",
