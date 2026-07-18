@@ -101,7 +101,7 @@ export interface ICloudProvider {
   listImages(): Promise<Image[]>;
   listInstanceTypes(region: string): Promise<InstanceType[]>;
 
-  getMetrics(id: string, timeRange: TimeRange): Promise<MetricData[]>;
+  getMetrics(id: string, timeRange: TimeRange, metricName?: string): Promise<MetricData[]>;
   getCostSummary(timeRange: TimeRange): Promise<CostSummary>;
 
   // ===== 新增：通用资源管理 =====

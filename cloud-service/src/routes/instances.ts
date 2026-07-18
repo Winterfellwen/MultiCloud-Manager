@@ -246,7 +246,7 @@ export async function instanceRoutes(app: FastifyInstance) {
   // 查询实例指标（供 monitor-service 调用）
   app.get("/:id/metrics", async (request) => {
     const { id } = request.params as { id: string };
-    const query = request.query as { start?: string; end?: string };
+    const query = request.query as { start?: string; end?: string; metric?: string };
     const row = await instanceService.getById(request.scope, id);
     const provider = getProvider(row.provider);
 
@@ -255,7 +255,7 @@ export async function instanceRoutes(app: FastifyInstance) {
       ? new Date(query.start)
       : new Date(end.getTime() - 60 * 60 * 1000); // 默认最近 1 小时
 
-    return provider.getMetrics(row.providerInstanceId, { start, end });
+    return provider.getMetrics(row.providerInstanceId, { start, end }, query.metric);
   });
 
   // 触发资源同步

@@ -46,19 +46,23 @@ export class MetricCollector {
     const start = new Date(end.getTime() - 5 * 60 * 1000);
     let collected = 0;
 
+    const metricNames = ['cpu_usage_percent', 'memory_utilization', 'network_in', 'network_out', 'disk_io'];
+
     for (const inst of runningInstances) {
       try {
-        const points = await this.fetchMetricsFromCloud(inst.id, start, end);
-        for (const point of points) {
-          await metricService.insert(PUBLIC_SCOPE, {
-            instanceId: inst.id,
-            metricName: 'cpu_usage_percent',
-            value: point.value,
-            unit: point.unit || 'Percent',
-            recordedAt: new Date(point.timestamp),
-          });
+        for (const metricName of metricNames) {
+          const points = await this.fetchMetricsFromCloud(inst.id, start, end, metricName);
+          for (const point of points) {
+            await metricService.insert(PUBLIC_SCOPE, {
+              instanceId: inst.id,
+              metricName,
+              value: point.value,
+              unit: point.unit || 'Percent',
+              recordedAt: new Date(point.timestamp),
+            });
+          }
+          collected += points.length;
         }
-        collected += points.length;
       } catch (err) {
         console.error(`Failed to collect metrics for ${inst.id}:`, (err as Error).message);
       }
@@ -70,9 +74,11 @@ export class MetricCollector {
   private async fetchMetricsFromCloud(
     instanceId: string,
     start: Date,
-    end: Date
+    end: Date,
+    metricName?: string
   ): Promise<MetricPoint[]> {
-    const url = `${config.cloudServiceUrl}/cloud/instances/${instanceId}/metrics?start=${start.toISOString()}&end=${end.toISOString()}`;
+    let url = `${config.cloudServiceUrl}/cloud/instances/${instanceId}/metrics?start=${start.toISOString()}&end=${end.toISOString()}`;
+    if (metricName) url += `&metric=${metricName}`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`cloud-service responded ${res.status}`);

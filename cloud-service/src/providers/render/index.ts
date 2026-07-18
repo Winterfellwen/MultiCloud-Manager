@@ -202,20 +202,38 @@ export class RenderProvider implements ICloudProvider {
     }));
   }
 
-  async getMetrics(id: string, timeRange: TimeRange): Promise<MetricData[]> {
+  async getMetrics(id: string, timeRange: TimeRange, metricName?: string): Promise<MetricData[]> {
+    const renderMetricMap: Record<string, string> = {
+      cpu_usage_percent: 'cpu_percent',
+      memory_utilization: 'memory_percent',
+      network_in: 'network_receive_bytes_total',
+      network_out: 'network_transmit_bytes_total',
+      disk_io: 'disk_read_bytes_total',
+    };
+    const renderMetric = metricName && renderMetricMap[metricName] ? renderMetricMap[metricName] : 'cpu_percent';
+
     const resp = await this.api.getMetrics({
       resourceIds: [id],
-      metric: 'cpu_percent',
+      metric: renderMetric,
       start: timeRange.start.toISOString(),
       end: timeRange.end.toISOString(),
     });
 
     const points: RenderMetricDataPoint = resp.data?.[0];
     if (!points?.timestamps || !points?.values) return [];
+
+    const unitMap: Record<string, string> = {
+      cpu_percent: 'percent',
+      memory_percent: 'percent',
+      network_receive_bytes_total: 'bytes',
+      network_transmit_bytes_total: 'bytes',
+      disk_read_bytes_total: 'bytes',
+    };
+
     return points.timestamps.map((ts, i) => ({
       timestamp: new Date(ts),
       value: points.values[i],
-      unit: 'percent',
+      unit: unitMap[renderMetric] || 'percent',
     }));
   }
 
