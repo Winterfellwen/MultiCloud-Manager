@@ -25,7 +25,15 @@ app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, 
 });
 
 await app.register(cors);
-await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+await app.register(rateLimit, {
+  max: 100,
+  timeWindow: '1 minute',
+  errorResponseBuilder: (_request, context) => ({
+    error: 'RATE_LIMIT_EXCEEDED',
+    message: `请求过于频繁，请 ${Math.ceil((context.ttl || 60000) / 1000)} 秒后重试`,
+    statusCode: 429,
+  }),
+});
 await app.register(loggerPlugin);
 // scope 注入：直接在根 app 上注册 hook（不用 register，否则插件封装隔离导致 hook 不传播到 proxyRoutes）
 registerScopeHook(app);

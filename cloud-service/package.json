@@ -49,10 +49,10 @@
     "@huaweicloud/huaweicloud-sdk-rds": "^3.1.200",
     "@huaweicloud/huaweicloud-sdk-vpc": "^3.1.200",
     "dotenv": "^16.4.0",
-    "google-auth-library": "^9.15.0",
-    "googleapis": "^144.0.0",
     "drizzle-orm": "^0.32.0",
     "fastify": "^4.28.0",
+    "google-auth-library": "^9.15.0",
+    "googleapis": "^144.0.0",
     "ioredis": "^5.4.0",
     "postgres": "^3.4.0",
     "tencentcloud-sdk-nodejs": "^4.1.253",
@@ -62,6 +62,7 @@
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.24.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^3.2.6"
   }
 }

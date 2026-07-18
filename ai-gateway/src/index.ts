@@ -48,7 +48,7 @@ import { analyzeAlert } from './internal/analyze-alert.js';
 import { generateDashboardInsight } from './internal/dashboard-insight.js';
 import { analyzeRemediation } from './internal/analyze-remediation.js';
 import { generateEmbedding } from './internal/embedding.js';
-import { scopeFromDemoFlag, type RequestScope } from '@cloudops/shared';
+import { AppError, scopeFromDemoFlag, type RequestScope } from '@cloudops/shared';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -71,6 +71,24 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: config.corsOrigin });
 await app.register(websocket);
+
+app.setErrorHandler((error, _request, reply) => {
+  if (error instanceof AppError) {
+    return reply.status(error.statusCode).send({
+      error: error.code,
+      message: error.message,
+      details: error.details,
+    });
+  }
+  if (error.validation) {
+    return reply.status(400).send({ error: 'VALIDATION_ERROR', message: error.message });
+  }
+  app.log.error(error);
+  return reply.status(500).send({
+    error: 'INTERNAL_ERROR',
+    message: `内部错误: ${error.message || '未知错误'}`,
+  });
+});
 
 // scope 注入（demo/生产数据隔离）：内部端点接收 monitor-service 调用时透传的 scope header
 app.addHook('onRequest', async (request) => {
