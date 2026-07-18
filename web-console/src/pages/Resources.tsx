@@ -181,6 +181,33 @@ export default function Resources() {
       { key: 'provider', header: t('common.providerShort'), accessor: 'provider', className: 'w-[100px]', sortable: true },
       { key: 'region', header: t('common.region'), accessor: 'region', className: 'w-[100px]', sortable: true },
       { key: 'status', header: t('common.status'), accessor: 'status', className: 'w-[100px]', sortable: true, cell: (value) => <Badge variant={getStatusColor(String(value))}>{String(value)}</Badge> },
+      {
+        key: 'tags',
+        header: t('instances.tags', '标签'),
+        accessor: (row) => row.tags && Object.keys(row.tags).length > 0
+          ? Object.entries(row.tags).slice(0, 3).map(([k, v]) => `${k}=${v}`).join(', ') + (Object.keys(row.tags).length > 3 ? '...' : '')
+          : '-',
+        className: 'w-[160px]',
+        sortable: true,
+        sortValue: (row) => row.tags ? JSON.stringify(row.tags) : '',
+        cell: (_value, row) => {
+          const tags = row.tags as Record<string, string> | null;
+          if (!tags || Object.keys(tags).length === 0) return <span className="text-muted-foreground">-</span>;
+          const entries = Object.entries(tags);
+          return (
+            <div className="flex flex-wrap gap-1">
+              {entries.slice(0, 3).map(([k, v]) => (
+                <span key={k} className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                  {k}:{v}
+                </span>
+              ))}
+              {entries.length > 3 && (
+                <span className="text-xs text-muted-foreground">+{entries.length - 3}</span>
+              )}
+            </div>
+          );
+        },
+      },
     ];
     for (const ec of extraCols) {
       cols.push({ key: ec.key, header: ec.label, accessor: (row) => ec.render(row.attributes || {}), className: 'w-[120px]' });
@@ -272,6 +299,33 @@ export default function Resources() {
     { key: 'spec', header: t('instances.spec'), accessor: (row) => row.cpu ? `${row.cpu}C/${row.memoryMb ? row.memoryMb / 1024 : '?'}G` : '-', className: 'w-[100px]', sortable: true, sortValue: (row) => row.cpu || 0 },
     { key: 'ip', header: t('instances.ip'), accessor: (row) => row.publicIp || row.privateIp || '-', className: 'w-[140px]', sortable: true, sortValue: (row) => row.publicIp || row.privateIp || '' },
     { key: 'monthlyCost', header: t('instances.monthlyCost'), accessor: (row) => row.monthlyCost ? `${(row as InstanceRow).currency === 'CNY' ? '¥' : '$'}${parseFloat(row.monthlyCost).toFixed(2)}` : '-', className: 'w-[120px]', sortable: true, sortValue: (row) => parseFloat(row.monthlyCost || '') || 0 },
+    {
+      key: 'tags',
+      header: t('instances.tags', '标签'),
+      accessor: (row) => row.tags && Object.keys(row.tags).length > 0
+        ? Object.entries(row.tags).slice(0, 3).map(([k, v]) => `${k}=${v}`).join(', ') + (Object.keys(row.tags).length > 3 ? '...' : '')
+        : '-',
+      className: 'w-[160px]',
+      sortable: true,
+      sortValue: (row) => row.tags ? JSON.stringify(row.tags) : '',
+      cell: (_value, row) => {
+        const tags = row.tags as Record<string, string> | null;
+        if (!tags || Object.keys(tags).length === 0) return <span className="text-muted-foreground">-</span>;
+        const entries = Object.entries(tags);
+        return (
+          <div className="flex flex-wrap gap-1">
+            {entries.slice(0, 3).map(([k, v]) => (
+              <span key={k} className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                {k}:{v}
+              </span>
+            ))}
+            {entries.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{entries.length - 3}</span>
+            )}
+          </div>
+        );
+      },
+    },
     {
       key: 'actions',
       header: t('common.actions'),

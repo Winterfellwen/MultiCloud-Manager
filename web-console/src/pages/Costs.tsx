@@ -170,6 +170,31 @@ export default function Costs() {
         return `${symbol}${parseFloat(cost).toFixed(2)}`;
       },
     },
+    {
+      key: 'tags',
+      header: t('instances.tags', '标签'),
+      accessor: (row) => row.tags && Object.keys(row.tags).length > 0
+        ? Object.entries(row.tags).slice(0, 3).map(([k, v]) => `${k}=${v}`).join(', ') + (Object.keys(row.tags).length > 3 ? '...' : '')
+        : '-',
+      className: 'w-[160px]',
+      cell: (_value, row) => {
+        const tags = (row as InstanceCost).tags as Record<string, string> | null;
+        if (!tags || Object.keys(tags).length === 0) return <span className="text-muted-foreground">-</span>;
+        const entries = Object.entries(tags);
+        return (
+          <div className="flex flex-wrap gap-1">
+            {entries.slice(0, 3).map(([k, v]) => (
+              <span key={k} className="inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                {k}:{v}
+              </span>
+            ))}
+            {entries.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{entries.length - 3}</span>
+            )}
+          </div>
+        );
+      },
+    },
   ];
 
   async function handleCollect() {
