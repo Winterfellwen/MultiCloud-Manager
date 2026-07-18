@@ -37,6 +37,7 @@ export default defineConfig({
       '/cloud': { target: 'http://localhost:80', changeOrigin: true },
       '/monitor': { target: 'http://localhost:80', changeOrigin: true },
       '/agent': { target: 'http://localhost:80', changeOrigin: true },
+      '/api': { target: 'http://localhost:80', changeOrigin: true },
       '/ws': {
         target: 'ws://localhost:80',
         ws: true,
