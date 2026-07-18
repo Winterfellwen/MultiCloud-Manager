@@ -1,5 +1,5 @@
 // Dashboard 总览页：统计卡片 + 云厂商分布
-import { Server, DollarSign, AlertTriangle, Loader2, AlertCircle, Activity } from 'lucide-react';
+import { Server, DollarSign, AlertTriangle, AlertCircle, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboard';
@@ -10,9 +10,31 @@ import RemediationCard from '@/components/dashboard/RemediationCard';
 import SecurityCard from '@/components/dashboard/SecurityCard';
 import CapacityCard from '@/components/dashboard/CapacityCard';
 import { AiInsightCard } from '@/components/dashboard/AiInsightCard';
+import { CardSkeleton, Skeleton } from '@/components/ui/skeleton';
 
 
-
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-lg border bg-card p-6 space-y-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+        <div className="rounded-lg border bg-card p-6 space-y-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -40,6 +62,8 @@ export default function Dashboard() {
         </div>
       )}
 
+      {isLoading ? <DashboardSkeleton /> : (
+      <>
       {/* 统计卡片 */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/resources')}>
@@ -50,9 +74,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : stats ? (
+            {stats ? (
               <div className="text-2xl font-bold">{stats.totalResources}</div>
             ) : (
               <div className="text-2xl font-bold text-muted-foreground">-</div>
@@ -71,9 +93,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : stats ? (
+            {stats ? (
               <>
                 <div className="text-2xl font-bold text-green-600">{stats.runningInstances}</div>
                 {stats.totalInstances > 0 && (
@@ -96,9 +116,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : stats ? (
+            {stats ? (
               <div
                 className={`text-2xl font-bold ${
                   stats.alertCount > 0 ? 'text-yellow-600' : ''
@@ -123,9 +141,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : stats ? (
+            {stats ? (
               <div className="text-2xl font-bold">{formatCost(stats.monthlyCost)}</div>
             ) : (
               <div className="text-2xl font-bold text-muted-foreground">-</div>
@@ -143,11 +159,7 @@ export default function Dashboard() {
           <CardTitle className="text-base">{t('dashboard.providerDist')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : stats && Object.keys(stats.byProvider).length > 0 ? (
+          {stats && Object.keys(stats.byProvider).length > 0 ? (
             <div className="space-y-3">
               {Object.entries(stats.byProvider).map(([provider, count]) => (
                 <div
@@ -225,6 +237,8 @@ export default function Dashboard() {
 
       {/* 容量规划卡片 */}
       <CapacityCard />
+      </>
+    )}
     </div>
   );
 }
