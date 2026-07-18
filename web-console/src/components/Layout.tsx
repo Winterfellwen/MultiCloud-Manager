@@ -6,11 +6,13 @@ import { Topbar } from './Topbar';
 import { SearchModal } from './SearchModal';
 import { DemoBanner } from './common/DemoBanner';
 import { Breadcrumb } from './Breadcrumb';
+import { Button } from '@/components/ui/button';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 import { EASE, DURATION } from '@/lib/motion';
+import { X } from 'lucide-react';
 
 export function Layout() {
   // 全局初始化 WebSocket 连接（所有页面共享，如 AiSettings 的 provider 管理、Chat 的对话）
@@ -88,7 +90,17 @@ export function Layout() {
               transition={{ duration: DURATION.base, ease: EASE.out }}
               className="fixed inset-y-0 left-0 z-50"
             >
-              <Sidebar />
+              <div className="relative h-full">
+                <Sidebar />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={closeSidebar}
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </motion.div>
           </>
         )}

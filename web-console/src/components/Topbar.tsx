@@ -69,7 +69,12 @@ export function Topbar({ onToggleSidebar, onSearchOpen, onToggleCollapse, sideba
             <TooltipContent>{sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}</TooltipContent>
           </Tooltip>
         )}
-        <NotificationBell />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <NotificationBell />
+          </TooltipTrigger>
+          <TooltipContent>{t('topbar.notifications')}</TooltipContent>
+        </Tooltip>
         <div className="flex items-center gap-2 text-sm min-w-0">
           <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
           <span className="font-medium truncate max-w-[80px] sm:max-w-none">{user?.username}</span>

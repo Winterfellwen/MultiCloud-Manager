@@ -80,7 +80,8 @@
     "title": "多云管理控制台",
     "logout": "退出登录",
     "menu": "打开菜单",
-    "language": "语言"
+    "language": "语言",
+    "notifications": "通知"
   },
   "login": {
     "title": "CloudOps AI",

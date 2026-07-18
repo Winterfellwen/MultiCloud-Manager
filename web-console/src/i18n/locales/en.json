@@ -80,7 +80,8 @@
     "title": "Multi-Cloud Console",
     "logout": "Logout",
     "menu": "Open menu",
-    "language": "Language"
+    "language": "Language",
+    "notifications": "Notifications"
   },
   "login": {
     "title": "CloudOps AI",
