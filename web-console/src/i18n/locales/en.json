@@ -230,6 +230,8 @@
     "createChannelTitle": "New Notification Channel",
     "confirmDeleteRule": "Delete this rule?",
     "confirmDeleteChannel": "Delete this channel?",
+    "severityDistribution": "Severity Distribution",
+    "ruleCount": "Rules",
     "noRules": "No rules",
     "noEvents": "No alert events",
     "noChannels": "No channels",
@@ -254,6 +256,7 @@
     "amount": "Amount",
     "currency": "Currency",
     "collectFailed": "Collection failed",
+    "byProvider": "Cost by Provider",
     "noCostData": "No cost data",
     "noInstanceCost": "No instance cost data",
     "instanceName": "Instance Name"

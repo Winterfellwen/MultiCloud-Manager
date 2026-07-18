@@ -230,6 +230,8 @@
     "createChannelTitle": "新建通知渠道",
     "confirmDeleteRule": "确定删除此规则？",
     "confirmDeleteChannel": "确定删除此渠道？",
+    "severityDistribution": "严重级别分布",
+    "ruleCount": "规则数",
     "noRules": "暂无规则",
     "noEvents": "暂无告警事件",
     "noChannels": "暂无渠道",
@@ -254,6 +256,7 @@
     "amount": "金额",
     "currency": "币种",
     "collectFailed": "采集失败",
+    "byProvider": "按云厂商费用",
     "noCostData": "暂无成本数据",
     "noInstanceCost": "暂无实例成本数据",
     "instanceName": "实例名称"

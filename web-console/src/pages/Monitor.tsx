@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartTooltip, Cell } from 'recharts';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { TableWithPagination, Column } from '@/components/ui/table-with-pagination';
 import { Dialog } from '@/components/ui/dialog';
@@ -178,51 +179,98 @@ function RulesTab() {
     }
   }
 
+  const severityData = useMemo(() => {
+    if (!rules) return [];
+    const counts: Record<string, number> = { info: 0, warning: 0, critical: 0, emergency: 0 };
+    rules.forEach((r: any) => { if (counts[r.severity] !== undefined) counts[r.severity]++; });
+    return Object.entries(counts).map(([severity, count]) => ({
+      severity,
+      count,
+      label: severity === 'info' ? t('monitor.alerts.info') :
+             severity === 'warning' ? t('monitor.alerts.warning') :
+             severity === 'critical' ? t('monitor.alerts.critical') :
+             t('monitor.alerts.emergency'),
+    }));
+  }, [rules, t]);
+
+  const SEVERITY_COLORS: Record<string, string> = {
+    info: '#3b82f6',
+    warning: '#f59e0b',
+    critical: '#ef4444',
+    emergency: '#7c3aed',
+  };
+
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-lg font-semibold">{t('monitor.rulesTitle')}</h2>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />{t('monitor.createRule')}
-          </Button>
-        </div>
-        <FilterBar
-          filters={ruleFilterConfigs}
-          values={ruleFilters}
-          onChange={setRuleFilters}
-          className="mb-4"
-        />
-        <TableWithPagination
+    <>
+      <Card className="mb-4">
+        <CardContent className="pt-6">
+          <h3 className="text-sm font-semibold mb-3">{t('monitor.severityDistribution')}</h3>
+          {severityData.some(d => d.count > 0) ? (
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={severityData}>
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <RechartTooltip />
+                  <Bar dataKey="count" name={t('monitor.ruleCount')} radius={[4, 4, 0, 0]}>
+                    {severityData.map((entry) => (
+                      <Cell key={entry.severity} fill={SEVERITY_COLORS[entry.severity] || '#6b7280'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-6 text-center">{t('common.noData')}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="text-lg font-semibold">{t('monitor.rulesTitle')}</h2>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />{t('monitor.createRule')}
+            </Button>
+          </div>
+          <FilterBar
+            filters={ruleFilterConfigs}
+            values={ruleFilters}
+            onChange={setRuleFilters}
+            className="mb-4"
+          />
+          <TableWithPagination
           data={filteredRules}
           columns={ruleColumns}
           rowKey="id"
           loading={isLoading}
           emptyTitle={t('monitor.noRules')}
         />
-      </CardContent>
-      <CreateRuleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
-      {editingRule && (
-        <CreateRuleDialog
-          open={!!editingRule}
-          onClose={() => setEditingRule(null)}
-          editingRule={editingRule}
-        />
-      )}
-      <ConfirmDialog
-        open={!!confirmDeleteId}
-        onClose={() => setConfirmDeleteId(null)}
-        onConfirm={() => {
-          if (confirmDeleteId) {
-            handleDelete(confirmDeleteId);
-            setConfirmDeleteId(null);
-          }
-        }}
-        title={t('common.confirm')}
-        description={t('monitor.confirmDeleteRule')}
-        variant="destructive"
-      />
-    </Card>
+          </CardContent>
+          <CreateRuleDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+          {editingRule && (
+            <CreateRuleDialog
+              open={!!editingRule}
+              onClose={() => setEditingRule(null)}
+              editingRule={editingRule}
+            />
+          )}
+          <ConfirmDialog
+            open={!!confirmDeleteId}
+            onClose={() => setConfirmDeleteId(null)}
+            onConfirm={() => {
+              if (confirmDeleteId) {
+                handleDelete(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }
+            }}
+            title={t('common.confirm')}
+            description={t('monitor.confirmDeleteRule')}
+            variant="destructive"
+          />
+        </Card>
+      </>
   );
 }
 

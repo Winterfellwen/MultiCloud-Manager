@@ -10,6 +10,9 @@ import { TableWithPagination, Column } from '@/components/ui/table-with-paginati
 import { ApiError } from '@/api/client';
 import { getExchangeRate } from '@/api/exchange-rates';
 import { RefreshCw } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartTooltip, Legend } from 'recharts';
+
+const PROVIDER_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function Costs() {
   const { t } = useTranslation();
@@ -175,6 +178,40 @@ export default function Costs() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <h2 className="text-lg font-semibold mb-4">{t('costs.byProvider')}</h2>
+          {providerTotals.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={providerTotals}
+                    dataKey="total"
+                    nameKey="provider"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={50}
+                    paddingAngle={2}
+                  >
+                    {providerTotals.map((_entry, index) => (
+                      <Cell key={index} fill={PROVIDER_COLORS[index % PROVIDER_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartTooltip
+                    formatter={(value) => [`$${Number(value).toFixed(2)}`, t('costs.amount')]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-8 text-center">{t('costs.noCostData')}</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-6">
