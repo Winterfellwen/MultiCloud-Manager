@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { SearchModal } from './SearchModal';
 import { DemoBanner } from './common/DemoBanner';
+import { Breadcrumb } from './Breadcrumb';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -102,6 +103,7 @@ export function Layout() {
           isMobile={isMobile}
         />
         <DemoBanner />
+        {!isChatPage && <Breadcrumb />}
         <main className={cn(
           'flex-1 overflow-hidden',
           isChatPage ? 'p-0' : 'overflow-auto p-3 md:p-6'
