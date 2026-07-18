@@ -98,6 +98,8 @@
     "usernamePlaceholder": "请输入用户名",
     "password": "密码",
     "passwordPlaceholder": "请输入密码",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
     "submit": "登录",
     "loading": "登录中...",
     "failed": "登录失败，请检查网络连接",

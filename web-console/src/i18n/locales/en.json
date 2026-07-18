@@ -98,6 +98,8 @@
     "usernamePlaceholder": "Enter username",
     "password": "Password",
     "passwordPlaceholder": "Enter password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "submit": "Login",
     "loading": "Logging in...",
     "failed": "Login failed, please check network",
