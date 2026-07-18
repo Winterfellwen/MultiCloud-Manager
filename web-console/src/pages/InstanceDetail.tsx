@@ -146,7 +146,7 @@ export default function InstanceDetail() {
             <InfoRow label={t('instances.spec')} value={specText} />
             <InfoRow
               label={t('instances.monthlyCost')}
-              value={instance.monthlyCost ? `¥${parseFloat(instance.monthlyCost).toFixed(2)}` : '-'}
+              value={instance.monthlyCost ? `${instance.currency === 'CNY' ? '¥' : '$'}${parseFloat(instance.monthlyCost).toFixed(2)}` : '-'}
             />
           </div>
         </CardContent>

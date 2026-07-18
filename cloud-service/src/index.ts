@@ -8,6 +8,7 @@ import { resourceRoutes } from "./routes/resources.js";
 import { providerRoutes, accountRoutes } from "./routes/providers.js";
 import { topologyRoutes } from "./routes/topology.js";
 import { searchRoutes } from "./routes/search.js";
+import { exchangeRateRoutes } from "./routes/exchange-rate.js";
 import { AppError } from "@cloudops/shared";
 import { scopeFromDemoFlag, PUBLIC_SCOPE, type RequestScope } from "@cloudops/shared";
 import { runMigrations } from "./db/migrate.js";
@@ -81,6 +82,7 @@ await app.register(providerRoutes, { prefix: "/cloud/providers" });
 await app.register(accountRoutes, { prefix: "/cloud/accounts" });
 await app.register(topologyRoutes, { prefix: "/cloud/topology" });
 await app.register(searchRoutes, { prefix: "/cloud" });
+await app.register(exchangeRateRoutes, { prefix: "/cloud" });
 
 // scope 注入（demo/生产数据隔离）+ 首次访问云资源时触发同步
 app.addHook('onRequest', async (request) => {

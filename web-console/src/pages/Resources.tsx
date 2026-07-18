@@ -271,7 +271,7 @@ export default function Resources() {
     { key: 'status', header: t('common.status'), accessor: 'status', className: 'w-[100px]', cell: (value) => <InstanceStatusBadge status={value as InstanceStatus} /> },
     { key: 'spec', header: t('instances.spec'), accessor: (row) => row.cpu ? `${row.cpu}C/${row.memoryMb ? row.memoryMb / 1024 : '?'}G` : '-', className: 'w-[100px]' },
     { key: 'ip', header: t('instances.ip'), accessor: (row) => row.publicIp || row.privateIp || '-', className: 'w-[140px]' },
-    { key: 'monthlyCost', header: t('instances.monthlyCost'), accessor: (row) => row.monthlyCost ? `¥${parseFloat(row.monthlyCost).toFixed(2)}` : '-', className: 'w-[120px]' },
+    { key: 'monthlyCost', header: t('instances.monthlyCost'), accessor: (row) => row.monthlyCost ? `${(row as InstanceRow).currency === 'CNY' ? '¥' : '$'}${parseFloat(row.monthlyCost).toFixed(2)}` : '-', className: 'w-[120px]' },
     {
       key: 'actions',
       header: t('common.actions'),

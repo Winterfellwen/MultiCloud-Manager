@@ -58,6 +58,11 @@ const PROVIDER_INSTANCE_COUNTS: Record<string, number> = {
   oracle: 50,
 };
 
+const CNY_PROVIDERS = new Set(['aliyun', 'tencent', 'huawei']);
+function providerCurrency(provider: string): string {
+  return CNY_PROVIDERS.has(provider.toLowerCase()) ? 'CNY' : 'USD';
+}
+
 const INSTANCE_SPECS = [
   { cpu: 1, memoryMb: 2048, diskGb: 20, monthlyCost: 8 },
   { cpu: 2, memoryMb: 4096, diskGb: 40, monthlyCost: 32 },
@@ -101,6 +106,7 @@ export function generateInstances(provider: string): InstanceRow[] {
       publicIp: status === 'running' ? generateIP(rand) : null,
       privateIp: generateIP(rand),
       monthlyCost: spec.monthlyCost.toFixed(2),
+      currency: providerCurrency(provider),
       tags: { env, team, project, managedBy: 'cloudops' },
       lastSyncedAt: new Date().toISOString(),
       createdAt,

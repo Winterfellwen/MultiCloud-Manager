@@ -14,6 +14,7 @@ export interface InstanceRow {
   publicIp: string | null;
   privateIp: string | null;
   monthlyCost: string | null;
+  currency: string | null;
   tags: Record<string, string> | null;
   lastSyncedAt: string | null;
   createdAt: string | null;

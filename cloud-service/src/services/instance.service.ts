@@ -25,6 +25,7 @@ interface InstanceRow {
   publicIp: string | null;
   privateIp: string | null;
   monthlyCost: string | null;
+  currency: string | null;
   tags: Record<string, string> | null;
   lastSyncedAt: Date | null;
   createdAt: Date | null;
@@ -152,6 +153,7 @@ export class InstanceService {
       publicIp: instance.publicIp,
       privateIp: instance.privateIp,
       monthlyCost: instance.monthlyCost.toString(),
+      currency: providerCurrency(instance.provider),
       tags: instance.tags,
       lastSyncedAt: instance.lastSyncedAt,
     };
@@ -172,11 +174,17 @@ export class InstanceService {
           publicIp: row.publicIp,
           privateIp: row.privateIp,
           monthlyCost: row.monthlyCost,
+          currency: row.currency,
           tags: row.tags,
           lastSyncedAt: row.lastSyncedAt,
         },
       });
   }
+}
+
+const CNY_PROVIDERS = new Set(['aliyun', 'tencent', 'huawei']);
+function providerCurrency(provider: string): string {
+  return CNY_PROVIDERS.has(provider.toLowerCase()) ? 'CNY' : 'USD';
 }
 
 export const instanceService = new InstanceService();

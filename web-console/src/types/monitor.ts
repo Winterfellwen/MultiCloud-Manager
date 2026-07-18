@@ -86,6 +86,7 @@ export interface InstanceCost {
   provider: string;
   region: string;
   monthlyCost: string | null;
+  currency: string | null;
 }
 
 export interface MetricData {

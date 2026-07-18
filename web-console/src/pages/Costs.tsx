@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TableWithPagination, Column } from '@/components/ui/table-with-pagination';
 import { ApiError } from '@/api/client';
+import { getExchangeRate } from '@/api/exchange-rates';
 import { RefreshCw } from 'lucide-react';
 
 export default function Costs() {
@@ -40,7 +41,30 @@ export default function Costs() {
     return Array.from(map.entries()).map(([provider, { total, currency }]) => ({ provider, total, currency }));
   }, [summary]);
 
-  const grandTotal = providerTotals.reduce((sum, p) => sum + p.total, 0);
+  const [grandTotalUsd, setGrandTotalUsd] = useState<number>(0);
+  const [converting, setConverting] = useState(false);
+
+  useEffect(() => {
+    if (providerTotals.length === 0) {
+      setGrandTotalUsd(0);
+      return;
+    }
+    setConverting(true);
+    Promise.all(
+      providerTotals.map(async (p) => {
+        if (p.currency === 'USD') return p.total;
+        const rate = await getExchangeRate(p.currency, 'USD');
+        return p.total / rate;
+      })
+    )
+      .then((converted) => {
+        setGrandTotalUsd(converted.reduce((s, v) => s + v, 0));
+      })
+      .catch(() => {
+        setGrandTotalUsd(providerTotals.reduce((s, p) => s + p.total, 0));
+      })
+      .finally(() => setConverting(false));
+  }, [providerTotals]);
 
   const summaryColumns: Column<CostSummaryItem>[] = [
     { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[140px]' },
@@ -82,9 +106,11 @@ export default function Costs() {
       header: t('instances.monthlyCost'),
       accessor: 'monthlyCost',
       className: 'w-[120px]',
-      cell: (value) => {
+      cell: (value, row) => {
         const cost = value as string | null;
-        return cost ? `¥${parseFloat(cost).toFixed(2)}` : '-';
+        if (!cost) return '-';
+        const symbol = (row as InstanceCost).currency === 'CNY' ? '¥' : '$';
+        return `${symbol}${parseFloat(cost).toFixed(2)}`;
       },
     },
   ];
@@ -128,7 +154,7 @@ export default function Costs() {
             <CardTitle className="text-sm font-medium text-muted-foreground">{t('costs.totalCost')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¥{Number(grandTotal).toFixed(2)}</div>
+            <div className="text-2xl font-bold">{converting ? '...' : `$${grandTotalUsd.toFixed(2)}`}</div>
           </CardContent>
         </Card>
         {providerTotals.map((p) => (

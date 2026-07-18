@@ -26,6 +26,7 @@ export const instances = pgTable('instances', {
   publicIp: inet('public_ip'),
   privateIp: inet('private_ip'),
   monthlyCost: decimal('monthly_cost', { precision: 10, scale: 2 }),
+  currency: varchar('currency', { length: 8 }).default('USD'),
   tags: jsonb('tags'),
   lastSyncedAt: timestamp('last_synced_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
