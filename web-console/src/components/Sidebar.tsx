@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -29,27 +29,145 @@ interface NavItem {
   to: string;
   icon: LucideIcon;
   permission?: { resource: string; action: string };
-  children?: Array<{ label: string; to: string }>;
 }
 
 interface NavGroup {
+  key: string;
   label: string;
   icon: LucideIcon;
   items: NavItem[];
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean;
+}
+
+function CollapsedNav({
+  groups,
+  activeGroup,
+  expandedGroups,
+  toggleGroup,
+  isItemActive,
+  user,
+  hoverOpen,
+  onMouseEnter,
+  onMouseLeave,
+  onPopupMouseEnter,
+  onPopupMouseLeave,
+}: {
+  groups: NavGroup[];
+  activeGroup?: NavGroup;
+  expandedGroups: Record<string, boolean>;
+  toggleGroup: (key: string) => void;
+  isItemActive: (item: NavItem) => boolean;
+  user: any;
+  hoverOpen: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onPopupMouseEnter: () => void;
+  onPopupMouseLeave: () => void;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center gap-2 py-2 relative"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      {groups.map(group => {
+        const visibleItems = group.items.filter(item => {
+          if (!item.permission) return true;
+          if (!user) return false;
+          return hasPermission(user.role, item.permission.resource, item.permission.action);
+        });
+        if (visibleItems.length === 0) return null;
+
+        const isActive = activeGroup?.key === group.key;
+        return (
+          <NavLink
+            key={group.key}
+            to={visibleItems[0].to}
+            className={cn(
+              'flex items-center justify-center w-10 h-10 rounded-lg transition-all',
+              isActive
+                ? 'bg-background shadow-md text-foreground ring-1 ring-border'
+                : 'text-muted-foreground hover:bg-background/80 hover:text-foreground'
+            )}
+          >
+            <group.icon className="h-5 w-5" />
+          </NavLink>
+        );
+      })}
+
+      {hoverOpen && (
+        <div
+          className="absolute left-14 top-0 z-50 w-64 bg-card border rounded-lg shadow-xl p-2"
+          onMouseEnter={onPopupMouseEnter}
+          onMouseLeave={onPopupMouseLeave}
+        >
+          {groups.map(group => {
+            const visibleItems = group.items.filter(item => {
+              if (!item.permission) return true;
+              if (!user) return false;
+              return hasPermission(user.role, item.permission.resource, item.permission.action);
+            });
+            if (visibleItems.length === 0) return null;
+
+            const isExpanded = expandedGroups[group.key] ?? true;
+
+            return (
+              <div key={group.key} className="space-y-0.5">
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className="flex w-full items-center justify-between px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <group.icon className="h-4 w-4 shrink-0" />
+                    {group.label}
+                  </span>
+                  <ChevronDown className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-180')} />
+                </button>
+                {isExpanded && (
+                  <div className="space-y-0.5">
+                    {visibleItems.map(item => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={cn(
+                          'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
+                          isItemActive(item)
+                            ? 'bg-background shadow-md text-foreground font-semibold ring-1 ring-border'
+                            : 'text-muted-foreground hover:bg-background/80 hover:text-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Sidebar({ collapsed = false }: SidebarProps) {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
 
   const NAV_GROUPS: NavGroup[] = [
     {
+      key: 'dashboard',
       label: t('nav.group.dashboard'),
       icon: LayoutDashboard,
       items: [{ label: t('nav.dashboard'), to: '/dashboard', icon: LayoutDashboard }],
     },
     {
+      key: 'aiAgent',
       label: t('nav.group.aiAgent'),
       icon: Bot,
       items: [
@@ -59,6 +177,7 @@ export function Sidebar() {
       ],
     },
     {
+      key: 'resourceMgmt',
       label: t('nav.group.resourceMgmt'),
       icon: Boxes,
       items: [
@@ -68,6 +187,7 @@ export function Sidebar() {
       ],
     },
     {
+      key: 'monitoring',
       label: t('nav.group.monitoring'),
       icon: Activity,
       items: [
@@ -76,6 +196,7 @@ export function Sidebar() {
       ],
     },
     {
+      key: 'costMgmt',
       label: t('nav.group.costMgmt'),
       icon: DollarSign,
       items: [
@@ -83,6 +204,7 @@ export function Sidebar() {
       ],
     },
     {
+      key: 'system',
       label: t('nav.group.system'),
       icon: Settings2,
       items: [
@@ -96,84 +218,137 @@ export function Sidebar() {
   ];
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('sidebar:expandedGroups');
-    return saved ? JSON.parse(saved) : { dashboard: true, aiAgent: true, resourceMgmt: true, monitoring: true, costMgmt: true, system: true };
+    try {
+      const saved = localStorage.getItem('sidebar:expandedGroups');
+      return saved ? JSON.parse(saved) : { dashboard: true, aiAgent: true, resourceMgmt: true, monitoring: true, costMgmt: true, system: true };
+    } catch {
+      return { dashboard: true, aiAgent: true, resourceMgmt: true, monitoring: true, costMgmt: true, system: true };
+    }
   });
 
   const toggleGroup = (key: string) => {
-    setExpandedGroups(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem('sidebar:expandedGroups', JSON.stringify(next));
-      return next;
-    });
+    setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  useEffect(() => {
+    localStorage.setItem('sidebar:expandedGroups', JSON.stringify(expandedGroups));
+  }, [expandedGroups]);
+
   const activeGroup = NAV_GROUPS.find(g => g.items.some(i => {
-    const target = i.children ? i.children[0].to : i.to;
-    return location.pathname === target || location.pathname.startsWith(target + '/');
+    return location.pathname === i.to || location.pathname.startsWith(i.to + '/');
   }));
 
   useEffect(() => {
     if (activeGroup) {
       setExpandedGroups(prev => {
-        if (prev[activeGroup.label]) return prev;
-        return { ...prev, [activeGroup.label]: true };
+        if (prev[activeGroup.key]) return prev;
+        return { ...prev, [activeGroup.key]: true };
       });
     }
-  }, [location.pathname]);
+  }, [location.pathname, activeGroup]);
 
   const isItemActive = (item: NavItem): boolean => {
-    const target = item.children ? item.children[0].to : item.to;
-    return location.pathname === target || location.pathname.startsWith(target + '/');
+    return location.pathname === item.to || location.pathname.startsWith(item.to + '/');
+  };
+
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => clearTimeout(hoverTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    setHoverOpen(false);
+  }, [location.pathname]);
+
+  const handleMouseEnter = () => {
+    hoverTimerRef.current = setTimeout(() => setHoverOpen(true), 300);
+  };
+  const handleMouseLeave = () => {
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => setHoverOpen(false), 300);
+  };
+
+  const handlePopupMouseEnter = () => {
+    clearTimeout(hoverTimerRef.current);
+    setHoverOpen(true);
+  };
+  const handlePopupMouseLeave = () => {
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => setHoverOpen(false), 300);
   };
 
   return (
-    <aside className="w-60 border-r bg-muted flex flex-col h-full">
-      <div className="h-14 flex items-center px-6 border-b">
-        <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
+    <aside className={cn('w-60 border-r bg-muted flex flex-col h-full relative', collapsed && 'w-14')}>
+      <div className={cn('h-14 flex items-center border-b', collapsed ? 'justify-center px-0' : 'px-6')}>
+        {collapsed ? (
+          <LayoutDashboard className="h-5 w-5 text-primary" />
+        ) : (
+          <span className="font-bold text-lg transition-colors hover:text-primary">CloudOps AI</span>
+        )}
       </div>
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-        {NAV_GROUPS.map(group => {
-          const visibleItems = group.items.filter(item => {
-            if (!item.permission) return true;
-            if (!user) return false;
-            return hasPermission(user.role, item.permission.resource, item.permission.action);
-          });
-          if (visibleItems.length === 0) return null;
+      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'p-1' : 'p-2 space-y-1')}>
+        {collapsed ? (
+          <CollapsedNav
+            groups={NAV_GROUPS}
+            activeGroup={activeGroup}
+            expandedGroups={expandedGroups}
+            toggleGroup={toggleGroup}
+            isItemActive={isItemActive}
+            user={user}
+            hoverOpen={hoverOpen}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onPopupMouseEnter={handlePopupMouseEnter}
+            onPopupMouseLeave={handlePopupMouseLeave}
+          />
+        ) : (
+          NAV_GROUPS.map(group => {
+            const visibleItems = group.items.filter(item => {
+              if (!item.permission) return true;
+              if (!user) return false;
+              return hasPermission(user.role, item.permission.resource, item.permission.action);
+            });
+            if (visibleItems.length === 0) return null;
 
-          const isExpanded = expandedGroups[group.label] ?? true;
+            const isExpanded = expandedGroups[group.key] ?? true;
 
-          return (
-            <div key={group.label} className="space-y-0.5">
-              <button
-                onClick={() => toggleGroup(group.label)}
-                className="flex w-full items-center justify-between px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-              >
-                <span>{group.label}</span>
-                <ChevronDown className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-180')} />
-              </button>
-              {isExpanded && (
-                <div className="space-y-0.5">
-                  {visibleItems.map(item => (
-                    <NavLink
-                      key={item.to}
-                      to={item.children ? item.children[0].to : item.to}
-                      className={cn(
-                        'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
-                        isItemActive(item)
-                          ? 'bg-background shadow-md text-foreground font-semibold ring-1 ring-border'
-                          : 'text-muted-foreground hover:bg-background/80 hover:text-foreground'
-                      )}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            return (
+              <div key={group.key} className="space-y-0.5">
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className="flex w-full items-center justify-between px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <group.icon className="h-4 w-4 shrink-0" />
+                    {group.label}
+                  </span>
+                  <ChevronDown className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-180')} />
+                </button>
+                {isExpanded && (
+                  <div className="space-y-0.5">
+                    {visibleItems.map(item => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={cn(
+                          'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
+                          isItemActive(item)
+                            ? 'bg-background shadow-md text-foreground font-semibold ring-1 ring-border'
+                            : 'text-muted-foreground hover:bg-background/80 hover:text-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </nav>
     </aside>
   );

@@ -24,6 +24,9 @@ export function Layout() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar:collapsed') === 'true';
+  });
   const location = useLocation();
 
   useEffect(() => {
@@ -45,13 +48,21 @@ export function Layout() {
   const toggleSidebar = useCallback(() => setSidebarOpen((v) => !v), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
+  const toggleCollapse = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebar:collapsed', String(next));
+      return next;
+    });
+  }, []);
+
   // 聊天页面需要全屏布局（无 padding、无 overflow-auto），其他页面保持默认
   const isChatPage = location.pathname.startsWith('/chat');
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* 桌面端：固定侧边栏 */}
-      {!isMobile && <Sidebar />}
+      {!isMobile && <Sidebar collapsed={sidebarCollapsed} />}
 
       {/* 移动端：抽屉式侧边栏 */}
       <AnimatePresence>
@@ -83,7 +94,13 @@ export function Layout() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar onToggleSidebar={toggleSidebar} onSearchOpen={() => setSearchOpen(true)} isMobile={isMobile} />
+        <Topbar
+          onToggleSidebar={toggleSidebar}
+          onSearchOpen={() => setSearchOpen(true)}
+          onToggleCollapse={toggleCollapse}
+          sidebarCollapsed={sidebarCollapsed}
+          isMobile={isMobile}
+        />
         <DemoBanner />
         <main className={cn(
           'flex-1 overflow-hidden',

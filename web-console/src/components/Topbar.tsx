@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, LogOut, User as UserIcon, Menu, Sun, Moon } from 'lucide-react';
+import { Search, LogOut, User as UserIcon, Menu, Sun, Moon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
@@ -12,10 +12,12 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 interface TopbarProps {
   onToggleSidebar?: () => void;
   onSearchOpen?: () => void;
+  onToggleCollapse?: () => void;
+  sidebarCollapsed?: boolean;
   isMobile?: boolean;
 }
 
-export function Topbar({ onToggleSidebar, onSearchOpen, isMobile }: TopbarProps) {
+export function Topbar({ onToggleSidebar, onSearchOpen, onToggleCollapse, sidebarCollapsed, isMobile }: TopbarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -57,6 +59,16 @@ export function Topbar({ onToggleSidebar, onSearchOpen, isMobile }: TopbarProps)
           </TooltipTrigger>
           <TooltipContent>搜索 (Cmd+K)</TooltipContent>
         </Tooltip>
+        {!isMobile && onToggleCollapse && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={onToggleCollapse} className="shrink-0">
+                {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'}</TooltipContent>
+          </Tooltip>
+        )}
         <NotificationBell />
         <div className="flex items-center gap-2 text-sm min-w-0">
           <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
