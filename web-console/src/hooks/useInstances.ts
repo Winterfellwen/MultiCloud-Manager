@@ -19,6 +19,14 @@ export function useInstance(id: string | undefined) {
   });
 }
 
+export function useInstanceByProviderId(providerInstanceId: string | undefined) {
+  return useQuery({
+    queryKey: ['instance', 'provider', providerInstanceId],
+    queryFn: () => cloudApi.getInstanceByProviderId(providerInstanceId!),
+    enabled: !!providerInstanceId,
+  });
+}
+
 export function useCreateInstance() {
   const qc = useQueryClient();
   return useMutation({

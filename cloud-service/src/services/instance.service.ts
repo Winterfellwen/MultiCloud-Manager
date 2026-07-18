@@ -69,6 +69,18 @@ export class InstanceService {
   }
 
   /**
+   * 通过云厂商原生实例 ID 查询（用于前端通过 providerResourceId 跳转）
+   */
+  async getByProviderInstanceId(scope: RequestScope, providerInstanceId: string): Promise<InstanceRow> {
+    const t = scopedDb(scope);
+    const result = await db.select().from(t.instances).where(eq(t.instances.providerInstanceId, providerInstanceId)).limit(1);
+    if (result.length === 0) {
+      throw new NotFoundError("Instance", providerInstanceId);
+    }
+    return { ...result[0], tags: result[0].tags as Record<string, string> | null } as InstanceRow;
+  }
+
+  /**
    * 创建实例（直接调云 API，然后写入缓存）
    */
   async create(scope: RequestScope, opts: CreateInstanceOpts): Promise<Instance> {

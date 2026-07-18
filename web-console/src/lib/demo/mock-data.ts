@@ -185,6 +185,7 @@ export function getDemoResources(): CloudResource[] {
             id: inst.id,  // Use actual instance ID
             provider,
             resourceType: type,
+            providerResourceId: inst.providerInstanceId,
             name: inst.name || `${provider}-instance-${i.toString().padStart(3, '0')}`,
             region: inst.region,
             status: inst.status,
@@ -203,10 +204,12 @@ export function getDemoResources(): CloudResource[] {
       } else {
         // Non-instance resources: generate as before
         for (let i = 0; i < count; i++) {
+          const resId = `demo-res-${idx++}`;
           resources.push({
-            id: `demo-res-${idx++}`,
+            id: resId,
             provider,
             resourceType: type,
+            providerResourceId: resId,
             name: `${provider}-${type}-${i.toString().padStart(3, '0')}`,
             region: pick(regions, rand),
             status: pick(['active', 'stopped', 'pending'], rand),

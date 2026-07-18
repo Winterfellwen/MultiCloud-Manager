@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useInstance, useInstanceAction } from '@/hooks/useInstances';
+import { useInstanceByProviderId, useInstanceAction } from '@/hooks/useInstances';
 import { InstanceStatusBadge } from '@/components/StatusBadge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,9 @@ import { InstanceMetricsCard, InstanceLogsCard, InstanceConnectionsCard } from '
 
 export default function InstanceDetail() {
   const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
+  const { providerInstanceId } = useParams<{ providerInstanceId: string }>();
   const navigate = useNavigate();
-  const { data: instance, isLoading, error } = useInstance(id);
+  const { data: instance, isLoading, error } = useInstanceByProviderId(providerInstanceId);
   const action = useInstanceAction();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -56,7 +56,7 @@ export default function InstanceDetail() {
   if (error || !instance) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <div className="text-destructive">{t('common.error')}</div>
+        <div className="text-destructive">{t('instances.notFound', '实例不存在或已删除')}</div>
         <Button variant="outline" onClick={() => navigate('/resources')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t('common.back')}

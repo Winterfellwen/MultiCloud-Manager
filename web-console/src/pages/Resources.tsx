@@ -446,7 +446,7 @@ export default function Resources() {
                   loading={isLoading}
                   emptyTitle={t('resources.noResources')}
                   rowKey="id"
-                  onRowClick={(row) => row.resourceType === 'instance' && navigate(`/instances/${row.id}`)}
+                  onRowClick={(row) => row.resourceType === 'instance' && navigate(`/instances/${row.providerResourceId}`)}
                 />
               </CardContent>
             </Card>

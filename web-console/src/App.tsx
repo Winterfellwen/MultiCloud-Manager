@@ -54,7 +54,7 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
 
               <Route
-                path="/instances/:id"
+                path="/instances/:providerInstanceId"
                 element={
                   <ProtectedRoute permission={{ resource: 'instance', action: 'list' }}>
                     <InstanceDetail />

@@ -30,6 +30,7 @@ export interface CloudResource {
   id: string;
   resourceType: ResourceType;
   provider: string;
+  providerResourceId: string;
   region: string;
   name: string;
   status: string;

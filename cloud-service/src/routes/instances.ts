@@ -40,6 +40,12 @@ export async function instanceRoutes(app: FastifyInstance) {
     });
   });
 
+  // 通过云厂商原生实例 ID 获取详情
+  app.get("/by-provider/:providerInstanceId", async (request) => {
+    const { providerInstanceId } = request.params as { providerInstanceId: string };
+    return instanceService.getByProviderInstanceId(request.scope, providerInstanceId);
+  });
+
   // 获取实例详情
   app.get("/:id", async (request) => {
     const { id } = request.params as { id: string };

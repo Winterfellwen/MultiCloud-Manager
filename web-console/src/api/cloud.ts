@@ -17,6 +17,7 @@ export const cloudApi = {
     return api.get<InstanceRow[]>(`/cloud/instances/${qs ? '?' + qs : ''}`);
   },
   getInstance: (id: string) => api.get<InstanceRow>(`/cloud/instances/${id}`),
+  getInstanceByProviderId: (providerInstanceId: string) => api.get<InstanceRow>(`/cloud/instances/by-provider/${providerInstanceId}`),
   createInstance: (params: CreateInstanceParams) => api.post<Instance>('/cloud/instances/', params),
   startInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/start`, {}),
   stopInstance: (id: string) => api.post<InstanceActionResponse>(`/cloud/instances/${id}/stop`, {}),
