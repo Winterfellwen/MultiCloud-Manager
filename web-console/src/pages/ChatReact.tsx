@@ -86,9 +86,9 @@ export default function ChatReact() {
       )}
 
       {/* 对话区 */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* 顶栏：连接状态 + 移动端会话列表按钮 */}
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2 md:px-4">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 md:px-4">
           {isMobile && (
             <Button
               variant="ghost"
@@ -119,7 +119,11 @@ export default function ChatReact() {
         </div>
 
         {/* 输入区：只有自己的对话才显示 */}
-        {currentSessionKey && canChat && <ChatInput />}
+        {currentSessionKey && canChat && (
+          <div className="shrink-0">
+            <ChatInput />
+          </div>
+        )}
       </div>
 
       {/* 审批弹窗：有待审批请求时显示 */}

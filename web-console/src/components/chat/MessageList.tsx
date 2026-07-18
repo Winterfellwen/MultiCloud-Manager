@@ -44,7 +44,7 @@ export function MessageList({ messages }: MessageListProps) {
   const lastTruncated = [...messages].reverse().find(m => m.role === 'assistant' && m.truncated);
 
   return (
-    <ScrollArea className="h-full overflow-y-auto">
+    <ScrollArea className="h-full min-h-0 overflow-y-auto">
       <div className="py-4">
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />

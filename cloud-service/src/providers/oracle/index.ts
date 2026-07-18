@@ -160,8 +160,8 @@ function bucketToBucket(bucket: OCIBucket, region: string): Bucket {
       sizeBytes: bucket.approximateSizeInBytes || 0,
       versioning: false,
       publicAccess: false,
-      ocid: bucket.id || undefined,
-    },
+      ocid: bucket.id || '',
+    } as any,
     tags: {},
     createdAt: new Date(bucket.timeCreated),
   };

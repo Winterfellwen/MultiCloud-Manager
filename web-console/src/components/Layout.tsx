@@ -116,7 +116,7 @@ export function Layout() {
         />
         <DemoBanner />
         {!isChatPage && <Breadcrumb />}
-        <main className="flex-1 overflow-hidden">
+        <main className="min-h-0 flex-1 overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}

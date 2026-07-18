@@ -113,7 +113,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
   const allSelected = sessions.length > 0 && selectedKeys.size === sessions.length;
 
   return (
-    <div className="flex h-full flex-col border-r border-border bg-background">
+    <div className="flex h-full min-h-0 flex-col border-r border-border bg-background">
       {/* 顶部工具栏 */}
       <div className="border-b border-border p-3">
         <div className="flex items-center gap-2">
@@ -203,7 +203,7 @@ export function SessionList({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-1 p-2">
           {sessions.length === 0 && (
             <div className="px-2 py-4 text-center text-xs text-muted-foreground">
