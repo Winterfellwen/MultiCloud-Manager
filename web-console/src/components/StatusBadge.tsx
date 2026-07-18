@@ -6,12 +6,19 @@ import type { AlertSeverity, AlertStatus } from '@/types/monitor';
 export function InstanceStatusBadge({ status }: { status: InstanceStatus }) {
   const { t } = useTranslation();
   const labelKey = `instances.${status}`;
-  const variantMap: Record<InstanceStatus, 'success' | 'secondary' | 'destructive' | 'warning' | 'outline'> = {
+  const variantMap: Record<string, 'success' | 'secondary' | 'destructive' | 'warning' | 'outline'> = {
     running: 'success',
     stopped: 'secondary',
     terminated: 'destructive',
     pending: 'warning',
     error: 'destructive',
+    'in-use': 'success',
+    available: 'success',
+    attached: 'success',
+    detached: 'secondary',
+    creating: 'warning',
+    deleting: 'warning',
+    unknown: 'outline',
   };
   return <Badge variant={variantMap[status] || 'outline'}>{t(labelKey, status)}</Badge>;
 }
