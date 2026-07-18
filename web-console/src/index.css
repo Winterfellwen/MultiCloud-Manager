@@ -133,11 +133,15 @@
   * {
     border-color: hsl(var(--border));
   }
+  html, body, #root {
+    height: 100%;
+  }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
+    overflow: hidden;
   }
   /* 移动端：禁用双击缩放（已通过 viewport 控制），优化触摸滚动 */
   @media (max-width: 767px) {

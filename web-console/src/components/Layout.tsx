@@ -63,7 +63,7 @@ export function Layout() {
   const isChatPage = location.pathname.startsWith('/chat');
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       {/* 桌面端：固定侧边栏 */}
       {!isMobile && <Sidebar collapsed={sidebarCollapsed} />}
 
