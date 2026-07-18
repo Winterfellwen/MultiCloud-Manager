@@ -13,6 +13,7 @@ import { predictionRoutes } from './routes/predictions.js';
 import { remediationRoutes } from './routes/remediation.js';
 import { knowledgeBaseRoutes } from './routes/knowledge-base.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { silenceRoutes } from './routes/silence.js';
 import { predictionEngine } from './services/prediction-engine.js';
 import { securityScanner } from './services/security-scanner.js';
 import { remediationEngine } from './services/remediation-engine.js';
@@ -84,6 +85,7 @@ await app.register(knowledgeBaseRoutes, { prefix: '/monitor/knowledge-base' });
 await app.register(securityRoutes, { prefix: '/monitor/security' });
 await app.register(capacityRoutes, { prefix: '/monitor/capacity' });
 await app.register(notificationRoutes, { prefix: '/monitor' });
+await app.register(silenceRoutes, { prefix: '/monitor' });
 
 // 运行数据库迁移
 try {

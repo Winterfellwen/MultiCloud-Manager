@@ -6,6 +6,7 @@ import { alertService } from './alert.service.js';
 import { notifyService } from './notify.service.js';
 import { eventPublisher } from '../events/publisher.js';
 import { remediationEngine } from './remediation-engine.js';
+import { silenceService } from './silence.service.js';
 import type { AlertSeverity } from '@cloudops/shared';
 
 interface RuleRow {
@@ -76,6 +77,10 @@ export class AlertEngine {
       const existing = await alertService.findFiringAlert(scope, rule.id, instanceId);
 
       if (triggered && !existing) {
+        // 检查静默窗口
+        const silenced = await silenceService.isSilenced(scope, rule.id, instanceId);
+        if (silenced) continue;
+
         const cooldownMinutes = 10;
         const lastResolved = await alertService.findLastResolvedAlert(scope, rule.id, instanceId, cooldownMinutes);
         if (lastResolved) continue;
@@ -165,6 +170,10 @@ export class AlertEngine {
       const existing = await alertService.findFiringAlert(scope, rule.id, instanceId);
 
       if (triggered && !existing) {
+        // 检查静默窗口
+        const silenced = await silenceService.isSilenced(scope, rule.id, instanceId);
+        if (silenced) continue;
+
         const cooldownMinutes = 10;
         const lastResolved = await alertService.findLastResolvedAlert(scope, rule.id, instanceId, cooldownMinutes);
         if (lastResolved) continue;

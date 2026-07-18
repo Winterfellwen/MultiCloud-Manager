@@ -106,6 +106,20 @@ export const metricPredictions = pgTable('metric_predictions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Phase 5 新增：静默/维护窗口
+export const silenceWindows = pgTable('silence_windows', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 256 }).notNull(),
+  ruleIds: jsonb('rule_ids').default('[]'),
+  instanceIds: jsonb('instance_ids').default('[]'),
+  matchExpression: jsonb('match_expression'),
+  startTime: timestamp('start_time', { withTimezone: true }).notNull(),
+  endTime: timestamp('end_time', { withTimezone: true }).notNull(),
+  reason: text('reason'),
+  createdBy: varchar('created_by', { length: 128 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Phase 5 新增：自愈策略表
 export const remediationPolicies = pgTable('remediation_policies', {
   id: uuid('id').primaryKey().defaultRandom(),
