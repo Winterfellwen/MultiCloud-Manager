@@ -42,6 +42,7 @@ export const cloudApi = {
   /** 测试云账号连通性 */
   testAccount: (id: string) => api.post<TestConnectionResult>(`/cloud/accounts/${id}/test`, {}),
   /** 获取实例指标 */
+  search: (q: string) => api.get<{ resources: any[]; instances: any[]; alerts: any[] }>(`/cloud/search?q=${encodeURIComponent(q)}&limit=5`),
   getMetrics: (id: string, params?: { metric?: string; start?: string; end?: string; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.metric) query.set('metric', params.metric);

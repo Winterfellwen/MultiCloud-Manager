@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LogOut, User as UserIcon, Menu, Sun, Moon } from 'lucide-react';
+import { Search, LogOut, User as UserIcon, Menu, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
@@ -11,10 +11,11 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 interface TopbarProps {
   onToggleSidebar?: () => void;
+  onSearchOpen?: () => void;
   isMobile?: boolean;
 }
 
-export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
+export function Topbar({ onToggleSidebar, onSearchOpen, isMobile }: TopbarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -48,6 +49,14 @@ export function Topbar({ onToggleSidebar, isMobile }: TopbarProps) {
         </div>
       </div>
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onSearchOpen} className="shrink-0">
+              <Search className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>搜索 (Cmd+K)</TooltipContent>
+        </Tooltip>
         <NotificationBell />
         <div className="flex items-center gap-2 text-sm min-w-0">
           <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />

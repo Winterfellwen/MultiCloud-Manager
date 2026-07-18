@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { SearchModal } from './SearchModal';
 import { DemoBanner } from './common/DemoBanner';
 import { useChatStore } from '@/stores/chat';
 import { useAuthStore } from '@/stores/auth';
@@ -22,7 +23,19 @@ export function Layout() {
 
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // 路由切换时自动关闭移动端侧边栏
   useEffect(() => {
@@ -70,7 +83,7 @@ export function Layout() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
+        <Topbar onToggleSidebar={toggleSidebar} onSearchOpen={() => setSearchOpen(true)} isMobile={isMobile} />
         <DemoBanner />
         <main className={cn(
           'flex-1 overflow-hidden',
@@ -90,6 +103,7 @@ export function Layout() {
           </AnimatePresence>
         </main>
       </div>
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
