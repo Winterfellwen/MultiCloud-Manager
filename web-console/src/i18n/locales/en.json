@@ -79,6 +79,7 @@
       "resourceMgmt": "Resources",
       "monitoring": "Monitoring",
       "costMgmt": "Costs",
+      "admin": "Admin",
       "system": "System"
     }
   },
