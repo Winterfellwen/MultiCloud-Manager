@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { scopedDb, type RequestScope } from '@cloudops/shared';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, gte, desc } from 'drizzle-orm';
 import { NotFoundError } from '@cloudops/shared';
 import type { AlertSeverity, AlertStatus } from '@cloudops/shared';
 
@@ -95,11 +95,15 @@ export class AlertService {
     return result[0];
   }
 
-  async resolveAlert(scope: RequestScope, id: string) {
+  async resolveAlert(scope: RequestScope, id: string, cooldownMinutes?: number) {
     const t = scopedDb(scope);
+    const update: any = { status: 'resolved', resolvedAt: new Date() };
+    if (cooldownMinutes) {
+      update.cooldownUntil = new Date(Date.now() + cooldownMinutes * 60 * 1000);
+    }
     await db
       .update(t.alerts)
-      .set({ status: 'resolved', resolvedAt: new Date() })
+      .set(update)
       .where(eq(t.alerts.id, id));
   }
 
@@ -113,6 +117,28 @@ export class AlertService {
       conditions.push(eq(t.alerts.instanceId, instanceId));
     }
     const result = await db.select().from(t.alerts).where(and(...conditions)).limit(1);
+    return result[0] || null;
+  }
+
+  /**
+   * 查询某规则某实例最近一次 resolved 告警（用于冷却期判断）
+   */
+  async findLastResolvedAlert(scope: RequestScope, ruleId: string, instanceId: string | null, withinMinutes: number) {
+    const t = scopedDb(scope);
+    const since = new Date(Date.now() - withinMinutes * 60 * 1000);
+    const conditions = [
+      eq(t.alerts.ruleId, ruleId),
+      eq(t.alerts.status, 'resolved'),
+    ];
+    if (instanceId) {
+      conditions.push(eq(t.alerts.instanceId, instanceId));
+    }
+    const result = await db
+      .select()
+      .from(t.alerts)
+      .where(and(...conditions, gte(t.alerts.resolvedAt, since)))
+      .orderBy(desc(t.alerts.resolvedAt))
+      .limit(1);
     return result[0] || null;
   }
 

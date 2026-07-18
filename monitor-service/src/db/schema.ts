@@ -51,6 +51,7 @@ export const alerts = pgTable('alerts', {
   status: varchar('status', { length: 16 }).default('firing'),
   firedAt: timestamp('fired_at').defaultNow().notNull(),
   resolvedAt: timestamp('resolved_at'),
+  cooldownUntil: timestamp('cooldown_until'),
   aiAnalysis: text('ai_analysis'),
   aiAnalyzedAt: timestamp('ai_analyzed_at'),
 });

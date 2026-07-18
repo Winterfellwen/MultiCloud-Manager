@@ -70,6 +70,13 @@ export class AlertEngine {
       const existing = await alertService.findFiringAlert(scope, rule.id, instanceId);
 
       if (triggered && !existing) {
+        // Check cooldown: was this alert recently resolved?
+        const cooldownMinutes = 10;
+        const lastResolved = await alertService.findLastResolvedAlert(scope, rule.id, instanceId, cooldownMinutes);
+        if (lastResolved) {
+          // Still in cooldown, skip
+          continue;
+        }
         // 触发新告警
         const inst = await db.select().from(t.instances).where(eq(t.instances.id, instanceId)).limit(1);
         const instName = inst[0]?.name || instanceId;
@@ -103,7 +110,7 @@ export class AlertEngine {
           .catch((err) => console.error(`Remediation for alert ${alert.id} failed:`, err));
       } else if (!triggered && existing) {
         // 条件恢复，自动解决
-        await alertService.resolveAlert(scope, existing.id);
+        await alertService.resolveAlert(scope, existing.id, 10);
         await eventPublisher.publish('alert.resolved', { alertId: existing.id, ruleId: rule.id, instanceId });
       }
     }
