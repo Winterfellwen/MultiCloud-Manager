@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cloudApi } from '../api/cloud';
 import { resourceApi } from '../api/resource';
 import { monitorApi } from '../api/monitor';
+import type { IdleResource } from '@/types/monitor';
 
 export interface DashboardStats {
   totalResources: number;
@@ -53,5 +54,21 @@ export function useDashboardStats() {
     },
     staleTime: 60_000,
     gcTime: 5 * 60_000,
+  });
+}
+
+export function useIdleResources() {
+  return useQuery<IdleResource[]>({
+    queryKey: ['idle-resources'],
+    queryFn: () => monitorApi.getIdleResources(),
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
+export function useIdleSavings() {
+  return useQuery<{ totalMonthlySavings: number; items: IdleResource[] }>({
+    queryKey: ['idle-savings'],
+    queryFn: () => monitorApi.getIdleSavings(),
+    refetchInterval: 5 * 60 * 1000,
   });
 }

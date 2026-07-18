@@ -3,7 +3,7 @@ import { Server, DollarSign, AlertTriangle, AlertCircle, Activity } from 'lucide
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDashboardStats } from '@/hooks/useDashboard';
+import { useDashboardStats, useIdleSavings } from '@/hooks/useDashboard';
 import { useAiInsight, useTokenStats } from '@/hooks/useAiInsights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: stats, isLoading, error } = useDashboardStats();
+  const { data: idleSavings } = useIdleSavings();
   const { data: insight, isLoading: insightLoading, isFetching, refetch } = useAiInsight();
   const { data: tokenStats } = useTokenStats();
 
@@ -176,6 +177,39 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 闲置资源 */}
+      {idleSavings && idleSavings.items.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium">{t('dashboard.idleResources', '闲置资源')}</CardTitle>
+              <DollarSign className="h-4 w-4 text-orange-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <p className="text-2xl font-bold text-orange-600">
+                ${idleSavings.totalMonthlySavings.toFixed(2)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('dashboard.potentialSavings', '每月可节省 (USD)')}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t('dashboard.idleCount', '检测到 {n} 个闲置资源', { n: idleSavings.items.length })}
+              </p>
+              <div className="mt-2 space-y-1">
+                {idleSavings.items.slice(0, 3).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between text-xs">
+                    <span className="truncate">{item.name} ({item.provider})</span>
+                    <span className="text-orange-600 font-medium">${item.monthlyCost.toFixed(2)}/月</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 云厂商分布 */}
       <Card>
