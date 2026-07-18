@@ -1,10 +1,12 @@
 // Dashboard 总览页：统计卡片 + 云厂商分布
 import { Server, DollarSign, AlertTriangle, AlertCircle, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAiInsight, useTokenStats } from '@/hooks/useAiInsights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import PredictionCard from '@/components/dashboard/PredictionCard';
 import RemediationCard from '@/components/dashboard/RemediationCard';
 import SecurityCard from '@/components/dashboard/SecurityCard';
@@ -42,6 +44,14 @@ export default function Dashboard() {
   const { data: insight, isLoading: insightLoading, isFetching, refetch } = useAiInsight();
   const { data: tokenStats } = useTokenStats();
 
+  const timePresets: { key: string; label: string }[] = [
+    { key: '7d', label: t('common.last7Days') },
+    { key: '30d', label: t('common.last30Days') },
+    { key: '90d', label: t('common.last90Days') },
+    { key: 'month', label: t('common.thisMonth') },
+  ];
+  const [activePeriod, setActivePeriod] = useState('month');
+
   const formatCost = (cost: number) => {
     if (cost >= 10000) return `¥${(cost / 10000).toFixed(2)}${t('common.tenThousand')}`;
     return `¥${cost.toFixed(2)}`;
@@ -53,7 +63,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold">{t('dashboard.title')}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl sm:text-2xl font-bold">{t('dashboard.title')}</h1>
+        <div className="flex gap-1">
+          {timePresets.map((p) => (
+            <Button
+              key={p.key}
+              variant={activePeriod === p.key ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActivePeriod(p.key)}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       {error && (
         <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">

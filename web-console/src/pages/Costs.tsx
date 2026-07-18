@@ -21,6 +21,53 @@ export default function Costs() {
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
   const [startDate, setStartDate] = useState(monthStart.toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(monthEnd.toISOString().slice(0, 10));
+
+  type TimePreset = '7d' | '30d' | '90d' | 'month';
+
+  const timePresets: { key: TimePreset; label: string }[] = [
+    { key: '7d', label: t('common.last7Days') },
+    { key: '30d', label: t('common.last30Days') },
+    { key: '90d', label: t('common.last90Days') },
+    { key: 'month', label: t('common.thisMonth') },
+  ];
+
+  const [activePreset, setActivePreset] = useState<TimePreset>('month');
+
+  function applyPreset(preset: TimePreset) {
+    setActivePreset(preset);
+    const now = new Date();
+    switch (preset) {
+      case '7d': {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 7);
+        setStartDate(d.toISOString().slice(0, 10));
+        setEndDate(now.toISOString().slice(0, 10));
+        break;
+      }
+      case '30d': {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 30);
+        setStartDate(d.toISOString().slice(0, 10));
+        setEndDate(now.toISOString().slice(0, 10));
+        break;
+      }
+      case '90d': {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 90);
+        setStartDate(d.toISOString().slice(0, 10));
+        setEndDate(now.toISOString().slice(0, 10));
+        break;
+      }
+      case 'month': {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        setStartDate(monthStart.toISOString().slice(0, 10));
+        setEndDate(monthEnd.toISOString().slice(0, 10));
+        break;
+      }
+    }
+  }
+
   const navigate = useNavigate();
 
   const { data: summary, isLoading: summaryLoading } = useCostSummary({
@@ -138,17 +185,29 @@ export default function Costs() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl sm:text-2xl font-bold">{t('costs.title')}</h1>
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1">
+            {timePresets.map((p) => (
+              <Button
+                key={p.key}
+                variant={activePreset === p.key ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => applyPreset(p.key)}
+              >
+                {p.label}
+              </Button>
+            ))}
+          </div>
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => { setStartDate(e.target.value); setActivePreset(null as any); }}
             className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           />
           <span className="text-muted-foreground">-</span>
           <input
             type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => { setEndDate(e.target.value); setActivePreset(null as any); }}
             className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           />
           <Button variant="outline" size="sm" onClick={handleCollect} disabled={collect.isPending}>
