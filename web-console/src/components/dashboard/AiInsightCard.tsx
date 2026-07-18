@@ -43,6 +43,7 @@ export function AiInsightCard(props: Props) {
 
   const hasFailed = data != null && !data.ok;
   const [diagOpen, setDiagOpen] = useState(hasFailed);
+  const [showAllRisks, setShowAllRisks] = useState(false);
 
   useEffect(() => {
     if (hasFailed) setDiagOpen(true);
@@ -97,7 +98,7 @@ export function AiInsightCard(props: Props) {
               <div>
                 <div className="text-sm font-medium mb-1">{t('dashboard.risks')}</div>
                 <ul className="space-y-1">
-                  {data.risks.map((risk, i) => (
+                  {(showAllRisks ? data.risks : data.risks.slice(0, 3)).map((risk, i) => (
                     <li key={i} className="text-sm text-muted-foreground">
                       •{' '}
                       <span
@@ -121,6 +122,14 @@ export function AiInsightCard(props: Props) {
                     </li>
                   ))}
                 </ul>
+                {data.risks.length > 3 && (
+                  <button
+                    onClick={() => setShowAllRisks(!showAllRisks)}
+                    className="text-xs text-primary hover:underline mt-1"
+                  >
+                    {showAllRisks ? t('common.showLess') : `${t('common.showAll')} (${data.risks.length - 3})`}
+                  </button>
+                )}
               </div>
             )}
             {data.suggestions && data.suggestions.length > 0 && (

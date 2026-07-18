@@ -48,7 +48,9 @@
     "noData": "暂无数据",
     "showing": "显示",
     "of": "共",
-    "tenThousand": "万"
+    "tenThousand": "万",
+    "showAll": "展开全部",
+    "showLess": "收起"
   },
   "nav": {
     "dashboard": "总览",
