@@ -116,10 +116,7 @@ export function Layout() {
         />
         <DemoBanner />
         {!isChatPage && <Breadcrumb />}
-        <main className={cn(
-          'flex-1 overflow-hidden',
-          isChatPage ? 'p-0' : 'overflow-auto p-3 md:p-6'
-        )}>
+        <main className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}
@@ -127,7 +124,7 @@ export function Layout() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: DURATION.page, ease: EASE.out }}
-              className="h-full"
+              className={cn('h-full', isChatPage ? '' : 'overflow-auto p-3 md:p-6')}
             >
               <Outlet />
             </motion.div>
