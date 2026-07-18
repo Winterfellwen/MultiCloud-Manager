@@ -124,7 +124,7 @@ export function Layout() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: DURATION.page, ease: EASE.out }}
-              className={cn('h-full', isChatPage ? 'overflow-hidden' : 'overflow-auto p-3 md:p-6')}
+              className={cn('h-full', isChatPage ? 'overflow-y-auto' : 'overflow-auto p-3 md:p-6')}
             >
               <Outlet />
             </motion.div>
