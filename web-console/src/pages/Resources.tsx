@@ -177,10 +177,10 @@ export default function Resources() {
 
   const resourceColumns = useMemo<Column<CloudResource>[]>(() => {
     const cols: Column<CloudResource>[] = [
-      { key: 'name', header: t('common.name'), accessor: (row) => row.name || row.id.slice(0, 8), className: 'w-[180px]' },
-      { key: 'provider', header: t('common.providerShort'), accessor: 'provider', className: 'w-[100px]' },
-      { key: 'region', header: t('common.region'), accessor: 'region', className: 'w-[100px]' },
-      { key: 'status', header: t('common.status'), accessor: 'status', className: 'w-[100px]', cell: (value) => <Badge variant={getStatusColor(String(value))}>{String(value)}</Badge> },
+      { key: 'name', header: t('common.name'), accessor: (row) => row.name || row.id.slice(0, 8), className: 'w-[180px]', sortable: true, sortValue: (row) => row.name || row.id },
+      { key: 'provider', header: t('common.providerShort'), accessor: 'provider', className: 'w-[100px]', sortable: true },
+      { key: 'region', header: t('common.region'), accessor: 'region', className: 'w-[100px]', sortable: true },
+      { key: 'status', header: t('common.status'), accessor: 'status', className: 'w-[100px]', sortable: true, cell: (value) => <Badge variant={getStatusColor(String(value))}>{String(value)}</Badge> },
     ];
     for (const ec of extraCols) {
       cols.push({ key: ec.key, header: ec.label, accessor: (row) => ec.render(row.attributes || {}), className: 'w-[120px]' });
@@ -265,13 +265,13 @@ export default function Resources() {
   }, [filterValues.provider]);
 
   const instanceColumns = useMemo<Column<InstanceRow>[]>(() => [
-    { key: 'name', header: t('common.name'), accessor: (row) => row.name || row.providerInstanceId.slice(0, 8), className: 'w-[160px]' },
-    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[100px]' },
-    { key: 'region', header: t('common.region'), accessor: 'region', className: 'w-[100px]' },
-    { key: 'status', header: t('common.status'), accessor: 'status', className: 'w-[100px]', cell: (value) => <InstanceStatusBadge status={value as InstanceStatus} /> },
-    { key: 'spec', header: t('instances.spec'), accessor: (row) => row.cpu ? `${row.cpu}C/${row.memoryMb ? row.memoryMb / 1024 : '?'}G` : '-', className: 'w-[100px]' },
-    { key: 'ip', header: t('instances.ip'), accessor: (row) => row.publicIp || row.privateIp || '-', className: 'w-[140px]' },
-    { key: 'monthlyCost', header: t('instances.monthlyCost'), accessor: (row) => row.monthlyCost ? `${(row as InstanceRow).currency === 'CNY' ? '¥' : '$'}${parseFloat(row.monthlyCost).toFixed(2)}` : '-', className: 'w-[120px]' },
+    { key: 'name', header: t('common.name'), accessor: (row) => row.name || row.providerInstanceId.slice(0, 8), className: 'w-[160px]', sortable: true, sortValue: (row) => row.name || row.providerInstanceId },
+    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[100px]', sortable: true },
+    { key: 'region', header: t('common.region'), accessor: 'region', className: 'w-[100px]', sortable: true },
+    { key: 'status', header: t('common.status'), accessor: 'status', className: 'w-[100px]', sortable: true, cell: (value) => <InstanceStatusBadge status={value as InstanceStatus} /> },
+    { key: 'spec', header: t('instances.spec'), accessor: (row) => row.cpu ? `${row.cpu}C/${row.memoryMb ? row.memoryMb / 1024 : '?'}G` : '-', className: 'w-[100px]', sortable: true, sortValue: (row) => row.cpu || 0 },
+    { key: 'ip', header: t('instances.ip'), accessor: (row) => row.publicIp || row.privateIp || '-', className: 'w-[140px]', sortable: true, sortValue: (row) => row.publicIp || row.privateIp || '' },
+    { key: 'monthlyCost', header: t('instances.monthlyCost'), accessor: (row) => row.monthlyCost ? `${(row as InstanceRow).currency === 'CNY' ? '¥' : '$'}${parseFloat(row.monthlyCost).toFixed(2)}` : '-', className: 'w-[120px]', sortable: true, sortValue: (row) => parseFloat(row.monthlyCost || '') || 0 },
     {
       key: 'actions',
       header: t('common.actions'),

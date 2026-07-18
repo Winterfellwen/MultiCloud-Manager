@@ -76,8 +76,8 @@ function RulesTab() {
   const [ruleFilters, setRuleFilters] = useState<Record<string, string>>({});
 
   const ruleColumns: Column<any>[] = [
-    { key: 'name', header: t('common.name'), accessor: 'name', className: 'w-[180px]' },
-    { key: 'metric', header: t('monitor.metric'), accessor: 'metric', className: 'w-[140px]' },
+    { key: 'name', header: t('common.name'), accessor: 'name', className: 'w-[180px]', sortable: true },
+    { key: 'metric', header: t('monitor.metric'), accessor: 'metric', className: 'w-[140px]', sortable: true },
     { key: 'condition', header: t('monitor.condition'), accessor: 'condition', className: 'w-[120px] text-muted-foreground' },
     { key: 'duration', header: t('monitor.duration'), accessor: 'duration', className: 'w-[100px] text-muted-foreground' },
     {
@@ -85,6 +85,8 @@ function RulesTab() {
       header: t('monitor.severity'),
       accessor: (row) => <AlertSeverityBadge severity={row.severity as AlertSeverity} />,
       className: 'w-[100px]',
+      sortable: true,
+      sortValue: (row) => row.severity,
     },
     {
       key: 'enabled',
@@ -480,8 +482,8 @@ function ChannelsTab() {
   const [channelFilters, setChannelFilters] = useState<Record<string, string>>({});
 
   const channelColumns: Column<any>[] = [
-    { key: 'name', header: t('common.name'), accessor: 'name', className: 'w-[160px]' },
-    { key: 'type', header: t('monitor.type'), accessor: 'type', className: 'w-[100px]' },
+    { key: 'name', header: t('common.name'), accessor: 'name', className: 'w-[160px]', sortable: true },
+    { key: 'type', header: t('monitor.type'), accessor: 'type', className: 'w-[100px]', sortable: true },
     {
       key: 'config',
       header: t('monitor.config'),

@@ -67,13 +67,15 @@ export default function Costs() {
   }, [providerTotals]);
 
   const summaryColumns: Column<CostSummaryItem>[] = [
-    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[140px]' },
-    { key: 'service', header: t('costs.service'), accessor: 'service', className: 'w-[180px]' },
+    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[140px]', sortable: true },
+    { key: 'service', header: t('costs.service'), accessor: 'service', className: 'w-[180px]', sortable: true },
     {
       key: 'totalAmount',
       header: t('costs.amount'),
       accessor: 'totalAmount',
       className: 'w-[100px]',
+      sortable: true,
+      sortValue: (row) => Number(row.totalAmount) || 0,
       cell: (value) => <span className="font-medium">{Number(value).toFixed(2)}</span>,
     },
     {
@@ -91,14 +93,17 @@ export default function Costs() {
       header: t('costs.instanceName'),
       accessor: (row) => row.name || row.id.slice(0, 8),
       className: 'w-[180px]',
+      sortable: true,
+      sortValue: (row) => row.name || row.id,
       cell: (value) => <span className="font-medium">{value as string}</span>,
     },
-    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[120px]' },
+    { key: 'provider', header: t('common.provider'), accessor: 'provider', className: 'w-[120px]', sortable: true },
     {
       key: 'region',
       header: t('common.region'),
       accessor: 'region',
       className: 'w-[120px]',
+      sortable: true,
       cell: (value) => <span className="text-muted-foreground">{value as string}</span>,
     },
     {
@@ -106,6 +111,8 @@ export default function Costs() {
       header: t('instances.monthlyCost'),
       accessor: 'monthlyCost',
       className: 'w-[120px]',
+      sortable: true,
+      sortValue: (row) => parseFloat(row.monthlyCost || '') || 0,
       cell: (value, row) => {
         const cost = value as string | null;
         if (!cost) return '-';

@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export interface Column<T> {
@@ -17,6 +17,8 @@ export interface Column<T> {
   accessor: keyof T | ((row: T) => React.ReactNode);
   className?: string;
   cell?: (value: unknown, row: T) => React.ReactNode;
+  sortable?: boolean;
+  sortValue?: (row: T) => string | number;
 }
 
 interface PaginationState {
@@ -60,6 +62,48 @@ export function TableWithPagination<T>({
   const { t } = useTranslation();
   const [internalPage, setInternalPage] = useState(0);
   const [internalPageSize] = useState(10);
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (col: Column<T>) => {
+    if (!col.sortable) return;
+    if (sortKey === col.key) {
+      if (sortDir === 'asc') {
+        setSortDir('desc');
+      } else {
+        setSortKey(null);
+        setSortDir('asc');
+      }
+    } else {
+      setSortKey(col.key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortKey) return 0;
+    const col = columns.find(c => c.key === sortKey);
+    if (!col) return 0;
+
+    let aVal: string | number;
+    let bVal: string | number;
+
+    if (col.sortValue) {
+      aVal = col.sortValue(a);
+      bVal = col.sortValue(b);
+    } else {
+      const accessor = col.accessor;
+      aVal = typeof accessor === 'function' ? String(accessor(a)) : String(a[accessor] ?? '');
+      bVal = typeof accessor === 'function' ? String(accessor(b)) : String(b[accessor] ?? '');
+    }
+
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+    return sortDir === 'asc'
+      ? String(aVal).localeCompare(String(bVal))
+      : String(bVal).localeCompare(String(aVal));
+  });
 
   const pageIndex = pagination?.pageIndex ?? internalPage;
   const pageSize = pagination?.pageSize ?? internalPageSize;
@@ -68,7 +112,7 @@ export function TableWithPagination<T>({
   const totalPages = Math.ceil(total / pageSize);
   const startRow = pageIndex * pageSize;
   const endRow = Math.min(startRow + pageSize, total);
-  const displayData = pagination ? data.slice(startRow, endRow) : data;
+  const displayData = pagination ? sortedData.slice(startRow, endRow) : sortedData;
 
   const handlePageChange = (newPage: number) => {
     if (onPaginationChange) {
@@ -111,8 +155,17 @@ export function TableWithPagination<T>({
         <TableHeader>
           <TableRow>
             {columns.map((col) => (
-              <TableHead key={col.key} className={col.className}>
-                {col.header}
+              <TableHead
+                key={col.key}
+                className={`${col.className || ''} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                onClick={() => handleSort(col)}
+              >
+                <div className="flex items-center gap-1">
+                  {col.header}
+                  {col.sortable && sortKey !== col.key && <ArrowUpDown className="h-3 w-3 text-muted-foreground" />}
+                  {sortKey === col.key && sortDir === 'asc' && <ArrowUp className="h-3 w-3" />}
+                  {sortKey === col.key && sortDir === 'desc' && <ArrowDown className="h-3 w-3" />}
+                </div>
               </TableHead>
             ))}
           </TableRow>
