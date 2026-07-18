@@ -8,6 +8,7 @@ import { User, Bot, AlertCircle, Copy, Check, ChevronDown, ChevronRight, Loader2
 import type { ChatMessage, ContentBlock } from '../../types/chat';
 import { ToolCallCard, serializeValue } from './ToolCallCard';
 import { resolveToolDisplay } from '../../lib/openclaw/tool-display';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import { cn } from '../../lib/utils';
 
 interface MessageBubbleProps {
@@ -57,14 +58,13 @@ function ReasoningBlock({ reasoning, isStreaming }: { reasoning: string; isStrea
   );
 }
 
-/** 文本块：渲染正文内容，streaming 时显示光标 + "正在生成"提示 */
 function TextBlock({ content, isStreaming }: { content: string; isStreaming: boolean }) {
   if (!content && !isStreaming) return null;
   return (
     <div className="space-y-1">
       {content && (
-        <div className="whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
-          {content}
+        <div className="rounded-lg bg-muted px-3 py-2">
+          <MarkdownRenderer content={content} />
           {isStreaming && (
             <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle" />
           )}
@@ -281,13 +281,8 @@ function MessageBubbleInner({ message }: MessageBubbleProps) {
               />
             )}
             {!isUser && message.content && (
-              <div
-                className={cn(
-                  'whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm',
-                  'bg-muted text-foreground'
-                )}
-              >
-                {message.content}
+              <div className="rounded-lg bg-muted px-3 py-2">
+                <MarkdownRenderer content={message.content} />
                 {isStreaming && (
                   <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle" />
                 )}

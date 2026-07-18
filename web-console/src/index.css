@@ -151,4 +151,15 @@
   }
 }
 
-
+.markdown-body h1 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.markdown-body h2 { font-size: 1.25rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+.markdown-body h3 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; }
+.markdown-body p { margin: 0.5rem 0; line-height: 1.6; }
+.markdown-body ul, .markdown-body ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+.markdown-body li { margin: 0.25rem 0; }
+.markdown-body blockquote { border-left: 3px solid hsl(var(--border)); padding-left: 1rem; margin: 0.5rem 0; color: hsl(var(--muted-foreground)); }
+.markdown-body table { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+.markdown-body th, .markdown-body td { border: 1px solid hsl(var(--border)); padding: 0.5rem; text-align: left; }
+.markdown-body th { background: hsl(var(--muted)); font-weight: 600; }
+.markdown-body code:not(pre code) { background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875em; }
+.markdown-body pre { margin: 0; }
