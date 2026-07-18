@@ -66,7 +66,15 @@
     "topology": "拓扑视图",
     "aiOps": "AI 运维",
     "knowledgeBase": "知识库",
-    "notifications": "消息中心"
+    "notifications": "消息中心",
+    "group": {
+      "dashboard": "总览",
+      "aiAgent": "AI Agent",
+      "resourceMgmt": "资源管理",
+      "monitoring": "监控",
+      "costMgmt": "成本",
+      "system": "系统"
+    }
   },
   "topbar": {
     "title": "多云管理控制台",
