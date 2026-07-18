@@ -151,6 +151,22 @@ export const remediationRuns = pgTable('remediation_runs', {
   errorMessage: text('error_message'),
 });
 
+// Phase 6: Budget management
+export const budgets = pgTable('budgets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 128 }).notNull(),
+  provider: varchar('provider', { length: 32 }).notNull(),
+  service: varchar('service', { length: 64 }).default(''),  // '' = all services
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 8 }).default('USD'),
+  period: varchar('period', { length: 16 }).notNull(),      // monthly | quarterly | yearly
+  startDate: timestamp('start_date', { withTimezone: true }).notNull(),
+  endDate: timestamp('end_date', { withTimezone: true }).notNull(),
+  notifyThreshold: integer('notify_threshold').default(80),  // % at which to alert
+  enabled: boolean('enabled').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Phase 6 新增：运维知识库表（pgvector 向量检索）
 // pgvector 类型支持（如果扩展不存在，查询会降级为纯关键词检索）
 export const knowledgeBase = pgTable('knowledge_base', {
