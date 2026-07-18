@@ -25,6 +25,8 @@ const createRuleSchema = z.object({
   severity: z.enum(['info', 'warning', 'critical', 'emergency']),
   actions: z.array(z.object({ type: z.enum(['notify', 'suggest', 'auto']), targets: z.array(z.string()) })),
   enabled: z.boolean().optional(),
+  conditions: z.array(z.object({ metric: z.string(), condition: z.string() })).optional(),
+  conditionOperator: z.enum(['AND', 'OR']).optional(),
 });
 
 const createChannelSchema = z.object({

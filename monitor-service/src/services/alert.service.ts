@@ -12,6 +12,8 @@ export interface CreateRuleInput {
   severity: AlertSeverity;
   actions: { type: string; targets: string[] }[];
   enabled?: boolean;
+  conditions?: Array<{ metric: string; condition: string }>;
+  conditionOperator?: string;
 }
 
 export class AlertService {
@@ -31,17 +33,20 @@ export class AlertService {
 
   async createRule(scope: RequestScope, input: CreateRuleInput) {
     const t = scopedDb(scope);
+    const values: any = {
+      name: input.name,
+      metric: input.metric,
+      condition: input.condition,
+      duration: input.duration,
+      severity: input.severity,
+      actions: input.actions,
+      enabled: input.enabled ?? true,
+    };
+    if (input.conditions) values.conditions = input.conditions;
+    if (input.conditionOperator) values.conditionOperator = input.conditionOperator;
     const result = await db
       .insert(t.alertRules)
-      .values({
-        name: input.name,
-        metric: input.metric,
-        condition: input.condition,
-        duration: input.duration,
-        severity: input.severity,
-        actions: input.actions,
-        enabled: input.enabled ?? true,
-      })
+      .values(values)
       .returning();
     return result[0];
   }

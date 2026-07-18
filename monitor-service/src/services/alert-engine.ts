@@ -17,6 +17,8 @@ interface RuleRow {
   severity: string;
   actions: unknown;
   enabled: boolean | null;
+  conditions?: Array<{ metric: string; condition: string }> | null;
+  conditionOperator?: string | null;
 }
 
 export class AlertEngine {
@@ -47,7 +49,12 @@ export class AlertEngine {
     const durationMs = this.parseDuration(rule.duration);
     const since = new Date(Date.now() - durationMs);
 
-    // 查询该 metric 在 duration 窗口内的所有数据点
+    // 复合条件规则
+    if (rule.conditions && Array.isArray(rule.conditions) && rule.conditions.length > 0) {
+      return this.evaluateCompositeRule(scope, rule, rule.conditions, rule.conditionOperator || 'AND', since);
+    }
+
+    // 传统单条件规则
     const points = await db
       .select()
       .from(t.metrics)
@@ -56,7 +63,6 @@ export class AlertEngine {
 
     if (points.length === 0) return;
 
-    // 按 instanceId 分组评估
     const byInstance = new Map<string, typeof points>();
     for (const p of points) {
       if (!p.instanceId) continue;
@@ -70,14 +76,9 @@ export class AlertEngine {
       const existing = await alertService.findFiringAlert(scope, rule.id, instanceId);
 
       if (triggered && !existing) {
-        // Check cooldown: was this alert recently resolved?
         const cooldownMinutes = 10;
         const lastResolved = await alertService.findLastResolvedAlert(scope, rule.id, instanceId, cooldownMinutes);
-        if (lastResolved) {
-          // Still in cooldown, skip
-          continue;
-        }
-        // 触发新告警
+        if (lastResolved) continue;
         const inst = await db.select().from(t.instances).where(eq(t.instances.id, instanceId)).limit(1);
         const instName = inst[0]?.name || instanceId;
         const alert = await alertService.createAlert(scope, {
@@ -86,14 +87,8 @@ export class AlertEngine {
           severity: rule.severity as AlertSeverity,
           message: `告警「${rule.name}」：实例 ${instName} 的 ${rule.metric} ${rule.condition}（当前值 ${instancePoints[0].value}）`,
         });
-
-        // 发送通知
         await notifyService.notify(rule.actions as any, alert.message, rule.severity as AlertSeverity);
-
-        // 发布事件
         await eventPublisher.publish('alert.fired', { alertId: alert.id, ruleId: rule.id, instanceId, severity: rule.severity });
-
-        // 异步调用 AI 根因分析（不阻断告警流程）
         this.requestAiAnalysis(scope, alert.id, {
           ruleName: rule.name,
           metric: rule.metric,
@@ -104,12 +99,106 @@ export class AlertEngine {
           severity: rule.severity,
           message: alert.message,
         }).catch((err) => console.error(`AI analysis for alert ${alert.id} failed:`, err));
-
-        // 触发自愈引擎（异步，不阻断告警流程）
         remediationEngine.onAlertFired(scope, alert.id, instanceId, rule.metric, String(instancePoints[0].value))
           .catch((err) => console.error(`Remediation for alert ${alert.id} failed:`, err));
       } else if (!triggered && existing) {
-        // 条件恢复，自动解决
+        await alertService.resolveAlert(scope, existing.id, 10);
+        await eventPublisher.publish('alert.resolved', { alertId: existing.id, ruleId: rule.id, instanceId });
+      }
+    }
+  }
+
+  private async evaluateCompositeRule(
+    scope: RequestScope,
+    rule: RuleRow,
+    conditions: Array<{ metric: string; condition: string }>,
+    operator: string,
+    since: Date
+  ) {
+    const t = scopedDb(scope);
+    const op = operator === 'OR' ? 'OR' : 'AND';
+
+    // Evaluate each condition independently across all instances
+    type ConditionResult = { instanceId: string; triggered: boolean; metric: string; condition: string; currentValue: string };
+    const allResults: ConditionResult[] = [];
+
+    for (const cond of conditions) {
+      const points = await db
+        .select()
+        .from(t.metrics)
+        .where(and(eq(t.metrics.metricName, cond.metric), gte(t.metrics.recordedAt, since)))
+        .orderBy(desc(t.metrics.recordedAt));
+
+      const byInstance = new Map<string, typeof points>();
+      for (const p of points) {
+        if (!p.instanceId) continue;
+        const arr = byInstance.get(p.instanceId) || [];
+        arr.push(p);
+        byInstance.set(p.instanceId, arr);
+      }
+
+      for (const [instanceId, instancePoints] of byInstance) {
+        const condTriggered = instancePoints.some(p => this.evaluateCondition(cond.condition, parseFloat(p.value)));
+        allResults.push({
+          instanceId,
+          triggered: condTriggered,
+          metric: cond.metric,
+          condition: cond.condition,
+          currentValue: instancePoints[0]?.value || '0',
+        });
+      }
+    }
+
+    // Group by instance and apply operator
+    const byInstance = new Map<string, ConditionResult[]>();
+    for (const r of allResults) {
+      const arr = byInstance.get(r.instanceId) || [];
+      arr.push(r);
+      byInstance.set(r.instanceId, arr);
+    }
+
+    for (const [instanceId, results] of byInstance) {
+      const triggered = op === 'AND'
+        ? results.every(r => r.triggered)
+        : results.some(r => r.triggered);
+
+      const existing = await alertService.findFiringAlert(scope, rule.id, instanceId);
+
+      if (triggered && !existing) {
+        const cooldownMinutes = 10;
+        const lastResolved = await alertService.findLastResolvedAlert(scope, rule.id, instanceId, cooldownMinutes);
+        if (lastResolved) continue;
+
+        const inst = await db.select().from(t.instances).where(eq(t.instances.id, instanceId)).limit(1);
+        const instName = inst[0]?.name || instanceId;
+        const details = results.map(r => `${r.metric} ${r.condition} (${r.currentValue})`).join(` ${op} `);
+        const message = `告警「${rule.name}」：实例 ${instName} 复合条件 [${details}]`;
+
+        const alert = await alertService.createAlert(scope, {
+          ruleId: rule.id,
+          instanceId,
+          severity: rule.severity as AlertSeverity,
+          message,
+        });
+
+        await notifyService.notify(rule.actions as any, alert.message, rule.severity as AlertSeverity);
+        await eventPublisher.publish('alert.fired', { alertId: alert.id, ruleId: rule.id, instanceId, severity: rule.severity });
+
+        this.requestAiAnalysis(scope, alert.id, {
+          ruleName: rule.name,
+          metric: results.map(r => r.metric).join(', '),
+          condition: results.map(r => r.condition).join(` ${op} `),
+          currentValue: results.map(r => r.currentValue).join(', '),
+          instanceName: instName,
+          instanceId,
+          severity: rule.severity,
+          message,
+        }).catch(err => console.error(`AI analysis for alert ${alert.id} failed:`, err));
+
+        remediationEngine.onAlertFired(scope, alert.id, instanceId, rule.metric, results[0]?.currentValue || '0')
+          .catch(err => console.error(`Remediation for alert ${alert.id} failed:`, err));
+
+      } else if (!triggered && existing) {
         await alertService.resolveAlert(scope, existing.id, 10);
         await eventPublisher.publish('alert.resolved', { alertId: existing.id, ruleId: rule.id, instanceId });
       }
