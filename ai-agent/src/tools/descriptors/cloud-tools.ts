@@ -2,10 +2,7 @@
 
 import { toolRegistry, type ToolExecutor, type ToolExecutionContext } from '../registry.js';
 import type { ToolDescriptor } from '../types.js';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { runSafeShellCommand } from '@cloudops/shared';
 
 const PROVIDER_LIST = 'aws | aliyun | azure | tencent | huawei | oracle | render';
 const RESOURCE_TYPES = 'instance | disk | bucket | database | cache | loadbalancer | vpc | securitygroup | cdn | cluster | aiservice';
@@ -451,34 +448,21 @@ toolRegistry.register(createResourceDesc, makeResourceExecutor('POST', () => '',
 })));
 
 // Shell 执行
+// 安全修复：原实现零过滤且将 process.env 全量传入子进程（泄露 JWT_SECRET/DATABASE_URL），
+// 现改为 shared 白名单制执行器（spawn 直派 + 沙箱 env + 参数级校验）。
 toolRegistry.register(shellExecuteDesc, async (args) => {
   const command = args.command as string;
   const timeoutSeconds = Math.min(Math.max((args.timeout as number) || 30, 1), 60);
-  const timeout = timeoutSeconds * 1000;
 
-  try {
-    const { stdout, stderr } = await execAsync(command, {
-      timeout,
-      maxBuffer: 1024 * 1024,
-      env: { ...process.env, LANG: 'en_US.UTF-8' },
-    });
+  const result = await runSafeShellCommand(command, timeoutSeconds);
 
-    return JSON.stringify({
-      success: true,
-      command,
-      stdout: stdout || '',
-      stderr: stderr || '',
-      exitCode: 0,
-    });
-  } catch (err: any) {
-    return JSON.stringify({
-      success: false,
-      error: true,
-      command,
-      stdout: err.stdout || '',
-      stderr: err.stderr || err.message || '',
-      exitCode: err.code || 1,
-      message: `Shell命令执行失败: ${err.message}`,
-    });
-  }
+  return JSON.stringify({
+    success: result.success,
+    error: result.success ? undefined : true,
+    command,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+    exitCode: result.exitCode,
+    ...(result.error ? { message: result.error } : {}),
+  });
 });

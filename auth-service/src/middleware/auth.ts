@@ -17,9 +17,15 @@ declare module 'fastify' {
   }
 }
 
+/**
+ * Demo 模式总开关：仅在服务端显式设置 DEMO_MODE_ENABLED=true 时生效。
+ * 客户端请求头 X-Demo-Mode 本身不可信，绝不能单独作为提权依据。
+ */
+const DEMO_MODE_ENABLED = process.env.DEMO_MODE_ENABLED === 'true';
+
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
-  // Demo 模式：跳过 JWT 验证，使用 x-scope-user-id 作为用户标识
-  if (request.headers['x-demo-mode'] === 'true') {
+  // Demo 模式（服务端开关默认关闭）：跳过 JWT 验证，使用 x-scope-user-id 作为用户标识
+  if (DEMO_MODE_ENABLED && request.headers['x-demo-mode'] === 'true') {
     const userId = (request.headers['x-scope-user-id'] as string) || 'demo-u-1';
     request.user = {
       id: userId,

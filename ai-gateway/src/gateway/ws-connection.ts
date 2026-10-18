@@ -44,6 +44,7 @@ export function handleConnection(
     username: user.username,
     role: user.role,
     teamId: user.teamId,
+    accessToken: token,
     seq: 0,
     subscribedSessions: new Set(),
   };

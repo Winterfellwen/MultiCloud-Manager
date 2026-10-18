@@ -810,7 +810,14 @@ async function callLLM(
   // 重试机制：最多重试3次，指数退避
   const maxRetries = 3;
   let lastError: Error | null = null;
-  
+
+  // 兜底超时：调用方 signal 仅覆盖用户主动中止；若 LLM 供应商挂起不返回，
+  // 无兜底会导致请求永久悬挂（连接与缓冲泄漏）。120s 为单次尝试上限。
+  const LLM_ATTEMPT_TIMEOUT_MS = 120_000;
+  const requestSignal = typeof AbortSignal !== 'undefined' && 'any' in AbortSignal
+    ? AbortSignal.any([signal, AbortSignal.timeout(LLM_ATTEMPT_TIMEOUT_MS)])
+    : signal;
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const res = await fetch(`${llmConfig.baseUrl}/chat/completions`, {
@@ -820,7 +827,7 @@ async function callLLM(
           Authorization: `Bearer ${llmConfig.apiKey}`,
         },
         body: JSON.stringify(requestBody),
-        signal,
+        signal: requestSignal,
       });
 
       // 处理可重试的 HTTP 错误

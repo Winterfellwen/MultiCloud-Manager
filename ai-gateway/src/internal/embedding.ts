@@ -20,6 +20,8 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
         model: llm.model.includes('/') ? llm.model.split('/').pop() : llm.model,
         input: text,
       }),
+      // 30s 超时：embedding 为同步链路（知识库检索），挂起会阻塞调用方
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!res.ok) {

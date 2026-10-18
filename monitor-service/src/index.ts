@@ -21,6 +21,7 @@ import { securityScanner } from './services/security-scanner.js';
 import { remediationEngine } from './services/remediation-engine.js';
 import { securityRoutes } from './routes/security.js';
 import { capacityRoutes } from './routes/capacity.js';
+import { authenticate } from './middleware/auth.js';
 import { AppError } from '@cloudops/shared';
 import { scopeFromDemoFlag, PUBLIC_SCOPE, DEMO_SCOPE, type RequestScope } from '@cloudops/shared';
 import { runMigrations } from './db/migrate.js';
@@ -35,9 +36,14 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: config.corsOrigin });
 
+// 鉴权钩子（安全修复）：nginx 将 /monitor/ 直连本服务，绕过 api-gateway，
+// 因此必须自行验证 JWT。/health、/metrics 除外；DEMO_MODE_ENABLED=true 时演示头生效。
+app.addHook('onRequest', authenticate);
+
 // scope 注入（demo/生产数据隔离）：读 X-Demo-Mode header，注入 request.scope
+// 安全修复：demo 开关收归服务端（DEMO_MODE_ENABLED），客户端头不可信
 app.addHook('onRequest', async (request) => {
-  const isDemo = request.headers['x-demo-mode'] === 'true';
+  const isDemo = process.env.DEMO_MODE_ENABLED === 'true' && request.headers['x-demo-mode'] === 'true';
   const userId = (request.headers['x-scope-user-id'] as string) || '';
   request.scope = scopeFromDemoFlag(isDemo, userId);
 });

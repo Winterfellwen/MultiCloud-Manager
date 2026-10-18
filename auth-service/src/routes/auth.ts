@@ -7,7 +7,7 @@ const registerSchema = z.object({
   username: z.string().min(3).max(64),
   email: z.string().email().optional(),
   password: z.string().min(8),
-  role: z.enum(['admin', 'ops_manager', 'ops_engineer', 'viewer']).optional(),
+  // 安全修复：role 不接受用户输入，防止自助注册管理员。管理员只能由已有 admin 经 /users 接口创建。
   team: z.string().optional(),
 });
 

@@ -15,18 +15,23 @@ export class AuthService {
       throw new ConflictError(`Username "${input.username}" already exists`);
     }
 
-    // First user auto-promoted to admin
-    const userCount = await db.select({ count: users.id }).from(users);
-    const isFirstUser = userCount.length === 0;
+    // 首用户自动成为 admin（空库引导）；此后注册一律为 viewer，role 永不可由请求方指定
+    const anyUser = await db.select({ id: users.id }).from(users).limit(1);
+    const isFirstUser = anyUser.length === 0;
 
     const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
     const result = await db.insert(users).values({
       username: input.username,
       email: input.email,
       passwordHash,
-      role: input.role || (isFirstUser ? 'admin' : 'viewer'),
+      role: isFirstUser ? 'admin' : 'viewer',
       team: input.team || '',
-    }).returning({ id: users.id, username: users.username, role: users.role });
+    }).onConflictDoNothing().returning({ id: users.id, username: users.username, role: users.role });
+
+    if (result.length === 0) {
+      // 并发注册同一用户名的竞态：唯一约束拦截，转换为 409 而非 500
+      throw new ConflictError(`Username "${input.username}" already exists`);
+    }
 
     return result[0] as { id: string; username: string; role: UserRole };
   }

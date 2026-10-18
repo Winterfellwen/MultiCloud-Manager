@@ -9,6 +9,7 @@ import { providerRoutes, accountRoutes } from "./routes/providers.js";
 import { topologyRoutes } from "./routes/topology.js";
 import { searchRoutes } from "./routes/search.js";
 import { exchangeRateRoutes } from "./routes/exchange-rate.js";
+import { authenticate } from "./middleware/auth.js";
 import { AppError } from "@cloudops/shared";
 import { scopeFromDemoFlag, PUBLIC_SCOPE, type RequestScope } from "@cloudops/shared";
 import { runMigrations } from "./db/migrate.js";
@@ -22,6 +23,10 @@ declare module 'fastify' {
 const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: config.corsOrigin });
+
+// 鉴权钩子（安全修复）：nginx 将 /cloud/ 直连本服务，绕过 api-gateway，
+// 因此必须自行验证 JWT。/health、/metrics 除外；DEMO_MODE_ENABLED=true 时演示头生效。
+app.addHook('onRequest', authenticate);
 
 // 错误处理
 app.setErrorHandler((error, _request, reply) => {
@@ -85,8 +90,9 @@ await app.register(searchRoutes, { prefix: "/cloud" });
 await app.register(exchangeRateRoutes, { prefix: "/cloud" });
 
 // scope 注入（demo/生产数据隔离）+ 首次访问云资源时触发同步
+// 安全修复：demo 开关收归服务端（DEMO_MODE_ENABLED），客户端头不可信
 app.addHook('onRequest', async (request) => {
-  const isDemo = request.headers['x-demo-mode'] === 'true';
+  const isDemo = process.env.DEMO_MODE_ENABLED === 'true' && request.headers['x-demo-mode'] === 'true';
   const userId = (request.headers['x-scope-user-id'] as string) || '';
   request.scope = scopeFromDemoFlag(isDemo, userId);
 

@@ -1,43 +1,22 @@
-import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
-import postgres from 'postgres';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { runServiceMigrations } from '@cloudops/shared';
 import { config } from '../config.js';
 
-async function runFile(sql: ReturnType<typeof postgres>, sqlText: string): Promise<void> {
-  try {
-    await sql.unsafe(sqlText);
-  } catch (err: any) {
-    if (err?.code === '23505') {
-      await new Promise(r => setTimeout(r, 200));
-      await sql.unsafe(sqlText);
-    } else {
-      throw err;
-    }
-  }
-}
+/**
+ * 解析本服务的 migrations 目录。
+ * 编译后为 <service>/dist/db/migrate.js，上两级即 <service>/；
+ * 本地 tsx 直接跑 src/db/migrate.ts 时同样成立。
+ */
+const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'migrations');
 
 export async function runMigrations(): Promise<void> {
-  const sql = postgres(config.databaseUrl, { max: 1 });
-  const migrationsDir = join(process.cwd(), 'ai-gateway', 'migrations');
-
-  const files = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
-
-  for (const file of files) {
-    console.log(`[ai-gateway] Applying migration: ${file}`);
-    const sqlText = readFileSync(join(migrationsDir, file), 'utf-8');
-    await runFile(sql, sqlText);
-  }
-
-  // 执行 demo schema 建表（幂等，多服务启动安全）
-  const demoSchemaPath = join(process.cwd(), 'shared', 'src', 'db', 'migrations', '000_demo_schema.sql');
-  if (existsSync(demoSchemaPath)) {
-    console.log('[ai-gateway] Running migration: 000_demo_schema.sql');
-    const demoContent = readFileSync(demoSchemaPath, 'utf-8');
-    await runFile(sql, demoContent);
-  }
-
-  console.log('[ai-gateway] Migrations complete.');
-  await sql.end();
+  await runServiceMigrations({
+    serviceName: 'ai-gateway',
+    databaseUrl: config.databaseUrl,
+    migrationsDir,
+    includeDemoSchema: true,
+  });
 }
 
 async function main() {

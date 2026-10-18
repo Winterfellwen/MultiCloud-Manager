@@ -148,6 +148,15 @@ function requireEnv(name: string, fallback?: string): string {
   return value;
 }
 
+/** 安全敏感变量：缺失或过短（<16 字符）直接拒绝启动，禁止弱密钥 */
+function requireSecret(name: string): string {
+  const value = process.env[name];
+  if (!value || value.length < 16) {
+    throw new Error(`FATAL: ${name} 未设置或过短（<16 字符）。请设置强随机值，例如: openssl rand -hex 32`);
+  }
+  return value;
+}
+
 const llmProviders = parseLlmProviders();
 const mcpServers = parseMcpServers();
 
@@ -155,8 +164,8 @@ export const config = {
   port: parseInt(process.env.AI_GATEWAY_PORT || '3005', 10),
   corsOrigin: process.env.CORS_ORIGIN || '*',
 
-  // JWT（与 auth-service 共享密钥）
-  jwtSecret: requireEnv('JWT_SECRET'),
+  // JWT（与 auth-service 共享密钥；硬必填，弱密钥直接拒绝启动）
+  jwtSecret: requireSecret('JWT_SECRET'),
 
   // PostgreSQL（复用 ai-agent 的数据库）
   databaseUrl: requireEnv('DATABASE_URL', 'postgres://cloudops:changeme@postgres:5432/cloudops'),

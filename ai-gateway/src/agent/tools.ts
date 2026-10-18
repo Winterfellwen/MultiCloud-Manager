@@ -6,11 +6,8 @@
 // - getLLMTools(): 返回 LLM function-calling 格式的工具列表
 // - getLLMToolsForMode(): 根据当前模式返回可用工具列表
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { runSafeShellCommand } from '@cloudops/shared';
 import { config } from '../config.js';
-
-const execAsync = promisify(exec);
 
 // ============ 类型定义 ============
 
@@ -419,82 +416,27 @@ export function getLLMTools(): Array<{
 // ============ Shell 执行 ============
 
 /**
- * 执行 Shell 命令（沙箱化：剥离敏感环境变量，拦截凭证提取命令）
+ * 执行 Shell 命令（白名单制，详见 shared/src/utils/shell-policy.ts）
+ * 安全修复：原黑名单关键词匹配可被引号拼接/declare -p/十进制 IP 等绕过，
+ * 且子进程 env 剥离不完整；现改为白名单 + spawn 直派（不经 shell）。
  */
 async function executeShell(
   command: string,
   timeoutSeconds: number = 30
 ): Promise<ToolResult> {
-  const timeout = Math.min(Math.max(timeoutSeconds, 1), 60) * 1000;
+  const result = await runSafeShellCommand(command, timeoutSeconds);
 
-  // 安全校验：拦截高危命令
-  const blockedPatterns = [
-    /\benv\b/,
-    /\bprintenv\b/,
-    /^\s*set\s*$/,
-    /\bexport\s+\w*(KEY|SECRET|TOKEN|PASSWORD)/i,
-    /cat\s+\/proc\/.*\/environ/,
-    /cat\s+\/etc\/(shadow|passwd)/,
-    /curl.*169\.254\.169\.254/,  // AWS metadata
-    /wget.*169\.254\.169\.254/,
-    /\baz\s+(login|account|keyvault|ad)\b/,
-    /\baws\s+(configure|sts|iam)\b/,
-    /\baliyun\s+(configure|sts)\b/,
-  ];
-
-  for (const pattern of blockedPatterns) {
-    if (pattern.test(command)) {
-      return {
-        name: 'shell_execute',
-        success: false,
-        data: null,
-        error: `命令被安全策略禁止: 匹配规则 ${pattern}。如需执行云操作，请使用 cloud_xxx_* 工具。`,
-      };
-    }
-  }
-
-  try {
-    // 沙箱环境：只传递非敏感变量
-    const safeEnv: Record<string, string> = {
-      LANG: 'en_US.UTF-8',
-      PATH: process.env.PATH || '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-      HOME: '/tmp',
-    };
-    // 只传递服务间通信 URL（非敏感）
-    if (process.env.CLOUD_SERVICE_URL) safeEnv.CLOUD_SERVICE_URL = process.env.CLOUD_SERVICE_URL;
-    if (process.env.MONITOR_SERVICE_URL) safeEnv.MONITOR_SERVICE_URL = process.env.MONITOR_SERVICE_URL;
-    if (process.env.AUTH_SERVICE_URL) safeEnv.AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL;
-
-    const { stdout, stderr } = await execAsync(command, {
-      timeout,
-      maxBuffer: 1024 * 1024, // 1MB
-      env: safeEnv,
-    });
-
-    return {
-      name: 'shell_execute',
-      success: true,
-      data: {
-        command,
-        stdout: stdout || '',
-        stderr: stderr || '',
-        exitCode: 0,
-        duration: '< 1s',
-      },
-    };
-  } catch (err: any) {
-    return {
-      name: 'shell_execute',
-      success: false,
-      data: {
-        command,
-        stdout: err.stdout || '',
-        stderr: err.stderr || err.message || '',
-        exitCode: err.code || 1,
-      },
-      error: `Shell命令执行失败: ${err.message}`,
-    };
-  }
+  return {
+    name: 'shell_execute',
+    success: result.success,
+    data: {
+      command,
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
+      exitCode: result.exitCode,
+    },
+    ...(result.error ? { error: result.error } : {}),
+  };
 }
 
 // ============ 工具执行 ============

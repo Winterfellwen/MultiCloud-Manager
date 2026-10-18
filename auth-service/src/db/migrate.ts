@@ -1,39 +1,23 @@
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
-import postgres from 'postgres';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { runServiceMigrations } from '@cloudops/shared';
 import { config } from '../config.js';
 
-async function runFile(sql: ReturnType<typeof postgres>, sqlText: string): Promise<void> {
-  try {
-    await sql.unsafe(sqlText);
-  } catch (err: any) {
-    if (err?.code === '23505') {
-      // concurrent CREATE EXTENSION race — retry once after a short delay
-      await new Promise(r => setTimeout(r, 200));
-      await sql.unsafe(sqlText);
-    } else if (err?.code === '42P07' || err?.code === '42701' || err?.code === '42P16') {
-      // relation / column already exists — skip (idempotent migration)
-      console.log(`  ℹ️  Skipping (already exists): ${err.message}`);
-    } else {
-      throw err;
-    }
-  }
-}
+/**
+ * 解析本服务的 migrations 目录。
+ * 编译后为 <service>/dist/db/migrate.js，上两级即 <service>/；
+ * 本地 tsx 直接跑 src/db/migrate.ts 时同样成立。
+ */
+const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'migrations');
 
 export async function runMigrations(): Promise<void> {
-  const sql = postgres(config.databaseUrl, { max: 1 });
-  const migrationsDir = join(process.cwd(), 'auth-service', 'migrations');
-
-  const files = readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
-
-  for (const file of files) {
-    console.log(`Applying migration: ${file}`);
-    const sqlText = readFileSync(join(migrationsDir, file), 'utf-8');
-    await runFile(sql, sqlText);
-  }
-
-  console.log('Migrations complete.');
-  await sql.end();
+  await runServiceMigrations({
+    serviceName: 'auth-service',
+    databaseUrl: config.databaseUrl,
+    migrationsDir,
+    // auth-service 无 demo schema 依赖（原实现即无）
+    includeDemoSchema: false,
+  });
 }
 
 async function main() {

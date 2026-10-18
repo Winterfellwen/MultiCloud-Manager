@@ -10,6 +10,12 @@ export interface ClientConnection {
   username: string;
   role: string;
   teamId: string | null;
+  /**
+   * 该连接握手时的原始 access token。
+   * 安全修复：AI 工具调用 cloud/monitor-service 时需以真实用户身份透传 JWT
+   * （两服务已启用鉴权，空 token 会 401 导致 AI 工具全部失效）。
+   */
+  accessToken: string;
   /** 该客户端的 seq 计数器 */
   seq: number;
   /** 订阅的 sessionKey 集合 */

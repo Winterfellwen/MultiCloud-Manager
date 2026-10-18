@@ -10,10 +10,20 @@ function requireEnv(name: string, fallback?: string): string {
   return value;
 }
 
+/** 安全敏感变量：缺失时直接拒绝启动，与 auth-service 签发端保持同一把持 */
+function requireSecret(name: string): string {
+  const value = process.env[name];
+  if (!value || value.length < 16) {
+    throw new Error(`FATAL: ${name} 未设置或过短（<16 字符）。请设置强随机值，例如: openssl rand -hex 32`);
+  }
+  return value;
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   databaseUrl: requireEnv('DATABASE_URL', 'postgresql://postgres:postgres@127.0.0.1:5432/cloudops'),
   redisUrl: requireEnv('REDIS_URL', 'redis://127.0.0.1:6379'),
+  jwtSecret: requireSecret('JWT_SECRET'),
   corsOrigin: process.env.CORS_ORIGIN || '*',
 
   // auth-service 内部地址（docker 网络内服务间调用）

@@ -176,6 +176,9 @@ export async function handleChatSend(
             enableThinking: params.enableThinking,
             reasoningEffort: params.reasoningEffort,
             mode: params.mode,
+            // 透传用户 access token：AI 工具调用 cloud/monitor-service 时
+            // 以真实用户身份鉴权（两服务已强制 JWT）
+            authToken: client.accessToken,
             // 审批上下文：用于 dangerous 工具调用前的审批流程
             approvalContext: { clients: context.clients },
           },
@@ -272,8 +275,13 @@ export async function handleChatSend(
         setTimeout(() => cleanupRun(context.chatRunState, runId), 30000);
       }
     },
-  }).catch(() => {
-    // 并发限制错误已在 runAgentTurn 中处理
+  }).catch((err) => {
+    // 并发限制等预期错误已在 runAgentTurn 内处理并通知客户端；
+    // 此处仅记录未预期错误，保留排障线索（原来完全静默，线上问题无迹可查）
+    console.error(
+      `[chat] session turn failed (sessionKey=${sessionKey}, runId=${runId}):`,
+      err instanceof Error ? err.message : err
+    );
   });
 }
 
