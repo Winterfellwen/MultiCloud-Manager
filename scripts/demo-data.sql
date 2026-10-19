@@ -1,14 +1,25 @@
 -- scripts/demo-data.sql
--- Demo 数据：~120 云资源 across AWS/Aliyun/Azure，物理隔离 public 真实数据
--- 使用方法：docker compose exec -T postgres psql -U multicloud -d multicloud < scripts/demo-data.sql
+-- Demo 数据：~120 云资源 across AWS/Aliyun/Azure/PaaS，物理隔离 public 真实数据
+--
+-- 【严格隔离保证】
+--   * 本文件所有 DML 都以 "demo." schema 前缀限定，绝不写入 public（真实环境）
+--   * 演示数据与真实数据位于同一数据库的不同 schema，由 RequestScope 按
+--     X-Demo-Mode（仅服务端 DEMO_MODE_ENABLED=true 时生效）切换读写目标
+--   * TRUNCATE 前显式写全 schema 名，不会误删真实数据
+--
+-- 使用方法：
+--   psql "$DATABASE_URL" -f scripts/demo-data.sql
+--   或 node scripts/seed-demo.js （带 public 完整性校验，推荐）
+--   Docker Compose: docker compose exec -T postgres psql -U multicloud -d multicloud < scripts/demo-data.sql
 
 BEGIN;
 
--- 仅清 demo schema
+-- 仅清 demo schema（public.* 不受影响）
 TRUNCATE demo.instances, demo.alerts, demo.alert_rules,
          demo.cost_records, demo.metrics, demo.cloud_resources,
          demo.token_usage, demo.remediation_runs, demo.knowledge_base,
-         demo.metric_predictions, demo.cloud_accounts CASCADE;
+         demo.metric_predictions, demo.cloud_accounts,
+         demo.notifications, demo.insight_history CASCADE;
 
 -- ========== 云账户 ==========
 INSERT INTO demo.cloud_accounts (id, provider, name, status, config, created_at, updated_at) VALUES
@@ -407,6 +418,25 @@ INSERT INTO demo.metric_predictions (instance_id, metric_name, current_value, pr
 ('a1b2c3d4-0001-4000-8000-000000000006', 'memory_utilization', 85.2, 92.5, 90, 48, 0.15, 85.00)
 ON CONFLICT DO NOTHING;
 
+-- ========== 通知中心 demo 数据（user_id 为 NULL = 全员可见）==========
+INSERT INTO demo.notifications (id, type, category, title, description, link, metadata, user_id, role_required, read_at, created_at) VALUES
+('a11ce001-0001-4000-8000-000000000001', 'alert.firing', 'alert', 'web-prod-01 CPU 使用率超过 80%', 'us-east-1 / web-prod-01 CPU 持续 85.3%，已触发告警规则「CPU 使用率 > 80%」', '/monitor', '{"instanceId":"a1b2c3d4-0001-4000-8000-000000000001","severity":"warning"}'::jsonb, NULL, NULL, NULL, NOW() - INTERVAL '15 min'),
+('a11ce001-0001-4000-8000-000000000002', 'alert.firing', 'alert', 'backup-server 内存使用率超过 90%', 'westeurope / backup-server 内存 92.1%，已达到 critical 阈值', '/monitor', '{"instanceId":"a1b2c3d4-0003-4000-8000-000000000002","severity":"critical"}'::jsonb, NULL, NULL, NULL, NOW() - INTERVAL '8 min'),
+('a11ce001-0001-4000-8000-000000000003', 'remediation.pending', 'ops', '自愈方案待审批：重启 backup-server', 'AI 诊断根因为「缓存未释放」，建议操作 reboot_instance（风险：moderate）', '/aiops', '{"remediationRunId":"d4e5f6a7-0001-4000-8000-000000000002"}'::jsonb, NULL, 'admin', NULL, NOW() - INTERVAL '7 min'),
+('a11ce001-0001-4000-8000-000000000004', 'insight.updated', 'ai', 'AI 健康度洞察已更新', '当前健康分 76，发现 3 项风险、4 条优化建议', '/dashboard', '{"healthScore":76}'::jsonb, NULL, NULL, NOW() - INTERVAL '2 hour', NOW() - INTERVAL '2 hour'),
+('a11ce001-0001-4000-8000-000000000005', 'approval.requested', 'ops', '变更审批：analytics-worker 扩容', '容量预测显示 48h 内内存将超过 90%，建议 16C32G → 16C64G', '/aiops', '{"actionType":"scale_up"}'::jsonb, NULL, 'admin', NULL, NOW() - INTERVAL '1 hour'),
+('a11ce001-0001-4000-8000-000000000006', 'chat.completed', 'ai', 'AI 助手对话已完成', '「帮我盘点本月成本最高的 5 个资源」已生成结果', '/chat', '{"sessionKey":"session-demo-004"}'::jsonb, NULL, NULL, NOW() - INTERVAL '10 min', NOW() - INTERVAL '10 min');
+
+-- ========== AI 洞察历史 demo 数据（近 7 天健康度趋势）==========
+INSERT INTO demo.insight_history (health_score, risks, suggestions, raw, created_at) VALUES
+(68, '[{"level":"high","title":"3 台实例长期高负载"},{"level":"medium","title":"2 块磁盘未加密"},{"level":"medium","title":"闲置资源 5 项"}]', '["为 analytics-worker 扩容","清理闲置 ECS 实例","启用磁盘加密"]', 'demo-seed: 7 天前', NOW() - INTERVAL '7 day'),
+(70, '[{"level":"high","title":"3 台实例长期高负载"},{"level":"medium","title":"闲置资源 5 项"}]', '["为 analytics-worker 扩容","清理闲置 ECS 实例"]', 'demo-seed: 6 天前', NOW() - INTERVAL '6 day'),
+(72, '[{"level":"high","title":"2 台实例长期高负载"},{"level":"low","title":"备份任务延迟"}]', '["为 analytics-worker 扩容","检查备份窗口配置"]', 'demo-seed: 5 天前', NOW() - INTERVAL '5 day'),
+(71, '[{"level":"high","title":"2 台实例长期高负载"},{"level":"medium","title":"1 台实例磁盘超 85%"}]', '["为 analytics-worker 扩容","清理 log-collector 磁盘"]', 'demo-seed: 4 天前', NOW() - INTERVAL '4 day'),
+(74, '[{"level":"medium","title":"2 台实例长期高负载"},{"level":"low","title":"跨区流量上升"}]', '["为 analytics-worker 扩容","评估 CDN 回源策略"]', 'demo-seed: 3 天前', NOW() - INTERVAL '3 day'),
+(75, '[{"level":"medium","title":"1 台实例长期高负载"},{"level":"medium","title":"2 块磁盘未加密"}]', '["启用磁盘加密","为 ml-training-gpu 安排夜间任务"]', 'demo-seed: 1 天前', NOW() - INTERVAL '1 day'),
+(76, '[{"level":"medium","title":"backup-server 内存超阈值"},{"level":"medium","title":"2 块磁盘未加密"},{"level":"low","title":"闲置资源 3 项"}]', '["审批重启 backup-server","启用磁盘加密","清理闲置资源"]', 'demo-seed: today', NOW() - INTERVAL '2 hour');
+
 COMMIT;
 
 -- 验证
@@ -420,4 +450,6 @@ UNION ALL SELECT 'demo.cost_records', count(*) FROM demo.cost_records
 UNION ALL SELECT 'demo.metrics', count(*) FROM demo.metrics
 UNION ALL SELECT 'demo.token_usage', count(*) FROM demo.token_usage
 UNION ALL SELECT 'demo.remediation_runs', count(*) FROM demo.remediation_runs
-UNION ALL SELECT 'demo.knowledge_base', count(*) FROM demo.knowledge_base;
+UNION ALL SELECT 'demo.knowledge_base', count(*) FROM demo.knowledge_base
+UNION ALL SELECT 'demo.notifications', count(*) FROM demo.notifications
+UNION ALL SELECT 'demo.insight_history', count(*) FROM demo.insight_history;

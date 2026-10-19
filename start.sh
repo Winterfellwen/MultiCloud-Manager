@@ -58,11 +58,16 @@ done
 
 echo ""
 
-# Demo 数据自动初始化（仅本地开发环境，DEMO_AUTO_SEED=true 时执行）
+# Demo 数据自动初始化（DEMO_AUTO_SEED=true 时执行）
+# 说明：
+#   - seed-demo.js 只写 demo schema，并内置 public 真实数据完整性校验
+#   - 后台执行，避免等待 schema 就绪时阻塞 nginx 启动
+#   - 演示模式的读写切换由服务端开关 DEMO_MODE_ENABLED=true 控制
 if [ "$DEMO_AUTO_SEED" = "true" ] && [ -f /app/scripts/seed-demo.js ]; then
-    echo "--- Seeding demo data ---"
+    echo "--- Seeding demo data (background) ---"
     if [ -n "$DATABASE_URL" ]; then
-        node /app/scripts/seed-demo.js 2>&1 || echo "WARNING: demo seed failed"
+        node /app/scripts/seed-demo.js >/tmp/seed-demo.log 2>&1 &
+        echo "demo seed started (log: /tmp/seed-demo.log)"
     else
         echo "WARNING: DATABASE_URL not set, skip demo seed"
     fi
